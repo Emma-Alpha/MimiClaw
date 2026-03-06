@@ -167,6 +167,7 @@ linux:
       Comment: AI Assistant powered by OpenClaw
       Categories: Utility;Network;
       Keywords: ai;assistant;automation;chat;
+      StartupWMClass: clawx
 
 appImage:
   license: LICENSE
