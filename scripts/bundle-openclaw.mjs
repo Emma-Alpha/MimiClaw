@@ -479,6 +479,31 @@ function findFirstFileByName(rootDir, matcher) {
   return null;
 }
 
+function findFilesByName(rootDir, matcher) {
+  const matches = [];
+  const stack = [rootDir];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    let entries = [];
+    try {
+      entries = fs.readdirSync(current, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const fullPath = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(fullPath);
+        continue;
+      }
+      if (entry.isFile() && matcher.test(entry.name)) {
+        matches.push(fullPath);
+      }
+    }
+  }
+  return matches;
+}
+
 function patchBundledRuntime(outputDir) {
   const replacePatches = [
     {
@@ -601,6 +626,63 @@ function patchBundledRuntime(outputDir) {
 
   if (count > 0) {
     echo`   🩹 Patched ${count} bundled runtime spawn site(s)`;
+  }
+
+  const ptyTargets = findFilesByName(
+    path.join(outputDir, 'dist'),
+    /^(subagent-registry|reply|pi-embedded)-.*\.js$/,
+  );
+  const ptyPatches = [
+    {
+      label: 'pty launcher windowsHide',
+      search: `\tconst pty = spawn(params.shell, params.args, {
+\t\tcwd: params.cwd,
+\t\tenv: params.env ? toStringEnv(params.env) : void 0,
+\t\tname: params.name ?? process.env.TERM ?? "xterm-256color",
+\t\tcols: params.cols ?? 120,
+\t\trows: params.rows ?? 30
+\t});`,
+      replace: `\tconst pty = spawn(params.shell, params.args, {
+\t\tcwd: params.cwd,
+\t\tenv: params.env ? toStringEnv(params.env) : void 0,
+\t\tname: params.name ?? process.env.TERM ?? "xterm-256color",
+\t\tcols: params.cols ?? 120,
+\t\trows: params.rows ?? 30,
+\t\twindowsHide: true
+\t});`,
+    },
+    {
+      label: 'disable pty on windows',
+      search: `\t\t\tconst usePty = params.pty === true && !sandbox;`,
+      replace: `\t\t\tconst usePty = params.pty === true && !sandbox && process.platform !== "win32";`,
+    },
+    {
+      label: 'disable approval pty on windows',
+      search: `\t\t\t\t\tpty: params.pty === true && !sandbox,`,
+      replace: `\t\t\t\t\tpty: params.pty === true && !sandbox && process.platform !== "win32",`,
+    },
+  ];
+
+  let ptyCount = 0;
+  for (const patch of ptyPatches) {
+    let matchedAny = false;
+    for (const target of ptyTargets) {
+      const current = fs.readFileSync(target, 'utf8');
+      if (!current.includes(patch.search)) continue;
+      matchedAny = true;
+      const next = current.replaceAll(patch.search, patch.replace);
+      if (next !== current) {
+        fs.writeFileSync(target, next, 'utf8');
+        ptyCount++;
+      }
+    }
+    if (!matchedAny) {
+      echo`   ⚠️  Skipped patch for ${patch.label}: expected source snippet not found`;
+    }
+  }
+
+  if (ptyCount > 0) {
+    echo`   🩹 Patched ${ptyCount} bundled PTY site(s)`;
   }
 }
 
