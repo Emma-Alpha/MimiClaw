@@ -290,59 +290,59 @@ jobs:
           make_latest: false
           generate_release_notes: true
           body: |
-            ## 🚀 ClawX ${{ github.ref_name }}
-            
-            ClawX - Graphical AI Assistant based on OpenClaw
-            
-            ### 📦 Downloads
-            
-            Please select the appropriate installer for your operating system and architecture:
-            
+            ## 🚀 极智 ${{ github.ref_name }}
+
+            极智 - AI 智能助手
+
+            ### 📦 下载
+
+            请根据您的操作系统和架构选择对应的安装包：
+
             #### macOS
-            - **Apple Silicon (M1/M2/M3/M4)**: `ClawX-*-mac-arm64.dmg`
-            - **Intel (x64)**: `ClawX-*-mac-x64.dmg`
-            
+            - **Apple Silicon (M1/M2/M3/M4)**: `jizhi-*-mac-arm64.dmg`
+            - **Intel (x64)**: `jizhi-*-mac-x64.dmg`
+
             #### Windows
-            - **Installer (x64)**: `ClawX-*-win-x64.exe`
-            - **Installer (ARM64)**: `ClawX-*-win-arm64.exe`
-            
+            - **安装包 (x64)**: `jizhi-*-win-x64.exe`
+            - **安装包 (ARM64)**: `jizhi-*-win-arm64.exe`
+
             #### Linux
-            - **AppImage (x64)**: `ClawX-*-linux-x86_64.AppImage` (Universal format, recommended)
-            - **AppImage (ARM64)**: `ClawX-*-linux-arm64.AppImage`
-            - **Debian/Ubuntu (x64)**: `ClawX-*-linux-amd64.deb`
-            - **Debian/Ubuntu (ARM64)**: `ClawX-*-linux-arm64.deb`
-            - **RPM (x64)**: `ClawX-*-linux-x86_64.rpm`
-            
-            ### 📝 Release Notes
-            
-            See the auto-generated release notes below for detailed changes.
-            
-            ### ⚠️ Installation Notes
-            
-            - **macOS**: On first launch, you may see "cannot verify developer". Go to System Preferences → Security & Privacy to allow the app to run
-            - **Windows**: SmartScreen may block the app. Click "More info" → "Run anyway" to proceed
-            - **Linux AppImage**: First run `chmod +x ClawX-*.AppImage` to add execute permission. On Ubuntu 22.04 you may also need `sudo apt install libfuse2`; on Ubuntu 24.04 use `sudo apt install libfuse2t64`
-            - **Linux .deb (Ubuntu 24.04)**: If installation fails due to missing dependencies, use `sudo apt install libgtk-3-0t64 libnotify4t64 libxss1t64` before installing
-            
+            - **AppImage (x64)**: `jizhi-*-linux-x86_64.AppImage`（通用格式，推荐）
+            - **AppImage (ARM64)**: `jizhi-*-linux-arm64.AppImage`
+            - **Debian/Ubuntu (x64)**: `jizhi-*-linux-amd64.deb`
+            - **Debian/Ubuntu (ARM64)**: `jizhi-*-linux-arm64.deb`
+            - **RPM (x64)**: `jizhi-*-linux-x86_64.rpm`
+
+            ### 📝 更新说明
+
+            详见下方自动生成的更新日志。
+
+            ### ⚠️ 安装注意事项
+
+            - **macOS**：首次启动可能提示"无法验证开发者"，请前往系统偏好设置 → 安全性与隐私，允许运行
+            - **Windows**：SmartScreen 可能拦截安装，点击"更多信息" → "仍要运行"
+            - **Linux AppImage**：先运行 `chmod +x jizhi-*.AppImage` 添加执行权限；Ubuntu 22.04 需安装 `libfuse2`，Ubuntu 24.04 需安装 `libfuse2t64`
+            - **Linux .deb (Ubuntu 24.04)**：如依赖缺失，先执行 `sudo apt install libgtk-3-0t64 libnotify4t64 libxss1t64`
+
             ---
-            
-            💬 Found an issue? Please submit an [Issue](https://github.com/${{ github.repository }}/issues)
+
+            💬 遇到问题？请提交 [Issue](https://github.com/${{ github.repository }}/issues)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ──────────────────────────────────────────────────────────────
-  # Job: Upload to Alibaba Cloud OSS
-  # Uploads all release artifacts to OSS for:
+  # Job: Upload to Tencent COS
+  # Uploads all release artifacts to COS for:
   #   - Official website downloads (via release-info.json)
   #   - electron-updater auto-update (via {channel}-*.yml)
   #
-  # Directory structure on OSS (channel-separated):
+  # Directory structure on COS (channel-separated):
   #   latest/          → stable releases (latest.yml, latest-mac.yml, …)
   #   alpha/           → alpha  releases (alpha.yml,  alpha-mac.yml, …)
   #   beta/            → beta   releases (beta.yml,   beta-mac.yml,  …)
   #   releases/vX.Y.Z/ → permanent archive, never deleted
   # ──────────────────────────────────────────────────────────────
-  upload-oss:
+  upload-cos:
     needs: release
     runs-on: ubuntu-latest
 
@@ -410,7 +410,7 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           CHANNEL="${{ steps.version.outputs.channel }}"
-          BASE_URL="https://oss.intelli-spectrum.com/${CHANNEL}"
+          BASE_URL="https://cobot-1254397474.cos.ap-guangzhou.myqcloud.com/${CHANNEL}"
 
           jq -n \
             --arg version "$VERSION" \
@@ -424,19 +424,19 @@ jobs:
               releaseDate: $date,
               downloads: {
                 mac: {
-                  x64: ($base + "/ClawX-" + $version + "-mac-x64.dmg"),
-                  arm64: ($base + "/ClawX-" + $version + "-mac-arm64.dmg")
+                  x64: ($base + "/jizhi-" + $version + "-mac-x64.dmg"),
+                  arm64: ($base + "/jizhi-" + $version + "-mac-arm64.dmg")
                 },
                 win: {
-                  x64: ($base + "/ClawX-" + $version + "-win-x64.exe"),
-                  arm64: ($base + "/ClawX-" + $version + "-win-arm64.exe")
+                  x64: ($base + "/jizhi-" + $version + "-win-x64.exe"),
+                  arm64: ($base + "/jizhi-" + $version + "-win-arm64.exe")
                 },
                 linux: {
-                  deb_amd64: ($base + "/ClawX-" + $version + "-linux-amd64.deb"),
-                  deb_arm64: ($base + "/ClawX-" + $version + "-linux-arm64.deb"),
-                  appimage_x64: ($base + "/ClawX-" + $version + "-linux-x86_64.AppImage"),
-                  appimage_arm64: ($base + "/ClawX-" + $version + "-linux-arm64.AppImage"),
-                  rpm_x64: ($base + "/ClawX-" + $version + "-linux-x86_64.rpm")
+                  deb_amd64: ($base + "/jizhi-" + $version + "-linux-amd64.deb"),
+                  deb_arm64: ($base + "/jizhi-" + $version + "-linux-arm64.deb"),
+                  appimage_x64: ($base + "/jizhi-" + $version + "-linux-x86_64.AppImage"),
+                  appimage_arm64: ($base + "/jizhi-" + $version + "-linux-arm64.AppImage"),
+                  rpm_x64: ($base + "/jizhi-" + $version + "-linux-x86_64.rpm")
                 }
               },
               changelog: $changelog
@@ -445,66 +445,65 @@ jobs:
           echo "=== release-info.json ==="
           cat staging/${CHANNEL}/release-info.json
 
-      - name: Install and configure ossutil
-        env:
-          OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
-          OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
+      - name: Install coscli
         run: |
-          curl -sL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
+          wget -q "https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux" -O /tmp/coscli
+          chmod +x /tmp/coscli
+          sudo mv /tmp/coscli /usr/local/bin/coscli
+          coscli --version
 
-          # Write config file for non-interactive use
-          cat > $HOME/.ossutilconfig << EOF
-          [Credentials]
-          language=EN
-          endpoint=oss-cn-hangzhou.aliyuncs.com
-          accessKeyID=${OSS_ACCESS_KEY_ID}
-          accessKeySecret=${OSS_ACCESS_KEY_SECRET}
+      - name: Configure coscli
+        env:
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+        run: |
+          mkdir -p ~/.config/coscli
+          cat > ~/.config/coscli/config.yaml << EOF
+          cos:
+            base:
+              secretid: "${COS_SECRET_ID}"
+              secretkey: "${COS_SECRET_KEY}"
+              sessiontoken: ""
+              protocol: https
           EOF
 
-          ossutil --version
-
-      - name: "Upload to OSS: {channel}/ (overwrite)"
+      - name: "Upload to COS: {channel}/ (overwrite)"
         run: |
           CHANNEL="${{ steps.version.outputs.channel }}"
 
           # Only clean the current channel's directory — never touch other channels
-          ossutil rm -r -f oss://valuecell-clawx/${CHANNEL}/ || true
+          coscli rm -r cos://cobot-1254397474/${CHANNEL}/ -f || true
 
           # Upload all files with no-cache so clients always get the freshest version
-          ossutil cp -r -f \
-            --meta="Cache-Control:no-cache,no-store,must-revalidate" \
-            staging/${CHANNEL}/ \
-            oss://valuecell-clawx/${CHANNEL}/
+          coscli cp -r staging/${CHANNEL}/ cos://cobot-1254397474/${CHANNEL}/ \
+            --meta "Cache-Control:no-cache#no-store#must-revalidate"
 
           echo "Uploaded to ${CHANNEL}/"
 
-      - name: "Upload to OSS: releases/vX.Y.Z/ (archive)"
+      - name: "Upload to COS: releases/vX.Y.Z/ (archive)"
         run: |
           TAG="${{ steps.version.outputs.tag }}"
 
-          # Upload to permanent archive (long cache, immutable)
-          ossutil cp -r \
-            staging/releases/${TAG}/ \
-            oss://valuecell-clawx/releases/${TAG}/ \
-            --meta "Cache-Control:public,max-age=31536000,immutable"
+          coscli cp -r staging/releases/${TAG}/ cos://cobot-1254397474/releases/${TAG}/ \
+            --meta "Cache-Control:public#max-age=31536000#immutable"
 
           echo "Uploaded to releases/${TAG}/"
 
-      - name: Verify OSS upload
+      - name: Verify COS upload
         run: |
           TAG="${{ steps.version.outputs.tag }}"
           CHANNEL="${{ steps.version.outputs.channel }}"
 
           echo "=== ${CHANNEL}/ ==="
-          ossutil ls oss://valuecell-clawx/${CHANNEL}/ --short
+          coscli ls cos://cobot-1254397474/${CHANNEL}/
 
           echo ""
           echo "=== releases/${TAG}/ ==="
-          ossutil ls oss://valuecell-clawx/releases/${TAG}/ --short
+          coscli ls cos://cobot-1254397474/releases/${TAG}/
 
           echo ""
           echo "=== Verify release-info.json ==="
-          ossutil cp oss://valuecell-clawx/${CHANNEL}/release-info.json /tmp/release-info.json -f
+          coscli cp cos://cobot-1254397474/${CHANNEL}/release-info.json /tmp/release-info.json
           jq . /tmp/release-info.json
 
           echo ""
@@ -515,8 +514,8 @@ jobs:
             YML_PREFIX="${CHANNEL}"
           fi
           echo "electron-updater expects ${YML_PREFIX}-mac.yml, ${YML_PREFIX}.yml, etc. in ${CHANNEL}/:"
-          ossutil ls oss://valuecell-clawx/${CHANNEL}/ --short | grep "${YML_PREFIX}.*\\.yml" || echo "(none found)"
-          
+          coscli ls cos://cobot-1254397474/${CHANNEL}/ | grep "${YML_PREFIX}.*\\.yml" || echo "(none found)"
+
           echo ""
           echo "All files uploaded and verified successfully!"
 
@@ -529,7 +528,7 @@ jobs:
   # all platform artifacts are ready.
   # ──────────────────────────────────────────────────────────────
   finalize:
-    needs: [publish, upload-oss]
+    needs: [publish, upload-cos]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
 

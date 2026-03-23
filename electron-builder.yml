@@ -1,8 +1,8 @@
-appId: app.clawx.desktop
-productName: ClawX
-copyright: Copyright © 2026 ClawX
+appId: com.jizhi.gz4399
+productName: 极智
+copyright: Copyright © 2026 极智团队
 compression: maximum
-artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+artifactName: jizhi-${version}-${os}-${arch}.${ext}
 
 directories:
   output: release
@@ -51,11 +51,8 @@ npmRebuild: false
 # Fallback: GitHub Releases (backup, used when OSS is unavailable)
 publish:
   - provider: generic
-    url: https://oss.intelli-spectrum.com/latest
+    url: https://cobot-1254397474.cos.ap-guangzhou.myqcloud.com/latest
     useMultipleRangeRequest: false
-  - provider: github
-    owner: ValueCell-ai
-    repo: ClawX
 
 # macOS Configuration
 mac:
@@ -82,8 +79,8 @@ mac:
   entitlementsInherit: entitlements.mac.plist
   notarize: true
   extendInfo:
-    NSMicrophoneUsageDescription: ClawX requires microphone access for voice features
-    NSCameraUsageDescription: ClawX requires camera access for video features
+    NSMicrophoneUsageDescription: 极智需要麦克风权限以支持语音功能
+    NSCameraUsageDescription: 极智需要摄像头权限以支持视频功能
 
 dmg:
   background: resources/dmg-background.png
@@ -127,8 +124,8 @@ nsis:
   differentialPackage: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: ClawX
-  uninstallDisplayName: ClawX
+  shortcutName: 极智
+  uninstallDisplayName: 极智
   license: LICENSE
   include: scripts/installer.nsh
   installerIcon: resources/icons/icon.ico
@@ -155,17 +152,17 @@ linux:
       arch:
         - x64
   category: Utility
-  maintainer: ClawX Team <public@valuecell.ai>
-  vendor: ClawX
-  synopsis: AI Assistant powered by OpenClaw
-  description: ClawX is a graphical AI assistant application that integrates with OpenClaw Gateway to provide intelligent automation and assistance across multiple messaging platforms.
+  maintainer: 极智团队 <1733452028@qq.com>
+  vendor: 极智
+  synopsis: AI 智能助手
+  description: 极智是一款图形化 AI 助手应用，集成 OpenClaw 网关，提供跨多平台的智能自动化与辅助功能。
   desktop:
     entry:
-      Name: ClawX
-      Comment: AI Assistant powered by OpenClaw
+      Name: 极智
+      Comment: AI 智能助手
       Categories: Utility;Network;
       Keywords: ai;assistant;automation;chat;
-      StartupWMClass: clawx
+      StartupWMClass: jizhi
 
 appImage:
   license: LICENSE

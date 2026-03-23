@@ -1,5 +1,5 @@
 {
-    "name": "clawx",
+    "name": "jizhi",
     "version": "0.2.9-alpha.0",
     "pnpm": {
         "onlyBuiltDependencies": [
@@ -17,9 +17,9 @@
             "https-proxy-agent": "7.0.6"
         }
     },
-    "description": "ClawX - Graphical AI Assistant based on OpenClaw",
+    "description": "极智 - AI 智能助手",
     "main": "dist-electron/main/index.js",
-    "author": "ClawX Team",
+    "author": "极智团队",
     "license": "MIT",
     "private": true,
     "scripts": {
