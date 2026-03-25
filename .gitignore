@@ -44,6 +44,9 @@ coverage/
 .turbo/
 *.tsbuildinfo
 
+# Worktrees
+.worktrees/
+
 # Electron
 *.dmg
 *.exe
