@@ -82,14 +82,25 @@ async function setupTarget(id) {
   }
 }
 
+async function runWithConcurrency(items, limit, worker) {
+  const queue = [...items];
+  const workers = Array.from({ length: Math.min(limit, queue.length) }, async () => {
+    while (queue.length > 0) {
+      const item = queue.shift();
+      if (!item) break;
+      await worker(item);
+    }
+  });
+  await Promise.all(workers);
+}
+
 const downloadAll = argv.all;
 const platform = argv.platform;
+const parallelism = Math.max(1, Number(process.env.CI_PARALLELISM || '2'));
 
 if (downloadAll) {
   echo(chalk.cyan`🌐 Downloading Node.js binaries for all Windows targets...`);
-  for (const id of Object.keys(TARGETS)) {
-    await setupTarget(id);
-  }
+  await runWithConcurrency(Object.keys(TARGETS), parallelism, setupTarget);
 } else if (platform) {
   const targets = PLATFORM_GROUPS[platform];
   if (!targets) {
@@ -98,9 +109,7 @@ if (downloadAll) {
     process.exit(1);
   }
   echo(chalk.cyan`🎯 Downloading Node.js binaries for platform: ${platform}`);
-  for (const id of targets) {
-    await setupTarget(id);
-  }
+  await runWithConcurrency(targets, parallelism, setupTarget);
 } else {
   const currentId = `${os.platform()}-${os.arch()}`;
   if (TARGETS[currentId]) {
@@ -108,9 +117,7 @@ if (downloadAll) {
     await setupTarget(currentId);
   } else {
     echo(chalk.cyan`🎯 Defaulting to Windows multi-arch Node.js download`);
-    for (const id of PLATFORM_GROUPS.win) {
-      await setupTarget(id);
-    }
+    await runWithConcurrency(PLATFORM_GROUPS.win, parallelism, setupTarget);
   }
 }
 

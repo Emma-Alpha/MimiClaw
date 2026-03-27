@@ -57,7 +57,8 @@ async function setupTarget(id) {
   echo(chalk.blue`\n📦 Setting up uv for ${id}...`);
 
   // Cleanup & Prep
-  await fs.remove(targetDir);
+  const outputBin = path.join(targetDir, target.binName);
+  await fs.remove(outputBin);
   await fs.remove(tempDir);
   await fs.ensureDir(targetDir);
   await fs.ensureDir(tempDir);
@@ -115,16 +116,27 @@ async function setupTarget(id) {
   }
 }
 
+async function runWithConcurrency(items, limit, worker) {
+  const queue = [...items];
+  const workers = Array.from({ length: Math.min(limit, queue.length) }, async () => {
+    while (queue.length > 0) {
+      const item = queue.shift();
+      if (!item) break;
+      await worker(item);
+    }
+  });
+  await Promise.all(workers);
+}
+
 // Main logic
 const downloadAll = argv.all;
 const platform = argv.platform;
+const parallelism = Math.max(1, Number(process.env.CI_PARALLELISM || '2'));
 
 if (downloadAll) {
   // Download for all platforms
   echo(chalk.cyan`🌐 Downloading uv binaries for ALL supported platforms...`);
-  for (const id of Object.keys(TARGETS)) {
-    await setupTarget(id);
-  }
+  await runWithConcurrency(Object.keys(TARGETS), parallelism, setupTarget);
 } else if (platform) {
   // Download for a specific platform (e.g., --platform=mac)
   const targets = PLATFORM_GROUPS[platform];
@@ -133,25 +145,20 @@ if (downloadAll) {
     echo(`Available platforms: ${Object.keys(PLATFORM_GROUPS).join(', ')}`);
     process.exit(1);
   }
-  
+
   echo(chalk.cyan`🎯 Downloading uv binaries for platform: ${platform}`);
   echo(`   Architectures: ${targets.join(', ')}`);
-  for (const id of targets) {
-    await setupTarget(id);
-  }
+  await runWithConcurrency(targets, parallelism, setupTarget);
 } else {
   // Download for current system only (default for local dev)
   const currentId = `${os.platform()}-${os.arch()}`;
   echo(chalk.cyan`💻 Detected system: ${currentId}`);
-  
+
   if (TARGETS[currentId]) {
     await setupTarget(currentId);
   } else {
-    echo(chalk.red`❌ Current system ${currentId} is not in the supported download list.`);
-    echo(`Supported targets: ${Object.keys(TARGETS).join(', ')}`);
-    echo(`\nTip: Use --platform=<platform> to download for a specific platform`);
-    echo(`     Use --all to download for all platforms`);
-    process.exit(1);
+    echo(chalk.cyan`🎯 Defaulting to multi-arch uv download`);
+    await runWithConcurrency(Object.keys(TARGETS), parallelism, setupTarget);
   }
 }
 

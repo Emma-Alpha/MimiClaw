@@ -19,8 +19,8 @@
  *      @mariozechner/clipboard).
  */
 
-const { cpSync, existsSync, readdirSync, rmSync, statSync, mkdirSync, realpathSync } = require('fs');
-const { join, dirname, basename } = require('path');
+const { cpSync, existsSync, readdirSync, rmSync, mkdirSync, realpathSync } = require('node:fs');
+const { join, dirname, basename } = require('node:path');
 
 // On Windows, paths in pnpm's virtual store can exceed the default MAX_PATH
 // limit (260 chars). Node.js 18.17+ respects the system LongPathsEnabled
@@ -178,7 +178,7 @@ function patchBrokenModules(nodeModulesDir) {
   const hpaPkgPath = join(nodeModulesDir, 'https-proxy-agent', 'package.json');
   if (existsSync(hpaPkgPath)) {
     try {
-      const { existsSync: fsExistsSync } = require('fs');
+      const { existsSync: fsExistsSync } = require('node:fs');
       const raw = readFileSync(hpaPkgPath, 'utf8');
       const pkg = JSON.parse(raw);
       const exp = pkg.exports;
@@ -342,7 +342,7 @@ function bundlePlugin(nodeModulesRoot, npmName, destDir) {
   const SKIP_SCOPES = ['@types/'];
   try {
     const pluginPkg = JSON.parse(
-      require('fs').readFileSync(join(destDir, 'package.json'), 'utf8')
+      require('node:fs').readFileSync(join(destDir, 'package.json'), 'utf8')
     );
     for (const peer of Object.keys(pluginPkg.peerDependencies || {})) {
       SKIP_PACKAGES.add(peer);
@@ -428,11 +428,9 @@ exports.default = async function afterPack(context) {
   // causing TypeError in Node.js 22+ ESM interop.
   patchBrokenModules(dest);
 
-  // 1.1 Bundle OpenClaw plugins directly from node_modules into packaged resources.
-  //     This is intentionally done in afterPack (not extraResources) because:
-  //     - electron-builder silently skips extraResources entries whose source
-  //       directory doesn't exist (build/openclaw-plugins/ may not be pre-generated)
-  //     - node_modules/ is excluded by .gitignore so the deps copy must be manual
+  // 1.1 Bundle OpenClaw plugins directly from prebuilt mirrors when available.
+  //     This avoids re-running the expensive dependency BFS during packaging.
+  const prebuiltPluginsRoot = join(__dirname, '..', 'build', 'openclaw-plugins');
   const BUNDLED_PLUGINS = [
     { npmName: '@soimy/dingtalk', pluginId: 'dingtalk' },
     { npmName: '@wecom/wecom-openclaw-plugin', pluginId: 'wecom' },
@@ -442,19 +440,25 @@ exports.default = async function afterPack(context) {
   ];
 
   mkdirSync(pluginsDestRoot, { recursive: true });
-  for (const { npmName, pluginId } of BUNDLED_PLUGINS) {
-    const pluginDestDir = join(pluginsDestRoot, pluginId);
-    console.log(`[after-pack] Bundling plugin ${npmName} -> ${pluginDestDir}`);
-    const ok = bundlePlugin(nodeModulesRoot, npmName, pluginDestDir);
-    if (ok) {
-      const pluginNM = join(pluginDestDir, 'node_modules');
-      cleanupUnnecessaryFiles(pluginDestDir);
-      if (existsSync(pluginNM)) {
-        cleanupKoffi(pluginNM, platform, arch);
-        cleanupNativePlatformPackages(pluginNM, platform, arch);
+  if (existsSync(prebuiltPluginsRoot)) {
+    console.log(`[after-pack] Copying prebuilt OpenClaw plugins from ${prebuiltPluginsRoot}`);
+    cpSync(prebuiltPluginsRoot, pluginsDestRoot, { recursive: true });
+  } else {
+    console.log('[after-pack] Prebuilt plugin mirrors not found; falling back to live bundling.');
+    for (const { npmName, pluginId } of BUNDLED_PLUGINS) {
+      const pluginDestDir = join(pluginsDestRoot, pluginId);
+      console.log(`[after-pack] Bundling plugin ${npmName} -> ${pluginDestDir}`);
+      const ok = bundlePlugin(nodeModulesRoot, npmName, pluginDestDir);
+      if (ok) {
+        const pluginNM = join(pluginDestDir, 'node_modules');
+        cleanupUnnecessaryFiles(pluginDestDir);
+        if (existsSync(pluginNM)) {
+          cleanupKoffi(pluginNM, platform, arch);
+          cleanupNativePlatformPackages(pluginNM, platform, arch);
+        }
+        // Fix hardcoded plugin ID mismatches in compiled JS
+        patchPluginIds(pluginDestDir, pluginId);
       }
-      // Fix hardcoded plugin ID mismatches in compiled JS
-      patchPluginIds(pluginDestDir, pluginId);
     }
   }
 

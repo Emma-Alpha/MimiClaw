@@ -43,6 +43,20 @@ const PLUGINS = [
   { npmName: '@tencent-weixin/openclaw-weixin', pluginId: 'openclaw-weixin' },
 ];
 
+const PARALLELISM = Math.max(1, Number(process.env.CI_PARALLELISM || '1'));
+
+async function runWithConcurrency(items, limit, worker) {
+  const queue = [...items];
+  const workers = Array.from({ length: Math.min(limit, queue.length) }, async () => {
+    while (queue.length > 0) {
+      const item = queue.shift();
+      if (!item) break;
+      await worker(item);
+    }
+  });
+  await Promise.all(workers);
+}
+
 function getVirtualStoreNodeModules(realPkgPath) {
   let dir = realPkgPath;
   while (dir !== path.dirname(dir)) {
@@ -238,8 +252,6 @@ function patchPluginId(pluginDir, expectedId) {
 echo`📦 Bundling OpenClaw plugin mirrors...`;
 fs.mkdirSync(OUTPUT_ROOT, { recursive: true });
 
-for (const plugin of PLUGINS) {
-  bundleOnePlugin(plugin);
-}
+await runWithConcurrency(PLUGINS, PARALLELISM, bundleOnePlugin);
 
 echo`✅ Plugin mirrors ready: ${OUTPUT_ROOT}`;

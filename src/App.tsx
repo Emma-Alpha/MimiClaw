@@ -106,6 +106,7 @@ function App() {
   const chatStreamingTools = useChatStore((state) => state.streamingTools);
   const chatPendingFinal = useChatStore((state) => state.pendingFinal);
   const isPetRoute = location.pathname.startsWith('/pet');
+  const isMainChatRoute = location.pathname === '/';
 
   const petUiActivity = !chatSending
     ? 'idle'
@@ -193,9 +194,9 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (isPetRoute) return;
+    if (isPetRoute || isMainChatRoute) return;
     void window.electron.ipcRenderer.invoke('pet:setUiActivity', { activity: petUiActivity }).catch(() => {});
-  }, [isPetRoute, petUiActivity]);
+  }, [isMainChatRoute, isPetRoute, petUiActivity]);
 
   return (
     <ErrorBoundary>
