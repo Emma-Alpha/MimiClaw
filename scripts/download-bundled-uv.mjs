@@ -50,7 +50,7 @@ async function setupTarget(id) {
   }
 
   const targetDir = path.join(OUTPUT_BASE, id);
-  const tempDir = path.join(ROOT_DIR, 'temp_uv_extract');
+  const tempDir = path.join(ROOT_DIR, `temp_uv_extract_${id}`);
   const archivePath = path.join(ROOT_DIR, target.filename);
   const downloadUrl = `${BASE_URL}/${target.filename}`;
 
