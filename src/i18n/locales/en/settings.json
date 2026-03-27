@@ -12,6 +12,26 @@
     "launchAtStartup": "Launch at system startup",
     "launchAtStartupDesc": "Automatically launch 极智 when you log in"
   },
+  "pet": {
+    "title": "Floating Pet",
+    "description": "Show a transparent floating pet window with right-click animation switching.",
+    "animation": "Current animation",
+    "tip": "When enabled, a separate floating window appears. You can also right-click the pet to switch animations or hide it.",
+    "menuTitle": "Switch animation",
+    "active": "Active",
+    "hide": "Hide floating pet",
+    "animations": {
+      "begin": "Begin",
+      "static": "Idle",
+      "listening": "Listening",
+      "sleepStart": "Sleep start",
+      "sleepLoop": "Sleep loop",
+      "sleepLeave": "Wake up",
+      "taskStart": "Task start",
+      "taskLoop": "Task loop",
+      "taskLeave": "Task end"
+    }
+  },
   "aiProviders": {
     "title": "AI Providers",
     "description": "Configure your AI model providers and API keys",
@@ -148,7 +168,26 @@
     "proxyBypassHelp": "Semicolon, comma, or newline separated hosts that should connect directly.",
     "proxyRestartNote": "Saving reapplies Electron networking and restarts the Gateway immediately. Regular Gateway restarts keep existing Telegram channel proxy values when proxy is disabled; save while disabled to clear them.",
     "proxySaved": "Proxy settings saved",
-    "proxySaveFailed": "Failed to save proxy settings"
+    "proxySaveFailed": "Failed to save proxy settings",
+    "remoteTitle": "Remote Gateway",
+    "remoteDesc": "When set, the local OpenClaw process will not start — ClawX connects directly to the remote gateway. Clear to restore local mode.",
+    "remoteUrl": "Remote WebSocket URL",
+    "remoteUrlHelp": "e.g. ws://192.168.1.100:18789/ws or wss://your-cloud-gateway.example.com/ws",
+    "remoteToken": "Remote Gateway Token",
+    "remoteTokenPlaceholder": "Leave empty for no token",
+    "remoteActive": "⚠ Remote mode is active — the local OpenClaw process will not start",
+    "cloudTitle": "Cloud Workspace",
+    "cloudDesc": "Cloud-managed OpenClaw gateway status for the current user.",
+    "cloudGatewayState": "Gateway state",
+    "cloudGatewayWsUrl": "WebSocket URL",
+    "cloudGatewayStart": "Start",
+    "cloudGatewayStop": "Stop",
+    "cloudGatewayRestart": "Restart",
+    "cloudGatewayStateRunning": "Running",
+    "cloudGatewayStateStopped": "Stopped",
+    "cloudGatewayStateStarting": "Starting",
+    "cloudGatewayStateError": "Error",
+    "cloudGatewayNotAvailable": "Cloud backend not connected"
   },
   "updates": {
     "title": "Updates",

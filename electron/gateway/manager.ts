@@ -205,6 +205,25 @@ export class GatewayManager extends EventEmitter {
     this.shouldReconnect = true;
     await this.refreshReloadPolicy(true);
 
+    // --- Remote gateway mode: skip local process entirely ---
+    let remoteUrl: string | undefined;
+    try {
+      const { getSetting } = await import('../utils/store');
+      remoteUrl = await getSetting('remoteGatewayUrl');
+    } catch (err) {
+      logger.warn('[gateway] Failed to read remoteGatewayUrl setting:', err);
+    }
+
+    if (remoteUrl && remoteUrl.trim()) {
+      try {
+        await this.connectRemote(remoteUrl.trim());
+      } finally {
+        this.startLock = false;
+      }
+      return;
+    }
+    // -------------------------------------------------------
+
     // Lazily load device identity (async file I/O + key generation).
     // Must happen before connect() which uses the identity for the handshake.
     await this.initDeviceIdentity();
@@ -750,15 +769,26 @@ export class GatewayManager extends EventEmitter {
   }
 
   /**
-   * Connect WebSocket to Gateway
+   * Connect WebSocket to Gateway (local port, or optional URL override for remote)
    */
-  private async connect(port: number, _externalToken?: string): Promise<void> {
+  private async connect(port: number, _externalToken?: string, urlOverride?: string): Promise<void> {
     this.ws = await connectGatewaySocket({
       port,
+      url: urlOverride,
       deviceIdentity: this.deviceIdentity,
       platform: process.platform,
       pendingRequests: this.pendingRequests,
-      getToken: async () => await import('../utils/store').then(({ getSetting }) => getSetting('gatewayToken')),
+      // Remote gateways with allowInsecureAuth: skip device pairing, use token-only auth
+      skipDeviceAuth: !!urlOverride,
+      getToken: async () => {
+        const { getSetting } = await import('../utils/store');
+        // For remote gateways, use the dedicated remote token (may be empty if remote doesn't require auth).
+        if (urlOverride) {
+          const remoteToken = await getSetting('remoteGatewayToken');
+          return remoteToken ?? '';
+        }
+        return getSetting('gatewayToken');
+      },
       onHandshakeComplete: (ws) => {
         this.ws = ws;
         ws.on('pong', () => {
@@ -782,6 +812,26 @@ export class GatewayManager extends EventEmitter {
         }
       },
     });
+  }
+
+  /**
+   * Connect directly to a remote gateway WebSocket URL, bypassing local process management.
+   */
+  private async connectRemote(remoteUrl: string): Promise<void> {
+    await this.initDeviceIdentity();
+    this.shouldReconnect = true;
+    this.reconnectAttempts = 0;
+    this.setStatus({ state: 'starting', reconnectAttempts: 0 });
+    logger.info(`Remote gateway mode: connecting to ${remoteUrl}`);
+
+    try {
+      // Use port 0 as a placeholder; the actual URL is passed as override.
+      await this.connect(0, undefined, remoteUrl);
+    } catch (error) {
+      logger.error('Remote gateway connection failed:', error);
+      this.setStatus({ state: 'error', error: String(error) });
+      throw error;
+    }
   }
 
   /**

@@ -1,10 +1,19 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import { applyProxySettings } from '../../main/proxy';
 import { syncLaunchAtStartupSettingFromStore } from '../../main/launch-at-startup';
+import { syncPetWindowFromSettings } from '../../main/pet-window';
 import { syncProxyConfigToOpenClaw } from '../../utils/openclaw-proxy';
 import { getAllSettings, getSetting, resetSettings, setSetting, type AppSettings } from '../../utils/store';
+import { isCloudMode, patchCloudConfig } from '../../utils/cloud-config-bridge';
 import type { HostApiContext } from '../context';
 import { parseJsonBody, sendJson } from '../route-utils';
+
+// Fields that affect OpenClaw runtime config and should be forwarded to the
+// cloud backend when cloud mode is active.
+const CLOUD_OPENCLAW_FIELD_MAP: Partial<Record<keyof AppSettings, string>> = {
+  sessionIdleMinutes: 'sessionIdleMinutes',
+  browserEnabled: 'browser.enabled',
+};
 
 async function handleProxySettingsChange(ctx: HostApiContext): Promise<void> {
   const settings = await getAllSettings();
@@ -28,6 +37,16 @@ function patchTouchesProxy(patch: Partial<AppSettings>): boolean {
 
 function patchTouchesLaunchAtStartup(patch: Partial<AppSettings>): boolean {
   return Object.prototype.hasOwnProperty.call(patch, 'launchAtStartup');
+}
+
+function patchTouchesRemoteGateway(patch: Partial<AppSettings>): boolean {
+  return Object.prototype.hasOwnProperty.call(patch, 'remoteGatewayUrl')
+    || Object.prototype.hasOwnProperty.call(patch, 'remoteGatewayToken');
+}
+
+function patchTouchesPet(patch: Partial<AppSettings>): boolean {
+  return Object.prototype.hasOwnProperty.call(patch, 'petEnabled')
+    || Object.prototype.hasOwnProperty.call(patch, 'petAnimation');
 }
 
 export async function handleSettingsRoutes(
@@ -54,6 +73,32 @@ export async function handleSettingsRoutes(
       if (patchTouchesLaunchAtStartup(patch)) {
         await syncLaunchAtStartupSettingFromStore();
       }
+      if (patchTouchesRemoteGateway(patch)) {
+        // Restart gateway connection so the new remote URL takes effect immediately.
+        void ctx.gatewayManager.restart().catch((err) => {
+          console.error('[settings] Remote gateway restart failed:', err);
+        });
+      }
+      if (patchTouchesPet(patch)) {
+        await syncPetWindowFromSettings();
+      }
+
+      // Forward OpenClaw-affecting settings to the cloud backend when in cloud mode.
+      if (await isCloudMode()) {
+        const cloudPatch: Record<string, unknown> = {};
+        for (const [key] of Object.entries(patch)) {
+          const cloudField = CLOUD_OPENCLAW_FIELD_MAP[key as keyof AppSettings];
+          if (cloudField) {
+            cloudPatch[cloudField] = patch[key as keyof AppSettings];
+          }
+        }
+        if (Object.keys(cloudPatch).length > 0) {
+          void patchCloudConfig(cloudPatch).catch((err) => {
+            console.warn('[settings] Failed to sync settings to cloud config:', err);
+          });
+        }
+      }
+
       sendJson(res, 200, { success: true });
     } catch (error) {
       sendJson(res, 500, { success: false, error: String(error) });
@@ -89,6 +134,9 @@ export async function handleSettingsRoutes(
       if (key === 'launchAtStartup') {
         await syncLaunchAtStartupSettingFromStore();
       }
+      if (key === 'petEnabled' || key === 'petAnimation') {
+        await syncPetWindowFromSettings();
+      }
       sendJson(res, 200, { success: true });
     } catch (error) {
       sendJson(res, 500, { success: false, error: String(error) });
@@ -101,6 +149,7 @@ export async function handleSettingsRoutes(
       await resetSettings();
       await handleProxySettingsChange(ctx);
       await syncLaunchAtStartupSettingFromStore();
+      await syncPetWindowFromSettings();
       sendJson(res, 200, { success: true, settings: await getAllSettings() });
     } catch (error) {
       sendJson(res, 500, { success: false, error: String(error) });

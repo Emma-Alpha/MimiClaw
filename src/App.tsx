@@ -11,14 +11,18 @@ import { MainLayout } from './components/layout/MainLayout';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Models } from './pages/Models';
 import { Chat } from './pages/Chat';
+import { RemoteJizhiChat } from './pages/RemoteJizhiChat';
 import { Agents } from './pages/Agents';
 import { Channels } from './pages/Channels';
 import { Skills } from './pages/Skills';
 import { Cron } from './pages/Cron';
 import { Settings } from './pages/Settings';
+import { PetFloating } from './pages/PetFloating';
 import { Setup } from './pages/Setup';
+import { Login } from './pages/Login';
 import { useSettingsStore } from './stores/settings';
 import { useGatewayStore } from './stores/gateway';
+import { useChatStore } from './stores/chat';
 import { applyGatewayTransportPreference } from './lib/api-client';
 
 
@@ -66,6 +70,7 @@ class ErrorBoundary extends Component<
             {this.state.error?.stack}
           </pre>
           <button
+            type="button"
             onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload(); }}
             style={{
               marginTop: '16px',
@@ -93,11 +98,26 @@ function App() {
   const theme = useSettingsStore((state) => state.theme);
   const language = useSettingsStore((state) => state.language);
   const setupComplete = useSettingsStore((state) => state.setupComplete);
+  const cloudLoggedIn = useSettingsStore((state) => state.cloudLoggedIn);
+  const hydrateCloudAuth = useSettingsStore((state) => state.hydrateCloudAuth);
   const initGateway = useGatewayStore((state) => state.init);
+  const chatSending = useChatStore((state) => state.sending);
+  const chatStreamingMessage = useChatStore((state) => state.streamingMessage);
+  const chatStreamingTools = useChatStore((state) => state.streamingTools);
+  const chatPendingFinal = useChatStore((state) => state.pendingFinal);
+  const isPetRoute = location.pathname.startsWith('/pet');
+
+  const petUiActivity = !chatSending
+    ? 'idle'
+    : (chatPendingFinal || chatStreamingMessage || chatStreamingTools.length > 0)
+      ? 'working'
+      : 'listening';
 
   useEffect(() => {
+    // Restore cloud session from localStorage before any redirect checks.
+    hydrateCloudAuth();
     initSettings();
-  }, [initSettings]);
+  }, [hydrateCloudAuth, initSettings]);
 
   // Sync i18n language with persisted settings on mount
   useEffect(() => {
@@ -108,15 +128,32 @@ function App() {
 
   // Initialize Gateway connection on mount
   useEffect(() => {
-    initGateway();
-  }, [initGateway]);
-
-  // Redirect to setup wizard if not complete
-  useEffect(() => {
-    if (!setupComplete && !location.pathname.startsWith('/setup')) {
-      navigate('/setup');
+    if (!isPetRoute) {
+      initGateway();
     }
-  }, [setupComplete, location.pathname, navigate]);
+  }, [initGateway, isPetRoute]);
+
+  // Gate 1: Must be logged in first.
+  // Bypassed in dev mode (import.meta.env.DEV) until the cloud backend is ready.
+  useEffect(() => {
+    if (!import.meta.env.DEV && !cloudLoggedIn && !location.pathname.startsWith('/login') && !isPetRoute) {
+      navigate('/login', { replace: true });
+    }
+  }, [cloudLoggedIn, isPetRoute, location.pathname, navigate]);
+
+  // Gate 2: After login (or in dev bypass), redirect to setup wizard if onboarding not complete.
+  useEffect(() => {
+    const passedLoginGate = import.meta.env.DEV || cloudLoggedIn;
+    if (
+      passedLoginGate
+      && !setupComplete
+      && !location.pathname.startsWith('/setup')
+      && !location.pathname.startsWith('/login')
+      && !isPetRoute
+    ) {
+      navigate('/setup', { replace: true });
+    }
+  }, [cloudLoggedIn, isPetRoute, setupComplete, location.pathname, navigate]);
 
   // Listen for navigation events from main process
   useEffect(() => {
@@ -155,16 +192,28 @@ function App() {
     applyGatewayTransportPreference();
   }, []);
 
+  useEffect(() => {
+    if (isPetRoute) return;
+    void window.electron.ipcRenderer.invoke('pet:setUiActivity', { activity: petUiActivity }).catch(() => {});
+  }, [isPetRoute, petUiActivity]);
+
   return (
     <ErrorBoundary>
       <TooltipProvider delayDuration={300}>
         <Routes>
-          {/* Setup wizard (shown on first launch) */}
+          {/* Cloud login gate */}
+          <Route path="/login" element={<Login />} />
+
+          {/* Setup / cloud onboarding wizard */}
           <Route path="/setup/*" element={<Setup />} />
+
+          {/* Floating pet window */}
+          <Route path="/pet" element={<PetFloating />} />
 
           {/* Main application routes */}
           <Route element={<MainLayout />}>
             <Route path="/" element={<Chat />} />
+            <Route path="/jizhi-chat" element={<RemoteJizhiChat />} />
             <Route path="/models" element={<Models />} />
             <Route path="/agents" element={<Agents />} />
             <Route path="/channels" element={<Channels />} />

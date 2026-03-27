@@ -10,6 +10,7 @@
         "settings": "Settings",
         "devConsole": "Developer Console",
         "models": "Models",
+        "remoteWebChat": "Web Chat",
         "deleteSessionConfirm": "Are you sure you want to delete session \"{{label}}\"?",
         "openClawPage": "OpenClaw Page"
     },
@@ -55,5 +56,15 @@
         "notRunning": "Gateway Not Running",
         "notRunningDesc": "The OpenClaw Gateway needs to be running to use this feature. It will start automatically, or you can start it from Settings.",
         "warning": "Gateway is not running."
+    },
+    "login": {
+        "title": "Sign in to ClawX",
+        "subtitle": "Sign in to your cloud account to continue",
+        "username": "Username",
+        "usernamePlaceholder": "Enter your username",
+        "password": "Password",
+        "passwordPlaceholder": "Enter your password",
+        "submit": "Sign In",
+        "error": "Login failed. Please check your credentials."
     }
 }

@@ -10,6 +10,7 @@
         "settings": "設定",
         "devConsole": "開発者コンソール",
         "models": "モデル",
+        "remoteWebChat": "Web チャット",
         "deleteSessionConfirm": "セッション \"{{label}}\" を削除してもよろしいですか？",
         "openClawPage": "OpenClaw ページ"
     },
@@ -55,5 +56,15 @@
         "notRunning": "ゲートウェイが停止中",
         "notRunningDesc": "この機能を使用するには OpenClaw ゲートウェイが実行されている必要があります。自動的に起動するか、設定から起動できます。",
         "warning": "ゲートウェイが停止中です。"
+    },
+    "login": {
+        "title": "ClawX にサインイン",
+        "subtitle": "クラウドアカウントにサインインして続行してください",
+        "username": "ユーザー名",
+        "usernamePlaceholder": "ユーザー名を入力",
+        "password": "パスワード",
+        "passwordPlaceholder": "パスワードを入力",
+        "submit": "サインイン",
+        "error": "ログインに失敗しました。認証情報を確認してください。"
     }
 }

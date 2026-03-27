@@ -12,6 +12,26 @@
     "launchAtStartup": "开机自动启动",
     "launchAtStartupDesc": "登录系统后自动启动 极智"
   },
+  "pet": {
+    "title": "桌面悬浮宠物",
+    "description": "显示一个透明悬浮宠物窗口，支持右键切换动作。",
+    "animation": "当前悬浮动作",
+    "tip": "启用后会打开独立悬浮窗，右键宠物也可以快速切换动作或隐藏。",
+    "menuTitle": "切换悬浮动作",
+    "active": "当前",
+    "hide": "隐藏悬浮宠物",
+    "animations": {
+      "begin": "开始",
+      "static": "静止",
+      "listening": "聆听",
+      "sleepStart": "入睡开始",
+      "sleepLoop": "睡眠循环",
+      "sleepLeave": "睡醒离开",
+      "taskStart": "任务开始",
+      "taskLoop": "任务循环",
+      "taskLeave": "任务结束"
+    }
+  },
   "aiProviders": {
     "title": "AI 模型提供商",
     "description": "配置 AI 模型提供商和 API 密钥",
@@ -148,7 +168,26 @@
     "proxyBypassHelp": "使用分号、逗号或换行分隔需要直连的主机。",
     "proxyRestartNote": "保存后会立即重新应用 Electron 网络代理，并自动重启 Gateway。若代理已关闭，Gateway 常规重启会保留 Telegram 频道已有代理；如需清空，请在关闭代理后手动保存一次。",
     "proxySaved": "代理设置已保存",
-    "proxySaveFailed": "保存代理设置失败"
+    "proxySaveFailed": "保存代理设置失败",
+    "remoteTitle": "远程网关",
+    "remoteDesc": "填写远程 OpenClaw 网关地址后，本地进程将不再启动，直接连接远端。清空则恢复本地模式。",
+    "remoteUrl": "远程 WebSocket 地址",
+    "remoteUrlHelp": "例：ws://192.168.1.100:18789/ws 或 wss://your-cloud-gateway.example.com/ws",
+    "remoteToken": "远程网关令牌",
+    "remoteTokenPlaceholder": "留空则不使用令牌",
+    "remoteActive": "⚠ 远程模式已启用，本地 OpenClaw 进程不会启动",
+    "cloudTitle": "云工作区",
+    "cloudDesc": "当前用户的云端 OpenClaw 网关运行状态。",
+    "cloudGatewayState": "网关状态",
+    "cloudGatewayWsUrl": "WebSocket 地址",
+    "cloudGatewayStart": "启动",
+    "cloudGatewayStop": "停止",
+    "cloudGatewayRestart": "重启",
+    "cloudGatewayStateRunning": "运行中",
+    "cloudGatewayStateStopped": "已停止",
+    "cloudGatewayStateStarting": "启动中",
+    "cloudGatewayStateError": "出错",
+    "cloudGatewayNotAvailable": "未连接云后端"
   },
   "updates": {
     "title": "更新",

@@ -47,6 +47,7 @@ import {
 import { whatsAppLoginManager } from '../../utils/whatsapp-login';
 import type { HostApiContext } from '../context';
 import { parseJsonBody, sendJson } from '../route-utils';
+import { isCloudMode, patchCloudChannelConfig } from '../../utils/cloud-config-bridge';
 
 const WECHAT_QR_TIMEOUT_MS = 8 * 60 * 1000;
 const activeQrLogins = new Map<string, string>();
@@ -565,7 +566,13 @@ export async function handleChannelRoutes(
       }
       await saveChannelConfig(body.channelType, body.config, body.accountId);
       await ensureScopedChannelBinding(body.channelType, body.accountId);
-      scheduleGatewayChannelSaveRefresh(ctx, storedChannelType, `channel:saveConfig:${storedChannelType}`);
+      if (await isCloudMode()) {
+        void patchCloudChannelConfig(storedChannelType, body.config).catch((e) =>
+          console.warn('[channels] Cloud sync failed:', e)
+        );
+      } else {
+        scheduleGatewayChannelSaveRefresh(ctx, storedChannelType, `channel:saveConfig:${storedChannelType}`);
+      }
       sendJson(res, 200, { success: true });
     } catch (error) {
       sendJson(res, 500, { success: false, error: String(error) });
@@ -577,7 +584,13 @@ export async function handleChannelRoutes(
     try {
       const body = await parseJsonBody<{ channelType: string; enabled: boolean }>(req);
       await setChannelEnabled(body.channelType, body.enabled);
-      scheduleGatewayChannelRestart(ctx, `channel:setEnabled:${resolveStoredChannelType(body.channelType)}`);
+      if (await isCloudMode()) {
+        void patchCloudChannelConfig(resolveStoredChannelType(body.channelType), { enabled: body.enabled }).catch((e) =>
+          console.warn('[channels] Cloud sync failed:', e)
+        );
+      } else {
+        scheduleGatewayChannelRestart(ctx, `channel:setEnabled:${resolveStoredChannelType(body.channelType)}`);
+      }
       sendJson(res, 200, { success: true });
     } catch (error) {
       sendJson(res, 500, { success: false, error: String(error) });
@@ -607,11 +620,23 @@ export async function handleChannelRoutes(
       if (accountId) {
         await deleteChannelAccountConfig(channelType, accountId);
         await clearChannelBinding(storedChannelType, accountId);
-        scheduleGatewayChannelSaveRefresh(ctx, storedChannelType, `channel:deleteAccount:${storedChannelType}`);
+        if (await isCloudMode()) {
+          void patchCloudChannelConfig(storedChannelType, null).catch((e) =>
+            console.warn('[channels] Cloud sync failed:', e)
+          );
+        } else {
+          scheduleGatewayChannelSaveRefresh(ctx, storedChannelType, `channel:deleteAccount:${storedChannelType}`);
+        }
       } else {
         await deleteChannelConfig(channelType);
         await clearAllBindingsForChannel(storedChannelType);
-        scheduleGatewayChannelRestart(ctx, `channel:deleteConfig:${storedChannelType}`);
+        if (await isCloudMode()) {
+          void patchCloudChannelConfig(storedChannelType, null).catch((e) =>
+            console.warn('[channels] Cloud sync failed:', e)
+          );
+        } else {
+          scheduleGatewayChannelRestart(ctx, `channel:deleteConfig:${storedChannelType}`);
+        }
       }
       sendJson(res, 200, { success: true });
     } catch (error) {

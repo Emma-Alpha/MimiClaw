@@ -150,6 +150,8 @@ export function Setup() {
   const isLastStep = safeStepIndex === steps.length - 1;
 
   const markSetupComplete = useSettingsStore((state) => state.markSetupComplete);
+  const remoteGatewayUrl = useSettingsStore((state) => state.remoteGatewayUrl);
+  const isRemoteMode = !!remoteGatewayUrl?.trim();
 
   // Derive canProceed based on current step - computed directly to avoid useEffect
   const canProceed = useMemo(() => {
@@ -157,9 +159,11 @@ export function Setup() {
       case STEP.WELCOME:
         return true;
       case STEP.RUNTIME:
-        return runtimeChecksPassed;
+        // Remote mode: local runtime checks not required
+        return isRemoteMode || runtimeChecksPassed;
       case STEP.PROVIDER:
-        return providerConfigured;
+        // Remote mode: provider is managed on remote server, skip local setup
+        return isRemoteMode || providerConfigured;
       case STEP.INSTALLING:
         return false; // Cannot manually proceed, auto-proceeds when done
       case STEP.COMPLETE:
@@ -167,7 +171,7 @@ export function Setup() {
       default:
         return true;
     }
-  }, [safeStepIndex, providerConfigured, runtimeChecksPassed]);
+  }, [safeStepIndex, providerConfigured, runtimeChecksPassed, isRemoteMode]);
 
   const handleNext = async () => {
     if (isLastStep) {
@@ -254,7 +258,7 @@ export function Setup() {
             {/* Step-specific content */}
             <div className="rounded-xl bg-card text-card-foreground border shadow-sm p-8 mb-8">
               {safeStepIndex === STEP.WELCOME && <WelcomeContent />}
-              {safeStepIndex === STEP.RUNTIME && <RuntimeContent onStatusChange={setRuntimeChecksPassed} />}
+              {safeStepIndex === STEP.RUNTIME && <RuntimeContent onStatusChange={setRuntimeChecksPassed} isRemoteMode={isRemoteMode} />}
               {safeStepIndex === STEP.PROVIDER && (
                 <ProviderContent
                   providers={providers}
@@ -263,6 +267,7 @@ export function Setup() {
                   apiKey={apiKey}
                   onApiKeyChange={setApiKey}
                   onConfiguredChange={setProviderConfigured}
+                  isRemoteMode={isRemoteMode}
                 />
               )}
               {safeStepIndex === STEP.INSTALLING && (
@@ -372,12 +377,21 @@ function WelcomeContent() {
 
 interface RuntimeContentProps {
   onStatusChange: (canProceed: boolean) => void;
+  isRemoteMode?: boolean;
 }
 
-function RuntimeContent({ onStatusChange }: RuntimeContentProps) {
+function RuntimeContent({ onStatusChange, isRemoteMode }: RuntimeContentProps) {
   const { t } = useTranslation('setup');
   const gatewayStatus = useGatewayStore((state) => state.status);
   const startGateway = useGatewayStore((state) => state.start);
+  const remoteGatewayUrl = useSettingsStore((state) => state.remoteGatewayUrl);
+
+  // In remote mode, local runtime is not required — notify parent immediately
+  useEffect(() => {
+    if (isRemoteMode) {
+      onStatusChange(true);
+    }
+  }, [isRemoteMode, onStatusChange]);
 
   const [checks, setChecks] = useState({
     nodejs: { status: 'checking' as 'checking' | 'success' | 'error', message: '' },
@@ -610,6 +624,18 @@ function RuntimeContent({ onStatusChange }: RuntimeContentProps) {
     );
   };
 
+  if (isRemoteMode) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 text-blue-300 text-sm">
+          <p className="font-semibold mb-1">🌐 {t('runtime.remoteModeTitle', '已配置远程网关')}</p>
+          <p className="text-blue-400/80 break-all">{remoteGatewayUrl}</p>
+          <p className="mt-2 text-blue-400/70">{t('runtime.remoteModeDesc', '将使用远程 OpenClaw 运行时，本地运行时检查已跳过。')}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
@@ -704,6 +730,7 @@ interface ProviderContentProps {
   apiKey: string;
   onApiKeyChange: (key: string) => void;
   onConfiguredChange: (configured: boolean) => void;
+  isRemoteMode?: boolean;
 }
 
 function ProviderContent({
@@ -713,9 +740,11 @@ function ProviderContent({
   apiKey,
   onApiKeyChange,
   onConfiguredChange,
+  isRemoteMode,
 }: ProviderContentProps) {
   const { t, i18n } = useTranslation(['setup', 'settings']);
   const devModeUnlocked = useSettingsStore((state) => state.devModeUnlocked);
+  const remoteGatewayUrl = useSettingsStore((state) => state.remoteGatewayUrl);
   const [showKey, setShowKey] = useState(false);
   const [validating, setValidating] = useState(false);
   const [keyValid, setKeyValid] = useState<boolean | null>(null);
@@ -1134,9 +1163,9 @@ function ProviderContent({
       onConfiguredChange(true);
       toast.success(t('provider.valid'));
     } catch (error) {
-      setKeyValid(false);
+      // Save failed — don't change keyValid (validation may have passed)
       onConfiguredChange(false);
-      toast.error('Configuration failed: ' + String(error));
+      toast.error(t('provider.saveFailed', '保存失败') + ': ' + String(error));
     } finally {
       setValidating(false);
     }
@@ -1163,6 +1192,17 @@ function ProviderContent({
 
   return (
     <div className="space-y-6">
+      {/* Remote mode notice — provider setup is optional */}
+      {isRemoteMode && (
+        <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 text-sm text-blue-300">
+          <p className="font-semibold mb-1">🌐 {t('provider.remoteModeTitle', '远程网关模式')}</p>
+          <p className="text-blue-400/80 break-all">{remoteGatewayUrl}</p>
+          <p className="mt-2 text-blue-400/70">
+            {t('provider.remoteModeDesc', 'LLM 提供商已在远程 OpenClaw 中配置，无需在此处设置。点击"下一步"直接跳过。')}
+          </p>
+        </div>
+      )}
+
       {/* Provider selector — dropdown */}
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-3">

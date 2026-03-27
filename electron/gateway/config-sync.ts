@@ -15,8 +15,9 @@ function fsPath(filePath: string): string {
   }
   return `\\\\?\\${windowsPath}`;
 }
-import { getAllSettings } from '../utils/store';
+import { getAllSettings, getSetting } from '../utils/store';
 import { getApiKey, getDefaultProvider, getProvider } from '../utils/secure-storage';
+import { isCloudMode } from '../utils/cloud-config-bridge';
 import { getProviderEnvVar, getKeyableProviderTypes } from '../utils/provider-registry';
 import { getOpenClawDir, getOpenClawEntryPath, isOpenClawPresent } from '../utils/paths';
 import { getUvMirrorEnv } from '../utils/uv-env';
@@ -137,6 +138,14 @@ function ensureConfiguredPluginsUpgraded(configuredChannels: string[]): void {
 export async function syncGatewayConfigBeforeLaunch(
   appSettings: Awaited<ReturnType<typeof getAllSettings>>,
 ): Promise<void> {
+  // In cloud/remote mode the cloud backend owns openclaw.json; skip all local writes.
+  const remoteGatewayUrl = await getSetting('remoteGatewayUrl');
+  const cloudMode = await isCloudMode();
+  if (remoteGatewayUrl?.trim() || cloudMode) {
+    logger.info('[config-sync] Remote/cloud mode: skipping local openclaw.json sync');
+    return;
+  }
+
   await syncProxyConfigToOpenClaw(appSettings, { preserveExistingWhenDisabled: true });
 
   try {

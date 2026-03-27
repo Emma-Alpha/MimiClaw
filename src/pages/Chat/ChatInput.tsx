@@ -14,6 +14,7 @@ import { hostApiFetch } from '@/lib/host-api';
 import { invokeIpc } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { useGatewayStore } from '@/stores/gateway';
+import { useSettingsStore } from '@/stores/settings';
 import { useAgentsStore } from '@/stores/agents';
 import { useChatStore } from '@/stores/chat';
 import type { AgentSummary } from '@/types/agent';
@@ -94,6 +95,7 @@ export function ChatInput({ onSend, onStop, disabled = false, sending = false, i
   const pickerRef = useRef<HTMLDivElement>(null);
   const isComposingRef = useRef(false);
   const gatewayStatus = useGatewayStore((s) => s.status);
+  const remoteGatewayUrl = useSettingsStore((s) => s.remoteGatewayUrl);
   const agents = useAgentsStore((s) => s.agents);
   const currentAgentId = useChatStore((s) => s.currentAgentId);
   const currentAgentName = useMemo(
@@ -521,13 +523,16 @@ export function ChatInput({ onSend, onStop, disabled = false, sending = false, i
           <div className="flex items-center gap-1.5">
             <div className={cn("w-1.5 h-1.5 rounded-full", gatewayStatus.state === 'running' ? "bg-green-500/80" : "bg-red-500/80")} />
             <span>
-              {t('composer.gatewayStatus', {
-                state: gatewayStatus.state === 'running'
-                  ? t('composer.gatewayConnected')
-                  : gatewayStatus.state,
-                port: gatewayStatus.port,
-                pid: gatewayStatus.pid ? `| pid: ${gatewayStatus.pid}` : '',
-              })}
+              {remoteGatewayUrl?.trim()
+                ? `🌐 ${gatewayStatus.state === 'running' ? t('composer.gatewayConnected') : gatewayStatus.state} (${t('composer.remoteMode', '远程')}) | ${remoteGatewayUrl.trim()}`
+                : t('composer.gatewayStatus', {
+                    state: gatewayStatus.state === 'running'
+                      ? t('composer.gatewayConnected')
+                      : gatewayStatus.state,
+                    port: gatewayStatus.port,
+                    pid: gatewayStatus.pid ? `| pid: ${gatewayStatus.pid}` : '',
+                  })
+              }
             </span>
           </div>
           {hasFailedAttachments && (

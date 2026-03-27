@@ -12,6 +12,26 @@
     "launchAtStartup": "システム起動時に自動起動",
     "launchAtStartupDesc": "ログイン時に 极智 を自動的に起動します"
   },
+  "pet": {
+    "title": "フローティングペット",
+    "description": "透明なペットウィンドウを表示し、右クリックで動きを切り替えます。",
+    "animation": "現在のアニメーション",
+    "tip": "有効にすると独立したフローティングウィンドウが表示されます。ペットを右クリックして切り替えや非表示もできます。",
+    "menuTitle": "アニメーション切替",
+    "active": "使用中",
+    "hide": "ペットを隠す",
+    "animations": {
+      "begin": "開始",
+      "static": "待機",
+      "listening": "リスニング",
+      "sleepStart": "睡眠開始",
+      "sleepLoop": "睡眠ループ",
+      "sleepLeave": "起床",
+      "taskStart": "タスク開始",
+      "taskLoop": "タスク中",
+      "taskLeave": "タスク終了"
+    }
+  },
   "aiProviders": {
     "title": "AI プロバイダー",
     "description": "AI モデルプロバイダーと API キーを設定",
@@ -147,7 +167,26 @@
     "proxyBypassHelp": "直接接続するホストをセミコロン、カンマ、または改行で区切って指定します。",
     "proxyRestartNote": "保存すると Electron のネットワーク設定を再適用し、Gateway をすぐ再起動します。プロキシ無効時の通常再起動では Telegram チャネルの既存プロキシ設定を保持し、無効状態で保存すると明示的に削除されます。",
     "proxySaved": "プロキシ設定を保存しました",
-    "proxySaveFailed": "プロキシ設定の保存に失敗しました"
+    "proxySaveFailed": "プロキシ設定の保存に失敗しました",
+    "remoteTitle": "リモートゲートウェイ",
+    "remoteDesc": "設定するとローカルプロセスを起動せず、リモートゲートウェイに直接接続します。空にするとローカルモードに戻ります。",
+    "remoteUrl": "リモート WebSocket URL",
+    "remoteUrlHelp": "例：ws://192.168.1.100:18789/ws または wss://your-gateway.example.com/ws",
+    "remoteToken": "リモートゲートウェイトークン",
+    "remoteTokenPlaceholder": "トークンなしの場合は空欄",
+    "remoteActive": "⚠ リモートモードが有効です。ローカルプロセスは起動しません",
+    "cloudTitle": "クラウドワークスペース",
+    "cloudDesc": "現在のユーザーのクラウド管理型 OpenClaw ゲートウェイの状態。",
+    "cloudGatewayState": "ゲートウェイ状態",
+    "cloudGatewayWsUrl": "WebSocket URL",
+    "cloudGatewayStart": "起動",
+    "cloudGatewayStop": "停止",
+    "cloudGatewayRestart": "再起動",
+    "cloudGatewayStateRunning": "実行中",
+    "cloudGatewayStateStopped": "停止中",
+    "cloudGatewayStateStarting": "起動中",
+    "cloudGatewayStateError": "エラー",
+    "cloudGatewayNotAvailable": "クラウドバックエンド未接続"
   },
   "updates": {
     "title": "アップデート",

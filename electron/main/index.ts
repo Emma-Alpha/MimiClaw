@@ -21,6 +21,8 @@ import { autoInstallCliIfNeeded, generateCompletionCache, installCompletionToPro
 import { isQuitting, setQuitting } from './app-state';
 import { applyProxySettings } from './proxy';
 import { syncLaunchAtStartupSettingFromStore } from './launch-at-startup';
+import { syncPetWindowFromSettings } from './pet-window';
+import { registerPetRuntime } from './pet-runtime';
 import {
   clearPendingSecondInstanceFocus,
   consumeMainWindowReady,
@@ -306,6 +308,8 @@ async function initialize(): Promise<void> {
     mainWindow: window,
   });
 
+  await syncPetWindowFromSettings();
+
   // Register update handlers
   registerUpdateHandlers(appUpdater, window);
 
@@ -340,6 +344,8 @@ async function initialize(): Promise<void> {
 
   // Bridge gateway and host-side events before any auto-start logic runs, so
   // renderer subscribers observe the full startup lifecycle.
+  registerPetRuntime(gatewayManager);
+
   gatewayManager.on('status', (status: { state: string }) => {
     hostEventBus.emit('gateway:status', status);
     if (status.state === 'running') {

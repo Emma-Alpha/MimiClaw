@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import { getAllSkillConfigs, updateSkillConfig } from '../../utils/skill-config';
 import type { HostApiContext } from '../context';
 import { parseJsonBody, sendJson } from '../route-utils';
+import { isCloudMode, patchCloudSkillConfig } from '../../utils/cloud-config-bridge';
 
 export async function handleSkillRoutes(
   req: IncomingMessage,
@@ -21,10 +22,19 @@ export async function handleSkillRoutes(
         apiKey?: string;
         env?: Record<string, string>;
       }>(req);
-      sendJson(res, 200, await updateSkillConfig(body.skillKey, {
+      const result = await updateSkillConfig(body.skillKey, {
         apiKey: body.apiKey,
         env: body.env,
-      }));
+      });
+      if (await isCloudMode()) {
+        const entry: Record<string, unknown> = {};
+        if (body.apiKey !== undefined) entry.apiKey = body.apiKey;
+        if (body.env !== undefined) entry.env = body.env;
+        void patchCloudSkillConfig(body.skillKey, entry).catch((e) =>
+          console.warn('[skills] Cloud sync failed:', e)
+        );
+      }
+      sendJson(res, 200, result);
     } catch (error) {
       sendJson(res, 500, { success: false, error: String(error) });
     }

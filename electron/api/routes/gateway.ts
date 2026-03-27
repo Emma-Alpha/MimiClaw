@@ -15,10 +15,15 @@ export async function handleGatewayRoutes(
     const status = ctx.gatewayManager.getStatus();
     const token = await getSetting('gatewayToken');
     const port = status.port || PORTS.OPENCLAW_GATEWAY;
+    const remoteUrl = await getSetting('remoteGatewayUrl');
+    const remoteToken = await getSetting('remoteGatewayToken');
+    const isRemote = !!(remoteUrl && remoteUrl.trim());
     sendJson(res, 200, {
-      wsUrl: `ws://127.0.0.1:${port}/ws`,
-      token,
+      wsUrl: isRemote ? remoteUrl.trim() : `ws://127.0.0.1:${port}/ws`,
+      token: isRemote && remoteToken ? remoteToken : token,
       port,
+      isRemote,
+      remoteUrl: isRemote ? remoteUrl.trim() : undefined,
     });
     return true;
   }

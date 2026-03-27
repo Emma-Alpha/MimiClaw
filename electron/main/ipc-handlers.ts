@@ -2,7 +2,7 @@
  * IPC Handlers
  * Registers all IPC handlers for main-renderer communication
  */
-import { ipcMain, BrowserWindow, shell, dialog, app, nativeImage } from 'electron';
+import { ipcMain, BrowserWindow, shell, dialog, app, nativeImage, Menu } from 'electron';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, extname, basename } from 'node:path';
@@ -60,6 +60,9 @@ import {
 } from '../services/providers/provider-runtime-sync';
 import { validateApiKeyWithProvider } from '../services/providers/provider-validation';
 import { appUpdater } from './updater';
+import { syncPetWindowFromSettings } from './pet-window';
+import { getPetRuntimeState, setPetInputActivity, setPetUiActivity, syncPetRuntimeIdleState } from './pet-runtime';
+import type { PetUiActivity } from '../../shared/pet';
 import { PORTS } from '../utils/config';
 
 type AppRequest = {
@@ -81,6 +84,95 @@ type AppResponse = {
     details?: unknown;
   };
 };
+
+const PET_ANIMATION_MENU_LABELS: Record<string, { zh: string; en: string; ja: string }> = {
+  begin: { zh: '开始', en: 'Begin', ja: '開始' },
+  static: { zh: '静止', en: 'Idle', ja: '待機' },
+  listening: { zh: '聆听', en: 'Listening', ja: 'リスニング' },
+  'sleep-start': { zh: '入睡开始', en: 'Sleep Start', ja: '睡眠開始' },
+  'sleep-loop': { zh: '睡眠循环', en: 'Sleep Loop', ja: '睡眠ループ' },
+  'sleep-leave': { zh: '睡醒离开', en: 'Wake Up', ja: '起床' },
+  'task-start': { zh: '任务开始', en: 'Task Start', ja: 'タスク開始' },
+  'task-loop': { zh: '任务循环', en: 'Task Loop', ja: 'タスク中' },
+  'task-leave': { zh: '任务结束', en: 'Task End', ja: 'タスク終了' },
+};
+
+function resolvePetMenuLanguage(language?: string): 'zh' | 'en' | 'ja' {
+  if (language?.startsWith('ja')) return 'ja';
+  if (language?.startsWith('en')) return 'en';
+  return 'zh';
+}
+
+async function emitPetSettingsUpdated(): Promise<void> {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('pet:settings-updated');
+    }
+  }
+}
+
+function registerPetHandlers(): void {
+  ipcMain.handle('pet:getRuntimeState', async () => {
+    return getPetRuntimeState();
+  });
+
+  ipcMain.handle('pet:setInputActivity', async (_, payload?: { activity?: 'idle' | 'recording' } | 'idle' | 'recording') => {
+    const activity = typeof payload === 'string' ? payload : payload?.activity;
+    setPetInputActivity(activity === 'recording' ? 'recording' : 'idle');
+    return { success: true, state: getPetRuntimeState() };
+  });
+
+  ipcMain.handle('pet:setUiActivity', async (_, payload?: { activity?: PetUiActivity } | PetUiActivity) => {
+    const activity = typeof payload === 'string' ? payload : payload?.activity;
+    setPetUiActivity(activity === 'working' || activity === 'listening' ? activity : 'idle');
+    return { success: true, state: getPetRuntimeState() };
+  });
+
+  ipcMain.handle('pet:showContextMenu', async (event, payload?: { x?: number; y?: number; language?: string }) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return { success: false };
+
+    const settings = await getAllSettings();
+    const language = resolvePetMenuLanguage(payload?.language);
+    const items = Object.entries(PET_ANIMATION_MENU_LABELS).map(([animation, labels]) => ({
+      label: labels[language],
+      type: 'radio' as const,
+      checked: settings.petAnimation === animation,
+      click: async () => {
+        await setSetting('petAnimation', animation as AppSettings['petAnimation']);
+        await syncPetRuntimeIdleState();
+        await emitPetSettingsUpdated();
+      },
+    }));
+
+    const hideLabels = {
+      zh: '隐藏悬浮宠物',
+      en: 'Hide Floating Pet',
+      ja: 'フローティングペットを隠す',
+    } as const;
+
+    const menu = Menu.buildFromTemplate([
+      ...items,
+      { type: 'separator' },
+      {
+        label: hideLabels[language],
+        click: async () => {
+          await setSetting('petEnabled', false);
+          await syncPetWindowFromSettings();
+          await emitPetSettingsUpdated();
+        },
+      },
+    ]);
+
+    menu.popup({
+      window: win,
+      x: typeof payload?.x === 'number' ? Math.round(payload.x) : undefined,
+      y: typeof payload?.y === 'number' ? Math.round(payload.y) : undefined,
+    });
+
+    return { success: true };
+  });
+}
 
 /**
  * Register all IPC handlers
@@ -122,6 +214,9 @@ export function registerIpcHandlers(
 
   // Settings handlers
   registerSettingsHandlers(gatewayManager);
+
+  // Floating pet handlers
+  registerPetHandlers();
 
   // UV handlers
   registerUvHandlers();
@@ -235,6 +330,10 @@ function isProxyKey(key: keyof AppSettings): boolean {
 
 function isLaunchAtStartupKey(key: keyof AppSettings): boolean {
   return key === 'launchAtStartup';
+}
+
+function isPetKey(key: keyof AppSettings): boolean {
+  return key === 'petEnabled' || key === 'petAnimation';
 }
 
 function registerUnifiedRequestHandlers(gatewayManager: GatewayManager): void {
@@ -715,6 +814,9 @@ function registerUnifiedRequestHandlers(gatewayManager: GatewayManager): void {
             if (isLaunchAtStartupKey(key)) {
               await syncLaunchAtStartupSettingFromStore();
             }
+            if (isPetKey(key)) {
+              await syncPetWindowFromSettings();
+            }
             data = { success: true };
             break;
           }
@@ -730,6 +832,9 @@ function registerUnifiedRequestHandlers(gatewayManager: GatewayManager): void {
             if (entries.some(([key]) => isLaunchAtStartupKey(key))) {
               await syncLaunchAtStartupSettingFromStore();
             }
+            if (entries.some(([key]) => isPetKey(key))) {
+              await syncPetWindowFromSettings();
+            }
             data = { success: true };
             break;
           }
@@ -738,6 +843,7 @@ function registerUnifiedRequestHandlers(gatewayManager: GatewayManager): void {
             const settings = await getAllSettings();
             await handleProxySettingsChange();
             await syncLaunchAtStartupSettingFromStore();
+            await syncPetWindowFromSettings();
             data = { success: true, settings };
             break;
           }
@@ -2154,6 +2260,9 @@ function registerSettingsHandlers(gatewayManager: GatewayManager): void {
     if (key === 'launchAtStartup') {
       await syncLaunchAtStartupSettingFromStore();
     }
+    if (isPetKey(key)) {
+      await syncPetWindowFromSettings();
+    }
 
     return { success: true };
   });
@@ -2177,6 +2286,9 @@ function registerSettingsHandlers(gatewayManager: GatewayManager): void {
     if (entries.some(([key]) => key === 'launchAtStartup')) {
       await syncLaunchAtStartupSettingFromStore();
     }
+    if (entries.some(([key]) => isPetKey(key))) {
+      await syncPetWindowFromSettings();
+    }
 
     return { success: true };
   });
@@ -2186,6 +2298,7 @@ function registerSettingsHandlers(gatewayManager: GatewayManager): void {
     const settings = await getAllSettings();
     await handleProxySettingsChange();
     await syncLaunchAtStartupSettingFromStore();
+    await syncPetWindowFromSettings();
     return { success: true, settings };
   });
 }

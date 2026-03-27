@@ -49,6 +49,10 @@ const electronAPI = {
         'window:maximize',
         'window:close',
         'window:isMaximized',
+        'pet:getRuntimeState',
+        'pet:setInputActivity',
+        'pet:setUiActivity',
+        'pet:showContextMenu',
         // Settings
         'settings:get',
         'settings:set',
@@ -178,6 +182,8 @@ const electronAPI = {
         'oauth:success',
         'oauth:error',
         'openclaw:cli-installed',
+        'pet:settings-updated',
+        'pet:runtime-state',
       ];
 
       if (validChannels.includes(channel)) {
@@ -226,6 +232,8 @@ const electronAPI = {
         'oauth:code',
         'oauth:success',
         'oauth:error',
+        'pet:settings-updated',
+        'pet:runtime-state',
       ];
 
       if (validChannels.includes(channel)) {

@@ -232,6 +232,7 @@ async function performChatCompletionsProbe(
     const data = await response.json().catch(() => ({}));
 
     if (response.status === 401 || response.status === 403) {
+      console.log(`[clawx-validate] ${providerLabel} auth failed: 401/403`);
       return { valid: false, error: 'Invalid API key' };
     }
     if (
@@ -239,9 +240,12 @@ async function performChatCompletionsProbe(
       response.status === 400 ||
       response.status === 429
     ) {
+      console.log(`[clawx-validate] ${providerLabel} probe OK: status=${response.status} → valid=true`);
       return { valid: true };
     }
-    return classifyAuthResponse(response.status, data);
+    const fallback = classifyAuthResponse(response.status, data);
+    console.log(`[clawx-validate] ${providerLabel} fallback classify: status=${response.status} data=${JSON.stringify(data)} → valid=${fallback.valid} error=${fallback.error}`);
+    return fallback;
   } catch (error) {
     return {
       valid: false,

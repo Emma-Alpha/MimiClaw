@@ -7,6 +7,7 @@ import {
   signDevicePayload,
 } from '../utils/device-identity';
 import { logger } from '../utils/logger';
+import { GATEWAY_OPERATOR_SCOPES } from '../../shared/gateway-scopes';
 
 export async function probeGatewayReady(
   port: number,
@@ -101,16 +102,18 @@ export function buildGatewayConnectFrame(options: {
   token: string;
   deviceIdentity: DeviceIdentity | null;
   platform: string;
+  /** Skip device identity for remote gateways with allowInsecureAuth */
+  skipDeviceAuth?: boolean;
 }): { connectId: string; frame: Record<string, unknown> } {
   const connectId = `connect-${Date.now()}`;
   const role = 'operator';
-  const scopes = ['operator.admin'];
+  const scopes = [...GATEWAY_OPERATOR_SCOPES];
   const signedAtMs = Date.now();
   const clientId = 'gateway-client';
   const clientMode = 'ui';
 
   const device = (() => {
-    if (!options.deviceIdentity) return undefined;
+    if (!options.deviceIdentity || options.skipDeviceAuth) return undefined;
 
     const payload = buildDeviceAuthPayload({
       deviceId: options.deviceIdentity.deviceId,
@@ -162,6 +165,8 @@ export function buildGatewayConnectFrame(options: {
 
 export async function connectGatewaySocket(options: {
   port: number;
+  /** Override the full WebSocket URL (e.g. for remote gateways). Defaults to ws://localhost:{port}/ws */
+  url?: string;
   deviceIdentity: DeviceIdentity | null;
   platform: string;
   pendingRequests: Map<string, PendingGatewayRequest>;
@@ -169,11 +174,13 @@ export async function connectGatewaySocket(options: {
   onHandshakeComplete: (ws: WebSocket) => void;
   onMessage: (message: unknown) => void;
   onCloseAfterHandshake: () => void;
+  /** Skip device identity for remote gateways with allowInsecureAuth */
+  skipDeviceAuth?: boolean;
 }): Promise<WebSocket> {
-  logger.debug(`Connecting Gateway WebSocket (ws://localhost:${options.port}/ws)`);
+  const wsUrl = options.url ?? `ws://localhost:${options.port}/ws`;
+  logger.debug(`Connecting Gateway WebSocket (${wsUrl})`);
 
   return await new Promise<WebSocket>((resolve, reject) => {
-    const wsUrl = `ws://localhost:${options.port}/ws`;
     const ws = new WebSocket(wsUrl);
     let handshakeComplete = false;
     let connectId: string | null = null;
@@ -223,6 +230,7 @@ export async function connectGatewaySocket(options: {
         token: currentToken,
         deviceIdentity: options.deviceIdentity,
         platform: options.platform,
+        skipDeviceAuth: options.skipDeviceAuth,
       });
       connectId = connectPayload.connectId;
 

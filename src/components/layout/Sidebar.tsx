@@ -18,6 +18,7 @@ import {
   ExternalLink,
   Trash2,
   Cpu,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettingsStore } from '@/stores/settings';
@@ -263,6 +264,13 @@ export function Sidebar() {
           </div>
           {!sidebarCollapsed && <span className="flex-1 text-left overflow-hidden text-ellipsis whitespace-nowrap">{t('sidebar.newChat')}</span>}
         </button>
+
+        <NavItem
+          to="/jizhi-chat"
+          icon={<MessageSquare className="h-[18px] w-[18px]" strokeWidth={2} />}
+          label={t('sidebar.remoteWebChat')}
+          collapsed={sidebarCollapsed}
+        />
 
         {navItems.map((item) => (
           <NavItem

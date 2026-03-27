@@ -1,6 +1,8 @@
 import { invokeIpc } from '@/lib/api-client';
 import { trackUiEvent } from './telemetry';
 import { normalizeAppError } from './error-model';
+export { cloudApiFetch, cloudLogin, cloudLogout, getCloudSession, setCloudSession, isCloudSessionValid } from './cloud-api';
+export type { CloudSession, CloudLoginResult, WorkspaceStatus } from './cloud-api';
 
 const HOST_API_PORT = 3210;
 const HOST_API_BASE = `http://127.0.0.1:${HOST_API_PORT}`;
@@ -209,4 +211,54 @@ export function createHostEventSource(path = '/api/events'): EventSource {
 
 export function getHostApiBase(): string {
   return HOST_API_BASE;
+}
+
+// ── Cloud control-plane helpers (proxied through host-api) ─────────────────
+
+export interface CloudConfigState {
+  cloudMode: boolean;
+  config: Record<string, unknown> | null;
+}
+
+export interface CloudGatewayState {
+  cloudMode: boolean;
+  gatewayState?: 'stopped' | 'starting' | 'running' | 'error';
+  gatewayWsUrl?: string | null;
+  gatewayPort?: number | null;
+  gatewayError?: string | null;
+}
+
+/** Fetch the current openclaw config from the cloud backend (no-op if not in cloud mode). */
+export async function fetchCloudConfig(): Promise<CloudConfigState> {
+  return hostApiFetch<CloudConfigState>('/api/cloud/config');
+}
+
+/** Shallow-merge `patch` into the cloud openclaw config. */
+export async function patchCloudConfigFromRenderer(
+  patch: Record<string, unknown>,
+): Promise<{ success: boolean }> {
+  return hostApiFetch<{ success: boolean }>('/api/cloud/config', {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+}
+
+/** Get cloud gateway status. */
+export async function fetchCloudGatewayStatus(): Promise<CloudGatewayState> {
+  return hostApiFetch<CloudGatewayState>('/api/cloud/gateway/status');
+}
+
+/** Start the cloud gateway. */
+export async function startCloudGatewayFromRenderer(): Promise<{ ok: boolean; gatewayWsUrl?: string }> {
+  return hostApiFetch('/api/cloud/gateway/start', { method: 'POST' });
+}
+
+/** Stop the cloud gateway. */
+export async function stopCloudGatewayFromRenderer(): Promise<{ ok: boolean }> {
+  return hostApiFetch('/api/cloud/gateway/stop', { method: 'POST' });
+}
+
+/** Restart the cloud gateway. */
+export async function restartCloudGatewayFromRenderer(): Promise<{ ok: boolean; gatewayWsUrl?: string }> {
+  return hostApiFetch('/api/cloud/gateway/restart', { method: 'POST' });
 }

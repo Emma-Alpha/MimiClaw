@@ -2,7 +2,7 @@
  * Device identity utilities for OpenClaw Gateway authentication.
  *
  * OpenClaw Gateway 2026.2.15+ requires a signed device identity in the
- * connect handshake to grant scopes (operator.read, operator.write, etc.).
+ * connect handshake to grant scopes（列表与 `shared/gateway-scopes.ts` 一致）.
  * Without a device, the gateway strips all requested scopes.
  *
  * All file I/O uses async fs/promises to avoid blocking the main thread.

@@ -1,3 +1,4 @@
+import { GATEWAY_OPERATOR_SCOPES } from '../../shared/gateway-scopes';
 import { trackUiEvent } from './telemetry';
 import {
   AppError,
@@ -715,7 +716,7 @@ export function createGatewayWsTransportInvoker(options: GatewayWsTransportOptio
         auth,
         caps: ['tool-events'],
         role: 'operator',
-        scopes: ['operator.admin'],
+        scopes: [...GATEWAY_OPERATOR_SCOPES],
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
         locale: typeof navigator !== 'undefined' ? navigator.language : 'en',
       },

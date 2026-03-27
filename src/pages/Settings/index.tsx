@@ -2,7 +2,7 @@
  * Settings Page
  * Application configuration
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Sun,
   Moon,
@@ -11,11 +11,15 @@ import {
   ExternalLink,
   Copy,
   FileText,
+  Eye,
+  EyeOff,
+  Globe,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -38,8 +42,16 @@ import {
 } from '@/lib/telemetry';
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_LANGUAGES } from '@/i18n';
-import { hostApiFetch } from '@/lib/host-api';
+import {
+  hostApiFetch,
+  fetchCloudGatewayStatus,
+  startCloudGatewayFromRenderer,
+  stopCloudGatewayFromRenderer,
+  restartCloudGatewayFromRenderer,
+  type CloudGatewayState,
+} from '@/lib/host-api';
 import { cn } from '@/lib/utils';
+import { PET_ANIMATIONS, PET_ANIMATION_LABEL_KEYS, type PetAnimation } from '@/lib/pet-floating';
 type ControlUiInfo = {
   url: string;
   token: string;
@@ -57,6 +69,10 @@ export function Settings() {
     setLaunchAtStartup,
     gatewayAutoStart,
     setGatewayAutoStart,
+    remoteGatewayUrl,
+    setRemoteGatewayUrl,
+    remoteGatewayToken,
+    setRemoteGatewayToken,
     proxyEnabled,
     proxyServer,
     proxyHttpServer,
@@ -77,6 +93,10 @@ export function Settings() {
     setDevModeUnlocked,
     telemetryEnabled,
     setTelemetryEnabled,
+    petEnabled,
+    setPetEnabled,
+    petAnimation,
+    setPetAnimation,
   } = useSettingsStore();
 
   const { status: gatewayStatus, restart: restartGateway } = useGatewayStore();
@@ -85,6 +105,9 @@ export function Settings() {
   const [controlUiInfo, setControlUiInfo] = useState<ControlUiInfo | null>(null);
   const [openclawCliCommand, setOpenclawCliCommand] = useState('');
   const [openclawCliError, setOpenclawCliError] = useState<string | null>(null);
+  const [remoteGatewayUrlDraft, setRemoteGatewayUrlDraft] = useState('');
+  const [remoteGatewayTokenDraft, setRemoteGatewayTokenDraft] = useState('');
+  const [showRemoteGatewayToken, setShowRemoteGatewayToken] = useState(false);
   const [proxyServerDraft, setProxyServerDraft] = useState('');
   const [proxyHttpServerDraft, setProxyHttpServerDraft] = useState('');
   const [proxyHttpsServerDraft, setProxyHttpsServerDraft] = useState('');
@@ -93,6 +116,8 @@ export function Settings() {
   const [proxyEnabledDraft, setProxyEnabledDraft] = useState(false);
   const [savingProxy, setSavingProxy] = useState(false);
   const [wsDiagnosticEnabled, setWsDiagnosticEnabled] = useState(false);
+  const [cloudGateway, setCloudGateway] = useState<CloudGatewayState | null>(null);
+  const [cloudGatewayLoading, setCloudGatewayLoading] = useState(false);
   const [showTelemetryViewer, setShowTelemetryViewer] = useState(false);
   const [telemetryEntries, setTelemetryEntries] = useState<UiTelemetryEntry[]>([]);
 
@@ -113,6 +138,35 @@ export function Settings() {
     timedOut?: boolean;
     error?: string;
   } | null>(null);
+
+  const refreshCloudGateway = useCallback(async () => {
+    try {
+      const status = await fetchCloudGatewayStatus();
+      setCloudGateway(status);
+    } catch {
+      // ignore if cloud not available
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshCloudGateway();
+    const timer = setInterval(() => { void refreshCloudGateway(); }, 10_000);
+    return () => clearInterval(timer);
+  }, [refreshCloudGateway]);
+
+  const handleCloudGatewayAction = async (action: 'start' | 'stop' | 'restart') => {
+    setCloudGatewayLoading(true);
+    try {
+      if (action === 'start') await startCloudGatewayFromRenderer();
+      else if (action === 'stop') await stopCloudGatewayFromRenderer();
+      else await restartCloudGatewayFromRenderer();
+      await refreshCloudGateway();
+    } catch (err) {
+      toast.error(String(err));
+    } finally {
+      setCloudGatewayLoading(false);
+    }
+  };
 
   const handleShowLogs = async () => {
     try {
@@ -298,6 +352,14 @@ export function Settings() {
     });
     return unsubscribe;
   }, [devModeUnlocked]);
+
+  useEffect(() => {
+    setRemoteGatewayUrlDraft(remoteGatewayUrl);
+  }, [remoteGatewayUrl]);
+
+  useEffect(() => {
+    setRemoteGatewayTokenDraft(remoteGatewayToken);
+  }, [remoteGatewayToken]);
 
   useEffect(() => {
     setProxyEnabledDraft(proxyEnabled);
@@ -528,6 +590,45 @@ export function Settings() {
                   onCheckedChange={setLaunchAtStartup}
                 />
               </div>
+
+              <div className="rounded-3xl border border-black/5 bg-black/[0.03] p-5 dark:border-white/10 dark:bg-white/[0.03]">
+                <div className="flex flex-col gap-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <Label className="text-[15px] font-medium text-foreground/80">{t('pet.title')}</Label>
+                      <p className="text-[13px] text-muted-foreground mt-1">
+                        {t('pet.description')}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={petEnabled}
+                      onCheckedChange={setPetEnabled}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="pet-animation" className="text-[14px] font-medium text-foreground/80">
+                      {t('pet.animation')}
+                    </Label>
+                    <Select
+                      id="pet-animation"
+                      value={petAnimation}
+                      onChange={(event) => setPetAnimation(event.target.value as PetAnimation)}
+                      disabled={!petEnabled}
+                      className="h-11 rounded-2xl border-black/10 bg-white/80 text-[14px] dark:border-white/10 dark:bg-white/5"
+                    >
+                      {PET_ANIMATIONS.map((animation) => (
+                        <option key={animation} value={animation}>
+                          {t(PET_ANIMATION_LABEL_KEYS[animation])}
+                        </option>
+                      ))}
+                    </Select>
+                    <p className="text-[12px] text-muted-foreground">
+                      {t('pet.tip')}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -603,6 +704,120 @@ export function Settings() {
                 />
               </div>
 
+              {/* Remote Gateway */}
+              <div className="space-y-3 rounded-2xl border border-black/8 dark:border-white/8 p-4 bg-black/[0.02] dark:bg-white/[0.02]">
+                <div className="flex items-center gap-2 mb-1">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <Label className="text-[14px] font-medium text-foreground">{t('gateway.remoteTitle')}</Label>
+                </div>
+                <p className="text-[12px] text-muted-foreground">{t('gateway.remoteDesc')}</p>
+
+                <div className="space-y-1.5">
+                  <Label className="text-[13px] text-foreground/80">{t('gateway.remoteUrl')}</Label>
+                  <Input
+                    type="text"
+                    placeholder="ws://your-gateway-host:18789/ws"
+                    value={remoteGatewayUrlDraft}
+                    onChange={(e) => setRemoteGatewayUrlDraft(e.target.value)}
+                    onBlur={() => {
+                      if (remoteGatewayUrlDraft !== remoteGatewayUrl) {
+                        setRemoteGatewayUrl(remoteGatewayUrlDraft);
+                      }
+                    }}
+                    className="text-[13px] font-mono"
+                  />
+                  <p className="text-[11px] text-muted-foreground">{t('gateway.remoteUrlHelp')}</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-[13px] text-foreground/80">{t('gateway.remoteToken')}</Label>
+                  <div className="relative">
+                    <Input
+                      type={showRemoteGatewayToken ? 'text' : 'password'}
+                      placeholder={t('gateway.remoteTokenPlaceholder')}
+                      value={remoteGatewayTokenDraft}
+                      onChange={(e) => setRemoteGatewayTokenDraft(e.target.value)}
+                      onBlur={() => {
+                        if (remoteGatewayTokenDraft !== remoteGatewayToken) {
+                          setRemoteGatewayToken(remoteGatewayTokenDraft);
+                        }
+                      }}
+                      className="text-[13px] font-mono pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRemoteGatewayToken((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showRemoteGatewayToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {remoteGatewayUrl && (
+                  <p className="text-[12px] text-amber-600 dark:text-amber-400">
+                    {t('gateway.remoteActive')}
+                  </p>
+                )}
+              </div>
+
+              {/* Cloud Workspace */}
+              {cloudGateway?.cloudMode && (
+                <div className="space-y-3 rounded-2xl border border-black/8 dark:border-white/8 p-4 bg-black/[0.02] dark:bg-white/[0.02]">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    <Label className="text-[14px] font-medium text-foreground">{t('gateway.cloudTitle')}</Label>
+                  </div>
+                  <p className="text-[12px] text-muted-foreground">{t('gateway.cloudDesc')}</p>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-[13px] text-muted-foreground">{t('gateway.cloudGatewayState')}：</span>
+                    <span className={cn(
+                      'text-[13px] font-medium',
+                      cloudGateway.gatewayState === 'running' && 'text-green-600 dark:text-green-400',
+                      cloudGateway.gatewayState === 'starting' && 'text-yellow-600 dark:text-yellow-400',
+                      cloudGateway.gatewayState === 'error' && 'text-red-600 dark:text-red-400',
+                      cloudGateway.gatewayState === 'stopped' && 'text-muted-foreground',
+                    )}>
+                      {t(`gateway.cloudGatewayState${(cloudGateway.gatewayState ?? 'Stopped').charAt(0).toUpperCase()}${(cloudGateway.gatewayState ?? 'stopped').slice(1)}`)}
+                    </span>
+                  </div>
+
+                  {cloudGateway.gatewayWsUrl && (
+                    <p className="text-[11px] font-mono text-muted-foreground break-all">{cloudGateway.gatewayWsUrl}</p>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={cloudGatewayLoading || cloudGateway.gatewayState === 'running'}
+                      onClick={() => void handleCloudGatewayAction('start')}
+                      className="text-[12px] h-7 rounded-full"
+                    >
+                      {t('gateway.cloudGatewayStart')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={cloudGatewayLoading || cloudGateway.gatewayState !== 'running'}
+                      onClick={() => void handleCloudGatewayAction('stop')}
+                      className="text-[12px] h-7 rounded-full"
+                    >
+                      {t('gateway.cloudGatewayStop')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={cloudGatewayLoading}
+                      onClick={() => void handleCloudGatewayAction('restart')}
+                      className="text-[12px] h-7 rounded-full"
+                    >
+                      {t('gateway.cloudGatewayRestart')}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-between">
                 <div>

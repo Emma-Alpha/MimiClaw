@@ -68,10 +68,15 @@ export async function getProviderAccount(accountId: string): Promise<ProviderAcc
   return accounts?.[accountId] ?? null;
 }
 
+/** Strip undefined values so electron-store doesn't throw "Use 'delete()' to clear values". */
+function stripUndefined<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj, (_k, v) => (v === undefined ? null : v))) as T;
+}
+
 export async function saveProviderAccount(account: ProviderAccount): Promise<void> {
   const store = await getClawXProviderStore();
   const accounts = (store.get('providerAccounts') ?? {}) as Record<string, ProviderAccount>;
-  accounts[account.id] = account;
+  accounts[account.id] = stripUndefined(account);
   store.set('providerAccounts', accounts);
   store.set('schemaVersion', PROVIDER_STORE_SCHEMA_VERSION);
 }
@@ -80,7 +85,7 @@ export async function deleteProviderAccount(accountId: string): Promise<void> {
   const store = await getClawXProviderStore();
   const accounts = (store.get('providerAccounts') ?? {}) as Record<string, ProviderAccount>;
   delete accounts[accountId];
-  store.set('providerAccounts', accounts);
+  store.set('providerAccounts', stripUndefined(accounts));
 
   if (store.get('defaultProviderAccountId') === accountId) {
     store.delete('defaultProviderAccountId');
@@ -95,7 +100,7 @@ export async function setDefaultProviderAccount(accountId: string): Promise<void
   for (const account of Object.values(accounts)) {
     account.isDefault = account.id === accountId;
   }
-  store.set('providerAccounts', accounts);
+  store.set('providerAccounts', stripUndefined(accounts));
 }
 
 export async function getDefaultProviderAccountId(): Promise<string | undefined> {

@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import {
-  type ProviderConfig,
+import type {
+  ProviderConfig,
 } from '../../utils/secure-storage';
 import {
   getProviderConfig,
@@ -16,12 +16,15 @@ import {
   syncProviderApiKeyToRuntime,
   syncSavedProviderToRuntime,
   syncUpdatedProviderToRuntime,
+  getOpenClawProviderKey,
 } from '../../services/providers/provider-runtime-sync';
 import { validateApiKeyWithProvider } from '../../services/providers/provider-validation';
 import { getProviderService } from '../../services/providers/provider-service';
 import { providerAccountToConfig } from '../../services/providers/provider-store';
 import type { ProviderAccount } from '../../shared/providers/types';
 import { logger } from '../../utils/logger';
+import { isCloudMode, patchCloudProviderConfig } from '../../utils/cloud-config-bridge';
+import { getProviderEnvVar } from '../../utils/provider-registry';
 
 const legacyProviderRoutesWarned = new Set<string>();
 
@@ -64,7 +67,17 @@ export async function handleProviderRoutes(
     try {
       const body = await parseJsonBody<{ account: ProviderAccount; apiKey?: string }>(req);
       const account = await providerService.createAccount(body.account, body.apiKey);
-      await syncSavedProviderToRuntime(providerAccountToConfig(account), body.apiKey, ctx.gatewayManager);
+      const config = providerAccountToConfig(account);
+      if (await isCloudMode()) {
+        const providerKey = getOpenClawProviderKey(config.type, config.id);
+        const envKey = getProviderEnvVar(config.type);
+        void patchCloudProviderConfig(providerKey, { type: config.type, model: config.model }, {
+          envKey: envKey ?? undefined,
+          envValue: body.apiKey?.trim() || undefined,
+        }).catch((e) => logger.warn('[providers] Cloud sync failed:', e));
+      } else {
+        await syncSavedProviderToRuntime(config, body.apiKey, ctx.gatewayManager);
+      }
       sendJson(res, 200, { success: true, account });
     } catch (error) {
       sendJson(res, 500, { success: false, error: String(error) });
@@ -115,7 +128,17 @@ export async function handleProviderRoutes(
         return true;
       }
       const nextAccount = await providerService.updateAccount(accountId, body.updates, body.apiKey);
-      await syncUpdatedProviderToRuntime(providerAccountToConfig(nextAccount), body.apiKey, ctx.gatewayManager);
+      const nextConfig = providerAccountToConfig(nextAccount);
+      if (await isCloudMode()) {
+        const providerKey = getOpenClawProviderKey(nextConfig.type, nextConfig.id);
+        const envKey = getProviderEnvVar(nextConfig.type);
+        void patchCloudProviderConfig(providerKey, { type: nextConfig.type, model: nextConfig.model }, {
+          envKey: envKey ?? undefined,
+          envValue: body.apiKey?.trim() || undefined,
+        }).catch((e) => logger.warn('[providers] Cloud sync failed:', e));
+      } else {
+        await syncUpdatedProviderToRuntime(nextConfig, body.apiKey, ctx.gatewayManager);
+      }
       sendJson(res, 200, { success: true, account: nextAccount });
     } catch (error) {
       sendJson(res, 500, { success: false, error: String(error) });
@@ -134,21 +157,42 @@ export async function handleProviderRoutes(
         : undefined;
       if (url.searchParams.get('apiKeyOnly') === '1') {
         await providerService.deleteLegacyProviderApiKey(accountId);
-        await syncDeletedProviderApiKeyToRuntime(
-          existing ? providerAccountToConfig(existing) : null,
-          accountId,
-          runtimeProviderKey,
-        );
+        if (await isCloudMode()) {
+          const existingConfig = existing ? providerAccountToConfig(existing) : null;
+          if (existingConfig) {
+            const providerKey = runtimeProviderKey ?? getOpenClawProviderKey(existingConfig.type, existingConfig.id);
+            const envKey = getProviderEnvVar(existingConfig.type);
+            void patchCloudProviderConfig(providerKey, null, { envKey: envKey ?? undefined }).catch(
+              (e) => logger.warn('[providers] Cloud sync failed:', e)
+            );
+          }
+        } else {
+          await syncDeletedProviderApiKeyToRuntime(
+            existing ? providerAccountToConfig(existing) : null,
+            accountId,
+            runtimeProviderKey,
+          );
+        }
         sendJson(res, 200, { success: true });
         return true;
       }
       await providerService.deleteAccount(accountId);
-      await syncDeletedProviderToRuntime(
-        existing ? providerAccountToConfig(existing) : null,
-        accountId,
-        ctx.gatewayManager,
-        runtimeProviderKey,
-      );
+      if (await isCloudMode()) {
+        const existingConfig = existing ? providerAccountToConfig(existing) : null;
+        if (existingConfig) {
+          const providerKey = runtimeProviderKey ?? getOpenClawProviderKey(existingConfig.type, existingConfig.id);
+          void patchCloudProviderConfig(providerKey, null).catch(
+            (e) => logger.warn('[providers] Cloud sync failed:', e)
+          );
+        }
+      } else {
+        await syncDeletedProviderToRuntime(
+          existing ? providerAccountToConfig(existing) : null,
+          accountId,
+          ctx.gatewayManager,
+          runtimeProviderKey,
+        );
+      }
       sendJson(res, 200, { success: true });
     } catch (error) {
       sendJson(res, 500, { success: false, error: String(error) });

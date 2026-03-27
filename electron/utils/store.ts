@@ -6,6 +6,7 @@
 import { randomBytes } from 'crypto';
 import { app } from 'electron';
 import { resolveSupportedLanguage } from '../../shared/language';
+import { DEFAULT_PET_ANIMATION, type PetAnimation } from '../../shared/pet';
 
 // Lazy-load electron-store (ESM module)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -28,6 +29,8 @@ export interface AppSettings {
   startMinimized: boolean;
   launchAtStartup: boolean;
   telemetryEnabled: boolean;
+  petEnabled: boolean;
+  petAnimation: PetAnimation;
   machineId: string;
   hasReportedInstall: boolean;
 
@@ -35,6 +38,14 @@ export interface AppSettings {
   gatewayAutoStart: boolean;
   gatewayPort: number;
   gatewayToken: string;
+  /** When set, skip local process and connect to this remote gateway WebSocket URL */
+  remoteGatewayUrl: string;
+  /** Optional auth token for the remote gateway */
+  remoteGatewayToken: string;
+  /** Cloud control-plane API base URL (e.g. http://localhost:3000) */
+  cloudApiUrl: string;
+  /** JWT token obtained after cloud login, used by main-process cloud API calls */
+  cloudApiToken: string;
   proxyEnabled: boolean;
   proxyServer: string;
   proxyHttpServer: string;
@@ -79,6 +90,8 @@ function createDefaultSettings(): AppSettings {
     startMinimized: false,
     launchAtStartup: false,
     telemetryEnabled: true,
+    petEnabled: false,
+    petAnimation: DEFAULT_PET_ANIMATION,
     machineId: '',
     hasReportedInstall: false,
 
@@ -86,6 +99,10 @@ function createDefaultSettings(): AppSettings {
     gatewayAutoStart: true,
     gatewayPort: 18789,
     gatewayToken: generateToken(),
+    remoteGatewayUrl: '',
+    remoteGatewayToken: '',
+    cloudApiUrl: '',
+    cloudApiToken: '',
     proxyEnabled: false,
     proxyServer: '',
     proxyHttpServer: '',

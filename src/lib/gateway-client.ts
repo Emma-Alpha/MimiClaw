@@ -1,3 +1,4 @@
+import { GATEWAY_OPERATOR_SCOPES } from '../../shared/gateway-scopes';
 import { hostApiFetch } from './host-api';
 
 type GatewayInfo = {
@@ -159,7 +160,7 @@ class GatewayBrowserClient {
                 },
                 caps: [],
                 role: 'operator',
-                scopes: ['operator.admin'],
+                scopes: [...GATEWAY_OPERATOR_SCOPES],
               },
             };
             ws.send(JSON.stringify(connectFrame));

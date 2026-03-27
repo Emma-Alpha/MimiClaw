@@ -1,0 +1,23 @@
+{
+  "name": "clawx-cloud-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ClawX Cloud Control Plane — auth, workspace, gateway lifecycle, config",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc --noEmit",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "hono": "^4.7.7",
+    "jose": "^5.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.13",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  }
+}
