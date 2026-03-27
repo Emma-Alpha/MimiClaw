@@ -3,6 +3,7 @@ import { PORTS } from '../utils/config';
 import { logger } from '../utils/logger';
 import type { HostApiContext } from './context';
 import { handleAppRoutes } from './routes/app';
+import { handleAuthRoutes } from './routes/auth';
 import { handleGatewayRoutes } from './routes/gateway';
 import { handleSettingsRoutes } from './routes/settings';
 import { handleProviderRoutes } from './routes/providers';
@@ -25,6 +26,7 @@ type RouteHandler = (
 
 const routeHandlers: RouteHandler[] = [
   handleAppRoutes,
+  handleAuthRoutes,
   handleGatewayRoutes,
   handleSettingsRoutes,
   handleProviderRoutes,

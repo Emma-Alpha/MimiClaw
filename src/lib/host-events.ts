@@ -12,6 +12,8 @@ const HOST_EVENT_TO_IPC_CHANNEL: Record<string, string> = {
   'oauth:code': 'oauth:code',
   'oauth:success': 'oauth:success',
   'oauth:error': 'oauth:error',
+  'cloud:auth-success': 'cloud:auth-success',
+  'cloud:auth-error': 'cloud:auth-error',
   'channel:whatsapp-qr': 'channel:whatsapp-qr',
   'channel:whatsapp-success': 'channel:whatsapp-success',
   'channel:whatsapp-error': 'channel:whatsapp-error',

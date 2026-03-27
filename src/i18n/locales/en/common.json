@@ -65,6 +65,10 @@
         "password": "Password",
         "passwordPlaceholder": "Enter your password",
         "submit": "Sign In",
-        "error": "Login failed. Please check your credentials."
+        "error": "Login failed. Please check your credentials.",
+        "or": "or",
+        "oauthSubmit": "Sign in with Xiaojiu",
+        "oauthHint": "ClawX will open the Xiaojiu authorization page in your browser and finish sign-in here automatically.",
+        "oauthError": "Xiaojiu sign-in failed. Please try again."
     }
 }

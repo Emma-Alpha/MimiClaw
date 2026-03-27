@@ -134,17 +134,16 @@ function App() {
     }
   }, [initGateway, isPetRoute]);
 
-  // Gate 1: Must be logged in first.
-  // Bypassed in dev mode (import.meta.env.DEV) until the cloud backend is ready.
+  // Gate 1: Must be logged in first in all environments.
   useEffect(() => {
-    if (!import.meta.env.DEV && !cloudLoggedIn && !location.pathname.startsWith('/login') && !isPetRoute) {
+    if (!cloudLoggedIn && !location.pathname.startsWith('/login') && !isPetRoute) {
       navigate('/login', { replace: true });
     }
   }, [cloudLoggedIn, isPetRoute, location.pathname, navigate]);
 
-  // Gate 2: After login (or in dev bypass), redirect to setup wizard if onboarding not complete.
+  // Gate 2: After login, redirect to setup wizard if onboarding not complete.
   useEffect(() => {
-    const passedLoginGate = import.meta.env.DEV || cloudLoggedIn;
+    const passedLoginGate = cloudLoggedIn;
     if (
       passedLoginGate
       && !setupComplete

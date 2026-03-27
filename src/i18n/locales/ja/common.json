@@ -65,6 +65,10 @@
         "password": "パスワード",
         "passwordPlaceholder": "パスワードを入力",
         "submit": "サインイン",
-        "error": "ログインに失敗しました。認証情報を確認してください。"
+        "error": "ログインに失敗しました。認証情報を確認してください。",
+        "or": "または",
+        "oauthSubmit": "Xiaojiu でサインイン",
+        "oauthHint": "ブラウザで Xiaojiu の認証ページを開き、完了後に自動でデスクトップアプリへ戻ります。",
+        "oauthError": "Xiaojiu ログインに失敗しました。もう一度お試しください。"
     }
 }

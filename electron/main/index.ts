@@ -4,7 +4,7 @@
  */
 import { app, BrowserWindow, nativeImage, session, shell } from 'electron';
 import type { Server } from 'node:http';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { GatewayManager } from '../gateway/manager';
 import { registerIpcHandlers } from './ipc-handlers';
 import { createTray } from './tray';
@@ -37,6 +37,7 @@ import {
 import { createSignalQuitHandler } from './signal-quit';
 import { acquireProcessInstanceFileLock } from './process-instance-lock';
 import { getSetting } from '../utils/store';
+import { setSetting } from '../utils/store';
 import { ensureBuiltinSkillsInstalled, ensurePreinstalledSkillsInstalled } from '../utils/skill-config';
 import { ensureAllBundledPluginsInstalled } from '../utils/plugin-install';
 import { startHostApiServer } from '../api/server';
@@ -45,8 +46,11 @@ import { deviceOAuthManager } from '../utils/device-oauth';
 import { browserOAuthManager } from '../utils/browser-oauth';
 import { whatsAppLoginManager } from '../utils/whatsapp-login';
 import { syncAllProviderAuthToRuntime } from '../services/providers/provider-runtime-sync';
+import { completeXiaojiuAuthCallback } from '../utils/xiaojiu-auth';
+import type { CloudSession } from '../../shared/cloud-auth';
 
 const WINDOWS_APP_USER_MODEL_ID = 'com.jizhi.gz4399';
+const APP_PROTOCOL = 'jizhi';
 
 // Disable GPU hardware acceleration globally for maximum stability across
 // all GPU configurations (no GPU, integrated, discrete).
@@ -115,8 +119,80 @@ let gatewayManager!: GatewayManager;
 let clawHubService!: ClawHubService;
 let hostEventBus!: HostEventBus;
 let hostApiServer: Server | null = null;
+let pendingDeepLinkUrl: string | null = null;
 const mainWindowFocusState = createMainWindowFocusState();
 const quitLifecycleState = createQuitLifecycleState();
+
+function notifyCloudAuthSuccess(session: CloudSession): void {
+  hostEventBus.emit('cloud:auth-success', session);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('cloud:auth-success', session);
+  }
+}
+
+function notifyCloudAuthError(message: string): void {
+  const payload = { message };
+  hostEventBus.emit('cloud:auth-error', payload);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('cloud:auth-error', payload);
+  }
+}
+
+function registerAppProtocolClient(): void {
+  if (process.defaultApp && process.argv[1]) {
+    app.setAsDefaultProtocolClient(APP_PROTOCOL, process.execPath, [resolve(process.argv[1])]);
+    return;
+  }
+
+  app.setAsDefaultProtocolClient(APP_PROTOCOL);
+}
+
+function extractProtocolUrl(argv: string[]): string | null {
+  return argv.find((arg) => arg.startsWith(`${APP_PROTOCOL}://`)) ?? null;
+}
+
+function isXiaojiuAuthDeepLink(url: URL): boolean {
+  return url.protocol === `${APP_PROTOCOL}:`
+    && url.hostname === 'auth'
+    && url.pathname === '/xiaojiu/callback';
+}
+
+async function handleDeepLink(urlString: string): Promise<void> {
+  let url: URL;
+  try {
+    url = new URL(urlString);
+  } catch (error) {
+    logger.warn('[oauth] Ignoring invalid deep link URL:', error);
+    return;
+  }
+
+  if (!isXiaojiuAuthDeepLink(url)) {
+    return;
+  }
+
+  try {
+    const result = await completeXiaojiuAuthCallback({
+      code: url.searchParams.get('code'),
+      state: url.searchParams.get('state'),
+      error: url.searchParams.get('error'),
+      errorMessage: url.searchParams.get('error_description'),
+    });
+
+    if (!result.success) {
+      notifyCloudAuthError(result.message);
+      return;
+    }
+
+    await Promise.all([
+      setSetting('cloudApiUrl', result.cloudApiBase),
+      setSetting('cloudApiToken', result.session.token),
+    ]);
+    notifyCloudAuthSuccess(result.session);
+    focusMainWindow();
+  } catch (error) {
+    notifyCloudAuthError(error instanceof Error ? error.message : String(error));
+  }
+}
 
 /**
  * Resolve the icons directory path (works in both dev and packaged mode)
@@ -507,10 +583,24 @@ if (gotTheLock) {
   gatewayManager = new GatewayManager();
   clawHubService = new ClawHubService();
   hostEventBus = new HostEventBus();
+  pendingDeepLinkUrl = extractProtocolUrl(process.argv);
+
+  app.on('open-url', (event, url) => {
+    event.preventDefault();
+    if (!app.isReady()) {
+      pendingDeepLinkUrl = url;
+      return;
+    }
+    void handleDeepLink(url);
+  });
 
   // When a second instance is launched, focus the existing window instead.
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, argv) => {
     logger.info('Second ClawX instance detected; redirecting to the existing window');
+    const deepLinkUrl = extractProtocolUrl(argv);
+    if (deepLinkUrl) {
+      void handleDeepLink(deepLinkUrl);
+    }
 
     const focusRequest = requestSecondInstanceFocus(
       mainWindowFocusState,
@@ -527,8 +617,15 @@ if (gotTheLock) {
 
   // Application lifecycle
   app.whenReady().then(() => {
+    registerAppProtocolClient();
     void initialize().catch((error) => {
       logger.error('Application initialization failed:', error);
+    }).finally(() => {
+      if (pendingDeepLinkUrl) {
+        const deepLinkUrl = pendingDeepLinkUrl;
+        pendingDeepLinkUrl = null;
+        void handleDeepLink(deepLinkUrl);
+      }
     });
 
     // Register activate handler AFTER app is ready to prevent

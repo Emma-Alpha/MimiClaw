@@ -1,5 +1,17 @@
 /// <reference types="vite/client" />
 
+interface ImportMetaEnv {
+  readonly VITE_XIAOJIU_AUTH_URL?: string;
+  readonly VITE_XIAOJIU_CLIENT_ID?: string;
+  readonly VITE_XIAOJIU_APP_ID?: string;
+  readonly VITE_XIAOJIU_CALLBACK_URL?: string;
+  readonly VITE_XIAOJIU_EXCHANGE_PATH?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
 declare namespace React.JSX {
   interface IntrinsicElements {
     webview: React.DetailedHTMLProps<

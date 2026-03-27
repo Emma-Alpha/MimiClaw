@@ -65,6 +65,10 @@
         "password": "密码",
         "passwordPlaceholder": "请输入密码",
         "submit": "登录",
-        "error": "登录失败，请检查用户名和密码"
+        "error": "登录失败，请检查用户名和密码",
+        "or": "或",
+        "oauthSubmit": "使用小九认证登录",
+        "oauthHint": "将在浏览器中打开小九授权页面，完成后自动返回桌面应用。",
+        "oauthError": "小九认证失败，请重试"
     }
 }

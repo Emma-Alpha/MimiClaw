@@ -182,6 +182,8 @@ const electronAPI = {
         'oauth:code',
         'oauth:success',
         'oauth:error',
+        'cloud:auth-success',
+        'cloud:auth-error',
         'openclaw:cli-installed',
         'pet:settings-updated',
         'pet:runtime-state',
@@ -233,6 +235,8 @@ const electronAPI = {
         'oauth:code',
         'oauth:success',
         'oauth:error',
+        'cloud:auth-success',
+        'cloud:auth-error',
         'pet:settings-updated',
         'pet:runtime-state',
       ];
