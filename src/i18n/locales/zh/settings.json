@@ -218,7 +218,18 @@
     "currentVersion": "当前版本",
     "whatsNew": "更新内容：",
     "errorDetails": "错误详情：",
-    "help": "开启自动更新后，更新将自动下载并安装。"
+    "help": "开启自动更新后，更新将自动下载并安装。",
+    "forceModal": {
+      "titleDefault": "需要更新",
+      "belowMinimum": "当前版本过低，请更新到受支持的版本后再继续使用。",
+      "newVersion": "检测到新版本，建议立即更新以获得最新修复与功能。",
+      "target": "目标版本：v{{version}}",
+      "learnMore": "了解更多",
+      "later": "稍后",
+      "openSettings": "打开设置",
+      "quit": "退出应用",
+      "check": "检查更新"
+    }
   },
   "advanced": {
     "title": "高级",

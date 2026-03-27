@@ -24,6 +24,8 @@ import { useSettingsStore } from './stores/settings';
 import { useGatewayStore } from './stores/gateway';
 import { useChatStore } from './stores/chat';
 import { applyGatewayTransportPreference } from './lib/api-client';
+import { ThemeWrapper } from './components/theme/ThemeWrapper';
+import { UpdateBootstrap } from '@/components/update/UpdateBootstrap';
 
 
 /**
@@ -199,7 +201,9 @@ function App() {
 
   return (
     <ErrorBoundary>
+      <ThemeWrapper>
       <TooltipProvider delayDuration={300}>
+        <UpdateBootstrap />
         <Routes>
           {/* Cloud login gate */}
           <Route path="/login" element={<Login />} />
@@ -231,6 +235,7 @@ function App() {
           style={{ zIndex: 99999 }}
         />
       </TooltipProvider>
+      </ThemeWrapper>
     </ErrorBoundary>
   );
 }

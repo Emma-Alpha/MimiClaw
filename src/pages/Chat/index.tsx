@@ -6,6 +6,7 @@
  */
 import { useEffect, useState } from 'react';
 import { AlertCircle, Loader2, Sparkles } from 'lucide-react';
+import { createStyles } from 'antd-style';
 import { useChatStore, type RawMessage } from '@/stores/chat';
 import { useGatewayStore } from '@/stores/gateway';
 import { useAgentsStore } from '@/stores/agents';
@@ -15,12 +16,146 @@ import { ChatInput } from './ChatInput';
 import { ChatToolbar } from './ChatToolbar';
 import { extractImages, extractText, extractThinking, extractToolUse } from './message-utils';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@/lib/utils';
 import { useStickToBottomInstant } from '@/hooks/use-stick-to-bottom-instant';
 import { useMinLoading } from '@/hooks/use-min-loading';
 
+const useStyles = createStyles(({ token, css }) => ({
+  chatPage: css`
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: transparent;
+    transition: background 0.3s;
+  `,
+  toolbar: css`
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 16px 24px 8px;
+  `,
+  messagesArea: css`
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 24px 24px;
+  `,
+  messagesInner: css`
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  `,
+  errorBar: css`
+    padding: 8px 16px;
+    background: ${token.colorErrorBg};
+    border-top: 1px solid ${token.colorErrorBorder};
+  `,
+  errorInner: css`
+    max-width: 896px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  `,
+  errorText: css`
+    font-size: 14px;
+    color: ${token.colorError};
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  `,
+  dismissBtn: css`
+    font-size: 12px;
+    color: ${token.colorError};
+    opacity: 0.6;
+    cursor: pointer;
+    background: none;
+    border: none;
+    text-decoration: underline;
+    &:hover { opacity: 1; }
+  `,
+  loadingOverlay: css`
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: ${token.colorBgMask};
+    backdrop-filter: blur(1px);
+    border-radius: 12px;
+    pointer-events: auto;
+  `,
+  loadingCard: css`
+    background: ${token.colorBgContainer};
+    box-shadow: ${token.boxShadow};
+    border-radius: 9999px;
+    padding: 10px;
+    border: 1px solid ${token.colorBorderSecondary};
+  `,
+  welcomeRoot: css`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    height: 60vh;
+  `,
+  welcomeTitle: css`
+    font-size: clamp(32px, 5vw, 40px);
+    font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+    color: ${token.colorTextSecondary};
+    margin-bottom: 32px;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+  `,
+  welcomeActions: css`
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    max-width: 512px;
+    width: 100%;
+  `,
+  welcomeChip: css`
+    padding: 6px 16px;
+    border-radius: 9999px;
+    border: 1px solid ${token.colorBorderSecondary};
+    font-size: 13px;
+    font-weight: 500;
+    color: ${token.colorTextSecondary};
+    background: ${token.colorFillQuaternary};
+    cursor: default;
+    transition: background 0.15s;
+
+    &:hover {
+      background: ${token.colorFillSecondary};
+    }
+  `,
+  typingBubble: css`
+    background: ${token.colorFillSecondary};
+    color: ${token.colorText};
+    border-radius: ${token.borderRadiusLG}px;
+    padding: 12px 16px;
+  `,
+  activityBubble: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: ${token.colorTextSecondary};
+    background: ${token.colorFillSecondary};
+    border-radius: ${token.borderRadiusLG}px;
+    padding: 12px 16px;
+  `,
+}));
+
 export function Chat() {
   const { t } = useTranslation('chat');
+  const { styles } = useStyles();
   const gatewayStatus = useGatewayStore((s) => s.status);
   const isGatewayRunning = gatewayStatus.state === 'running';
 
@@ -100,15 +235,15 @@ export function Chat() {
   }, [petUiActivity]);
 
   return (
-    <div className={cn("relative flex flex-col -m-6 transition-colors duration-500 dark:bg-background")} style={{ height: 'calc(100vh - 2.5rem)' }}>
+    <div className={styles.chatPage}>
       {/* Toolbar */}
-      <div className="flex shrink-0 items-center justify-end px-4 py-2">
+      <div className={styles.toolbar}>
         <ChatToolbar />
       </div>
 
       {/* Messages Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
-        <div ref={contentRef} className="max-w-4xl mx-auto space-y-4">
+      <div ref={scrollRef} className={styles.messagesArea}>
+        <div ref={contentRef} className={styles.messagesInner}>
           {isEmpty ? (
             <WelcomeScreen />
           ) : (
@@ -142,12 +277,12 @@ export function Chat() {
                 />
               )}
 
-              {/* Activity indicator: waiting for next AI turn after tool execution */}
+              {/* Activity indicator */}
               {sending && pendingFinal && !shouldRenderStreaming && (
                 <ActivityIndicator phase="tool_processing" />
               )}
 
-              {/* Typing indicator when sending but no stream content yet */}
+              {/* Typing indicator */}
               {sending && !pendingFinal && !hasAnyStreamContent && (
                 <TypingIndicator />
               )}
@@ -158,16 +293,13 @@ export function Chat() {
 
       {/* Error bar */}
       {error && (
-        <div className="px-4 py-2 bg-destructive/10 border-t border-destructive/20">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
-            <p className="text-sm text-destructive flex items-center gap-2">
-              <AlertCircle className="h-4 w-4" />
+        <div className={styles.errorBar}>
+          <div className={styles.errorInner}>
+            <p className={styles.errorText}>
+              <AlertCircle style={{ width: 16, height: 16 }} />
               {error}
             </p>
-            <button
-              onClick={clearError}
-              className="text-xs text-destructive/60 hover:text-destructive underline"
-            >
+            <button type="button" onClick={clearError} className={styles.dismissBtn}>
               {t('common:actions.dismiss')}
             </button>
           </div>
@@ -180,13 +312,12 @@ export function Chat() {
         onStop={abortRun}
         disabled={!isGatewayRunning}
         sending={sending}
-        isEmpty={isEmpty}
       />
 
-      {/* Transparent loading overlay */}
+      {/* Loading overlay */}
       {minLoading && !sending && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/20 backdrop-blur-[1px] rounded-xl pointer-events-auto">
-          <div className="bg-background shadow-lg rounded-full p-2.5 border border-border">
+        <div className={styles.loadingOverlay}>
+          <div className={styles.loadingCard}>
             <LoadingSpinner size="md" />
           </div>
         </div>
@@ -199,6 +330,7 @@ export function Chat() {
 
 function WelcomeScreen() {
   const { t } = useTranslation('chat');
+  const { styles } = useStyles();
   const quickActions = [
     { key: 'askQuestions', label: t('welcome.askQuestions') },
     { key: 'creativeTasks', label: t('welcome.creativeTasks') },
@@ -206,19 +338,11 @@ function WelcomeScreen() {
   ];
 
   return (
-    <div className="flex flex-col items-center justify-center text-center h-[60vh]">
-      <h1 className="text-4xl md:text-5xl font-serif text-foreground/80 mb-8 font-normal tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
-        {t('welcome.subtitle')}
-      </h1>
-
-      <div className="flex flex-wrap items-center justify-center gap-2.5 max-w-lg w-full">
+    <div className={styles.welcomeRoot}>
+      <h1 className={styles.welcomeTitle}>{t('welcome.subtitle')}</h1>
+      <div className={styles.welcomeActions}>
         {quickActions.map(({ key, label }) => (
-          <button 
-            key={key}
-            className="px-4 py-1.5 rounded-full border border-black/10 dark:border-white/10 text-[13px] font-medium text-foreground/70 hover:bg-black/5 dark:hover:bg-white/5 transition-colors bg-black/[0.02]"
-          >
-            {label}
-          </button>
+          <button type="button" key={key} className={styles.welcomeChip}>{label}</button>
         ))}
       </div>
     </div>
@@ -228,36 +352,36 @@ function WelcomeScreen() {
 // ── Typing Indicator ────────────────────────────────────────────
 
 function TypingIndicator() {
+  const { styles } = useStyles();
   return (
-    <div className="flex gap-3">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full mt-1 bg-black/5 dark:bg-white/5 text-foreground">
-        <Sparkles className="h-4 w-4" />
+    <div style={{ display: 'flex', gap: 12 }}>
+      <div style={{ display: 'flex', width: 32, height: 32, flexShrink: 0, alignItems: 'center', justifyContent: 'center', borderRadius: '50%', marginTop: 4, background: 'rgba(0,0,0,0.05)' }}>
+        <Sparkles style={{ width: 16, height: 16 }} />
       </div>
-      <div className="bg-black/5 dark:bg-white/5 text-foreground rounded-2xl px-4 py-3">
-        <div className="flex gap-1">
-          <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-          <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-          <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+      <div className={styles.typingBubble}>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', opacity: 0.4, animation: 'bounce 1s infinite', animationDelay: '0ms' }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', opacity: 0.4, animation: 'bounce 1s infinite', animationDelay: '150ms' }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', opacity: 0.4, animation: 'bounce 1s infinite', animationDelay: '300ms' }} />
         </div>
       </div>
     </div>
   );
 }
 
-// ── Activity Indicator (shown between tool cycles) ─────────────
+// ── Activity Indicator ──────────────────────────────────────────
 
 function ActivityIndicator({ phase }: { phase: 'tool_processing' }) {
   void phase;
+  const { styles } = useStyles();
   return (
-    <div className="flex gap-3">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full mt-1 bg-black/5 dark:bg-white/5 text-foreground">
-        <Sparkles className="h-4 w-4" />
+    <div style={{ display: 'flex', gap: 12 }}>
+      <div style={{ display: 'flex', width: 32, height: 32, flexShrink: 0, alignItems: 'center', justifyContent: 'center', borderRadius: '50%', marginTop: 4, background: 'rgba(0,0,0,0.05)' }}>
+        <Sparkles style={{ width: 16, height: 16 }} />
       </div>
-      <div className="bg-black/5 dark:bg-white/5 text-foreground rounded-2xl px-4 py-3">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-          <span>Processing tool results…</span>
-        </div>
+      <div className={styles.activityBubble}>
+        <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} />
+        <span>Processing tool results…</span>
       </div>
     </div>
   );

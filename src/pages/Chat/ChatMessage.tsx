@@ -2,17 +2,258 @@
  * Chat Message Component
  * Renders user / assistant / system / toolresult messages
  * with markdown, thinking sections, images, and tool cards.
+ * Uses @lobehub/ui Avatar + Markdown, antd-style createStyles.
  */
 import { useState, useCallback, useEffect, memo } from 'react';
-import { Sparkles, Copy, Check, ChevronDown, ChevronRight, Wrench, FileText, Film, Music, FileArchive, File, X, FolderOpen, ZoomIn, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { ChevronDown, ChevronRight, Wrench, FileText, Film, Music, FileArchive, File, X, FolderOpen, ZoomIn, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ActionIcon, Markdown } from '@lobehub/ui';
+import { ChatItem } from '@lobehub/ui/chat';
+import { Button } from 'antd';
+import { CopyOutlined, CheckOutlined, RobotOutlined } from '@ant-design/icons';
+import { createStyles } from 'antd-style';
 import { createPortal } from 'react-dom';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { invokeIpc } from '@/lib/api-client';
 import type { RawMessage, AttachedFileMeta } from '@/stores/chat';
 import { extractText, extractThinking, extractImages, extractToolUse, formatTimestamp } from './message-utils';
+
+const useStyles = createStyles(({ token, css }) => ({
+  messageRow: css`
+    display: flex;
+    gap: 12px;
+    position: relative;
+  `,
+  messageRowUser: css`
+    flex-direction: row-reverse;
+  `,
+  assistantItem: css`
+    width: 100%;
+  `,
+  contentCol: css`
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    max-width: 80%;
+    gap: 8px;
+  `,
+  contentColUser: css`
+    align-items: flex-end;
+  `,
+  contentColAssistant: css`
+    align-items: flex-start;
+  `,
+  assistantSection: css`
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  `,
+  mediaRow: css`
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  `,
+  assistantRender: css`
+    position: relative;
+    min-height: 1.5em;
+  `,
+  bubbleUser: css`
+    position: relative;
+    border-radius: 16px;
+    padding: 12px 16px;
+    background: #F3F4F6;
+    color: ${token.colorText};
+    word-break: break-word;
+    font-size: 14px;
+    white-space: pre-wrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  `,
+  bubbleAssistant: css`
+    position: relative;
+    border-radius: 16px;
+    padding: 12px 16px;
+    background: #ffffff;
+    color: ${token.colorText};
+    width: 100%;
+    word-break: break-word;
+    font-size: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    border: 1px solid rgba(0,0,0,0.04);
+  `,
+  thinkingBlock: css`
+    width: 100%;
+    border-radius: ${token.borderRadiusLG}px;
+    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorFillQuaternary};
+    font-size: 14px;
+    overflow: hidden;
+  `,
+  thinkingHeader: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    color: ${token.colorTextSecondary};
+    cursor: pointer;
+    background: none;
+    border: none;
+    transition: color 0.2s;
+
+    &:hover {
+      color: ${token.colorText};
+    }
+  `,
+  thinkingBody: css`
+    padding: 0 12px 12px;
+    color: ${token.colorTextSecondary};
+    opacity: 0.8;
+  `,
+  toolCard: css`
+    border-radius: ${token.borderRadiusLG}px;
+    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorFillQuaternary};
+    font-size: 14px;
+    overflow: hidden;
+  `,
+  toolCardHeader: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 12px;
+    color: ${token.colorTextSecondary};
+    cursor: pointer;
+    background: none;
+    border: none;
+    transition: color 0.2s;
+
+    &:hover {
+      color: ${token.colorText};
+    }
+  `,
+  toolCardBody: css`
+    padding: 0 12px 8px;
+    font-size: 12px;
+    color: ${token.colorTextSecondary};
+    overflow-x: auto;
+  `,
+  toolStatusBar: css`
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  `,
+  toolStatusItem: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: ${token.borderRadius}px;
+    border: 1px solid ${token.colorBorderSecondary};
+    padding: 6px 12px;
+    font-size: 12px;
+    transition: background 0.2s;
+  `,
+  toolStatusRunning: css`
+    border-color: ${token.colorPrimaryBorder};
+    background: ${token.colorPrimaryBg};
+    color: ${token.colorText};
+  `,
+  toolStatusDone: css`
+    border-color: ${token.colorBorderSecondary};
+    background: ${token.colorFillQuaternary};
+    color: ${token.colorTextSecondary};
+  `,
+  toolStatusError: css`
+    border-color: ${token.colorErrorBorder};
+    background: ${token.colorErrorBg};
+    color: ${token.colorError};
+  `,
+  fileCard: css`
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-radius: ${token.borderRadiusLG}px;
+    border: 1px solid ${token.colorBorderSecondary};
+    padding: 8px 12px;
+    background: ${token.colorFillQuaternary};
+    max-width: 220px;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover {
+      background: ${token.colorFillTertiary};
+    }
+  `,
+  imageThumbnail: css`
+    position: relative;
+    width: 144px;
+    height: 144px;
+    border-radius: ${token.borderRadiusLG}px;
+    border: 1px solid ${token.colorBorderSecondary};
+    overflow: hidden;
+    cursor: zoom-in;
+
+    img { width: 100%; height: 100%; object-fit: cover; }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+
+      svg { opacity: 0; color: white; transition: opacity 0.2s; }
+    }
+
+    &:hover .overlay {
+      background: rgba(0,0,0,0.25);
+      svg { opacity: 1; }
+    }
+  `,
+  imagePreviewCard: css`
+    position: relative;
+    max-width: 320px;
+    border-radius: ${token.borderRadiusLG}px;
+    border: 1px solid ${token.colorBorderSecondary};
+    overflow: hidden;
+    cursor: zoom-in;
+
+    img { display: block; width: 100%; }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+
+      svg { opacity: 0; color: white; transition: opacity 0.2s; }
+    }
+
+    &:hover .overlay {
+      background: rgba(0,0,0,0.2);
+      svg { opacity: 1; }
+    }
+  `,
+  streamCursor: css`
+    display: inline-block;
+    width: 8px;
+    height: 16px;
+    background: ${token.colorTextSecondary};
+    opacity: 0.5;
+    margin-left: 2px;
+    animation: blink 1s step-end infinite;
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+  `,
+}));
 
 interface ChatMessageProps {
   message: RawMessage;
@@ -30,7 +271,6 @@ interface ChatMessageProps {
 
 interface ExtractedImage { url?: string; data?: string; mimeType: string; }
 
-/** Resolve an ExtractedImage to a displayable src string, or null if not possible. */
 function imageSrc(img: ExtractedImage): string | null {
   if (img.url) return img.url;
   if (img.data) return `data:${img.mimeType};base64,${img.data}`;
@@ -43,6 +283,8 @@ export const ChatMessage = memo(function ChatMessage({
   isStreaming = false,
   streamingTools = [],
 }: ChatMessageProps) {
+  const { styles, cx } = useStyles();
+
   const isUser = message.role === 'user';
   const role = typeof message.role === 'string' ? message.role.toLowerCase() : '';
   const isToolResult = role === 'toolresult' || role === 'tool_result';
@@ -57,61 +299,130 @@ export const ChatMessage = memo(function ChatMessage({
   const attachedFiles = message._attachedFiles || [];
   const [lightboxImg, setLightboxImg] = useState<{ src: string; fileName: string; filePath?: string; base64?: string; mimeType?: string } | null>(null);
 
-  // Never render tool result messages in chat UI
   if (isToolResult) return null;
 
   const hasStreamingToolStatus = isStreaming && streamingTools.length > 0;
   if (!hasText && !visibleThinking && images.length === 0 && visibleTools.length === 0 && attachedFiles.length === 0 && !hasStreamingToolStatus) return null;
 
-  return (
-    <div
-      className={cn(
-        'flex gap-3 group',
-        isUser ? 'flex-row-reverse' : 'flex-row',
-      )}
-    >
-      {/* Avatar */}
-      {!isUser && (
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full mt-1 bg-black/5 dark:bg-white/5 text-foreground">
-          <Sparkles className="h-4 w-4" />
+  const assistantAboveMessage = !isUser && (
+    <div className={styles.assistantSection}>
+      {hasStreamingToolStatus && <ToolStatusBar tools={streamingTools} />}
+      {visibleThinking && <ThinkingBlock content={visibleThinking} />}
+      {visibleTools.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {visibleTools.map((tool, i) => (
+            <ToolCard key={tool.id || i} name={tool.name} input={tool.input} />
+          ))}
         </div>
       )}
+    </div>
+  );
 
-      {/* Content */}
-      <div
-        className={cn(
-          'flex flex-col w-full min-w-0 max-w-[80%] space-y-2',
-          isUser ? 'items-end' : 'items-start',
-        )}
-      >
-        {isStreaming && !isUser && streamingTools.length > 0 && (
-          <ToolStatusBar tools={streamingTools} />
-        )}
+  const assistantBelowMessage = !isUser && (images.length > 0 || attachedFiles.length > 0) && (
+    <div className={styles.assistantSection}>
+      {images.length > 0 && (
+        <div className={styles.mediaRow}>
+          {images.map((img, i) => {
+            const src = imageSrc(img);
+            if (!src) return null;
+            return (
+              <ImagePreviewCard
+                key={`content-img-${src ?? img.mimeType}-${i}`}
+                src={src}
+                fileName="image"
+                base64={img.data}
+                mimeType={img.mimeType}
+                onPreview={() => setLightboxImg({ src, fileName: 'image', base64: img.data, mimeType: img.mimeType })}
+              />
+            );
+          })}
+        </div>
+      )}
+      {attachedFiles.length > 0 && (
+        <div className={styles.mediaRow}>
+          {attachedFiles.map((file, i) => {
+            const isImage = file.mimeType.startsWith('image/');
+            const previewSrc = file.preview;
+            if (isImage && images.length > 0) return null;
+            if (isImage && previewSrc) {
+              return (
+                <ImagePreviewCard
+                  key={`local-img-${file.fileName}-${i}`}
+                  src={previewSrc}
+                  fileName={file.fileName}
+                  filePath={file.filePath}
+                  mimeType={file.mimeType}
+                  onPreview={() => setLightboxImg({ src: previewSrc, fileName: file.fileName, filePath: file.filePath, mimeType: file.mimeType })}
+                />
+              );
+            }
+            if (isImage && !previewSrc) {
+              return (
+                <div key={`local-nopreview-${file.fileName}-${i}`} style={{ width: 144, height: 144, borderRadius: 8, border: '1px solid rgba(0,0,0,0.1)', background: 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <File style={{ width: 32, height: 32, opacity: 0.5 }} />
+                </div>
+              );
+            }
+            return <FileCard key={`local-file-${file.fileName}-${i}`} file={file} />;
+          })}
+        </div>
+      )}
+    </div>
+  );
 
-        {/* Thinking section */}
-        {visibleThinking && (
-          <ThinkingBlock content={visibleThinking} />
-        )}
+  if (!isUser) {
+    return (
+      <>
+        <ChatItem
+          actions={hasText ? <AssistantActions text={text} /> : undefined}
+          avatar={{
+            avatar: <RobotOutlined />,
+            backgroundColor: 'rgba(0,0,0,0.06)',
+            title: 'Assistant',
+          }}
+          className={styles.assistantItem}
+          aboveMessage={assistantAboveMessage}
+          belowMessage={assistantBelowMessage}
+          message={text}
+          placement="left"
+          renderMessage={(editableContent) => (
+            <div className={styles.assistantRender}>
+              {editableContent}
+              {isStreaming && <span className={styles.streamCursor} />}
+            </div>
+          )}
+          showTitle={false}
+          time={message.timestamp}
+          variant="bubble"
+        />
 
-        {/* Tool use cards */}
-        {visibleTools.length > 0 && (
-          <div className="space-y-1">
-            {visibleTools.map((tool, i) => (
-              <ToolCard key={tool.id || i} name={tool.name} input={tool.input} />
-            ))}
-          </div>
+        {lightboxImg && (
+          <ImageLightbox
+            src={lightboxImg.src}
+            fileName={lightboxImg.fileName}
+            filePath={lightboxImg.filePath}
+            base64={lightboxImg.base64}
+            mimeType={lightboxImg.mimeType}
+            onClose={() => setLightboxImg(null)}
+          />
         )}
+      </>
+    );
+  }
 
-        {/* Images — rendered ABOVE text bubble for user messages */}
-        {/* Images from content blocks (Gateway session data / channel push photos) */}
+  return (
+    <div className={cx(styles.messageRow, isUser && styles.messageRowUser)}>
+      {/* Content column */}
+      <div className={cx(styles.contentCol, isUser ? styles.contentColUser : styles.contentColAssistant)}>
+        {/* Images (user) — above text */}
         {isUser && images.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {images.map((img, i) => {
               const src = imageSrc(img);
               if (!src) return null;
               return (
                 <ImageThumbnail
-                  key={`content-${i}`}
+                  key={`content-img-${src ?? img.mimeType}-${i}`}
                   src={src}
                   fileName="image"
                   base64={img.data}
@@ -123,111 +434,46 @@ export const ChatMessage = memo(function ChatMessage({
           </div>
         )}
 
-        {/* File attachments — images above text for user, file cards below */}
+        {/* File attachments (user) */}
         {isUser && attachedFiles.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {attachedFiles.map((file, i) => {
               const isImage = file.mimeType.startsWith('image/');
-              // Skip image attachments if we already have images from content blocks
               if (isImage && images.length > 0) return null;
               if (isImage) {
-                return file.preview ? (
+                const previewSrc = file.preview;
+                return previewSrc ? (
                   <ImageThumbnail
-                    key={`local-${i}`}
-                    src={file.preview}
+                    key={`local-img-${file.fileName}-${i}`}
+                    src={previewSrc}
                     fileName={file.fileName}
                     filePath={file.filePath}
                     mimeType={file.mimeType}
-                    onPreview={() => setLightboxImg({ src: file.preview!, fileName: file.fileName, filePath: file.filePath, mimeType: file.mimeType })}
+                    onPreview={() => setLightboxImg({ src: previewSrc, fileName: file.fileName, filePath: file.filePath, mimeType: file.mimeType })}
                   />
                 ) : (
-                  <div
-                    key={`local-${i}`}
-                    className="w-36 h-36 rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 flex items-center justify-center text-muted-foreground"
-                  >
-                    <File className="h-8 w-8" />
+                  <div key={`local-nopreview-${file.fileName}-${i}`} style={{ width: 144, height: 144, borderRadius: 8, border: '1px solid rgba(0,0,0,0.1)', background: 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <File style={{ width: 32, height: 32, opacity: 0.5 }} />
                   </div>
                 );
               }
-              // Non-image files → file card
-              return <FileCard key={`local-${i}`} file={file} />;
+              return <FileCard key={`local-file-${file.fileName}-${i}`} file={file} />;
             })}
           </div>
         )}
 
         {/* Main text bubble */}
         {hasText && (
-          <MessageBubble
-            text={text}
-            isUser={isUser}
-            isStreaming={isStreaming}
-          />
+          <MessageBubble text={text} isUser={isUser} isStreaming={isStreaming} />
         )}
 
-        {/* Images from content blocks — assistant messages (below text) */}
-        {!isUser && images.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {images.map((img, i) => {
-              const src = imageSrc(img);
-              if (!src) return null;
-              return (
-                <ImagePreviewCard
-                  key={`content-${i}`}
-                  src={src}
-                  fileName="image"
-                  base64={img.data}
-                  mimeType={img.mimeType}
-                  onPreview={() => setLightboxImg({ src, fileName: 'image', base64: img.data, mimeType: img.mimeType })}
-                />
-              );
-            })}
-          </div>
-        )}
-
-        {/* File attachments — assistant messages (below text) */}
-        {!isUser && attachedFiles.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {attachedFiles.map((file, i) => {
-              const isImage = file.mimeType.startsWith('image/');
-              if (isImage && images.length > 0) return null;
-              if (isImage && file.preview) {
-                return (
-                  <ImagePreviewCard
-                    key={`local-${i}`}
-                    src={file.preview}
-                    fileName={file.fileName}
-                    filePath={file.filePath}
-                    mimeType={file.mimeType}
-                    onPreview={() => setLightboxImg({ src: file.preview!, fileName: file.fileName, filePath: file.filePath, mimeType: file.mimeType })}
-                  />
-                );
-              }
-              if (isImage && !file.preview) {
-                return (
-                  <div key={`local-${i}`} className="w-36 h-36 rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 flex items-center justify-center text-muted-foreground">
-                    <File className="h-8 w-8" />
-                  </div>
-                );
-              }
-              return <FileCard key={`local-${i}`} file={file} />;
-            })}
-          </div>
-        )}
-
-        {/* Hover row for user messages — timestamp only */}
+        {/* User timestamp */}
         {isUser && message.timestamp && (
-          <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200 select-none">
-            {formatTimestamp(message.timestamp)}
-          </span>
-        )}
-
-        {/* Hover row for assistant messages — only when there is real text content */}
-        {!isUser && hasText && (
-          <AssistantHoverBar text={text} timestamp={message.timestamp} />
+          <span style={{ fontSize: 12, color: 'var(--ant-color-text-quaternary)' }}>{formatTimestamp(message.timestamp)}</span>
         )}
       </div>
 
-      {/* Image lightbox portal */}
+      {/* Lightbox */}
       {lightboxImg && (
         <ImageLightbox
           src={lightboxImg.src}
@@ -241,6 +487,73 @@ export const ChatMessage = memo(function ChatMessage({
     </div>
   );
 });
+
+// ── Message Bubble ───────────────────────────────────────────────
+
+function MessageBubble({ text, isUser, isStreaming }: { text: string; isUser: boolean; isStreaming: boolean }) {
+  const { styles } = useStyles();
+
+  if (isUser) {
+    return (
+      <div className={styles.bubbleUser}>
+        {text}
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.bubbleAssistant}>
+      <Markdown>{text}</Markdown>
+      {isStreaming && <span className={styles.streamCursor} />}
+    </div>
+  );
+}
+
+// ── Thinking Block ───────────────────────────────────────────────
+
+function ThinkingBlock({ content }: { content: string }) {
+  const { styles } = useStyles();
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className={styles.thinkingBlock}>
+      <button type="button" className={styles.thinkingHeader} onClick={() => setExpanded(!expanded)}>
+        {expanded ? <ChevronDown style={{ width: 14, height: 14 }} /> : <ChevronRight style={{ width: 14, height: 14 }} />}
+        <span style={{ fontWeight: 500 }}>Thinking</span>
+      </button>
+      {expanded && (
+        <div className={styles.thinkingBody}>
+          <Markdown>{content}</Markdown>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Tool Card ────────────────────────────────────────────────────
+
+function ToolCard({ name, input }: { name: string; input: unknown }) {
+  const { styles } = useStyles();
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className={styles.toolCard}>
+      <button type="button" className={styles.toolCardHeader} onClick={() => setExpanded(!expanded)}>
+        <CheckCircle2 style={{ width: 14, height: 14, color: '#22c55e', flexShrink: 0 }} />
+        <Wrench style={{ width: 12, height: 12, flexShrink: 0, opacity: 0.6 }} />
+        <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{name}</span>
+        {expanded ? <ChevronDown style={{ width: 12, height: 12, marginLeft: 'auto' }} /> : <ChevronRight style={{ width: 12, height: 12, marginLeft: 'auto' }} />}
+      </button>
+      {expanded && input != null && (
+        <pre className={styles.toolCardBody}>
+          {typeof input === 'string' ? input : JSON.stringify(input, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+// ── Tool Status Bar ──────────────────────────────────────────────
 
 function formatDuration(durationMs?: number): string | null {
   if (!durationMs || !Number.isFinite(durationMs)) return null;
@@ -260,8 +573,10 @@ function ToolStatusBar({
     summary?: string;
   }>;
 }) {
+  const { styles, cx } = useStyles();
+
   return (
-    <div className="w-full space-y-1">
+    <div className={styles.toolStatusBar}>
       {tools.map((tool) => {
         const duration = formatDuration(tool.durationMs);
         const isRunning = tool.status === 'running';
@@ -269,22 +584,20 @@ function ToolStatusBar({
         return (
           <div
             key={tool.toolCallId || tool.id || tool.name}
-            className={cn(
-              'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-colors',
-              isRunning && 'border-primary/30 bg-primary/5 text-foreground',
-              !isRunning && !isError && 'border-border/50 bg-muted/20 text-muted-foreground',
-              isError && 'border-destructive/30 bg-destructive/5 text-destructive',
+            className={cx(
+              styles.toolStatusItem,
+              isRunning && styles.toolStatusRunning,
+              !isRunning && !isError && styles.toolStatusDone,
+              isError && styles.toolStatusError,
             )}
           >
-            {isRunning && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary shrink-0" />}
-            {!isRunning && !isError && <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />}
-            {isError && <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />}
-            <Wrench className="h-3 w-3 shrink-0 opacity-60" />
-            <span className="font-mono text-[12px] font-medium">{tool.name}</span>
-            {duration && <span className="text-[11px] opacity-60">{tool.summary ? `(${duration})` : duration}</span>}
-            {tool.summary && (
-              <span className="truncate text-[11px] opacity-70">{tool.summary}</span>
-            )}
+            {isRunning && <Loader2 style={{ width: 14, height: 14, flexShrink: 0, animation: 'spin 1s linear infinite' }} />}
+            {!isRunning && !isError && <CheckCircle2 style={{ width: 14, height: 14, color: '#22c55e', flexShrink: 0 }} />}
+            {isError && <AlertCircle style={{ width: 14, height: 14, flexShrink: 0 }} />}
+            <Wrench style={{ width: 12, height: 12, flexShrink: 0, opacity: 0.6 }} />
+            <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 500 }}>{tool.name}</span>
+            {duration && <span style={{ fontSize: 11, opacity: 0.6 }}>{tool.summary ? `(${duration})` : duration}</span>}
+            {tool.summary && <span style={{ fontSize: 11, opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tool.summary}</span>}
           </div>
         );
       })}
@@ -292,9 +605,9 @@ function ToolStatusBar({
   );
 }
 
-// ── Assistant hover bar (timestamp + copy, shown on group hover) ─
+// ── Assistant Hover Bar ──────────────────────────────────────────
 
-function AssistantHoverBar({ text, timestamp }: { text: string; timestamp?: number }) {
+function AssistantActions({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
 
   const copyContent = useCallback(() => {
@@ -304,115 +617,16 @@ function AssistantHoverBar({ text, timestamp }: { text: string; timestamp?: numb
   }, [text]);
 
   return (
-    <div className="flex items-center justify-between w-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 select-none px-1">
-      <span className="text-xs text-muted-foreground">
-        {timestamp ? formatTimestamp(timestamp) : ''}
-      </span>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6"
-        onClick={copyContent}
-      >
-        {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-      </Button>
-    </div>
+    <ActionIcon
+      icon={copied ? CheckOutlined : CopyOutlined}
+      size="small"
+      onClick={copyContent}
+      style={copied ? { color: '#22c55e' } : undefined}
+    />
   );
 }
 
-// ── Message Bubble ──────────────────────────────────────────────
-
-function MessageBubble({
-  text,
-  isUser,
-  isStreaming,
-}: {
-  text: string;
-  isUser: boolean;
-  isStreaming: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        'relative rounded-2xl px-4 py-3',
-        !isUser && 'w-full',
-        isUser
-          ? 'bg-[#0a84ff] text-white shadow-sm'
-          : 'bg-black/5 dark:bg-white/5 text-foreground',
-      )}
-    >
-      {isUser ? (
-        <p className="whitespace-pre-wrap break-words break-all text-sm">{text}</p>
-      ) : (
-        <div className="prose prose-sm dark:prose-invert max-w-none break-words break-all">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              code({ className, children, ...props }) {
-                const match = /language-(\w+)/.exec(className || '');
-                const isInline = !match && !className;
-                if (isInline) {
-                  return (
-                    <code className="bg-background/50 px-1.5 py-0.5 rounded text-sm font-mono break-words break-all" {...props}>
-                      {children}
-                    </code>
-                  );
-                }
-                return (
-                  <pre className="bg-background/50 rounded-lg p-4 overflow-x-auto">
-                    <code className={cn('text-sm font-mono', className)} {...props}>
-                      {children}
-                    </code>
-                  </pre>
-                );
-              },
-              a({ href, children }) {
-                return (
-                  <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-words break-all">
-                    {children}
-                  </a>
-                );
-              },
-            }}
-          >
-            {text}
-          </ReactMarkdown>
-          {isStreaming && (
-            <span className="inline-block w-2 h-4 bg-foreground/50 animate-pulse ml-0.5" />
-          )}
-        </div>
-      )}
-
-    </div>
-  );
-}
-
-// ── Thinking Block ──────────────────────────────────────────────
-
-function ThinkingBlock({ content }: { content: string }) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div className="w-full rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 text-[14px]">
-      <button
-        className="flex items-center gap-2 w-full px-3 py-2 text-muted-foreground hover:text-foreground transition-colors"
-        onClick={() => setExpanded(!expanded)}
-      >
-        {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-        <span className="font-medium">Thinking</span>
-      </button>
-      {expanded && (
-        <div className="px-3 pb-3 text-muted-foreground">
-          <div className="prose prose-sm dark:prose-invert max-w-none opacity-75">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── File Card (for user-uploaded non-image files) ───────────────
+// ── File Helpers ─────────────────────────────────────────────────
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -421,16 +635,18 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
-function FileIcon({ mimeType, className }: { mimeType: string; className?: string }) {
-  if (mimeType.startsWith('video/')) return <Film className={className} />;
-  if (mimeType.startsWith('audio/')) return <Music className={className} />;
-  if (mimeType.startsWith('text/') || mimeType === 'application/json' || mimeType === 'application/xml') return <FileText className={className} />;
-  if (mimeType.includes('zip') || mimeType.includes('compressed') || mimeType.includes('archive') || mimeType.includes('tar') || mimeType.includes('rar') || mimeType.includes('7z')) return <FileArchive className={className} />;
-  if (mimeType === 'application/pdf') return <FileText className={className} />;
-  return <File className={className} />;
+function FileIconComp({ mimeType, style }: { mimeType: string; style?: React.CSSProperties }) {
+  if (mimeType.startsWith('video/')) return <Film style={style} />;
+  if (mimeType.startsWith('audio/')) return <Music style={style} />;
+  if (mimeType.startsWith('text/') || mimeType === 'application/json' || mimeType === 'application/xml') return <FileText style={style} />;
+  if (mimeType.includes('zip') || mimeType.includes('compressed') || mimeType.includes('archive') || mimeType.includes('tar') || mimeType.includes('rar') || mimeType.includes('7z')) return <FileArchive style={style} />;
+  if (mimeType === 'application/pdf') return <FileText style={style} />;
+  return <File style={style} />;
 }
 
 function FileCard({ file }: { file: AttachedFileMeta }) {
+  const { styles } = useStyles();
+
   const handleOpen = useCallback(() => {
     if (file.filePath) {
       invokeIpc('shell:openPath', file.filePath);
@@ -438,186 +654,115 @@ function FileCard({ file }: { file: AttachedFileMeta }) {
   }, [file.filePath]);
 
   return (
-    <div 
-      className={cn(
-        "flex items-center gap-3 rounded-xl border border-black/10 dark:border-white/10 px-3 py-2.5 bg-black/5 dark:bg-white/5 max-w-[220px]",
-        file.filePath && "cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-      )}
+    <button
+      type="button"
+      className={styles.fileCard}
       onClick={handleOpen}
-      title={file.filePath ? "Open file" : undefined}
+      title={file.filePath ? 'Open file' : undefined}
     >
-      <FileIcon mimeType={file.mimeType} className="h-5 w-5 shrink-0 text-muted-foreground" />
-      <div className="min-w-0 overflow-hidden">
-        <p className="text-xs font-medium truncate">{file.fileName}</p>
-        <p className="text-[10px] text-muted-foreground">
+      <FileIconComp mimeType={file.mimeType} style={{ width: 20, height: 20, flexShrink: 0, opacity: 0.6 }} />
+      <div style={{ minWidth: 0, overflow: 'hidden' }}>
+        <p style={{ fontSize: 12, fontWeight: 500, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.fileName}</p>
+        <p style={{ fontSize: 10, margin: 0, opacity: 0.6 }}>
           {file.fileSize > 0 ? formatFileSize(file.fileSize) : 'File'}
         </p>
       </div>
-    </div>
+    </button>
   );
 }
 
-// ── Image Thumbnail (user bubble — square crop with zoom hint) ──
+// ── Image Thumbnail ──────────────────────────────────────────────
 
-function ImageThumbnail({
-  src,
-  fileName,
-  filePath,
-  base64,
-  mimeType,
-  onPreview,
-}: {
-  src: string;
-  fileName: string;
-  filePath?: string;
-  base64?: string;
-  mimeType?: string;
-  onPreview: () => void;
+function ImageThumbnail({ src, fileName, filePath, base64, mimeType, onPreview }: {
+  src: string; fileName: string; filePath?: string; base64?: string; mimeType?: string; onPreview: () => void;
 }) {
   void filePath; void base64; void mimeType;
+  const { styles } = useStyles();
   return (
-    <div
-      className="relative w-36 h-36 rounded-xl border overflow-hidden border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 group/img cursor-zoom-in"
+    <button
+      type="button"
+      className={styles.imageThumbnail}
       onClick={onPreview}
+      onKeyDown={(e) => e.key === 'Enter' && onPreview()}
     >
-      <img src={src} alt={fileName} className="w-full h-full object-cover" />
-      <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/25 transition-colors flex items-center justify-center">
-        <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover/img:opacity-100 transition-opacity drop-shadow" />
+      <img src={src} alt={fileName} />
+      <div className="overlay">
+        <ZoomIn style={{ width: 24, height: 24, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
       </div>
-    </div>
+    </button>
   );
 }
 
-// ── Image Preview Card (assistant bubble — natural size with overlay actions) ──
+// ── Image Preview Card ───────────────────────────────────────────
 
-function ImagePreviewCard({
-  src,
-  fileName,
-  filePath,
-  base64,
-  mimeType,
-  onPreview,
-}: {
-  src: string;
-  fileName: string;
-  filePath?: string;
-  base64?: string;
-  mimeType?: string;
-  onPreview: () => void;
+function ImagePreviewCard({ src, fileName, filePath, base64, mimeType, onPreview }: {
+  src: string; fileName: string; filePath?: string; base64?: string; mimeType?: string; onPreview: () => void;
 }) {
   void filePath; void base64; void mimeType;
+  const { styles } = useStyles();
   return (
-    <div
-      className="relative max-w-xs rounded-xl border overflow-hidden border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 group/img cursor-zoom-in"
+    <button
+      type="button"
+      className={styles.imagePreviewCard}
       onClick={onPreview}
+      onKeyDown={(e) => e.key === 'Enter' && onPreview()}
     >
-      <img src={src} alt={fileName} className="block w-full" />
-      <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors flex items-center justify-center">
-        <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover/img:opacity-100 transition-opacity drop-shadow" />
+      <img src={src} alt={fileName} />
+      <div className="overlay">
+        <ZoomIn style={{ width: 24, height: 24, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
       </div>
-    </div>
+    </button>
   );
 }
 
 // ── Image Lightbox ───────────────────────────────────────────────
 
-function ImageLightbox({
-  src,
-  fileName,
-  filePath,
-  base64,
-  mimeType,
-  onClose,
-}: {
-  src: string;
-  fileName: string;
-  filePath?: string;
-  base64?: string;
-  mimeType?: string;
-  onClose: () => void;
+function ImageLightbox({ src, fileName, filePath, base64, mimeType, onClose }: {
+  src: string; fileName: string; filePath?: string; base64?: string; mimeType?: string; onClose: () => void;
 }) {
   void src; void base64; void mimeType; void fileName;
 
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
   const handleShowInFolder = useCallback(() => {
-    if (filePath) {
-      invokeIpc('shell:showItemInFolder', filePath);
-    }
+    if (filePath) invokeIpc('shell:showItemInFolder', filePath);
   }, [filePath]);
 
   return createPortal(
+    // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard handled via Escape key listener
+    // biome-ignore lint/a11y/noStaticElementInteractions: lightbox backdrop
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)' }}
       onClick={onClose}
     >
-      {/* Image + buttons stacked */}
-      <div
-        className="flex flex-col items-center gap-3"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <img
-          src={src}
-          alt={fileName}
-          className="max-w-[90vw] max-h-[85vh] rounded-lg shadow-2xl object-contain"
-        />
-
-        {/* Action buttons below image */}
-        <div className="flex items-center gap-2">
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: stop propagation */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: stop propagation */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }} onClick={(e) => e.stopPropagation()}>
+        <img src={src} alt={fileName} style={{ maxWidth: '90vw', maxHeight: '85vh', borderRadius: 8, boxShadow: '0 25px 50px rgba(0,0,0,0.5)', objectFit: 'contain' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {filePath && (
             <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 bg-white/10 hover:bg-white/20 text-white"
+              type="text"
+              icon={<FolderOpen style={{ width: 16, height: 16 }} />}
+              style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none' }}
               onClick={handleShowInFolder}
               title="在文件夹中显示"
-            >
-              <FolderOpen className="h-4 w-4" />
-            </Button>
+            />
           )}
           <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 bg-white/10 hover:bg-white/20 text-white"
+            type="text"
+            icon={<X style={{ width: 16, height: 16 }} />}
+            style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none' }}
             onClick={onClose}
             title="关闭"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          />
         </div>
       </div>
     </div>,
     document.body,
-  );
-}
-
-// ── Tool Card ───────────────────────────────────────────────────
-
-function ToolCard({ name, input }: { name: string; input: unknown }) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div className="rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 text-[14px]">
-      <button
-        className="flex items-center gap-2 w-full px-3 py-1.5 text-muted-foreground hover:text-foreground transition-colors"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
-        <Wrench className="h-3 w-3 shrink-0 opacity-60" />
-        <span className="font-mono text-xs">{name}</span>
-        {expanded ? <ChevronDown className="h-3 w-3 ml-auto" /> : <ChevronRight className="h-3 w-3 ml-auto" />}
-      </button>
-      {expanded && input != null && (
-        <pre className="px-3 pb-2 text-xs text-muted-foreground overflow-x-auto">
-          {typeof input === 'string' ? input : JSON.stringify(input, null, 2) as string}
-        </pre>
-      )}
-    </div>
   );
 }

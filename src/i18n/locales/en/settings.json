@@ -218,7 +218,18 @@
     "currentVersion": "Current Version",
     "whatsNew": "What's New:",
     "errorDetails": "Error Details:",
-    "help": "When auto-update is enabled, updates are downloaded and installed automatically."
+    "help": "When auto-update is enabled, updates are downloaded and installed automatically.",
+    "forceModal": {
+      "titleDefault": "Update required",
+      "belowMinimum": "Your version is below the minimum supported version. Please update to continue.",
+      "newVersion": "A newer version is available. We recommend updating now for the latest fixes and features.",
+      "target": "Target version: v{{version}}",
+      "learnMore": "Learn more",
+      "later": "Not now",
+      "openSettings": "Open settings",
+      "quit": "Quit app",
+      "check": "Check for updates"
+    }
   },
   "advanced": {
     "title": "Advanced",

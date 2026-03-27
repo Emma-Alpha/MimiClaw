@@ -6,6 +6,8 @@ interface ImportMetaEnv {
   readonly VITE_XIAOJIU_APP_ID?: string;
   readonly VITE_XIAOJIU_CALLBACK_URL?: string;
   readonly VITE_XIAOJIU_EXCHANGE_PATH?: string;
+  /** HTTPS URL returning JSON update policy (see README / .env.example). */
+  readonly VITE_UPDATE_POLICY_URL?: string;
 }
 
 interface ImportMeta {

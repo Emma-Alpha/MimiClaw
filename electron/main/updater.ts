@@ -41,6 +41,29 @@ function detectChannel(version: string): string {
   return match ? match[1] : 'latest';
 }
 
+/**
+ * Fetch remote JSON update policy (HTTPS only). Used by renderer via IPC to avoid CORS.
+ */
+export async function fetchUpdatePolicyJson(urlString: string): Promise<unknown> {
+  let url: URL;
+  try {
+    url = new URL(urlString);
+  } catch {
+    throw new Error('Invalid update policy URL');
+  }
+  if (url.protocol !== 'https:') {
+    throw new Error('Update policy URL must use HTTPS');
+  }
+  const res = await fetch(urlString, {
+    redirect: 'follow',
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) {
+    throw new Error(`Update policy request failed (${res.status})`);
+  }
+  return await res.json();
+}
+
 export class AppUpdater extends EventEmitter {
   private mainWindow: BrowserWindow | null = null;
   private status: UpdateStatus = { status: 'idle' };
@@ -348,6 +371,20 @@ export function registerUpdateHandlers(
     return { success: true };
   });
 
+  ipcMain.handle('update:fetchPolicy', async (_, url: unknown) => {
+    try {
+      if (typeof url !== 'string' || !url.trim()) {
+        return { success: false, error: 'Invalid URL' };
+      }
+      const json = await fetchUpdatePolicyJson(url.trim());
+      return { success: true, json };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
 }
 
 // Export singleton instance

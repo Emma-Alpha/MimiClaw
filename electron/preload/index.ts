@@ -70,6 +70,7 @@ const electronAPI = {
         'update:setChannel',
         'update:setAutoDownload',
         'update:cancelAutoInstall',
+        'update:fetchPolicy',
         // Env
         'env:getConfig',
         'env:setApiKey',

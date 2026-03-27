@@ -217,11 +217,11 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'flex shrink-0 flex-col border-r bg-[#eae8e1]/60 dark:bg-background transition-all duration-300',
+        'flex shrink-0 flex-col bg-[#F9FAFB] dark:bg-[#1E1E20] transition-all duration-300 pt-6',
         sidebarCollapsed ? 'w-16' : 'w-64'
       )}
     >
-      {/* Top Header Toggle */}
+      {/* Top Header Toggle (also serves as drag region on macOS) */}
       <div className={cn("flex items-center p-2 h-12", sidebarCollapsed ? "justify-center" : "justify-between")}>
         {!sidebarCollapsed && (
           <div className="flex items-center gap-2 px-2 overflow-hidden">
@@ -234,7 +234,7 @@ export function Sidebar() {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10"
+          className="no-drag h-8 w-8 shrink-0 text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10 relative z-[110]"
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
         >
           {sidebarCollapsed ? (

@@ -13,7 +13,8 @@ export function TitleBar() {
 
   if (platform === 'darwin') {
     // macOS: just a drag region, traffic lights are native
-    return <div className="drag-region h-10 shrink-0 border-b bg-background" />;
+    // We need a drag region at the top. We make it absolute so it doesn't push content down.
+    return <div className="drag-region h-10 w-full shrink-0 bg-transparent absolute top-0 left-0 z-[100]" />;
   }
 
   // Linux keeps the native frame/title bar for better IME compatibility.
@@ -51,10 +52,10 @@ function WindowsTitleBar() {
   };
 
   return (
-    <div className="drag-region flex h-10 shrink-0 items-center justify-end border-b bg-background">
+    <div className="drag-region flex h-10 w-full shrink-0 items-center justify-end bg-transparent absolute top-0 left-0 z-[100]">
 
       {/* Right: Window Controls */}
-      <div className="no-drag flex h-full">
+      <div className="no-drag flex h-full pointer-events-auto">
         <button
           onClick={handleMinimize}
           className="flex h-full w-11 items-center justify-center text-muted-foreground hover:bg-accent transition-colors"
