@@ -1,11 +1,11 @@
 # ClawX Release Workflow
-# Each platform builds and publishes to GitHub Release independently (no cross-platform wait).
-# COS upload runs once after all platforms complete (needs all platform YML files).
+# Three fully-independent platform pipelines — no cross-platform waiting.
 #
-# Pipeline topology:
-#   release-mac   ──→ publish to GitHub Release ─┐
-#   release-win   ──→ publish to GitHub Release  ─┼─→ upload-cos → finalize
-#   release-linux ──→ publish to GitHub Release ─┘
+# Topology:
+#   cos-clean ─────────────────────────────────────────────────────────────────────┐
+#   build-mac   → publish-mac   → cos-upload-mac   (needs: cos-clean + build-mac)  │→ finalize
+#   build-win   → publish-win   → cos-upload-win   (needs: cos-clean + build-win)  │
+#   build-linux → publish-linux → cos-upload-linux (needs: cos-clean + build-linux)│
 
 name: Release
 
@@ -19,7 +19,6 @@ on:
         description: 'Version to release (e.g., 1.0.0)'
         required: true
 
-# Cancel any in-progress run for the same ref (e.g. rapid tag re-push)
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: true
@@ -28,37 +27,73 @@ permissions:
   contents: write
   actions: read
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Reusable setup steps shared by all three build jobs (via anchors)
+# ─────────────────────────────────────────────────────────────────────────────
+
 jobs:
   # ──────────────────────────────────────────────────────────────
-  # Job: Build + Publish (runs in parallel per platform)
-  # Each platform builds and immediately publishes its artifacts to
-  # GitHub Release — no waiting for other platforms.
+  # Pre-job: clear the COS channel directory so per-platform uploads
+  # don't conflict with each other (no rm -r race condition).
+  # Runs in parallel with all three builds — zero extra wait time.
   # ──────────────────────────────────────────────────────────────
-  release:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            platform: mac
-          - os: windows-latest
-            platform: win
-          - os: ubuntu-latest
-            platform: linux
-
-    runs-on: ${{ matrix.os }}
-
+  cos-clean:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Extract channel
+        id: ch
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          if [[ "$VERSION" =~ -([a-zA-Z]+) ]]; then
+            echo "channel=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+          else
+            echo "channel=latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install coscli
+        run: |
+          wget -q "https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux" -O /tmp/coscli
+          chmod +x /tmp/coscli
+          sudo mv /tmp/coscli /usr/local/bin/coscli
+
+      - name: Configure coscli
+        env:
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+        run: |
+          cat > ~/.cos.yaml << EOF
+          cos:
+            base:
+              secretid: "${COS_SECRET_ID}"
+              secretkey: "${COS_SECRET_KEY}"
+              sessiontoken: ""
+              protocol: https
+            buckets:
+              - name: "cobot-1254397474"
+                region: "ap-guangzhou"
+                endpoint: "cos.ap-guangzhou.myqcloud.com"
+                alias: "cobot-1254397474"
+          EOF
+
+      - name: Clear COS channel directory
+        run: |
+          CHANNEL="${{ steps.ch.outputs.channel }}"
+          coscli rm -r cos://cobot-1254397474/${CHANNEL}/ -f || true
+          echo "Cleared ${CHANNEL}/"
+
+  # ──────────────────────────────────────────────────────────────
+  # macOS pipeline: build → publish to GitHub Release → upload COS
+  # ──────────────────────────────────────────────────────────────
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'pnpm'
@@ -68,25 +103,19 @@ jobs:
         shell: bash
         run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - name: Cache pnpm store
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          restore-keys: ${{ runner.os }}-pnpm-store-
 
-      - name: Cache Electron downloads
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cache/electron
             ~/.cache/electron-builder
-            ~/AppData/Local/electron/Cache
-            ~/AppData/Local/electron-builder/Cache
           key: ${{ runner.os }}-electron-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-electron-
+          restore-keys: ${{ runner.os }}-electron-
 
       - name: Cache Vite build output
         id: cache-vite
@@ -96,37 +125,21 @@ jobs:
             dist
             dist-electron
           key: ${{ runner.os }}-vite-${{ hashFiles('src/**', 'electron/**', 'shared/**', 'vite.config.*', 'tsconfig*.json', 'pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-vite-
+          restore-keys: ${{ runner.os }}-vite-
 
-      - name: Cache build bundle outputs
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: |
             build/openclaw
             build/openclaw-plugins
             build/preinstalled-skills
           key: ${{ runner.os }}-build-bundles-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-build-bundles-
+          restore-keys: ${{ runner.os }}-build-bundles-
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Download uv binaries for macOS
-        if: matrix.platform == 'mac'
-        run: pnpm run uv:download:mac
-
-      - name: Download uv binaries for Windows
-        if: matrix.platform == 'win'
-        run: pnpm run uv:download:win
-
-      - name: Download uv binaries for Linux
-        if: matrix.platform == 'linux'
-        run: pnpm run uv:download:linux
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run uv:download:mac
 
       - name: Build macOS
-        if: matrix.platform == 'mac'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
@@ -136,30 +149,11 @@ jobs:
           ulimit -n 65536
           pnpm run package:mac:ci
 
-      - name: Build Windows
-        if: matrix.platform == 'win'
-        env:
-          CI_PARALLELISM: 4
-          SKIP_VITE_BUILD: ${{ steps.cache-vite.outputs.cache-hit == 'true' && 'true' || 'false' }}
-        run: pnpm run package:win:ci
-
-      - name: Build Linux
-        if: matrix.platform == 'linux'
-        env:
-          CI_PARALLELISM: 4
-          SKIP_VITE_BUILD: ${{ steps.cache-vite.outputs.cache-hit == 'true' && 'true' || 'false' }}
-        run: pnpm run package:linux:ci
-
-      # Remove builder-debug.yml before publishing
       - name: Remove builder-debug.yml
-        shell: bash
         run: find release/ -name "builder-debug.yml" -delete || true
 
-      # ── Publish: macOS ─────────────────────────────────────────
-      # macOS sets the release body and generates release notes.
-      # The other platforms just append their files.
-      - name: Publish macOS artifacts to GitHub Release
-        if: matrix.platform == 'mac' && startsWith(github.ref, 'refs/tags/')
+      - name: Publish macOS to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -212,9 +206,137 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── Publish: Windows ───────────────────────────────────────
-      - name: Publish Windows artifacts to GitHub Release
-        if: matrix.platform == 'win' && startsWith(github.ref, 'refs/tags/')
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-mac
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.blockmap
+            release/*.yml
+          retention-days: 7
+
+  cos-upload-mac:
+    needs: [cos-clean, build-mac]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Extract version and channel
+        id: ver
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          if [[ "$VERSION" =~ -([a-zA-Z]+) ]]; then CHANNEL="${BASH_REMATCH[1]}"; else CHANNEL="latest"; fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "channel=${CHANNEL}" >> $GITHUB_OUTPUT
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-mac
+          path: artifacts
+
+      - name: Install & configure coscli
+        env:
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+        run: |
+          wget -q "https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux" -O /tmp/coscli
+          chmod +x /tmp/coscli && sudo mv /tmp/coscli /usr/local/bin/coscli
+          cat > ~/.cos.yaml << EOF
+          cos:
+            base:
+              secretid: "${COS_SECRET_ID}"
+              secretkey: "${COS_SECRET_KEY}"
+              sessiontoken: ""
+              protocol: https
+            buckets:
+              - name: "cobot-1254397474"
+                region: "ap-guangzhou"
+                endpoint: "cos.ap-guangzhou.myqcloud.com"
+                alias: "cobot-1254397474"
+          EOF
+
+      - name: Upload macOS to COS
+        run: |
+          CHANNEL="${{ steps.ver.outputs.channel }}"
+          TAG="${{ steps.ver.outputs.tag }}"
+          for f in artifacts/*; do
+            fname=$(basename "$f")
+            coscli cp "$f" "cos://cobot-1254397474/${CHANNEL}/${fname}" --meta "Cache-Control:no-store,must-revalidate"
+            coscli cp "$f" "cos://cobot-1254397474/releases/${TAG}/${fname}" --meta "Cache-Control:public,max-age=31536000,immutable"
+          done
+          echo "macOS artifacts uploaded to ${CHANNEL}/ and releases/${TAG}/"
+
+  # ──────────────────────────────────────────────────────────────
+  # Windows pipeline: build → publish to GitHub Release → upload COS
+  # ──────────────────────────────────────────────────────────────
+  build-win:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: ${{ runner.os }}-electron-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-electron-
+
+      - name: Cache Vite build output
+        id: cache-vite
+        uses: actions/cache@v4
+        with:
+          path: |
+            dist
+            dist-electron
+          key: ${{ runner.os }}-vite-${{ hashFiles('src/**', 'electron/**', 'shared/**', 'vite.config.*', 'tsconfig*.json', 'pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-vite-
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            build/openclaw
+            build/openclaw-plugins
+            build/preinstalled-skills
+          key: ${{ runner.os }}-build-bundles-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-build-bundles-
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run uv:download:win
+
+      - name: Build Windows
+        env:
+          CI_PARALLELISM: 4
+          SKIP_VITE_BUILD: ${{ steps.cache-vite.outputs.cache-hit == 'true' && 'true' || 'false' }}
+        run: pnpm run package:win:ci
+
+      - name: Remove builder-debug.yml
+        shell: bash
+        run: find release/ -name "builder-debug.yml" -delete || true
+
+      - name: Publish Windows to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -227,9 +349,135 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── Publish: Linux ─────────────────────────────────────────
-      - name: Publish Linux artifacts to GitHub Release
-        if: matrix.platform == 'linux' && startsWith(github.ref, 'refs/tags/')
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-win
+          path: |
+            release/*.exe
+            release/*.blockmap
+            release/*.yml
+          retention-days: 7
+
+  cos-upload-win:
+    needs: [cos-clean, build-win]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Extract version and channel
+        id: ver
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          if [[ "$VERSION" =~ -([a-zA-Z]+) ]]; then CHANNEL="${BASH_REMATCH[1]}"; else CHANNEL="latest"; fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "channel=${CHANNEL}" >> $GITHUB_OUTPUT
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-win
+          path: artifacts
+
+      - name: Install & configure coscli
+        env:
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+        run: |
+          wget -q "https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux" -O /tmp/coscli
+          chmod +x /tmp/coscli && sudo mv /tmp/coscli /usr/local/bin/coscli
+          cat > ~/.cos.yaml << EOF
+          cos:
+            base:
+              secretid: "${COS_SECRET_ID}"
+              secretkey: "${COS_SECRET_KEY}"
+              sessiontoken: ""
+              protocol: https
+            buckets:
+              - name: "cobot-1254397474"
+                region: "ap-guangzhou"
+                endpoint: "cos.ap-guangzhou.myqcloud.com"
+                alias: "cobot-1254397474"
+          EOF
+
+      - name: Upload Windows to COS
+        run: |
+          CHANNEL="${{ steps.ver.outputs.channel }}"
+          TAG="${{ steps.ver.outputs.tag }}"
+          for f in artifacts/*; do
+            fname=$(basename "$f")
+            coscli cp "$f" "cos://cobot-1254397474/${CHANNEL}/${fname}" --meta "Cache-Control:no-store,must-revalidate"
+            coscli cp "$f" "cos://cobot-1254397474/releases/${TAG}/${fname}" --meta "Cache-Control:public,max-age=31536000,immutable"
+          done
+          echo "Windows artifacts uploaded to ${CHANNEL}/ and releases/${TAG}/"
+
+  # ──────────────────────────────────────────────────────────────
+  # Linux pipeline: build → publish to GitHub Release → upload COS
+  # ──────────────────────────────────────────────────────────────
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: ${{ runner.os }}-electron-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-electron-
+
+      - name: Cache Vite build output
+        id: cache-vite
+        uses: actions/cache@v4
+        with:
+          path: |
+            dist
+            dist-electron
+          key: ${{ runner.os }}-vite-${{ hashFiles('src/**', 'electron/**', 'shared/**', 'vite.config.*', 'tsconfig*.json', 'pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-vite-
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            build/openclaw
+            build/openclaw-plugins
+            build/preinstalled-skills
+          key: ${{ runner.os }}-build-bundles-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-build-bundles-
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run uv:download:linux
+
+      - name: Build Linux
+        env:
+          CI_PARALLELISM: 4
+          SKIP_VITE_BUILD: ${{ steps.cache-vite.outputs.cache-hit == 'true' && 'true' || 'false' }}
+        run: pnpm run package:linux:ci
+
+      - name: Remove builder-debug.yml
+        run: find release/ -name "builder-debug.yml" -delete || true
+
+      - name: Publish Linux to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -243,90 +491,114 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Upload artifacts to shared storage (needed by upload-cos job)
-      - name: Upload artifacts
+      - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: release-${{ matrix.platform }}
+          name: release-linux
           path: |
-            release/*.dmg
-            release/*.zip
-            release/*.blockmap
-            release/*.exe
             release/*.AppImage
             release/*.deb
             release/*.rpm
             release/*.yml
           retention-days: 7
 
-  # ──────────────────────────────────────────────────────────────
-  # Job: Upload to Tencent COS
-  # Waits for ALL platforms to finish so the channel directory
-  # contains all electron-updater YML files (latest-mac.yml,
-  # latest.yml, latest-linux.yml) before being published.
-  # ──────────────────────────────────────────────────────────────
-  upload-cos:
-    needs: release
+  cos-upload-linux:
+    needs: [cos-clean, build-linux]
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Extract version and channel
+        id: ver
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          if [[ "$VERSION" =~ -([a-zA-Z]+) ]]; then CHANNEL="${BASH_REMATCH[1]}"; else CHANNEL="latest"; fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "channel=${CHANNEL}" >> $GITHUB_OUTPUT
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-linux
+          path: artifacts
+
+      - name: Install & configure coscli
+        env:
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+        run: |
+          wget -q "https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux" -O /tmp/coscli
+          chmod +x /tmp/coscli && sudo mv /tmp/coscli /usr/local/bin/coscli
+          cat > ~/.cos.yaml << EOF
+          cos:
+            base:
+              secretid: "${COS_SECRET_ID}"
+              secretkey: "${COS_SECRET_KEY}"
+              sessiontoken: ""
+              protocol: https
+            buckets:
+              - name: "cobot-1254397474"
+                region: "ap-guangzhou"
+                endpoint: "cos.ap-guangzhou.myqcloud.com"
+                alias: "cobot-1254397474"
+          EOF
+
+      - name: Upload Linux to COS
+        run: |
+          CHANNEL="${{ steps.ver.outputs.channel }}"
+          TAG="${{ steps.ver.outputs.tag }}"
+          for f in artifacts/*; do
+            fname=$(basename "$f")
+            coscli cp "$f" "cos://cobot-1254397474/${CHANNEL}/${fname}" --meta "Cache-Control:no-store,must-revalidate"
+            coscli cp "$f" "cos://cobot-1254397474/releases/${TAG}/${fname}" --meta "Cache-Control:public,max-age=31536000,immutable"
+          done
+          echo "Linux artifacts uploaded to ${CHANNEL}/ and releases/${TAG}/"
+
+  # ──────────────────────────────────────────────────────────────
+  # Finalize: generate release-info.json, upload to COS, promote release
+  # Runs after ALL three COS uploads complete.
+  # ──────────────────────────────────────────────────────────────
+  finalize:
+    needs: [cos-upload-mac, cos-upload-win, cos-upload-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
 
     steps:
-      - name: Download all platform artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: release-artifacts
-          pattern: release-*
-
       - name: Extract version and channel
-        id: version
+        id: ver
         run: |
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/v}"
-          else
-            VERSION="${{ github.event.inputs.version }}"
-          fi
-
-          if [[ "$VERSION" =~ -([a-zA-Z]+) ]]; then
-            CHANNEL="${BASH_REMATCH[1]}"
-          else
-            CHANNEL="latest"
-          fi
-
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          if [[ "$VERSION" =~ -([a-zA-Z]+) ]]; then CHANNEL="${BASH_REMATCH[1]}"; else CHANNEL="latest"; fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
           echo "channel=${CHANNEL}" >> $GITHUB_OUTPUT
           echo "Detected version: ${VERSION}, channel: ${CHANNEL}"
 
-      - name: Prepare upload directories
+      - name: Install & configure coscli
+        env:
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          TAG="${{ steps.version.outputs.tag }}"
-          CHANNEL="${{ steps.version.outputs.channel }}"
+          wget -q "https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux" -O /tmp/coscli
+          chmod +x /tmp/coscli && sudo mv /tmp/coscli /usr/local/bin/coscli
+          cat > ~/.cos.yaml << EOF
+          cos:
+            base:
+              secretid: "${COS_SECRET_ID}"
+              secretkey: "${COS_SECRET_KEY}"
+              sessiontoken: ""
+              protocol: https
+            buckets:
+              - name: "cobot-1254397474"
+                region: "ap-guangzhou"
+                endpoint: "cos.ap-guangzhou.myqcloud.com"
+                alias: "cobot-1254397474"
+          EOF
 
-          mkdir -p staging/${CHANNEL}
-          mkdir -p staging/releases/${TAG}
-
-          find release-artifacts/ -type f | while read file; do
-            filename=$(basename "$file")
-            cp "$file" "staging/${CHANNEL}/${filename}"
-            cp "$file" "staging/releases/${TAG}/${filename}"
-          done
-
-          echo "=== staging/${CHANNEL}/ ==="
-          ls -lh staging/${CHANNEL}/
-          echo ""
-          echo "=== staging/releases/${TAG}/ ==="
-          ls -lh staging/releases/${TAG}/
-
-      - name: Verify yml files present
+      - name: Generate and upload release-info.json
         run: |
-          CHANNEL="${{ steps.version.outputs.channel }}"
-          echo "=== staging/${CHANNEL}/ (update metadata) ==="
-          ls -la staging/${CHANNEL}/*.yml 2>/dev/null || echo "No yml files found (check electron-builder outputs)"
-
-      - name: Generate release-info.json
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          CHANNEL="${{ steps.version.outputs.channel }}"
+          VERSION="${{ steps.ver.outputs.version }}"
+          CHANNEL="${{ steps.ver.outputs.channel }}"
+          TAG="${{ steps.ver.outputs.tag }}"
           BASE_URL="https://cobot-1254397474.cos.ap-guangzhou.myqcloud.com/${CHANNEL}"
 
           jq -n \
@@ -334,7 +606,7 @@ jobs:
             --arg channel "$CHANNEL" \
             --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --arg base "$BASE_URL" \
-            --arg changelog "https://github.com/${{ github.repository }}/releases/tag/v${VERSION}" \
+            --arg changelog "https://github.com/${{ github.repository }}/releases/tag/${TAG}" \
             '{
               version: $version,
               channel: $channel,
@@ -357,109 +629,32 @@ jobs:
                 }
               },
               changelog: $changelog
-            }' > staging/${CHANNEL}/release-info.json
+            }' > release-info.json
 
-          echo "=== release-info.json ==="
-          cat staging/${CHANNEL}/release-info.json
+          echo "=== release-info.json ===" && cat release-info.json
 
-      - name: Install coscli
-        run: |
-          wget -q "https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux" -O /tmp/coscli
-          chmod +x /tmp/coscli
-          sudo mv /tmp/coscli /usr/local/bin/coscli
-          coscli --version
-
-      - name: Configure coscli
-        env:
-          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
-          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
-        run: |
-          cat > ~/.cos.yaml << EOF
-          cos:
-            base:
-              secretid: "${COS_SECRET_ID}"
-              secretkey: "${COS_SECRET_KEY}"
-              sessiontoken: ""
-              protocol: https
-            buckets:
-              - name: "cobot-1254397474"
-                region: "ap-guangzhou"
-                endpoint: "cos.ap-guangzhou.myqcloud.com"
-                alias: "cobot-1254397474"
-          EOF
-
-      - name: "Upload to COS: {channel}/ (overwrite)"
-        run: |
-          CHANNEL="${{ steps.version.outputs.channel }}"
-          coscli rm -r cos://cobot-1254397474/${CHANNEL}/ -f || true
-          coscli cp -r staging/${CHANNEL}/ cos://cobot-1254397474/${CHANNEL}/ \
+          coscli cp release-info.json "cos://cobot-1254397474/${CHANNEL}/release-info.json" \
             --meta "Cache-Control:no-store,must-revalidate"
-          echo "Uploaded to ${CHANNEL}/"
-
-      - name: "Upload to COS: releases/vX.Y.Z/ (archive)"
-        run: |
-          TAG="${{ steps.version.outputs.tag }}"
-          coscli cp -r staging/releases/${TAG}/ cos://cobot-1254397474/releases/${TAG}/ \
+          coscli cp release-info.json "cos://cobot-1254397474/releases/${TAG}/release-info.json" \
             --meta "Cache-Control:public,max-age=31536000,immutable"
-          echo "Uploaded to releases/${TAG}/"
 
       - name: Verify COS upload
         run: |
-          TAG="${{ steps.version.outputs.tag }}"
-          CHANNEL="${{ steps.version.outputs.channel }}"
+          CHANNEL="${{ steps.ver.outputs.channel }}"
+          TAG="${{ steps.ver.outputs.tag }}"
+          echo "=== ${CHANNEL}/ ===" && coscli ls cos://cobot-1254397474/${CHANNEL}/
+          echo "" && echo "=== releases/${TAG}/ ===" && coscli ls cos://cobot-1254397474/releases/${TAG}/
+          echo "" && echo "All files verified successfully!"
 
-          echo "=== ${CHANNEL}/ ==="
-          coscli ls cos://cobot-1254397474/${CHANNEL}/
-
-          echo ""
-          echo "=== releases/${TAG}/ ==="
-          coscli ls cos://cobot-1254397474/releases/${TAG}/
-
-          echo ""
-          echo "=== Verify release-info.json ==="
-          coscli cp cos://cobot-1254397474/${CHANNEL}/release-info.json /tmp/release-info.json
-          jq . /tmp/release-info.json
-
-          echo ""
-          echo "=== Verify update yml ==="
-          if [ "${CHANNEL}" = "latest" ]; then
-            YML_PREFIX="latest"
-          else
-            YML_PREFIX="${CHANNEL}"
-          fi
-          echo "electron-updater expects ${YML_PREFIX}-mac.yml, ${YML_PREFIX}.yml, etc. in ${CHANNEL}/:"
-          coscli ls cos://cobot-1254397474/${CHANNEL}/ | grep "${YML_PREFIX}.*\\.yml" || echo "(none found)"
-
-          echo ""
-          echo "All files uploaded and verified successfully!"
-
-  # ──────────────────────────────────────────────────────────────
-  # Job: Finalize Release
-  # ──────────────────────────────────────────────────────────────
-  finalize:
-    needs: upload-cos
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-
-    steps:
-      - name: Promote release from pre-release to latest
+      - name: Promote GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          IS_PRERELEASE_CHANNEL=false
-
           if [[ "$TAG" == *"alpha"* ]] || [[ "$TAG" == *"beta"* ]]; then
-            IS_PRERELEASE_CHANNEL=true
-          fi
-
-          if [ "$IS_PRERELEASE_CHANNEL" = "true" ]; then
-            echo "Tag $TAG is an alpha/beta release — keeping as pre-release."
+            echo "Tag $TAG is alpha/beta — keeping as pre-release."
           else
-            echo "Promoting $TAG from pre-release to latest release..."
-            gh release edit "$TAG" \
-              --prerelease=false \
-              --latest \
-              --repo "${{ github.repository }}"
-            echo "Release $TAG is now the latest release."
+            echo "Promoting $TAG to latest release..."
+            gh release edit "$TAG" --prerelease=false --latest --repo "${{ github.repository }}"
+            echo "Done."
           fi
