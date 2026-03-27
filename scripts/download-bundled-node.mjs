@@ -3,6 +3,26 @@
 import 'zx/globals';
 
 const ROOT_DIR = path.resolve(__dirname, '..');
+
+/**
+ * On Windows, deeply-nested node_modules paths (e.g. npm/node_modules/…) cause
+ * fs-extra/rimraf to fail with EPERM. Use `rd /s /q` via cmd.exe instead, which
+ * handles NTFS path-length limits and locked handles more reliably.
+ */
+async function removeDir(dirPath) {
+  if (!await fs.pathExists(dirPath)) return;
+  if (os.platform() === 'win32') {
+    const { execFileSync } = await import('child_process');
+    try {
+      execFileSync('cmd.exe', ['/c', 'rd', '/s', '/q', dirPath], { stdio: 'inherit' });
+    } catch {
+      await fs.remove(dirPath).catch(() => {});
+    }
+  } else {
+    await fs.remove(dirPath);
+  }
+}
+
 const NODE_VERSION = '22.16.0';
 const BASE_URL = `https://nodejs.org/dist/v${NODE_VERSION}`;
 const OUTPUT_BASE = path.join(ROOT_DIR, 'resources', 'bin');
@@ -42,7 +62,7 @@ async function setupTarget(id) {
   if (await fs.pathExists(outputNode)) {
     await fs.remove(outputNode);
   }
-  await fs.remove(tempDir);
+  await removeDir(tempDir);
   await fs.ensureDir(targetDir);
   await fs.ensureDir(tempDir);
 
@@ -78,7 +98,7 @@ async function setupTarget(id) {
     echo(chalk.green`✅ Success: ${outputNode}`);
   } finally {
     await fs.remove(archivePath);
-    await fs.remove(tempDir);
+    await removeDir(tempDir);
   }
 }
 
