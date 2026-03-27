@@ -219,7 +219,7 @@ jobs:
 
   cos-upload-mac:
     needs: [cos-clean, build-mac]
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, cos-upload]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Extract version and channel
@@ -241,8 +241,10 @@ jobs:
           COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
           COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
         run: |
-          wget -q "https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux" -O /tmp/coscli
-          chmod +x /tmp/coscli && sudo mv /tmp/coscli /usr/local/bin/coscli
+          command -v coscli || (
+            wget -q "https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux" -O /tmp/coscli
+            chmod +x /tmp/coscli && sudo mv /tmp/coscli /usr/local/bin/coscli
+          )
           cat > ~/.cos.yaml << EOF
           cos:
             base:
@@ -261,11 +263,20 @@ jobs:
         run: |
           CHANNEL="${{ steps.ver.outputs.channel }}"
           TAG="${{ steps.ver.outputs.tag }}"
+          pids=()
           for f in artifacts/*; do
             fname=$(basename "$f")
-            coscli cp "$f" "cos://cobot-1254397474/${CHANNEL}/${fname}" --meta "Cache-Control:no-store,must-revalidate"
-            coscli cp "$f" "cos://cobot-1254397474/releases/${TAG}/${fname}" --meta "Cache-Control:public,max-age=31536000,immutable"
+            (
+              # Upload once to releases/${TAG}/ then server-side copy to ${CHANNEL}/
+              coscli cp "$f" "cos://cobot-1254397474/releases/${TAG}/${fname}" \
+                --meta "Cache-Control:public,max-age=31536000,immutable" --thread-num 10
+              coscli cp "cos://cobot-1254397474/releases/${TAG}/${fname}" \
+                "cos://cobot-1254397474/${CHANNEL}/${fname}" \
+                --meta "Cache-Control:no-store,must-revalidate"
+            ) &
+            pids+=($!)
           done
+          for pid in "${pids[@]}"; do wait "$pid" || exit 1; done
           echo "macOS artifacts uploaded to ${CHANNEL}/ and releases/${TAG}/"
 
   # ──────────────────────────────────────────────────────────────
@@ -361,7 +372,7 @@ jobs:
 
   cos-upload-win:
     needs: [cos-clean, build-win]
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, cos-upload]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Extract version and channel
@@ -383,8 +394,10 @@ jobs:
           COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
           COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
         run: |
-          wget -q "https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux" -O /tmp/coscli
-          chmod +x /tmp/coscli && sudo mv /tmp/coscli /usr/local/bin/coscli
+          command -v coscli || (
+            wget -q "https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux" -O /tmp/coscli
+            chmod +x /tmp/coscli && sudo mv /tmp/coscli /usr/local/bin/coscli
+          )
           cat > ~/.cos.yaml << EOF
           cos:
             base:
@@ -403,11 +416,19 @@ jobs:
         run: |
           CHANNEL="${{ steps.ver.outputs.channel }}"
           TAG="${{ steps.ver.outputs.tag }}"
+          pids=()
           for f in artifacts/*; do
             fname=$(basename "$f")
-            coscli cp "$f" "cos://cobot-1254397474/${CHANNEL}/${fname}" --meta "Cache-Control:no-store,must-revalidate"
-            coscli cp "$f" "cos://cobot-1254397474/releases/${TAG}/${fname}" --meta "Cache-Control:public,max-age=31536000,immutable"
+            (
+              coscli cp "$f" "cos://cobot-1254397474/releases/${TAG}/${fname}" \
+                --meta "Cache-Control:public,max-age=31536000,immutable" --thread-num 10
+              coscli cp "cos://cobot-1254397474/releases/${TAG}/${fname}" \
+                "cos://cobot-1254397474/${CHANNEL}/${fname}" \
+                --meta "Cache-Control:no-store,must-revalidate"
+            ) &
+            pids+=($!)
           done
+          for pid in "${pids[@]}"; do wait "$pid" || exit 1; done
           echo "Windows artifacts uploaded to ${CHANNEL}/ and releases/${TAG}/"
 
   # ──────────────────────────────────────────────────────────────
@@ -504,7 +525,7 @@ jobs:
 
   cos-upload-linux:
     needs: [cos-clean, build-linux]
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, cos-upload]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Extract version and channel
@@ -526,8 +547,10 @@ jobs:
           COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
           COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
         run: |
-          wget -q "https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux" -O /tmp/coscli
-          chmod +x /tmp/coscli && sudo mv /tmp/coscli /usr/local/bin/coscli
+          command -v coscli || (
+            wget -q "https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux" -O /tmp/coscli
+            chmod +x /tmp/coscli && sudo mv /tmp/coscli /usr/local/bin/coscli
+          )
           cat > ~/.cos.yaml << EOF
           cos:
             base:
@@ -546,11 +569,19 @@ jobs:
         run: |
           CHANNEL="${{ steps.ver.outputs.channel }}"
           TAG="${{ steps.ver.outputs.tag }}"
+          pids=()
           for f in artifacts/*; do
             fname=$(basename "$f")
-            coscli cp "$f" "cos://cobot-1254397474/${CHANNEL}/${fname}" --meta "Cache-Control:no-store,must-revalidate"
-            coscli cp "$f" "cos://cobot-1254397474/releases/${TAG}/${fname}" --meta "Cache-Control:public,max-age=31536000,immutable"
+            (
+              coscli cp "$f" "cos://cobot-1254397474/releases/${TAG}/${fname}" \
+                --meta "Cache-Control:public,max-age=31536000,immutable" --thread-num 10
+              coscli cp "cos://cobot-1254397474/releases/${TAG}/${fname}" \
+                "cos://cobot-1254397474/${CHANNEL}/${fname}" \
+                --meta "Cache-Control:no-store,must-revalidate"
+            ) &
+            pids+=($!)
           done
+          for pid in "${pids[@]}"; do wait "$pid" || exit 1; done
           echo "Linux artifacts uploaded to ${CHANNEL}/ and releases/${TAG}/"
 
   # ──────────────────────────────────────────────────────────────

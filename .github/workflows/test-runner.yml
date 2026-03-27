@@ -1,0 +1,56 @@
+name: Test Self-Hosted Runner
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-runner:
+    runs-on: [self-hosted, linux, cos-upload]
+    steps:
+      - name: Check environment
+        run: |
+          echo "Runner: $(hostname)"
+          echo "OS: $(uname -a)"
+          echo "Disk: $(df -h / | tail -1)"
+          echo "Network to COS:"
+          curl -o /dev/null -s -w "  HTTP %{http_code}, time: %{time_total}s\n" \
+            https://cobot-1254397474.cos.ap-guangzhou.myqcloud.com/ || true
+
+      - name: Check coscli
+        run: |
+          coscli --version
+          echo "coscli is pre-installed ✓"
+
+      - name: Test COS upload speed
+        env:
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+        run: |
+          cat > ~/.cos.yaml << EOF
+          cos:
+            base:
+              secretid: "${COS_SECRET_ID}"
+              secretkey: "${COS_SECRET_KEY}"
+              sessiontoken: ""
+              protocol: https
+            buckets:
+              - name: "cobot-1254397474"
+                region: "ap-guangzhou"
+                endpoint: "cos.ap-guangzhou.myqcloud.com"
+                alias: "cobot-1254397474"
+          EOF
+
+          # 生成一个 50MB 测试文件，测量上传速度
+          dd if=/dev/urandom of=/tmp/test-upload.bin bs=1M count=50 2>/dev/null
+          echo "Uploading 50MB test file to COS..."
+          START=$(date +%s%3N)
+          coscli cp /tmp/test-upload.bin cos://cobot-1254397474/ci-test/test-upload.bin
+          END=$(date +%s%3N)
+          ELAPSED=$(( (END - START) / 1000 ))
+          SPEED=$(( 50 / (ELAPSED + 1) ))
+          echo "Done! Time: ${ELAPSED}s, Speed: ~${SPEED} MB/s"
+
+          # 清理测试文件
+          coscli rm cos://cobot-1254397474/ci-test/test-upload.bin -f
+          rm /tmp/test-upload.bin
+          echo "Cleanup done ✓"
