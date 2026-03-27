@@ -1,5 +1,11 @@
 # ClawX Release Workflow
-# Builds and publishes releases for macOS, Windows, and Linux
+# Each platform builds and publishes to GitHub Release independently (no cross-platform wait).
+# COS upload runs once after all platforms complete (needs all platform YML files).
+#
+# Pipeline topology:
+#   release-mac   ──→ publish to GitHub Release ─┐
+#   release-win   ──→ publish to GitHub Release  ─┼─→ upload-cos → finalize
+#   release-linux ──→ publish to GitHub Release ─┘
 
 name: Release
 
@@ -23,9 +29,13 @@ permissions:
   actions: read
 
 jobs:
+  # ──────────────────────────────────────────────────────────────
+  # Job: Build + Publish (runs in parallel per platform)
+  # Each platform builds and immediately publishes its artifacts to
+  # GitHub Release — no waiting for other platforms.
+  # ──────────────────────────────────────────────────────────────
   release:
     strategy:
-      # Allow other platforms to finish even if one fails
       fail-fast: false
       matrix:
         include:
@@ -42,7 +52,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          # Full history is not needed for building
           fetch-depth: 1
 
       - name: Setup pnpm
@@ -52,11 +61,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          # Built-in pnpm cache via setup-node
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
 
-      # Explicit pnpm store cache (more reliable than the built-in one alone)
       - name: Get pnpm store directory
         shell: bash
         run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
@@ -81,9 +88,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-electron-
 
-      # Cache Vite front-end build output (dist/, dist-electron/).
-      # Key is based on all source files that affect the output.
-      # On cache hit, the expensive vite build step is skipped entirely.
       - name: Cache Vite build output
         id: cache-vite
         uses: actions/cache@v4
@@ -95,8 +99,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-vite-
 
-      # Cache bundle outputs (openclaw, plugins, skills).
-      # Key based on pnpm-lock.yaml so it re-runs when dependencies change.
       - name: Cache build bundle outputs
         uses: actions/cache@v4
         with:
@@ -111,7 +113,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Download uv binaries — run in parallel with build steps where possible
       - name: Download uv binaries for macOS
         if: matrix.platform == 'mac'
         run: pnpm run uv:download:mac
@@ -124,9 +125,6 @@ jobs:
         if: matrix.platform == 'linux'
         run: pnpm run uv:download:linux
 
-      # Run all 4 prep tasks (vite build + 3 bundle scripts) with max parallelism.
-      # When the Vite cache is hit, SKIP_VITE_BUILD=true and only the 3 bundle
-      # scripts run (they are independent and run concurrently at parallelism=3).
       - name: Build macOS
         if: matrix.platform == 'mac'
         env:
@@ -152,61 +150,23 @@ jobs:
           SKIP_VITE_BUILD: ${{ steps.cache-vite.outputs.cache-hit == 'true' && 'true' || 'false' }}
         run: pnpm run package:linux:ci
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      # Remove builder-debug.yml before publishing
+      - name: Remove builder-debug.yml
+        shell: bash
+        run: find release/ -name "builder-debug.yml" -delete || true
+
+      # ── Publish: macOS ─────────────────────────────────────────
+      # macOS sets the release body and generates release notes.
+      # The other platforms just append their files.
+      - name: Publish macOS artifacts to GitHub Release
+        if: matrix.platform == 'mac' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
         with:
-          name: release-${{ matrix.platform }}
-          path: |
+          files: |
             release/*.dmg
             release/*.zip
             release/*.blockmap
-            release/*.exe
-            release/*.AppImage
-            release/*.deb
-            release/*.rpm
             release/*.yml
-            !release/builder-debug.yml
-          retention-days: 7
-
-  # ──────────────────────────────────────────────────────────────
-  # Job: Publish to GitHub Releases
-  # ──────────────────────────────────────────────────────────────
-  publish:
-    needs: release
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download release artifacts only
-        uses: actions/download-artifact@v4
-        with:
-          path: release-artifacts
-          pattern: release-*
-
-      - name: List all downloaded artifacts
-        run: |
-          echo "=== All artifacts downloaded ==="
-          find release-artifacts/ -type f -exec ls -lh {} \;
-          echo ""
-          echo "=== File tree ==="
-          tree release-artifacts/ || find release-artifacts/ -print
-
-      - name: Remove duplicate builder-debug files
-        run: |
-          echo "Removing builder-debug.yml files to avoid duplicate asset upload conflicts..."
-          find release-artifacts/ -name "builder-debug.yml" -delete -print || true
-
-      - name: Create GitHub Release (as pre-release)
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            release-artifacts/**/*.dmg
-            release-artifacts/**/*.zip
-            release-artifacts/**/*.exe
-            release-artifacts/**/*.AppImage
-            release-artifacts/**/*.deb
-            release-artifacts/**/*.rpm
-            release-artifacts/**/*.yml
           draft: false
           prerelease: true
           make_latest: false
@@ -252,15 +212,65 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # ── Publish: Windows ───────────────────────────────────────
+      - name: Publish Windows artifacts to GitHub Release
+        if: matrix.platform == 'win' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.exe
+            release/*.blockmap
+            release/*.yml
+          draft: false
+          prerelease: true
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Publish: Linux ─────────────────────────────────────────
+      - name: Publish Linux artifacts to GitHub Release
+        if: matrix.platform == 'linux' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.AppImage
+            release/*.deb
+            release/*.rpm
+            release/*.yml
+          draft: false
+          prerelease: true
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Upload artifacts to shared storage (needed by upload-cos job)
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.blockmap
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+            release/*.rpm
+            release/*.yml
+          retention-days: 7
+
   # ──────────────────────────────────────────────────────────────
   # Job: Upload to Tencent COS
+  # Waits for ALL platforms to finish so the channel directory
+  # contains all electron-updater YML files (latest-mac.yml,
+  # latest.yml, latest-linux.yml) before being published.
   # ──────────────────────────────────────────────────────────────
   upload-cos:
     needs: release
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download release artifacts only
+      - name: Download all platform artifacts
         uses: actions/download-artifact@v4
         with:
           path: release-artifacts
@@ -427,7 +437,7 @@ jobs:
   # Job: Finalize Release
   # ──────────────────────────────────────────────────────────────
   finalize:
-    needs: [publish, upload-cos]
+    needs: upload-cos
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
 
