@@ -15,7 +15,8 @@
   <a href="#快速上手">快速上手</a> •
   <a href="#系统架构">系统架构</a> •
   <a href="#开发指南">开发指南</a> •
-  <a href="#参与贡献">参与贡献</a>
+  <a href="#参与贡献">参与贡献</a> •
+  <a href="#贡献者">贡献者</a>
 </p>
 
 <p align="center">
@@ -25,7 +26,7 @@
   <a href="https://discord.com/invite/84Kex3GGAh" target="_blank">
   <img src="https://img.shields.io/discord/1399603591471435907?logo=discord&labelColor=%20%235462eb&logoColor=%20%23f5f5f5&color=%20%235462eb" alt="chat on Discord" />
   </a>
-  <img src="https://img.shields.io/github/downloads/Emma-Alpha/JizhiClaw/total?color=%23027DEB" alt="Downloads" />
+  <img src="https://img.shields.io/github/downloads/Emma-Alpha/MimiClaw/total?color=%23027DEB" alt="Downloads" />
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License" />
 </p>
 
@@ -142,14 +143,14 @@ Skills 页面可展示来自多个 OpenClaw 来源的技能（托管目录、wor
 
 #### 预构建版本（推荐）
 
-从 [Releases](https://github.com/Emma-Alpha/JizhiClaw/releases) 页面下载适用于你平台的最新版本。
+从 [Releases](https://github.com/Emma-Alpha/MimiClaw/releases) 页面下载适用于你平台的最新版本。
 
 #### 从源码构建
 
 ```bash
 # 克隆仓库
-git clone https://github.com/Emma-Alpha/JizhiClaw.git
-cd 极智
+git clone https://github.com/Emma-Alpha/MimiClaw.git
+cd MimiClaw
 
 # 初始化项目
 pnpm run init
@@ -329,7 +330,8 @@ pnpm dev
 
 ### 项目结构
 
-```极智/
+```text
+MimiClaw/
 ├── electron/                 # Electron 主进程
 │   ├── api/                 # 主进程 API 路由与处理器
 │   │   └── routes/          # RPC/HTTP 代理路由模块
@@ -426,6 +428,20 @@ CI 中的 `comms-regression` 会校验必选场景与阈值。
 
 ---
 
+## 贡献者
+
+感谢所有为本项目做出贡献的朋友。
+
+<p align="center">
+  <a href="https://github.com/Emma-Alpha/MimiClaw/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=Emma-Alpha/MimiClaw" alt="贡献者" />
+  </a>
+</p>
+
+上图由提交记录自动生成并会定期刷新。完整名单以 GitHub [贡献者图表](https://github.com/Emma-Alpha/MimiClaw/graphs/contributors) 为准。
+
+---
+
 ## 致谢
 
 极智 构建于以下优秀的开源项目之上：
@@ -461,7 +477,7 @@ CI 中的 `comms-regression` 会校验必选场景与阈值。
 ## Stars 历史
 
 <p align="center">
-  <img src="https://api.star-history.com/svg?repos=Emma-Alpha/JizhiClaw&type=Date" alt="Stars 历史图表" />
+  <img src="https://api.star-history.com/svg?repos=Emma-Alpha/MimiClaw&type=Date" alt="Stars 历史图表" />
 </p>
 
 ---

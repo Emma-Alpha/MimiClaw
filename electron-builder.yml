@@ -4,6 +4,11 @@ copyright: Copyright © 2026 极智团队
 compression: normal
 artifactName: jizhi-${version}-${os}-${arch}.${ext}
 
+protocols:
+  - name: jizhi-oauth
+    schemes:
+      - jizhi
+
 directories:
   output: release
   buildResources: resources

@@ -60,6 +60,8 @@ serve({ fetch: app.fetch, port: PORT }, (info) => {
   console.info('   Data directory:', process.env.DATA_DIR ?? './data');
   console.info('\nAPI Routes:');
   console.info('  POST   /api/auth/login');
+  console.info('  POST   /api/auth/om_login');
+  console.info('  GET    /api/auth/xiaojiu/browser-callback');
   console.info('  POST   /api/auth/logout');
   console.info('  GET    /api/auth/me');
   console.info('  GET    /api/workspace/status');

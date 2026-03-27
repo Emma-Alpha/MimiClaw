@@ -15,7 +15,8 @@
   <a href="#getting-started">Getting Started</a> •
   <a href="#architecture">Architecture</a> •
   <a href="#development">Development</a> •
-  <a href="#contributing">Contributing</a>
+  <a href="#contributing">Contributing</a> •
+  <a href="#contributors">Contributors</a>
 </p>
 
 <p align="center">
@@ -25,7 +26,7 @@
   <a href="https://discord.com/invite/84Kex3GGAh" target="_blank">
   <img src="https://img.shields.io/discord/1399603591471435907?logo=discord&labelColor=%20%235462eb&logoColor=%20%23f5f5f5&color=%20%235462eb" alt="chat on Discord" />
   </a>
-  <img src="https://img.shields.io/github/downloads/Emma-Alpha/JizhiClaw/total?color=%23027DEB" alt="Downloads" />
+  <img src="https://img.shields.io/github/downloads/Emma-Alpha/MimiClaw/total?color=%23027DEB" alt="Downloads" />
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License" />
 </p>
 
@@ -142,14 +143,14 @@ In **Settings → General**, you can enable **Launch at system startup** so 极�
 
 #### Pre-built Releases (Recommended)
 
-Download the latest release for your platform from the [Releases](https://github.com/Emma-Alpha/JizhiClaw/releases) page.
+Download the latest release for your platform from the [Releases](https://github.com/Emma-Alpha/MimiClaw/releases) page.
 
 #### Build from Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/Emma-Alpha/JizhiClaw.git
-cd 极智
+git clone https://github.com/Emma-Alpha/MimiClaw.git
+cd MimiClaw
 
 # Initialize the project
 pnpm run init
@@ -329,7 +330,8 @@ Chain multiple skills together to create sophisticated automation pipelines. Pro
 
 ### Project Structure
 
-```极智/
+```text
+MimiClaw/
 ├── electron/                 # Electron Main Process
 │   ├── api/                 # Main-side API router and handlers
 │   │   └── routes/          # RPC/HTTP proxy route modules
@@ -426,6 +428,20 @@ We welcome contributions from the community! Whether it's bug fixes, new feature
 
 ---
 
+## Contributors
+
+Thanks to everyone who has contributed to this project.
+
+<p align="center">
+  <a href="https://github.com/Emma-Alpha/MimiClaw/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=Emma-Alpha/MimiClaw" alt="Contributors" />
+  </a>
+</p>
+
+The image above is generated from commit history and updates periodically. For the authoritative list, see the [contributors graph](https://github.com/Emma-Alpha/MimiClaw/graphs/contributors) on GitHub.
+
+---
+
 ## Acknowledgments
 
 极智 is built on the shoulders of excellent open-source projects:
@@ -461,7 +477,7 @@ DM us or email [1733452028@qq.com](mailto:1733452028@qq.com) to learn more.
 ## Star History
 
 <p align="center">
-  <img src="https://api.star-history.com/svg?repos=Emma-Alpha/JizhiClaw&type=Date" alt="Star History Chart" />
+  <img src="https://api.star-history.com/svg?repos=Emma-Alpha/MimiClaw&type=Date" alt="Star History Chart" />
 </p>
 
 ---
