@@ -145,6 +145,20 @@ function getAppIcon(): Electron.NativeImage | undefined {
   return icon.isEmpty() ? undefined : icon;
 }
 
+function getMacDockIcon(): Electron.NativeImage | undefined {
+  if (process.platform !== 'darwin') return undefined;
+
+  const iconsDir = getIconsDir();
+  for (const candidate of ['icon.png', 'icon.icns', '512x512.png']) {
+    const icon = nativeImage.createFromPath(join(iconsDir, candidate));
+    if (!icon.isEmpty()) {
+      return icon;
+    }
+  }
+
+  return undefined;
+}
+
 /**
  * Create the main application window
  */
@@ -245,6 +259,20 @@ function createMainWindow(): BrowserWindow {
   return win;
 }
 
+function syncMacDockIcon(): void {
+  if (process.platform !== 'darwin' || !app.dock) return;
+
+  const icon = getMacDockIcon();
+  if (!icon) {
+    logger.warn('Failed to resolve macOS Dock icon from resources/icons');
+    return;
+  }
+
+  app.setActivationPolicy('regular');
+  app.dock.show();
+  app.dock.setIcon(icon);
+}
+
 /**
  * Initialize the application
  */
@@ -268,9 +296,11 @@ async function initialize(): Promise<void> {
 
   // Set application menu
   createMenu();
+  syncMacDockIcon();
 
   // Create the main window
   const window = createMainWindow();
+  syncMacDockIcon();
 
   // Create system tray
   createTray(window);

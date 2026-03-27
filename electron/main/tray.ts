@@ -21,37 +21,26 @@ function getIconsDir(): string {
  * Create system tray icon and menu
  */
 export function createTray(mainWindow: BrowserWindow): Tray {
-  // Use platform-appropriate icon for system tray
   const iconsDir = getIconsDir();
-  let iconPath: string;
+  const iconCandidates =
+    process.platform === 'win32'
+      ? ['icon.ico', 'icon.png']
+      : process.platform === 'darwin'
+        ? ['tray-icon.png', 'icon.png', '32x32.png']
+        : ['32x32.png', 'icon.png'];
 
-  if (process.platform === 'win32') {
-    // Windows: use .ico for best quality in system tray
-    iconPath = join(iconsDir, 'icon.ico');
-  } else if (process.platform === 'darwin') {
-    // macOS: use Template.png for proper status bar icon
-    // The "Template" suffix tells macOS to treat it as a template image
-    iconPath = join(iconsDir, 'tray-icon-Template.png');
-  } else {
-    // Linux: use 32x32 PNG
-    iconPath = join(iconsDir, '32x32.png');
-  }
-
-  let icon = nativeImage.createFromPath(iconPath);
-
-  // Fallback to icon.png if platform-specific icon not found
-  if (icon.isEmpty()) {
-    icon = nativeImage.createFromPath(join(iconsDir, 'icon.png'));
-    // Still try to set as template for macOS
-    if (process.platform === 'darwin') {
-      icon.setTemplateImage(true);
+  let icon = nativeImage.createFromPath('');
+  for (const candidate of iconCandidates) {
+    icon = nativeImage.createFromPath(join(iconsDir, candidate));
+    if (!icon.isEmpty()) {
+      break;
     }
   }
 
-  // Note: Using "Template" suffix in filename automatically marks it as template image
-  // But we can also explicitly set it for safety
-  if (process.platform === 'darwin') {
-    icon.setTemplateImage(true);
+  if (process.platform === 'darwin' && !icon.isEmpty()) {
+    // We want a colorful menu bar icon, not a monochrome template icon.
+    icon = icon.resize({ height: 18 });
+    icon.setTemplateImage(false);
   }
   
   tray = new Tray(icon);

@@ -102,7 +102,7 @@ export function buildGatewayConnectFrame(options: {
   token: string;
   deviceIdentity: DeviceIdentity | null;
   platform: string;
-  /** Skip device identity for remote gateways with allowInsecureAuth */
+  /** Skip device identity signing (only for gateways that explicitly do not support device auth) */
   skipDeviceAuth?: boolean;
 }): { connectId: string; frame: Record<string, unknown> } {
   const connectId = `connect-${Date.now()}`;
@@ -174,7 +174,7 @@ export async function connectGatewaySocket(options: {
   onHandshakeComplete: (ws: WebSocket) => void;
   onMessage: (message: unknown) => void;
   onCloseAfterHandshake: () => void;
-  /** Skip device identity for remote gateways with allowInsecureAuth */
+  /** Skip device identity signing (only for gateways that explicitly do not support device auth) */
   skipDeviceAuth?: boolean;
 }): Promise<WebSocket> {
   const wsUrl = options.url ?? `ws://localhost:${options.port}/ws`;

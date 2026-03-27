@@ -87,8 +87,17 @@ export function Chat() {
   const hasStreamToolStatus = streamingTools.length > 0;
   const shouldRenderStreaming = sending && (hasStreamText || hasStreamThinking || hasStreamTools || hasStreamImages || hasStreamToolStatus);
   const hasAnyStreamContent = hasStreamText || hasStreamThinking || hasStreamTools || hasStreamImages || hasStreamToolStatus;
+  const petUiActivity = !sending
+    ? 'idle'
+    : (shouldRenderStreaming || pendingFinal)
+      ? 'working'
+      : 'listening';
 
   const isEmpty = messages.length === 0 && !sending;
+
+  useEffect(() => {
+    void window.electron.ipcRenderer.invoke('pet:setUiActivity', { activity: petUiActivity }).catch(() => {});
+  }, [petUiActivity]);
 
   return (
     <div className={cn("relative flex flex-col -m-6 transition-colors duration-500 dark:bg-background")} style={{ height: 'calc(100vh - 2.5rem)' }}>

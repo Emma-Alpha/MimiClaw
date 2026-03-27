@@ -98,6 +98,57 @@ function maybeLoadHistory(
   void state.loadHistory(true);
 }
 
+function extractPetTerminalLine(message: Record<string, unknown>): string | null {
+  const content = message.content;
+
+  if (Array.isArray(content)) {
+    // Tool calls are highest priority
+    for (const block of content) {
+      if (typeof block !== 'object' || block === null) continue;
+      const b = block as Record<string, unknown>;
+      if (b.type === 'tool_use' || b.type === 'toolCall') {
+        const toolName = String(b.name ?? b.function ?? '');
+        const input = typeof b.input === 'object' && b.input !== null ? b.input as Record<string, unknown> : {};
+        const cmd = input.command ?? input.cmd ?? input.script ?? input.code;
+        if (cmd) return `$ ${String(cmd).split('\n')[0].slice(0, 60)}`;
+        const filePath = input.path ?? input.file_path ?? input.filepath;
+        if (filePath) return `› ${toolName} ${String(filePath).split(/[\\/]/).slice(-2).join('/')}`;
+        if (toolName) return `› ${toolName}`;
+      }
+    }
+    // Fall back to last non-empty text block
+    for (let i = content.length - 1; i >= 0; i--) {
+      const block = content[i] as Record<string, unknown>;
+      if (typeof block !== 'object' || block === null) continue;
+      if (block.type === 'text' && typeof block.text === 'string') {
+        const lastLine = block.text.trim().split('\n').filter(Boolean).pop() ?? '';
+        if (lastLine) return lastLine.slice(0, 72);
+      }
+    }
+  }
+
+  if (typeof content === 'string' && content.trim()) {
+    const lastLine = content.trim().split('\n').filter(Boolean).pop() ?? '';
+    if (lastLine) return lastLine.slice(0, 72);
+  }
+
+  // OpenAI format: tool_calls array on message root
+  const toolCalls = (message.tool_calls ?? message.toolCalls) as Array<Record<string, unknown>> | undefined;
+  if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+    const tc = toolCalls[0] as Record<string, unknown>;
+    const fn = tc.function as Record<string, unknown> | undefined;
+    const toolName = String(fn?.name ?? tc.name ?? '');
+    try {
+      const args = JSON.parse(String(fn?.arguments ?? '{}')) as Record<string, unknown>;
+      const cmd = args.command ?? args.cmd ?? args.script;
+      if (cmd) return `$ ${String(cmd).split('\n')[0].slice(0, 60)}`;
+    } catch { /* ignore */ }
+    if (toolName) return `› ${toolName}`;
+  }
+
+  return null;
+}
+
 function handleGatewayNotification(notification: { method?: string; params?: Record<string, unknown> } | undefined): void {
   const payload = notification;
   if (!payload || payload.method !== 'agent' || !payload.params || typeof payload.params !== 'object') {
@@ -126,6 +177,9 @@ function handleGatewayNotification(notification: { method?: string; params?: Rec
         })
         .catch(() => {});
     }
+
+    // Push terminal line to pet floating window (agent notifications that carry a message)
+    pushPetLineFromMessage(normalizedEvent.message);
   }
 
   const runId = p.runId ?? data.runId;
@@ -183,6 +237,14 @@ function handleGatewayNotification(notification: { method?: string; params?: Rec
   }
 }
 
+function pushPetLineFromMessage(msg: unknown): void {
+  if (!msg || typeof msg !== 'object') return;
+  const line = extractPetTerminalLine(msg as Record<string, unknown>);
+  if (line) {
+    void window.electron.ipcRenderer.invoke('pet:pushTerminalLine', line).catch(() => {});
+  }
+}
+
 function handleGatewayChatMessage(data: unknown): void {
   import('./chat').then(({ useChatStore }) => {
     const chatData = data as Record<string, unknown>;
@@ -193,6 +255,8 @@ function handleGatewayChatMessage(data: unknown): void {
     if (payload.state) {
       if (!shouldProcessGatewayEvent(payload)) return;
       useChatStore.getState().handleChatEvent(payload);
+      // payload.message is the actual message object
+      pushPetLineFromMessage(payload.message ?? payload);
       return;
     }
 
@@ -203,6 +267,8 @@ function handleGatewayChatMessage(data: unknown): void {
     };
     if (!shouldProcessGatewayEvent(normalized)) return;
     useChatStore.getState().handleChatEvent(normalized);
+    // In this path, payload IS the message
+    pushPetLineFromMessage(payload);
   }).catch(() => {});
 }
 

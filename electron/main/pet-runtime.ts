@@ -1,25 +1,34 @@
 import { BrowserWindow } from 'electron';
 import type { GatewayManager } from '../gateway/manager';
-import { DEFAULT_PET_ANIMATION, type PetAnimation, type PetRuntimeState, type PetUiActivity } from '../../shared/pet';
+import {
+  DEFAULT_PET_ANIMATION,
+  PET_IDLE_ANIMATIONS,
+  type PetAnimation,
+  type PetRuntimeState,
+  type PetUiActivity,
+} from '../../shared/pet';
 import { getAllSettings } from '../utils/store';
+import { logger } from '../utils/logger';
 
 const SLEEP_AFTER_IDLE_MS = 45_000;
 const LISTENING_DURATION_MS = 1800;
 const RECORDING_PULSE_MS = 1200;
-const SLEEP_START_DURATION_MS = 1200;
-const SLEEP_LEAVE_DURATION_MS = 1100;
-const TASK_START_DURATION_MS = 1100;
-const TASK_LEAVE_DURATION_MS = 900;
+const SLEEP_START_DURATION_MS = 10_074;
+const SLEEP_LEAVE_DURATION_MS = 15_074;
+const TASK_START_DURATION_MS = 5_074;
+const TASK_LEAVE_DURATION_MS = 8_908;
 
 let activeRunIds = new Set<string>();
 let transitionTimer: NodeJS.Timeout | null = null;
 let sleepTimer: NodeJS.Timeout | null = null;
 let inputActivity: 'idle' | 'recording' = 'idle';
 let uiActivity: PetUiActivity = 'idle';
+let terminalLines: string[] = [];
 let runtimeState: PetRuntimeState = {
   animation: DEFAULT_PET_ANIMATION,
   activity: 'idle',
   showTerminal: false,
+  terminalLines: [],
   updatedAt: Date.now(),
 };
 
@@ -40,7 +49,9 @@ function clearSleepTimer(): void {
 async function resolveIdleAnimation(): Promise<PetAnimation> {
   try {
     const settings = await getAllSettings();
-    return settings.petAnimation || DEFAULT_PET_ANIMATION;
+    return PET_IDLE_ANIMATIONS.includes(settings.petAnimation as typeof PET_IDLE_ANIMATIONS[number])
+      ? settings.petAnimation
+      : DEFAULT_PET_ANIMATION;
   } catch {
     return DEFAULT_PET_ANIMATION;
   }
@@ -55,9 +66,10 @@ function broadcastPetRuntimeState(): void {
   }
 }
 
-function setRuntimeState(next: Omit<PetRuntimeState, 'updatedAt'>): void {
+function setRuntimeState(next: Omit<PetRuntimeState, 'updatedAt' | 'terminalLines'> & { terminalLines?: string[] }): void {
   runtimeState = {
     ...next,
+    terminalLines: next.terminalLines ?? (next.showTerminal ? terminalLines : []),
     updatedAt: Date.now(),
   };
   broadcastPetRuntimeState();
@@ -115,10 +127,12 @@ function scheduleSleepCountdown(): void {
 async function enterIdle(): Promise<void> {
   clearTransitionTimer();
   clearSleepTimer();
+  terminalLines = [];
   setRuntimeState({
     animation: await resolveIdleAnimation(),
     activity: 'idle',
     showTerminal: false,
+    terminalLines: [],
   });
   scheduleSleepCountdown();
 }
@@ -127,6 +141,93 @@ function normalizeRunId(value: unknown): string | null {
   if (value == null) return null;
   const text = String(value).trim();
   return text ? text : null;
+}
+
+function extractLineFromMessage(message: Record<string, unknown>): string | null {
+  const content = message.content;
+
+  if (Array.isArray(content)) {
+    // 1. Prefer tool_use / toolCall blocks (most informative)
+    for (const block of content) {
+      if (typeof block !== 'object' || block === null) continue;
+      const b = block as Record<string, unknown>;
+      if (b.type === 'tool_use' || b.type === 'toolCall') {
+        const toolName = String(b.name ?? b.function ?? '');
+        const input = typeof b.input === 'object' && b.input !== null
+          ? b.input as Record<string, unknown>
+          : {};
+        const cmd = input.command ?? input.cmd ?? input.script ?? input.code;
+        if (cmd) return `$ ${String(cmd).split('\n')[0].slice(0, 60)}`;
+        const filePath = input.path ?? input.file_path ?? input.filepath;
+        if (filePath) return `› ${toolName} ${String(filePath).split(/[\\/]/).slice(-2).join('/')}`;
+        if (toolName) return `› ${toolName}`;
+      }
+    }
+    // 2. Fall back to last non-empty text block
+    for (let i = content.length - 1; i >= 0; i--) {
+      const block = content[i] as Record<string, unknown>;
+      if (typeof block !== 'object' || block === null) continue;
+      if (block.type === 'text' && typeof block.text === 'string') {
+        const lastLine = block.text.trim().split('\n').filter(Boolean).pop() ?? '';
+        if (lastLine) return lastLine.slice(0, 72);
+      }
+    }
+  }
+
+  // Plain string content
+  if (typeof content === 'string' && content.trim()) {
+    const lastLine = content.trim().split('\n').filter(Boolean).pop() ?? '';
+    if (lastLine) return lastLine.slice(0, 72);
+  }
+
+  // OpenAI format: tool_calls array on message root
+  const toolCalls = (message.tool_calls ?? message.toolCalls) as Array<Record<string, unknown>> | undefined;
+  if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+    const tc = toolCalls[0] as Record<string, unknown>;
+    const fn = tc.function as Record<string, unknown> | undefined;
+    const toolName = String(fn?.name ?? tc.name ?? '');
+    try {
+      const args = JSON.parse(String(fn?.arguments ?? '{}')) as Record<string, unknown>;
+      const cmd = args.command ?? args.cmd ?? args.script;
+      if (cmd) return `$ ${String(cmd).split('\n')[0].slice(0, 60)}`;
+    } catch { /* ignore */ }
+    if (toolName) return `› ${toolName}`;
+  }
+
+  return null;
+}
+
+function extractTerminalLine(notification: { method?: string; params?: unknown }): string | null {
+  const params = notification?.params && typeof notification.params === 'object'
+    ? notification.params as Record<string, unknown>
+    : {};
+  const dataBlock = params.data && typeof params.data === 'object'
+    ? params.data as Record<string, unknown>
+    : {};
+
+  // message can live at params.message OR params.data.message
+  const rawMessage = params.message ?? dataBlock.message;
+  if (rawMessage && typeof rawMessage === 'object') {
+    const line = extractLineFromMessage(rawMessage as Record<string, unknown>);
+    if (line) return line;
+  }
+
+  // Some gateways put content directly in params (no nested message)
+  const directLine = extractLineFromMessage(params);
+  if (directLine) return directLine;
+
+  logger.debug('[pet-runtime] extractTerminalLine: no line found. params keys:', Object.keys(params));
+  return null;
+}
+
+function pushTerminalLine(line: string): void {
+  terminalLines = [...terminalLines.slice(-2), line];
+  logger.debug(`[pet-runtime] terminal line: ${line}`);
+  // Always update runtimeState with the latest lines and broadcast.
+  // If showTerminal is still false the broadcast is still sent so the
+  // renderer has the lines ready when showTerminal transitions to true.
+  runtimeState = { ...runtimeState, terminalLines, updatedAt: Date.now() };
+  broadcastPetRuntimeState();
 }
 
 function extractAgentEnvelope(notification: { method?: string; params?: unknown } | undefined): {
@@ -334,6 +435,13 @@ export function registerPetRuntime(gatewayManager: GatewayManager): void {
     }
 
     const event = extractAgentEnvelope(notification);
+    logger.debug(`[pet-runtime] agent event state=${event.state} phase=${event.phase} runId=${event.runId}`);
+
+    if (event.state === 'delta' || event.state === 'final') {
+      const line = extractTerminalLine(notification);
+      if (line) pushTerminalLine(line);
+    }
+
     if (event.phase === 'started' || event.state === 'started') {
       startRun(event.runId);
       return;
@@ -362,6 +470,11 @@ export function registerPetRuntime(gatewayManager: GatewayManager): void {
 
 export function getPetRuntimeState(): PetRuntimeState {
   return runtimeState;
+}
+
+/** Called by the renderer via IPC to push a terminal line extracted from agent events. */
+export function pushPetTerminalLine(line: string): void {
+  pushTerminalLine(line);
 }
 
 export async function syncPetRuntimeIdleState(): Promise<void> {

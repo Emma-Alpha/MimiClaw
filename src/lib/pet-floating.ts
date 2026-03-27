@@ -7,9 +7,23 @@ import staticVideo from '@/assets/pets/static.webm';
 import taskLeaveVideo from '@/assets/pets/task-leave.webm';
 import taskLoopVideo from '@/assets/pets/task-loop.webm';
 import taskStartVideo from '@/assets/pets/task-start.webm';
-import { DEFAULT_PET_ANIMATION, PET_ANIMATIONS, type PetAnimation } from '../../shared/pet';
+import {
+  DEFAULT_PET_ANIMATION,
+  PET_ANIMATIONS,
+  PET_IDLE_ANIMATIONS,
+  PET_LOOPING_ANIMATIONS,
+  PET_TRANSITION_ANIMATIONS,
+  type PetAnimation,
+} from '../../shared/pet';
 
-export { DEFAULT_PET_ANIMATION, PET_ANIMATIONS, type PetAnimation };
+export {
+  DEFAULT_PET_ANIMATION,
+  PET_ANIMATIONS,
+  PET_IDLE_ANIMATIONS,
+  PET_LOOPING_ANIMATIONS,
+  PET_TRANSITION_ANIMATIONS,
+  type PetAnimation,
+};
 
 export const PET_ANIMATION_LABEL_KEYS: Record<PetAnimation, string> = {
   begin: 'pet.animations.begin',

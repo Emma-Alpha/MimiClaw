@@ -778,8 +778,9 @@ export class GatewayManager extends EventEmitter {
       deviceIdentity: this.deviceIdentity,
       platform: process.platform,
       pendingRequests: this.pendingRequests,
-      // Remote gateways with allowInsecureAuth: skip device pairing, use token-only auth
-      skipDeviceAuth: !!urlOverride,
+      // Always include device identity (challenge-response with nonce), even for remote gateways.
+      // Skipping device auth causes remote gateways to deny operator.write scope.
+      skipDeviceAuth: false,
       getToken: async () => {
         const { getSetting } = await import('../utils/store');
         // For remote gateways, use the dedicated remote token (may be empty if remote doesn't require auth).

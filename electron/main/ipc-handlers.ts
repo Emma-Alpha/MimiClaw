@@ -61,8 +61,8 @@ import {
 import { validateApiKeyWithProvider } from '../services/providers/provider-validation';
 import { appUpdater } from './updater';
 import { syncPetWindowFromSettings } from './pet-window';
-import { getPetRuntimeState, setPetInputActivity, setPetUiActivity, syncPetRuntimeIdleState } from './pet-runtime';
-import type { PetUiActivity } from '../../shared/pet';
+import { getPetRuntimeState, setPetInputActivity, setPetUiActivity, syncPetRuntimeIdleState, pushPetTerminalLine } from './pet-runtime';
+import { PET_IDLE_ANIMATIONS, type PetUiActivity } from '../../shared/pet';
 import { PORTS } from '../utils/config';
 
 type AppRequest = {
@@ -134,7 +134,10 @@ function registerPetHandlers(): void {
 
     const settings = await getAllSettings();
     const language = resolvePetMenuLanguage(payload?.language);
-    const items = Object.entries(PET_ANIMATION_MENU_LABELS).map(([animation, labels]) => ({
+    const items = PET_IDLE_ANIMATIONS.map((animation) => ({
+      animation,
+      labels: PET_ANIMATION_MENU_LABELS[animation],
+    })).map(({ animation, labels }) => ({
       label: labels[language],
       type: 'radio' as const,
       checked: settings.petAnimation === animation,
@@ -170,6 +173,13 @@ function registerPetHandlers(): void {
       y: typeof payload?.y === 'number' ? Math.round(payload.y) : undefined,
     });
 
+    return { success: true };
+  });
+
+  ipcMain.handle('pet:pushTerminalLine', (_event, line: string) => {
+    if (typeof line === 'string' && line.trim()) {
+      pushPetTerminalLine(line.trim());
+    }
     return { success: true };
   });
 }

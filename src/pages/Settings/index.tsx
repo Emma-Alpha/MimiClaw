@@ -51,7 +51,7 @@ import {
   type CloudGatewayState,
 } from '@/lib/host-api';
 import { cn } from '@/lib/utils';
-import { PET_ANIMATIONS, PET_ANIMATION_LABEL_KEYS, type PetAnimation } from '@/lib/pet-floating';
+import { PET_IDLE_ANIMATIONS, PET_ANIMATION_LABEL_KEYS, type PetAnimation } from '@/lib/pet-floating';
 type ControlUiInfo = {
   url: string;
   token: string;
@@ -617,7 +617,7 @@ export function Settings() {
                       disabled={!petEnabled}
                       className="h-11 rounded-2xl border-black/10 bg-white/80 text-[14px] dark:border-white/10 dark:bg-white/5"
                     >
-                      {PET_ANIMATIONS.map((animation) => (
+                      {PET_IDLE_ANIMATIONS.map((animation) => (
                         <option key={animation} value={animation}>
                           {t(PET_ANIMATION_LABEL_KEYS[animation])}
                         </option>

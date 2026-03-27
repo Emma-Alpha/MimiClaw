@@ -53,6 +53,7 @@ const electronAPI = {
         'pet:setInputActivity',
         'pet:setUiActivity',
         'pet:showContextMenu',
+        'pet:pushTerminalLine',
         // Settings
         'settings:get',
         'settings:set',

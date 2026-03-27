@@ -13,6 +13,11 @@ on:
         description: 'Version to release (e.g., 1.0.0)'
         required: true
 
+# Cancel any in-progress run for the same ref (e.g. rapid tag re-push)
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
   actions: read
@@ -20,6 +25,8 @@ permissions:
 jobs:
   release:
     strategy:
+      # Allow other platforms to finish even if one fails
+      fail-fast: false
       matrix:
         include:
           - os: macos-latest
@@ -30,25 +37,81 @@ jobs:
             platform: linux
 
     runs-on: ${{ matrix.os }}
-    
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          # Full history is not needed for building
+          fetch-depth: 1
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '22'
+          # Built-in pnpm cache via setup-node
           cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      # Explicit pnpm store cache (more reliable than the built-in one alone)
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Cache Electron downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: ${{ runner.os }}-electron-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-electron-
+
+      # Cache Vite front-end build output (dist/, dist-electron/).
+      # Key is based on all source files that affect the output.
+      # On cache hit, the expensive vite build step is skipped entirely.
+      - name: Cache Vite build output
+        id: cache-vite
+        uses: actions/cache@v4
+        with:
+          path: |
+            dist
+            dist-electron
+          key: ${{ runner.os }}-vite-${{ hashFiles('src/**', 'electron/**', 'shared/**', 'vite.config.*', 'tsconfig*.json', 'pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-vite-
+
+      # Cache bundle outputs (openclaw, plugins, skills).
+      # Key based on pnpm-lock.yaml so it re-runs when dependencies change.
+      - name: Cache build bundle outputs
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/openclaw
+            build/openclaw-plugins
+            build/preinstalled-skills
+          key: ${{ runner.os }}-build-bundles-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-build-bundles-
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
+      # Download uv binaries — run in parallel with build steps where possible
       - name: Download uv binaries for macOS
         if: matrix.platform == 'mac'
         run: pnpm run uv:download:mac
@@ -61,170 +124,33 @@ jobs:
         if: matrix.platform == 'linux'
         run: pnpm run uv:download:linux
 
-      # macOS specific steps
-      # --publish never: prevent electron-builder from auto-publishing to GitHub.
-      # All artifacts are collected and published atomically in the publish job.
+      # Run all 4 prep tasks (vite build + 3 bundle scripts) with max parallelism.
+      # When the Vite cache is hit, SKIP_VITE_BUILD=true and only the 3 bundle
+      # scripts run (they are independent and run concurrently at parallelism=3).
       - name: Build macOS
         if: matrix.platform == 'mac'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          CI_PARALLELISM: 4
+          SKIP_VITE_BUILD: ${{ steps.cache-vite.outputs.cache-hit == 'true' && 'true' || 'false' }}
         run: |
           ulimit -n 65536
-          echo "File descriptor limit: $(ulimit -n)"
-          pnpm run package:mac
+          pnpm run package:mac:ci
 
-      # Windows specific steps
       - name: Build Windows
         if: matrix.platform == 'win'
-        run: pnpm run package:win
+        env:
+          CI_PARALLELISM: 4
+          SKIP_VITE_BUILD: ${{ steps.cache-vite.outputs.cache-hit == 'true' && 'true' || 'false' }}
+        run: pnpm run package:win:ci
 
-      # # Detect release channel from tag to skip code signing for alpha/beta builds
-      # - name: Detect Windows release channel
-      #   if: matrix.platform == 'win'
-      #   id: win-channel
-      #   shell: bash
-      #   run: |
-      #     if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-      #       TAG="${GITHUB_REF#refs/tags/v}"
-      #     else
-      #       TAG="${{ github.event.inputs.version }}"
-      #     fi
-      #     if [[ "$TAG" =~ (alpha|beta) ]]; then
-      #       echo "is_stable=false" >> $GITHUB_OUTPUT
-      #       echo "Channel: prerelease ($TAG) — skipping code signing"
-      #     else
-      #       echo "is_stable=true" >> $GITHUB_OUTPUT
-      #       echo "Channel: stable ($TAG) — will sign"
-      #     fi
-
-      # - name: Validate unsigned Windows artifacts before SignPath
-      #   if: matrix.platform == 'win' && steps.win-channel.outputs.is_stable == 'true'
-      #   shell: pwsh
-      #   run: |
-      #     $unsignedExeFiles = Get-ChildItem -Path "release" -Filter *.exe -File
-      #     if (-not $unsignedExeFiles) {
-      #       throw "No unsigned .exe files found in release/ before SignPath upload"
-      #     }
-      #     $unsignedCount = $unsignedExeFiles.Count
-      #     "UNSIGNED_EXE_COUNT=$unsignedCount" | Out-File -FilePath $env:GITHUB_ENV -Append
-      #     Write-Host "Found $unsignedCount unsigned .exe file(s):"
-      #     $unsignedExeFiles | ForEach-Object { Write-Host " - $($_.Name)" }
-
-      # - name: Upload unsigned Windows artifacts for SignPath
-      #   if: matrix.platform == 'win' && steps.win-channel.outputs.is_stable == 'true'
-      #   id: upload-unsigned-windows-artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: unsigned-win-exe-${{ github.run_id }}-${{ github.run_attempt }}
-      #     path: release/*.exe
-      #     retention-days: 1
-
-      # - name: Sign Windows artifacts via SignPath
-      #   if: matrix.platform == 'win' && steps.win-channel.outputs.is_stable == 'true'
-      #   id: signpath-sign-windows
-      #   uses: signpath/github-action-submit-signing-request@v2
-      #   with:
-      #     api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-      #     organization-id: "78e37079-23df-4800-b41c-33312ad7c1e3"
-      #     project-slug: "ValueCell"
-      #     signing-policy-slug: "ValueCell-sign"
-      #     github-artifact-id: ${{ steps.upload-unsigned-windows-artifact.outputs.artifact-id }}
-      #     wait-for-completion: true
-      #     output-artifact-directory: release/signed
-
-      # - name: Replace unsigned executables with signed ones
-      #   if: matrix.platform == 'win' && steps.win-channel.outputs.is_stable == 'true'
-      #   shell: pwsh
-      #   run: |
-      #     Write-Host "SignPath GitHub artifact ID: ${{ steps.upload-unsigned-windows-artifact.outputs.artifact-id }}"
-      #     $signedExeFiles = Get-ChildItem -Path "release/signed" -Filter *.exe -File -Recurse
-      #     if (-not $signedExeFiles) {
-      #       throw "No signed .exe files found in release/signed"
-      #     }
-      #     $signedCount = $signedExeFiles.Count
-      #     if ($env:UNSIGNED_EXE_COUNT -and ($signedCount -ne [int]$env:UNSIGNED_EXE_COUNT)) {
-      #       throw "Signed .exe count ($signedCount) does not match unsigned count ($env:UNSIGNED_EXE_COUNT)"
-      #     }
-      #     foreach ($file in $signedExeFiles) {
-      #       Copy-Item -Path $file.FullName -Destination "release/$($file.Name)" -Force
-      #     }
-      #     $finalExeFiles = Get-ChildItem -Path "release" -Filter *.exe -File
-      #     if ($env:UNSIGNED_EXE_COUNT -and ($finalExeFiles.Count -ne [int]$env:UNSIGNED_EXE_COUNT)) {
-      #       throw "Final release .exe count ($($finalExeFiles.Count)) does not match unsigned count ($env:UNSIGNED_EXE_COUNT)"
-      #     }
-      #     Write-Host "Signed executables copied to release/ ($($finalExeFiles.Count) file(s))"
-
-      # # Code signing changes the .exe binary, invalidating the sha512 hash that
-      # # electron-builder wrote into latest.yml during the initial build.
-      # # Recalculate the hash for each signed .exe and patch the yml files so
-      # # electron-updater can verify the download successfully.
-      # #
-      # # Actual latest.yml structure (from electron-builder NSIS):
-      # #   files:
-      # #     - url: ClawX-0.2.4-win-x64.exe    ← files[] entries have url/sha512/size
-      # #       sha512: <base64>
-      # #       size: 430775882
-      # #   path: ClawX-0.2.4-win-arm64.exe      ← top-level has path/sha512 (no size!)
-      # #   sha512: <base64>
-      # #   releaseDate: '...'
-      # - name: Update latest.yml sha512 after code signing
-      #   if: matrix.platform == 'win' && steps.win-channel.outputs.is_stable == 'true'
-      #   shell: pwsh
-      #   run: |
-      #     $ymlFiles = Get-ChildItem -Path "release" -Filter "*.yml" -File | Where-Object { $_.Name -ne "builder-debug.yml" }
-      #     $exeFiles = Get-ChildItem -Path "release" -Filter "*.exe" -File
-
-      #     foreach ($yml in $ymlFiles) {
-      #       $content = Get-Content $yml.FullName -Raw
-      #       $modified = $false
-
-      #       foreach ($exe in $exeFiles) {
-      #         # Compute new sha512 (base64) for the signed exe
-      #         $hash = Get-FileHash -Path $exe.FullName -Algorithm SHA512
-      #         $hashBytes = [byte[]]::new($hash.Hash.Length / 2)
-      #         for ($i = 0; $i -lt $hashBytes.Length; $i++) {
-      #           $hashBytes[$i] = [Convert]::ToByte($hash.Hash.Substring($i * 2, 2), 16)
-      #         }
-      #         $newSha512 = [Convert]::ToBase64String($hashBytes)
-      #         $newSize = (Get-Item $exe.FullName).Length
-      #         $escapedName = [Regex]::Escape($exe.Name)
-
-      #         # 1) files[] entries:  url: <name>\n    sha512: <hash>\n    size: <n>
-      #         $urlPattern = "(?m)(url:\s*${escapedName}\s*\r?\n\s*sha512:\s*)(\S+)(\s*\r?\n\s*size:\s*)(\d+)"
-      #         if ($content -match $urlPattern) {
-      #           $content = $content -replace $urlPattern, "`${1}${newSha512}`${3}${newSize}"
-      #           $modified = $true
-      #           Write-Host "Updated $($yml.Name) files[]: $($exe.Name) sha512=$newSha512 size=$newSize"
-      #         }
-
-      #         # 2) Top-level entry:  path: <name>\nsha512: <hash>\n  (no size field)
-      #         $pathPattern = "(?m)(path:\s*${escapedName}\s*\r?\n)sha512:\s*\S+"
-      #         if ($content -match $pathPattern) {
-      #           $content = $content -replace $pathPattern, "`${1}sha512: ${newSha512}"
-      #           $modified = $true
-      #           Write-Host "Updated $($yml.Name) top-level: $($exe.Name) sha512=$newSha512"
-      #         }
-      #       }
-
-      #       if ($modified) {
-      #         Set-Content -Path $yml.FullName -Value $content -NoNewline
-      #         Write-Host "Saved updated $($yml.Name)"
-      #       }
-      #     }
-
-      #     Write-Host ""
-      #     Write-Host "=== Final yml contents ==="
-      #     foreach ($yml in $ymlFiles) {
-      #       Write-Host "--- $($yml.Name) ---"
-      #       Get-Content $yml.FullName
-      #       Write-Host ""
-      #     }
-
-      # Linux specific steps
       - name: Build Linux
         if: matrix.platform == 'linux'
-        run: pnpm run package:linux
+        env:
+          CI_PARALLELISM: 4
+          SKIP_VITE_BUILD: ${{ steps.cache-vite.outputs.cache-hit == 'true' && 'true' || 'false' }}
+        run: pnpm run package:linux:ci
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -248,7 +174,7 @@ jobs:
   publish:
     needs: release
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Download release artifacts only
         uses: actions/download-artifact@v4
@@ -328,15 +254,6 @@ jobs:
 
   # ──────────────────────────────────────────────────────────────
   # Job: Upload to Tencent COS
-  # Uploads all release artifacts to COS for:
-  #   - Official website downloads (via release-info.json)
-  #   - electron-updater auto-update (via {channel}-*.yml)
-  #
-  # Directory structure on COS (channel-separated):
-  #   latest/          → stable releases (latest.yml, latest-mac.yml, …)
-  #   alpha/           → alpha  releases (alpha.yml,  alpha-mac.yml, …)
-  #   beta/            → beta   releases (beta.yml,   beta-mac.yml,  …)
-  #   releases/vX.Y.Z/ → permanent archive, never deleted
   # ──────────────────────────────────────────────────────────────
   upload-cos:
     needs: release
@@ -358,8 +275,6 @@ jobs:
             VERSION="${{ github.event.inputs.version }}"
           fi
 
-          # Detect channel from semver prerelease tag
-          # e.g. 0.1.8-alpha.0 → alpha, 1.0.0-beta.1 → beta, 1.0.0 → latest
           if [[ "$VERSION" =~ -([a-zA-Z]+) ]]; then
             CHANNEL="${BASH_REMATCH[1]}"
           else
@@ -380,7 +295,6 @@ jobs:
           mkdir -p staging/${CHANNEL}
           mkdir -p staging/releases/${TAG}
 
-          # Flatten all platform artifacts into staging directories
           find release-artifacts/ -type f | while read file; do
             filename=$(basename "$file")
             cp "$file" "staging/${CHANNEL}/${filename}"
@@ -393,9 +307,6 @@ jobs:
           echo "=== staging/releases/${TAG}/ ==="
           ls -lh staging/releases/${TAG}/
 
-      # Note: Do NOT rename yml files. electron-updater (generic provider) always
-      # requests "latest-mac.yml", "latest.yml", etc. regardless of feed URL.
-      # Channel separation is achieved by directory: /alpha/, /beta/, /latest/.
       - name: Verify yml files present
         run: |
           CHANNEL="${{ steps.version.outputs.channel }}"
@@ -453,36 +364,33 @@ jobs:
           COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
           COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
         run: |
-          mkdir -p ~/.config/coscli
-          cat > ~/.config/coscli/config.yaml << EOF
+          cat > ~/.cos.yaml << EOF
           cos:
             base:
               secretid: "${COS_SECRET_ID}"
               secretkey: "${COS_SECRET_KEY}"
               sessiontoken: ""
               protocol: https
+            buckets:
+              - name: "cobot-1254397474"
+                region: "ap-guangzhou"
+                endpoint: "cos.ap-guangzhou.myqcloud.com"
+                alias: "cobot-1254397474"
           EOF
 
       - name: "Upload to COS: {channel}/ (overwrite)"
         run: |
           CHANNEL="${{ steps.version.outputs.channel }}"
-
-          # Only clean the current channel's directory — never touch other channels
           coscli rm -r cos://cobot-1254397474/${CHANNEL}/ -f || true
-
-          # Upload all files with no-cache so clients always get the freshest version
           coscli cp -r staging/${CHANNEL}/ cos://cobot-1254397474/${CHANNEL}/ \
-            --meta "Cache-Control:no-cache#no-store#must-revalidate"
-
+            --meta "Cache-Control:no-store,must-revalidate"
           echo "Uploaded to ${CHANNEL}/"
 
       - name: "Upload to COS: releases/vX.Y.Z/ (archive)"
         run: |
           TAG="${{ steps.version.outputs.tag }}"
-
           coscli cp -r staging/releases/${TAG}/ cos://cobot-1254397474/releases/${TAG}/ \
-            --meta "Cache-Control:public#max-age=31536000#immutable"
-
+            --meta "Cache-Control:public,max-age=31536000,immutable"
           echo "Uploaded to releases/${TAG}/"
 
       - name: Verify COS upload
@@ -517,11 +425,6 @@ jobs:
 
   # ──────────────────────────────────────────────────────────────
   # Job: Finalize Release
-  # Promotes the GitHub Release from pre-release to latest AFTER
-  # both GitHub Release assets and OSS uploads are fully complete.
-  # This ensures /releases/latest API never returns an incomplete
-  # release — the website and electron-updater only see it when
-  # all platform artifacts are ready.
   # ──────────────────────────────────────────────────────────────
   finalize:
     needs: [publish, upload-cos]

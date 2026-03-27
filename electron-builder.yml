@@ -1,7 +1,7 @@
 appId: com.jizhi.gz4399
 productName: 极智
 copyright: Copyright © 2026 极智团队
-compression: maximum
+compression: normal
 artifactName: jizhi-${version}-${os}-${arch}.${ext}
 
 directories:

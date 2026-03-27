@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSettingsStore } from '@/stores/settings';
-import logoSvg from '@/assets/logo.svg';
+import logoPng from '@/assets/logo.png';
 
 export function Login() {
   const { t } = useTranslation('common');
@@ -49,7 +49,7 @@ export function Login() {
         <div className="w-full max-w-sm space-y-6">
           {/* Logo */}
           <div className="flex flex-col items-center gap-3">
-            <img src={logoSvg} alt="极智" className="h-12 w-12" />
+            <img src={logoPng} alt="极智" className="h-14 w-14 rounded-2xl object-cover shadow-sm" />
             <h1 className="text-2xl font-bold">{t('login.title')}</h1>
             <p className="text-sm text-muted-foreground text-center">{t('login.subtitle')}</p>
           </div>
