@@ -15,7 +15,7 @@ export function createMenu(): void {
     ...(isMac
       ? [
           {
-            label: app.name,
+            label: app.getName(),
             submenu: [
               { role: 'about' as const },
               { type: 'separator' as const },

@@ -64,7 +64,7 @@ function cleanupExpiredPendingAuth(): void {
 }
 
 function getDefaultCallbackUrl(cloudApiBase: string): string {
-  return `${cloudApiBase}/api/auth/xiaojiu/browser-callback`;
+  return `${cloudApiBase}/om/desktop-callback`;
 }
 
 export function startXiaojiuAuthFlow(config: XiaojiuAuthStartConfig): {

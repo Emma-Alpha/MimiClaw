@@ -44,6 +44,15 @@ describe('app-env', () => {
     expect(resolveRemoteJizhiChatUrl(env)).toBe('https://staging-web.example.com/');
   });
 
+  it('tolerates malformed leading equals in explicit cloud base override', () => {
+    const env = {
+      MODE: 'development',
+      VITE_CLOUD_API_BASE_URL: '=https://dev-jizhi.gz4399.com/',
+    };
+
+    expect(resolveDefaultCloudApiBase(env)).toBe('https://dev-jizhi.gz4399.com');
+  });
+
   it('detects cloud-only packaging flag', () => {
     expect(resolveCloudOnlyMode({ VITE_CLAWX_CLOUD_ONLY: '1' })).toBe(true);
     expect(resolveCloudOnlyMode({ VITE_CLAWX_CLOUD_ONLY: 'true' })).toBe(true);

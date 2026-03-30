@@ -170,7 +170,7 @@
     "proxySaved": "Proxy settings saved",
     "proxySaveFailed": "Failed to save proxy settings",
     "remoteTitle": "Remote Gateway",
-    "remoteDesc": "When set, the local OpenClaw process will not start — ClawX connects directly to the remote gateway. Clear to restore local mode.",
+    "remoteDesc": "When set, the local OpenClaw process will not start — 极智 connects directly to the remote gateway. Clear to restore local mode.",
     "remoteUrl": "Remote WebSocket URL",
     "remoteUrlHelp": "e.g. ws://192.168.1.100:18789/ws or wss://your-cloud-gateway.example.com/ws",
     "remoteToken": "Remote Gateway Token",

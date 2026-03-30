@@ -372,10 +372,12 @@ pnpm dev                  # Start with hot reload (auto-prepares bundled skills 
 
 # Quality
 pnpm lint                 # Run ESLint
+pnpm run lint:check       # Run ESLint without auto-fixing (used by CI)
 pnpm typecheck            # TypeScript validation
 
 # Testing
 pnpm test                 # Run unit tests
+pnpm run test:ci          # Run quieter CI-oriented unit tests
 pnpm run comms:replay     # Compute communication replay metrics
 pnpm run comms:baseline   # Refresh communication baseline snapshot
 pnpm run comms:compare    # Compare replay metrics against baseline thresholds

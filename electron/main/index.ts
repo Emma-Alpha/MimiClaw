@@ -68,6 +68,7 @@ const APP_PROTOCOL = 'jizhi';
 // Users who want GPU acceleration can pass `--enable-gpu` on the CLI or
 // set `"disable-hardware-acceleration": false` in the app config (future).
 app.disableHardwareAcceleration();
+app.setName('极智');
 
 // On Linux, set CHROME_DESKTOP so Chromium can find the correct .desktop file.
 // On Wayland this maps the running window to clawx.desktop (→ icon + app grouping);

@@ -61,7 +61,7 @@ function normalizeAbsoluteUrl(value: string, fallback: string): string {
 }
 
 function getDefaultXiaojiuCallbackUrl(cloudApiBase: string): string {
-	return new URL("/api/auth/xiaojiu/browser-callback", `${cloudApiBase}/`).toString();
+	return new URL("/om/desktop-callback", `${cloudApiBase}/`).toString();
 }
 
 export function getXiaojiuOAuthConfig(): XiaojiuOAuthConfig {

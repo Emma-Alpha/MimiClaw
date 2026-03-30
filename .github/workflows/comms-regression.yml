@@ -17,6 +17,13 @@ on:
       - 'tests/unit/gateway-events.test.ts'
       - '.github/workflows/comms-regression.yml'
 
+concurrency:
+  group: comms-regression-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   comms-regression:
     runs-on: ubuntu-latest
@@ -34,9 +41,10 @@ jobs:
         with:
           node-version: '24'
           cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
 
       - name: Run comms replay
         run: pnpm run comms:replay

@@ -26,8 +26,15 @@ function normalizeEnvName(value: string | undefined): ClawXAppEnv | null {
 }
 
 function normalizeBaseUrl(value: string | undefined): string | null {
-  const normalized = (value || '').trim();
-  return normalized ? normalized.replace(/\/$/, '') : null;
+  const normalized = (value || '').trim().replace(/^=+/, '');
+  if (!normalized) return null;
+
+  try {
+    const url = new URL(normalized);
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return null;
+  }
 }
 
 function normalizeAppUrl(value: string | undefined): string | null {
