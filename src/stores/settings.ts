@@ -114,7 +114,7 @@ const defaultSettings = {
   startMinimized: false,
   launchAtStartup: false,
   telemetryEnabled: true,
-  petEnabled: false,
+  petEnabled: true,
   petAnimation: DEFAULT_PET_ANIMATION,
   gatewayAutoStart: true,
   gatewayPort: 18789,

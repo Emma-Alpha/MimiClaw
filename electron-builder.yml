@@ -27,28 +27,11 @@ extraResources:
       - "!icons/*.svg"
       - "!bin/**"
       - "!screenshot/**"
-  # OpenClaw package (node_modules copied separately by afterPack hook
-  # because electron-builder respects .gitignore which excludes node_modules/)
-  - from: build/openclaw/
-    to: openclaw/
-  # Pre-bundled third-party skills (full directories, not only SKILL.md)
-  - from: build/preinstalled-skills/
-    to: resources/preinstalled-skills/
-  # NOTE: OpenClaw plugin mirrors (dingtalk, etc.) are bundled by the
-  # afterPack hook (after-pack.cjs) directly from node_modules, so they
-  # don't need an extraResources entry here.
-
-afterPack: ./scripts/after-pack.cjs
 
 asar: true
 asarUnpack:
   - "**/*.node"
 
-# Disable native module rebuilding.
-# The Electron renderer/main process has no native (.node) dependencies.
-# All native modules (opus, sharp, koffi …) belong to openclaw, which is
-# bundled separately (bundle-openclaw.mjs → extraResources) and runs in its
-# own process — @electron/rebuild must NOT touch them.
 npmRebuild: false
 
 # Auto-update configuration — GitHub Releases

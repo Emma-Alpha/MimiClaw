@@ -42,8 +42,8 @@ const routeHandlers: RouteHandler[] = [
 
 export function startHostApiServer(ctx: HostApiContext, port = PORTS.CLAWX_HOST_API): Server {
   const server = createServer(async (req, res) => {
+    const requestUrl = new URL(req.url || '/', `http://127.0.0.1:${port}`);
     try {
-      const requestUrl = new URL(req.url || '/', `http://127.0.0.1:${port}`);
       for (const handler of routeHandlers) {
         if (await handler(req, res, requestUrl, ctx)) {
           return;
@@ -51,7 +51,7 @@ export function startHostApiServer(ctx: HostApiContext, port = PORTS.CLAWX_HOST_
       }
       sendJson(res, 404, { success: false, error: `No route for ${req.method} ${requestUrl.pathname}` });
     } catch (error) {
-      logger.error('Host API request failed:', error);
+      logger.error(`Host API request failed: ${req.method} ${requestUrl.pathname}`, error);
       sendJson(res, 500, { success: false, error: String(error) });
     }
   });

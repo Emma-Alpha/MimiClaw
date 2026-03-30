@@ -90,7 +90,7 @@ function createDefaultSettings(): AppSettings {
     startMinimized: false,
     launchAtStartup: false,
     telemetryEnabled: true,
-    petEnabled: false,
+    petEnabled: true,
     petAnimation: DEFAULT_PET_ANIMATION,
     machineId: '',
     hasReportedInstall: false,

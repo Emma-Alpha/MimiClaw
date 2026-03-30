@@ -13,6 +13,43 @@ import { logger } from './logger.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function summarizeBodyPreview(value: string, maxLength = 120): string {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (!normalized) return '<empty>';
+  return normalized.length > maxLength
+    ? `${normalized.slice(0, maxLength)}...`
+    : normalized;
+}
+
+async function parseJsonResponse<T>(
+  response: Response,
+  requestLabel: string,
+): Promise<T | null> {
+  const rawText = await response.text().catch(() => '');
+  if (!rawText.trim()) {
+    return null;
+  }
+
+  const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
+  const looksLikeJson = rawText.trim().startsWith('{') || rawText.trim().startsWith('[');
+  if (!contentType.includes('application/json') && !looksLikeJson) {
+    logger.warn(
+      `[cloud-config] ${requestLabel} returned non-JSON content (${contentType || 'unknown'}): ${summarizeBodyPreview(rawText)}`,
+    );
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawText) as T;
+  } catch (error) {
+    logger.warn(
+      `[cloud-config] ${requestLabel} returned invalid JSON: ${summarizeBodyPreview(rawText)}`,
+      error,
+    );
+    return null;
+  }
+}
+
 async function getCloudCredentials(): Promise<{ apiUrl: string; token: string } | null> {
   const [apiUrl, token] = await Promise.all([
     getSetting('cloudApiUrl'),
@@ -36,6 +73,7 @@ async function cloudFetch<T>(
   }
 
   const url = `${creds.apiUrl}${path}`;
+  const requestLabel = `${init.method ?? 'GET'} ${url}`;
   try {
     const res = await fetch(url, {
       ...init,
@@ -48,13 +86,17 @@ async function cloudFetch<T>(
 
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      logger.warn(`[cloud-config] ${init.method ?? 'GET'} ${path} → ${res.status}: ${body}`);
+      logger.warn(`[cloud-config] ${requestLabel} → ${res.status}: ${summarizeBodyPreview(body)}`);
       return null;
     }
 
-    return res.json() as Promise<T>;
+    if (res.status === 204) {
+      return null;
+    }
+
+    return await parseJsonResponse<T>(res, requestLabel);
   } catch (err) {
-    logger.warn(`[cloud-config] Failed to call cloud API (${path}):`, err);
+    logger.warn(`[cloud-config] Failed to call cloud API (${requestLabel}):`, err);
     return null;
   }
 }

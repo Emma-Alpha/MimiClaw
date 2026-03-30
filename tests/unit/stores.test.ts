@@ -13,6 +13,7 @@ describe('Settings Store', () => {
       language: 'en',
       sidebarCollapsed: false,
       devModeUnlocked: false,
+      petEnabled: true,
       gatewayAutoStart: true,
       gatewayPort: 18789,
       autoCheckUpdate: true,
@@ -27,6 +28,7 @@ describe('Settings Store', () => {
     const state = useSettingsStore.getState();
     expect(state.theme).toBe('system');
     expect(state.sidebarCollapsed).toBe(false);
+    expect(state.petEnabled).toBe(true);
     expect(state.gatewayAutoStart).toBe(true);
   });
   

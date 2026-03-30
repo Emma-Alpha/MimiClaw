@@ -93,17 +93,6 @@ jobs:
           key: ${{ runner.os }}-vite-${{ hashFiles('src/**', 'electron/**', 'shared/**', 'vite.config.*', 'tsconfig*.json', 'pnpm-lock.yaml') }}
           restore-keys: ${{ runner.os }}-vite-
 
-      # ── Bundle outputs (openclaw / plugins / skills) ─────────────
-      - uses: actions/cache@v4
-        id: cache-bundles
-        with:
-          path: |
-            build/openclaw
-            build/openclaw-plugins
-            build/preinstalled-skills
-          key: ${{ runner.os }}-build-bundles-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: ${{ runner.os }}-build-bundles-
-
       # ── uv binaries — keyed to version in download script ────────
       - name: Cache uv binaries
         id: cache-uv
@@ -127,7 +116,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CI_PARALLELISM: 4
           SKIP_VITE_BUILD: ${{ steps.cache-vite.outputs.cache-hit == 'true' && 'true' || 'false' }}
-          SKIP_BUNDLES: ${{ steps.cache-bundles.outputs.cache-hit == 'true' && 'true' || 'false' }}
         run: |
           ulimit -n 65536
           pnpm run package:prep:ci
