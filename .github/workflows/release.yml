@@ -45,10 +45,8 @@ jobs:
         run: |
           TAG="${GITHUB_REF#refs/tags/v}"
           if [[ "$TAG" =~ -(alpha|beta|rc) ]]; then
-            echo "targets=--arm64" >> $GITHUB_OUTPUT
             echo "prerelease=true" >> $GITHUB_OUTPUT
           else
-            echo "targets=" >> $GITHUB_OUTPUT
             echo "prerelease=false" >> $GITHUB_OUTPUT
           fi
 
@@ -131,8 +129,14 @@ jobs:
         run: |
           ulimit -n 65536
           pnpm run package:prep:ci
-          # Pre-release: arm64 only  |  Stable: both arches (x64 + arm64)
-          pnpm exec electron-builder --mac ${{ steps.arch.outputs.targets }} --publish never
+          if [[ "${{ steps.arch.outputs.prerelease }}" == "true" ]]; then
+            # Pre-release: arm64 only — skip x64 to halve build time
+            ARM64_ONLY='{"mac":{"target":[{"target":"dmg","arch":["arm64"]},{"target":"zip","arch":["arm64"]}]}}'
+            pnpm exec electron-builder --mac --config "$ARM64_ONLY" --publish never
+          else
+            # Stable release: both arches as defined in electron-builder.yml
+            pnpm exec electron-builder --mac --publish never
+          fi
 
       - name: Remove builder-debug.yml
         run: find release/ -name "builder-debug.yml" -delete || true
