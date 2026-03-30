@@ -79,8 +79,8 @@ jobs:
           path: |
             dist
             dist-electron
-          key: ${{ runner.os }}-vite-${{ hashFiles('src/**', 'electron/**', 'shared/**', 'vite.config.*', 'tsconfig*.json', 'pnpm-lock.yaml') }}
-          restore-keys: ${{ runner.os }}-vite-
+          key: ${{ runner.os }}-vite-${{ steps.arch.outputs.prerelease == 'true' && 'dev' || 'prod' }}-${{ hashFiles('src/**', 'electron/**', 'shared/**', 'vite.config.*', 'tsconfig*.json', 'pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-vite-${{ steps.arch.outputs.prerelease == 'true' && 'dev' || 'prod' }}-
 
       # ── uv binaries — keyed to version in download script ────────
       - name: Cache uv binaries
@@ -105,6 +105,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CI_PARALLELISM: 4
           SKIP_VITE_BUILD: ${{ steps.cache-vite.outputs.cache-hit == 'true' && 'true' || 'false' }}
+          # beta/alpha/rc → development env (.env.development); stable → production (.env.production)
+          VITE_MODE: ${{ steps.arch.outputs.prerelease == 'true' && 'development' || 'production' }}
         run: |
           ulimit -n 65536
           pnpm run package:prep:ci

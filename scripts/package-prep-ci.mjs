@@ -7,11 +7,17 @@ import { spawn } from 'node:child_process';
 // restored from the Actions cache — skip the expensive rebuild.
 const skipVite = process.env.SKIP_VITE_BUILD === 'true';
 
+// VITE_MODE controls which .env file Vite loads (development / test / production).
+// Defaults to 'production' to match `vite build` default behaviour.
+const viteMode = process.env.VITE_MODE || 'production';
+const viteBuildCmd = `pnpm exec vite build --mode ${viteMode}`;
+
 const steps = [
-  ...(skipVite ? [] : ['pnpm run build:vite']),
+  ...(skipVite ? [] : [viteBuildCmd]),
 ];
 
 if (skipVite) echo(chalk.green`✓ Vite dist restored from cache — skipping build:vite`);
+else echo(chalk.blue`ℹ Vite build mode: ${viteMode}`);
 
 const maxParallel = Math.max(1, Number(process.env.CI_PARALLELISM || '2'));
 
