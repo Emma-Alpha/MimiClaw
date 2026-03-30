@@ -1,10 +1,10 @@
 /**
  * Auto-Updater Module
- * Handles automatic application updates using electron-updater
+ * Handles automatic application updates using electron-updater with GitHub Releases.
  *
- * Update providers are configured in electron-builder.yml (OSS primary, GitHub fallback).
- * For prerelease channels (alpha, beta), the feed URL is overridden at runtime
- * to point at the channel-specific OSS directory (e.g. /alpha/, /beta/).
+ * electron-updater queries the GitHub Releases API to find the latest release
+ * whose assets include the channel-specific yml file (beta-mac.yml, latest-mac.yml, …).
+ * No external CDN or self-hosted runner required.
  */
 import { autoUpdater, UpdateInfo, ProgressInfo, UpdateDownloadedEvent } from 'electron-updater';
 import { BrowserWindow, app, ipcMain } from 'electron';
@@ -12,8 +12,8 @@ import { logger } from '../utils/logger';
 import { EventEmitter } from 'events';
 import { setQuitting } from './app-state';
 
-/** Base CDN URL (without trailing channel path) */
-const OSS_BASE_URL = 'https://cobot-1254397474.cos.ap-guangzhou.myqcloud.com';
+const GITHUB_OWNER = 'Emma-Alpha';
+const GITHUB_REPO = 'MimiClaw';
 
 export interface UpdateStatus {
   status: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
@@ -92,22 +92,23 @@ export class AppUpdater extends EventEmitter {
       debug: (msg: string) => logger.debug('[Updater]', msg),
     };
 
-    // Override feed URL for prerelease channels so that
-    // alpha -> /alpha/alpha-mac.yml, beta -> /beta/beta-mac.yml, etc.
+    // Detect channel from version semver prerelease tag.
+    // e.g. "0.2.11-beta.1" → "beta", "1.0.0" → "latest"
     const version = app.getVersion();
     const channel = detectChannel(version);
-    const feedUrl = `${OSS_BASE_URL}/${channel}`;
 
-    logger.info(`[Updater] Version: ${version}, channel: ${channel}, feedUrl: ${feedUrl}`);
+    logger.info(`[Updater] Version: ${version}, channel: ${channel}, provider: github (${GITHUB_OWNER}/${GITHUB_REPO})`);
 
-    // Set channel so electron-updater requests the correct yml filename.
-    // e.g. channel "alpha" → requests alpha-mac.yml, channel "latest" → requests latest-mac.yml
+    // Set channel so electron-updater requests the correct yml asset
+    // from the GitHub Release: beta → beta-mac.yml, latest → latest-mac.yml
     autoUpdater.channel = channel;
+    // Allow pre-release releases when not on the stable channel
+    autoUpdater.allowPrerelease = channel !== 'latest';
 
     autoUpdater.setFeedURL({
-      provider: 'generic',
-      url: feedUrl,
-      useMultipleRangeRequest: false,
+      provider: 'github',
+      owner: GITHUB_OWNER,
+      repo: GITHUB_REPO,
     });
 
     this.setupListeners();

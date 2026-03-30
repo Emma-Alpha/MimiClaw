@@ -18,6 +18,10 @@
         }
     },
     "description": "极智 - AI 智能助手",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Emma-Alpha/MimiClaw.git"
+    },
     "main": "dist-electron/main/index.js",
     "author": "极智团队",
     "license": "MIT",

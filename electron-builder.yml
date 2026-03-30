@@ -51,13 +51,14 @@ asarUnpack:
 # own process — @electron/rebuild must NOT touch them.
 npmRebuild: false
 
-# Auto-update configuration
-# Primary: Alibaba Cloud OSS (fast for Chinese users, used for auto-update)
-# Fallback: GitHub Releases (backup, used when OSS is unavailable)
+# Auto-update configuration — GitHub Releases
+# electron-updater queries the GitHub API to find the latest release asset
+# matching the installed channel (beta-mac.yml, latest-mac.yml, etc.)
 publish:
-  - provider: generic
-    url: https://cobot-1254397474.cos.ap-guangzhou.myqcloud.com/latest
-    useMultipleRangeRequest: false
+  - provider: github
+    owner: Emma-Alpha
+    repo: MimiClaw
+    releaseType: release
 
 # macOS Configuration
 mac:

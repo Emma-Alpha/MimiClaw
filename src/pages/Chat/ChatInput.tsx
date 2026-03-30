@@ -156,6 +156,10 @@ const useStyles = createStyles(({ token, css, prefixCls }) => ({
       }
     }
 
+    &.is-sending .${prefixCls}-btn svg {
+      animation: spin 1s linear infinite;
+    }
+
     &.is-sending .${prefixCls}-btn::after {
       content: '';
       position: absolute;
