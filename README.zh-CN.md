@@ -100,7 +100,7 @@
 从安装到第一次 AI 对话，全程通过直观的图形界面完成。无需终端命令，无需 YAML 文件，无需到处寻找环境变量。
 
 ### 💬 智能聊天界面
-通过现代化的聊天体验与 AI 智能体交互。支持多会话上下文、消息历史记录、Markdown 富文本渲染，以及在多 Agent 场景下通过主输入框中的 `@agent` 直接路由到目标智能体。
+通过现代化的聊天体验与 AI 智能体交互。支持多会话上下文、消息历史记录、Markdown 富文本渲染、在多 Agent 场景下通过主输入框中的 `@agent` 直接路由到目标智能体，以及在聊天输入框中一键截图并作为附件发送。
 当你使用 `@agent` 选择其他智能体时，极智 会直接切换到该智能体自己的对话上下文，而不是经过默认智能体转发。各 Agent 工作区默认彼此分离，但更强的运行时隔离仍取决于 OpenClaw 的 sandbox 配置。
 
 ### 📡 多频道管理
@@ -158,6 +158,14 @@ pnpm run init
 # 以开发模式启动
 pnpm dev
 ```
+
+环境文件约定：
+
+- 本地开发使用 `.env.development`
+- 测试 / 预发打包使用 `.env.test`，并通过 `vite build --mode test`
+- 正式发布使用 `.env.production`
+- `*.local` 仅用于机器私有覆盖，不建议提交
+
 ### 首次启动
 
 首次启动 极智 时，**设置向导** 将引导你完成以下步骤：
@@ -375,12 +383,45 @@ pnpm run comms:compare    # 将回放指标与基线阈值对比
 
 # 构建与打包
 pnpm run build:vite       # 仅构建前端
+pnpm run build:vite:test  # 使用 .env.test 构建 renderer/main/preload
+pnpm run build:vite:prod  # 使用 .env.production 构建 renderer/main/preload
 pnpm build                # 完整生产构建（含打包资源）
 pnpm package              # 为当前平台打包（包含预装技能资源）
+pnpm run package:test     # 使用 .env.test 构建打包资源
+pnpm run package:prod     # 使用 .env.production 构建打包资源
 pnpm package:mac          # 为 macOS 打包
+pnpm run package:mac:test # 使用 .env.test 打 macOS 包
+pnpm run package:mac:prod # 使用 .env.production 打 macOS 包
+pnpm run package:mac:cloud:prod # 打不带 OpenClaw 的云版 macOS 包
 pnpm package:win          # 为 Windows 打包
+pnpm run package:win:test # 使用 .env.test 打 Windows 包
+pnpm run package:win:prod # 使用 .env.production 打 Windows 包
+pnpm run package:win:cloud:prod # 打不带 OpenClaw 的云版 Windows 包
 pnpm package:linux        # 为 Linux 打包
+pnpm run package:linux:test # 使用 .env.test 打 Linux 包
+pnpm run package:linux:prod # 使用 .env.production 打 Linux 包
+pnpm run package:linux:cloud:prod # 打不带 OpenClaw 的云版 Linux 包
 ```
+
+### 按环境打包
+
+- `pnpm package`、`pnpm package:mac`、`pnpm package:win`、`pnpm package:linux` 保持当前默认行为，仍然走 Vite 的 `production` 模式。
+- 测试包请使用 `pnpm run package:test` 或各平台的 `*:test` 脚本，它们会读取 [.env.test](/Users/liangpingbo/Desktop/4399/electron/ClawX/.env.test)。
+- 生产包请使用 `pnpm run package:prod` 或各平台的 `*:prod` 脚本，它们会读取 [.env.production](/Users/liangpingbo/Desktop/4399/electron/ClawX/.env.production)。
+- 云版包请使用 `pnpm run package:cloud:prod` 或各平台的 `*:cloud:*` 脚本，它们会跳过 OpenClaw、本地 CLI、预装插件镜像和本地运行时资源。
+- 本地开发继续使用 [.env.development](/Users/liangpingbo/Desktop/4399/electron/ClawX/.env.development) 并通过 `pnpm dev` 启动。
+
+云版包的取舍：
+
+- 包体会更小，因为不再内置本地 OpenClaw / Gateway 运行时。
+- 本地 Gateway 自启动、本地 CLI 安装、预装本地插件同步会被跳过。
+- 首次启动的新手引导会自动跳过本地运行时检测与本地安装步骤，改为云端工作区流程。
+- 适合主要走云控台和远端 Gateway 的发布形态。
+
+内部包内置 Snipaste：
+
+- 如果你希望截图按钮优先拉起应用内置的 Snipaste，请按 [resources/snipaste/README.md](/Users/liangpingbo/Desktop/4399/electron/ClawX/resources/snipaste/README.md) 的目录约定放置对应平台二进制。
+- 当前打包产物会优先查找内置 Snipaste，找不到时才回退到系统已安装的 Snipaste。
 
 ### 通信回归检查
 
@@ -425,20 +466,6 @@ CI 中的 `comms-regression` 会校验必选场景与阈值。
 - 为新功能编写测试
 - 按需更新文档
 - 保持提交原子化且描述清晰
-
----
-
-## 贡献者
-
-感谢所有为本项目做出贡献的朋友。
-
-<p align="center">
-  <a href="https://github.com/Emma-Alpha/MimiClaw/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=Emma-Alpha/MimiClaw" alt="贡献者" />
-  </a>
-</p>
-
-上图由提交记录自动生成并会定期刷新。完整名单以 GitHub [贡献者图表](https://github.com/Emma-Alpha/MimiClaw/graphs/contributors) 为准。
 
 ---
 

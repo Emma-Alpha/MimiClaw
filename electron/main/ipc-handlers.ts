@@ -64,6 +64,7 @@ import { syncPetWindowFromSettings } from './pet-window';
 import { getPetRuntimeState, setPetInputActivity, setPetUiActivity, syncPetRuntimeIdleState, pushPetTerminalLine } from './pet-runtime';
 import { PET_IDLE_ANIMATIONS, type PetUiActivity } from '../../shared/pet';
 import { PORTS } from '../utils/config';
+import { captureWithSnipaste } from '../utils/snipaste';
 
 type AppRequest = {
   id?: string;
@@ -254,6 +255,9 @@ export function registerIpcHandlers(
 
   // File staging handlers (upload/send separation)
   registerFileHandlers();
+
+  // Screenshot handlers
+  registerScreenshotHandlers();
 }
 
 type HostApiFetchRequest = {
@@ -2119,6 +2123,12 @@ function registerShellHandlers(): void {
   // Open path
   ipcMain.handle('shell:openPath', async (_, path: string) => {
     return await shell.openPath(path);
+  });
+}
+
+function registerScreenshotHandlers(): void {
+  ipcMain.handle('screenshot:captureSnipaste', async () => {
+    return await captureWithSnipaste();
   });
 }
 

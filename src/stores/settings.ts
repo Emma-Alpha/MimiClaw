@@ -11,6 +11,7 @@ import { DEFAULT_PET_ANIMATION, type PetAnimation } from '../../shared/pet';
 import {
   cloudLogin,
   cloudLogout,
+  getCloudApiBase,
   getCloudSession,
   setCloudSession,
   isCloudSessionValid,
@@ -291,7 +292,7 @@ export const useSettingsStore = create<SettingsState>()(
             const override = window.localStorage.getItem('clawx:cloud-api-base');
             if (override) return override.replace(/\/$/, '');
           } catch { /* ignore */ }
-          return 'https://api.jizhiai.gz4399.com';
+          return getCloudApiBase();
         })();
         void hostApiFetch('/api/settings', {
           method: 'PUT',

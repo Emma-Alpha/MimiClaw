@@ -6,7 +6,7 @@
  * All file I/O uses async fs/promises to avoid blocking the main thread.
  */
 import { readFile, writeFile, access, cp, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
+import { existsSync, readdirSync } from 'fs';
 import { constants } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
@@ -255,6 +255,14 @@ async function readPreinstalledManifest(): Promise<PreinstalledSkillSpec[]> {
     }
 }
 
+function directoryHasEntries(dir: string): boolean {
+    try {
+        return readdirSync(dir).length > 0;
+    } catch {
+        return false;
+    }
+}
+
 function resolvePreinstalledSkillsSourceRoot(): string | null {
     const candidates = [
         join(getResourcesDir(), 'preinstalled-skills'),
@@ -262,7 +270,7 @@ function resolvePreinstalledSkillsSourceRoot(): string | null {
         join(__dirname, '../../build/preinstalled-skills'),
     ];
 
-    const root = candidates.find((dir) => existsSync(dir));
+    const root = candidates.find((dir) => existsSync(dir) && directoryHasEntries(dir));
     return root || null;
 }
 
@@ -323,7 +331,6 @@ export async function ensurePreinstalledSkillsInstalled(): Promise<void> {
 
     const sourceRoot = resolvePreinstalledSkillsSourceRoot();
     if (!sourceRoot) {
-        logger.warn('Preinstalled skills source root not found; skipping preinstall.');
         return;
     }
     const lockVersions = await readPreinstalledLockVersions(sourceRoot);

@@ -5,7 +5,7 @@
 
 export interface IpcRenderer {
   invoke(channel: string, ...args: unknown[]): Promise<unknown>;
-  on(channel: string, callback: (...args: unknown[]) => void): (() => void) | void;
+  on(channel: string, callback: (...args: unknown[]) => void): (() => void) | undefined;
   once(channel: string, callback: (...args: unknown[]) => void): void;
   off(channel: string, callback?: (...args: unknown[]) => void): void;
 }
@@ -13,6 +13,13 @@ export interface IpcRenderer {
 export interface ElectronAPI {
   ipcRenderer: IpcRenderer;
   openExternal: (url: string) => Promise<void>;
+  captureScreenshot: () => Promise<{
+    fileName: string;
+    mimeType: string;
+    fileSize: number;
+    base64: string;
+    preview: string;
+  }>;
   platform: NodeJS.Platform;
   isDev: boolean;
 }
@@ -22,5 +29,3 @@ declare global {
     electron: ElectronAPI;
   }
 }
-
-export {};

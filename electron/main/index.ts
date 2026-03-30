@@ -4,7 +4,7 @@
  */
 import { app, BrowserWindow, nativeImage, session, shell } from 'electron';
 import type { Server } from 'node:http';
-import { join, resolve } from 'path';
+import { join, resolve } from 'node:path';
 import { GatewayManager } from '../gateway/manager';
 import { registerIpcHandlers } from './ipc-handlers';
 import { createTray } from './tray';
@@ -40,6 +40,7 @@ import { getSetting } from '../utils/store';
 import { setSetting } from '../utils/store';
 import { ensureBuiltinSkillsInstalled, ensurePreinstalledSkillsInstalled } from '../utils/skill-config';
 import { ensureAllBundledPluginsInstalled } from '../utils/plugin-install';
+import { isOpenClawPresent } from '../utils/paths';
 import { startHostApiServer } from '../api/server';
 import { HostEventBus } from '../api/event-bus';
 import { deviceOAuthManager } from '../utils/device-oauth';
@@ -355,10 +356,14 @@ function syncMacDockIcon(): void {
 async function initialize(): Promise<void> {
   // Initialize logger first
   logger.init();
+  const openclawAvailable = isOpenClawPresent();
   logger.info('=== ClawX Application Starting ===');
   logger.debug(
     `Runtime: platform=${process.platform}/${process.arch}, electron=${process.versions.electron}, node=${process.versions.node}, packaged=${app.isPackaged}, pid=${process.pid}, ppid=${process.ppid}`
   );
+  if (!openclawAvailable) {
+    logger.info('OpenClaw runtime not bundled; local Gateway and CLI features will be skipped until a runtime is available.');
+  }
 
   // Warm up network optimization (non-blocking)
   void warmupNetworkOptimization();
@@ -527,7 +532,7 @@ async function initialize(): Promise<void> {
 
   // Start Gateway automatically (this seeds missing bootstrap files with full templates)
   const gatewayAutoStart = await getSetting('gatewayAutoStart');
-  if (gatewayAutoStart) {
+  if (gatewayAutoStart && openclawAvailable) {
     try {
       await syncAllProviderAuthToRuntime();
       logger.debug('Auto-starting Gateway...');
@@ -537,6 +542,8 @@ async function initialize(): Promise<void> {
       logger.error('Gateway auto-start failed:', error);
       mainWindow?.webContents.send('gateway:error', String(error));
     }
+  } else if (gatewayAutoStart && !openclawAvailable) {
+    logger.info('Gateway auto-start skipped because no bundled OpenClaw runtime is available');
   } else {
     logger.info('Gateway auto-start disabled in settings');
   }
@@ -549,14 +556,16 @@ async function initialize(): Promise<void> {
   });
 
   // Auto-install openclaw CLI and shell completions (non-blocking).
-  void autoInstallCliIfNeeded((installedPath) => {
-    mainWindow?.webContents.send('openclaw:cli-installed', installedPath);
-  }).then(() => {
-    generateCompletionCache();
-    installCompletionToProfile();
-  }).catch((error) => {
-    logger.warn('CLI auto-install failed:', error);
-  });
+  if (openclawAvailable) {
+    void autoInstallCliIfNeeded((installedPath) => {
+      mainWindow?.webContents.send('openclaw:cli-installed', installedPath);
+    }).then(() => {
+      generateCompletionCache();
+      installCompletionToProfile();
+    }).catch((error) => {
+      logger.warn('CLI auto-install failed:', error);
+    });
+  }
 }
 
 if (gotTheLock) {

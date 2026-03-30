@@ -4,8 +4,12 @@
 import { useRef, useEffect } from 'react';
 import { REMOTE_JIZHI_CHAT_URL } from '@/lib/remote-jizhi-chat';
 
+type WebviewElement = HTMLElement & {
+  insertCSS: (css: string) => Promise<string>;
+};
+
 export function RemoteJizhiChat() {
-  const webviewRef = useRef<Electron.WebviewTag>(null);
+  const webviewRef = useRef<WebviewElement>(null);
 
   useEffect(() => {
     const webview = webviewRef.current;

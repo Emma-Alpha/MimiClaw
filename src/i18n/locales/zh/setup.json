@@ -32,17 +32,24 @@
             "noCommand": "无需命令行",
             "modernUI": "现代美观的界面",
             "bundles": "预装技能包",
+            "cloudWorkspace": "云端工作区开箱即用",
             "crossPlatform": "跨平台支持"
         }
     },
     "runtime": {
         "title": "检查环境",
+        "cloudOnlyTitle": "当前为云端版",
+        "cloudOnlyDesc": "此安装包不会内置本地 OpenClaw / Gateway，初始化将直接使用云端工作区。",
         "viewLogs": "查看日志",
         "recheck": "重新检查",
         "nodejs": "Node.js 运行时",
         "openclaw": "OpenClaw 包",
         "gateway": "网关服务",
         "startGateway": "启动网关",
+        "cloudLogin": "云端登录",
+        "cloudWorkspace": "云端工作区",
+        "localRuntimeSkipped": "本地运行时准备",
+        "remoteGateway": "远程网关",
         "status": {
             "checking": "检查中...",
             "success": "Node.js 可用",
@@ -63,6 +70,8 @@
     },
     "provider": {
         "label": "模型提供商",
+        "cloudOnlyTitle": "提供商会同步到云端",
+        "cloudOnlyDesc": "当前是 cloud-only 版本，本地 OpenClaw 已移除。这里保存的模型配置会同步到您的云端工作区，供远程运行时使用。",
         "selectPlaceholder": "选择提供商...",
         "baseUrl": "基础 URL",
         "modelId": "模型 ID",
@@ -83,6 +92,7 @@
         "validateSave": "验证并保存",
         "valid": "提供商配置成功",
         "invalid": "无效的 API 密钥",
+        "syncedToCloud": "配置将同步到云端工作区。",
         "storedLocally": "您的 API 密钥存储在本地机器上。"
     },
     "channel": {
@@ -99,6 +109,14 @@
     "installing": {
         "title": "安装必要组件",
         "subtitle": "正在设置 AI 助手所需的工具",
+        "cloudOnlyTitle": "正在连接云端工作区",
+        "cloudOnlySubtitle": "云端版不需要下载本地 OpenClaw、Gateway 或 Python 技能环境。",
+        "cloudOnlyWait": "正在切换到云端就绪状态...",
+        "cloudOnlyItems": {
+            "runtime": "跳过本地 OpenClaw 运行时",
+            "gateway": "跳过本地 Gateway 初始化",
+            "providers": "保留云端提供商配置"
+        },
         "progress": "进度",
         "status": {
             "pending": "等待中",
@@ -116,9 +134,15 @@
         "subtitle": "极智 已配置并准备就绪。您现在可以开始与您的 AI 助手聊天了。",
         "provider": "AI 提供商",
         "components": "组件",
+        "runtime": "运行模式",
         "gateway": "网关",
+        "workspace": "工作区",
+        "connected": "已连接",
+        "remoteConnected": "已连接远程网关",
+        "cloudOnlyMode": "云端托管（无本地 OpenClaw）",
         "running": "运行中",
-        "footer": "您可以在设置中自定义技能并连接渠道"
+        "footer": "您可以在设置中自定义技能并连接渠道",
+        "cloudOnlyFooter": "后续如需调整模型、渠道或云端连接信息，可在设置中继续修改。"
     },
     "nav": {
         "next": "下一步",

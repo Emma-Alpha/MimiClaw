@@ -32,17 +32,24 @@
             "noCommand": "Zero command-line required",
             "modernUI": "Modern, beautiful interface",
             "bundles": "Pre-installed skill bundles",
+            "cloudWorkspace": "Cloud workspace ready out of the box",
             "crossPlatform": "Cross-platform support"
         }
     },
     "runtime": {
         "title": "Checking Environment",
+        "cloudOnlyTitle": "This is a cloud-only build",
+        "cloudOnlyDesc": "This package does not include a local OpenClaw or Gateway runtime. Setup will continue against your cloud workspace.",
         "viewLogs": "View Logs",
         "recheck": "Re-check",
         "nodejs": "Node.js Runtime",
         "openclaw": "OpenClaw Package",
         "gateway": "Gateway Service",
         "startGateway": "Start Gateway",
+        "cloudLogin": "Cloud login",
+        "cloudWorkspace": "Cloud workspace",
+        "localRuntimeSkipped": "Local runtime setup",
+        "remoteGateway": "Remote gateway",
         "status": {
             "checking": "Checking...",
             "success": "Node.js is available",
@@ -63,6 +70,8 @@
     },
     "provider": {
         "label": "Model Provider",
+        "cloudOnlyTitle": "Provider settings sync to the cloud",
+        "cloudOnlyDesc": "This is a cloud-only build, so local OpenClaw has been removed. Any provider you configure here will sync to your cloud workspace for remote runtime use.",
         "selectPlaceholder": "Select a provider...",
         "baseUrl": "Base URL",
         "modelId": "Model ID",
@@ -83,6 +92,7 @@
         "validateSave": "Validate & Save",
         "valid": "Provider configured successfully",
         "invalid": "Invalid API key",
+        "syncedToCloud": "This configuration will also sync to your cloud workspace.",
         "storedLocally": "Your API key is stored locally on your machine."
     },
     "channel": {
@@ -99,6 +109,14 @@
     "installing": {
         "title": "Installing Essential Components",
         "subtitle": "Setting up the tools needed to power your AI assistant",
+        "cloudOnlyTitle": "Connecting your cloud workspace",
+        "cloudOnlySubtitle": "Cloud-only builds skip local OpenClaw, Gateway, and Python skill downloads.",
+        "cloudOnlyWait": "Switching to cloud-ready mode...",
+        "cloudOnlyItems": {
+            "runtime": "Skip local OpenClaw runtime",
+            "gateway": "Skip local Gateway bootstrap",
+            "providers": "Keep provider setup for the cloud workspace"
+        },
         "progress": "Progress",
         "status": {
             "pending": "Pending",
@@ -116,9 +134,15 @@
         "subtitle": "极智 is configured and ready to use. You can now start chatting with your AI assistant.",
         "provider": "AI Provider",
         "components": "Components",
+        "runtime": "Runtime Mode",
         "gateway": "Gateway",
+        "workspace": "Workspace",
+        "connected": "Connected",
+        "remoteConnected": "Connected to remote gateway",
+        "cloudOnlyMode": "Cloud-managed (no local OpenClaw)",
         "running": "Running",
-        "footer": "You can customize skills and connect channels in Settings"
+        "footer": "You can customize skills and connect channels in Settings",
+        "cloudOnlyFooter": "You can adjust models, channels, and cloud connection details later from Settings."
     },
     "nav": {
         "next": "Next",

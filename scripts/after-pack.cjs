@@ -389,6 +389,11 @@ function bundlePlugin(nodeModulesRoot, npmName, destDir) {
 // ── Main hook ────────────────────────────────────────────────────────────────
 
 exports.default = async function afterPack(context) {
+  if (process.env.CLAWX_CLOUD_ONLY === '1') {
+    console.log('[after-pack] Cloud-only package: skipping bundled OpenClaw runtime and plugin mirrors.');
+    return;
+  }
+
   const appOutDir = context.appOutDir;
   const platform = context.electronPlatformName; // 'win32' | 'darwin' | 'linux'
   const arch = resolveArch(context.arch);

@@ -429,6 +429,10 @@ export function buildCandidateSources(pluginDirName: string): string[] {
     ];
 }
 
+function hasBundledPluginMirror(pluginDirName: string): boolean {
+  return buildCandidateSources(pluginDirName).some((dir) => existsSync(fsPath(join(dir, 'openclaw.plugin.json'))));
+}
+
 // ── Per-channel plugin helpers ───────────────────────────────────────────────
 
 export function ensureDingTalkPluginInstalled(): { installed: boolean; warning?: string } {
@@ -461,11 +465,11 @@ export function ensureWeChatPluginInstalled(): { installed: boolean; warning?: s
  * All bundled plugins, in the same order as after-pack.cjs BUNDLED_PLUGINS.
  */
 const ALL_BUNDLED_PLUGINS = [
-  { fn: ensureDingTalkPluginInstalled, label: 'DingTalk' },
-  { fn: ensureWeComPluginInstalled, label: 'WeCom' },
-  { fn: ensureQQBotPluginInstalled, label: 'QQ Bot' },
-  { fn: ensureFeishuPluginInstalled, label: 'Feishu' },
-  { fn: ensureWeChatPluginInstalled, label: 'WeChat' },
+  { fn: ensureDingTalkPluginInstalled, label: 'DingTalk', pluginDirName: 'dingtalk' },
+  { fn: ensureWeComPluginInstalled, label: 'WeCom', pluginDirName: 'wecom' },
+  { fn: ensureQQBotPluginInstalled, label: 'QQ Bot', pluginDirName: 'qqbot' },
+  { fn: ensureFeishuPluginInstalled, label: 'Feishu', pluginDirName: 'feishu-openclaw-plugin' },
+  { fn: ensureWeChatPluginInstalled, label: 'WeChat', pluginDirName: 'openclaw-weixin' },
 ] as const;
 
 /**
@@ -474,6 +478,11 @@ const ALL_BUNDLED_PLUGINS = [
  * as a fire-and-forget task — errors are logged but never thrown.
  */
 export async function ensureAllBundledPluginsInstalled(): Promise<void> {
+  if (app.isPackaged && !ALL_BUNDLED_PLUGINS.some(({ pluginDirName }) => hasBundledPluginMirror(pluginDirName))) {
+    logger.info('[plugin] No bundled OpenClaw plugin mirrors found; skipping startup plugin sync.');
+    return;
+  }
+
   for (const { fn, label } of ALL_BUNDLED_PLUGINS) {
     try {
       const result = fn();

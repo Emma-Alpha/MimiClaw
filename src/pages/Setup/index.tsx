@@ -35,6 +35,7 @@ import { toast } from 'sonner';
 import { invokeIpc } from '@/lib/api-client';
 import { hostApiFetch } from '@/lib/host-api';
 import { subscribeHostEvent } from '@/lib/host-events';
+import { resolveCloudOnlyMode } from '@/lib/app-env';
 interface SetupStep {
   id: string;
   title: string;
@@ -131,6 +132,7 @@ export function Setup() {
   const { t } = useTranslation(['setup', 'channels']);
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<number>(STEP.WELCOME);
+  const isCloudOnlyBuild = resolveCloudOnlyMode();
 
   // Setup state
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
@@ -159,8 +161,8 @@ export function Setup() {
       case STEP.WELCOME:
         return true;
       case STEP.RUNTIME:
-        // Remote mode: local runtime checks not required
-        return isRemoteMode || runtimeChecksPassed;
+        // Cloud-only / remote mode: local runtime checks not required
+        return isCloudOnlyBuild || isRemoteMode || runtimeChecksPassed;
       case STEP.PROVIDER:
         // Remote mode: provider is managed on remote server, skip local setup
         return isRemoteMode || providerConfigured;
@@ -257,8 +259,14 @@ export function Setup() {
 
             {/* Step-specific content */}
             <div className="rounded-xl bg-card text-card-foreground border shadow-sm p-8 mb-8">
-              {safeStepIndex === STEP.WELCOME && <WelcomeContent />}
-              {safeStepIndex === STEP.RUNTIME && <RuntimeContent onStatusChange={setRuntimeChecksPassed} isRemoteMode={isRemoteMode} />}
+              {safeStepIndex === STEP.WELCOME && <WelcomeContent isCloudOnlyBuild={isCloudOnlyBuild} />}
+              {safeStepIndex === STEP.RUNTIME && (
+                <RuntimeContent
+                  onStatusChange={setRuntimeChecksPassed}
+                  isRemoteMode={isRemoteMode}
+                  isCloudOnlyBuild={isCloudOnlyBuild}
+                />
+              )}
               {safeStepIndex === STEP.PROVIDER && (
                 <ProviderContent
                   providers={providers}
@@ -268,6 +276,7 @@ export function Setup() {
                   onApiKeyChange={setApiKey}
                   onConfiguredChange={setProviderConfigured}
                   isRemoteMode={isRemoteMode}
+                  isCloudOnlyBuild={isCloudOnlyBuild}
                 />
               )}
               {safeStepIndex === STEP.INSTALLING && (
@@ -275,12 +284,14 @@ export function Setup() {
                   skills={getDefaultSkills(t)}
                   onComplete={handleInstallationComplete}
                   onSkip={() => setCurrentStep((i) => i + 1)}
+                  isCloudOnlyBuild={isCloudOnlyBuild}
                 />
               )}
               {safeStepIndex === STEP.COMPLETE && (
                 <CompleteContent
                   selectedProvider={selectedProvider}
                   installedSkills={installedSkills}
+                  isCloudOnlyBuild={isCloudOnlyBuild}
                 />
               )}
             </div>
@@ -324,7 +335,11 @@ export function Setup() {
 
 // ==================== Step Content Components ====================
 
-function WelcomeContent() {
+interface WelcomeContentProps {
+  isCloudOnlyBuild?: boolean;
+}
+
+function WelcomeContent({ isCloudOnlyBuild }: WelcomeContentProps) {
   const { t } = useTranslation(['setup', 'settings']);
   const { language, setLanguage } = useSettingsStore();
 
@@ -364,7 +379,7 @@ function WelcomeContent() {
         </li>
         <li className="flex items-center gap-2">
           <CheckCircle2 className="h-5 w-5 text-green-400" />
-          {t('welcome.features.bundles')}
+          {isCloudOnlyBuild ? t('welcome.features.cloudWorkspace') : t('welcome.features.bundles')}
         </li>
         <li className="flex items-center gap-2">
           <CheckCircle2 className="h-5 w-5 text-green-400" />
@@ -378,20 +393,23 @@ function WelcomeContent() {
 interface RuntimeContentProps {
   onStatusChange: (canProceed: boolean) => void;
   isRemoteMode?: boolean;
+  isCloudOnlyBuild?: boolean;
 }
 
-function RuntimeContent({ onStatusChange, isRemoteMode }: RuntimeContentProps) {
+function RuntimeContent({ onStatusChange, isRemoteMode, isCloudOnlyBuild }: RuntimeContentProps) {
   const { t } = useTranslation('setup');
   const gatewayStatus = useGatewayStore((state) => state.status);
   const startGateway = useGatewayStore((state) => state.start);
   const remoteGatewayUrl = useSettingsStore((state) => state.remoteGatewayUrl);
+  const cloudLoggedIn = useSettingsStore((state) => state.cloudLoggedIn);
+  const cloudWorkspaceId = useSettingsStore((state) => state.cloudWorkspaceId);
 
-  // In remote mode, local runtime is not required — notify parent immediately
+  // In remote/cloud-only mode, local runtime is not required.
   useEffect(() => {
-    if (isRemoteMode) {
+    if (isRemoteMode || isCloudOnlyBuild) {
       onStatusChange(true);
     }
-  }, [isRemoteMode, onStatusChange]);
+  }, [isCloudOnlyBuild, isRemoteMode, onStatusChange]);
 
   const [checks, setChecks] = useState({
     nodejs: { status: 'checking' as 'checking' | 'success' | 'error', message: '' },
@@ -636,6 +654,43 @@ function RuntimeContent({ onStatusChange, isRemoteMode }: RuntimeContentProps) {
     );
   }
 
+  if (isCloudOnlyBuild) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 text-sm text-blue-200">
+          <p className="font-semibold mb-1">{t('runtime.cloudOnlyTitle')}</p>
+          <p className="text-blue-400/80">{t('runtime.cloudOnlyDesc')}</p>
+        </div>
+        <div className="space-y-3">
+          <div className="grid grid-cols-[1fr_auto] items-center gap-4 p-3 rounded-lg bg-muted/50">
+            <span className="text-left">{t('runtime.cloudLogin')}</span>
+            <span className={cloudLoggedIn ? 'text-green-400' : 'text-yellow-400'}>
+              {cloudLoggedIn ? t('complete.connected') : t('runtime.status.checking')}
+            </span>
+          </div>
+          <div className="grid grid-cols-[1fr_auto] items-center gap-4 p-3 rounded-lg bg-muted/50">
+            <span className="text-left">{t('runtime.cloudWorkspace')}</span>
+            <span className="text-green-400 font-mono text-right break-all max-w-[18rem]">
+              {cloudWorkspaceId || '—'}
+            </span>
+          </div>
+          <div className="grid grid-cols-[1fr_auto] items-center gap-4 p-3 rounded-lg bg-muted/50">
+            <span className="text-left">{t('runtime.localRuntimeSkipped')}</span>
+            <span className="text-green-400">{t('complete.connected')}</span>
+          </div>
+          {remoteGatewayUrl?.trim() && (
+            <div className="grid grid-cols-[1fr_auto] items-center gap-4 p-3 rounded-lg bg-muted/50">
+              <span className="text-left">{t('runtime.remoteGateway')}</span>
+              <span className="text-green-400 text-right break-all max-w-[18rem]">
+                {remoteGatewayUrl}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
@@ -731,6 +786,7 @@ interface ProviderContentProps {
   onApiKeyChange: (key: string) => void;
   onConfiguredChange: (configured: boolean) => void;
   isRemoteMode?: boolean;
+  isCloudOnlyBuild?: boolean;
 }
 
 function ProviderContent({
@@ -741,6 +797,7 @@ function ProviderContent({
   onApiKeyChange,
   onConfiguredChange,
   isRemoteMode,
+  isCloudOnlyBuild,
 }: ProviderContentProps) {
   const { t, i18n } = useTranslation(['setup', 'settings']);
   const devModeUnlocked = useSettingsStore((state) => state.devModeUnlocked);
@@ -1199,6 +1256,14 @@ function ProviderContent({
           <p className="text-blue-400/80 break-all">{remoteGatewayUrl}</p>
           <p className="mt-2 text-blue-400/70">
             {t('provider.remoteModeDesc', 'LLM 提供商已在远程 OpenClaw 中配置，无需在此处设置。点击"下一步"直接跳过。')}
+          </p>
+        </div>
+      )}
+      {!isRemoteMode && isCloudOnlyBuild && (
+        <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 text-sm text-blue-300">
+          <p className="font-semibold mb-1">{t('provider.cloudOnlyTitle')}</p>
+          <p className="text-blue-400/80">
+            {t('provider.cloudOnlyDesc')}
           </p>
         </div>
       )}
@@ -1662,7 +1727,7 @@ function ProviderContent({
           )}
 
           <p className="text-sm text-muted-foreground text-center">
-            {t('provider.storedLocally')}
+            {isCloudOnlyBuild ? t('provider.syncedToCloud') : t('provider.storedLocally')}
           </p>
         </motion.div>
       )}
@@ -1686,9 +1751,10 @@ interface InstallingContentProps {
   skills: DefaultSkill[];
   onComplete: (installedSkills: string[]) => void;
   onSkip: () => void;
+  isCloudOnlyBuild?: boolean;
 }
 
-function InstallingContent({ skills, onComplete, onSkip }: InstallingContentProps) {
+function InstallingContent({ skills, onComplete, onSkip, isCloudOnlyBuild }: InstallingContentProps) {
   const { t } = useTranslation('setup');
   const [skillStates, setSkillStates] = useState<SkillInstallState[]>(
     skills.map((s) => ({ ...s, status: 'pending' as InstallStatus }))
@@ -1701,6 +1767,14 @@ function InstallingContent({ skills, onComplete, onSkip }: InstallingContentProp
   useEffect(() => {
     if (installStarted.current) return;
     installStarted.current = true;
+
+    if (isCloudOnlyBuild) {
+      setOverallProgress(100);
+      const timer = setTimeout(() => {
+        onComplete([]);
+      }, 700);
+      return () => clearTimeout(timer);
+    }
 
     const runRealInstall = async () => {
       try {
@@ -1733,7 +1807,7 @@ function InstallingContent({ skills, onComplete, onSkip }: InstallingContentProp
     };
 
     runRealInstall();
-  }, [skills, onComplete]);
+  }, [isCloudOnlyBuild, skills, onComplete]);
 
   const getStatusIcon = (status: InstallStatus) => {
     switch (status) {
@@ -1760,6 +1834,39 @@ function InstallingContent({ skills, onComplete, onSkip }: InstallingContentProp
         return <span className="text-red-400">{t('installing.status.failed')}</span>;
     }
   };
+
+  if (isCloudOnlyBuild) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center">
+          <div className="text-4xl mb-4">☁️</div>
+          <h2 className="text-xl font-semibold mb-2">{t('installing.cloudOnlyTitle')}</h2>
+          <p className="text-muted-foreground">
+            {t('installing.cloudOnlySubtitle')}
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+            <span>{t('installing.cloudOnlyItems.runtime')}</span>
+            <CheckCircle2 className="h-5 w-5 text-green-400" />
+          </div>
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+            <span>{t('installing.cloudOnlyItems.gateway')}</span>
+            <CheckCircle2 className="h-5 w-5 text-green-400" />
+          </div>
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+            <span>{t('installing.cloudOnlyItems.providers')}</span>
+            <CheckCircle2 className="h-5 w-5 text-green-400" />
+          </div>
+        </div>
+
+        <p className="text-sm text-slate-400 text-center">
+          {t('installing.cloudOnlyWait')}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -1857,11 +1964,15 @@ function InstallingContent({ skills, onComplete, onSkip }: InstallingContentProp
 interface CompleteContentProps {
   selectedProvider: string | null;
   installedSkills: string[];
+  isCloudOnlyBuild?: boolean;
 }
 
-function CompleteContent({ selectedProvider, installedSkills }: CompleteContentProps) {
+function CompleteContent({ selectedProvider, installedSkills, isCloudOnlyBuild }: CompleteContentProps) {
   const { t } = useTranslation(['setup', 'settings']);
   const gatewayStatus = useGatewayStore((state) => state.status);
+  const remoteGatewayUrl = useSettingsStore((state) => state.remoteGatewayUrl);
+  const cloudWorkspaceId = useSettingsStore((state) => state.cloudWorkspaceId);
+  const isRemoteMode = !!remoteGatewayUrl?.trim();
 
   const providerData = providers.find((p) => p.id === selectedProvider);
   const installedSkillNames = getDefaultSkills(t)
@@ -1885,21 +1996,33 @@ function CompleteContent({ selectedProvider, installedSkills }: CompleteContentP
           </span>
         </div>
         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-          <span>{t('complete.components')}</span>
-          <span className="text-green-400">
-            {installedSkillNames || `${installedSkills.length} ${t('installing.status.installed')}`}
+          <span>{isCloudOnlyBuild ? t('complete.runtime') : t('complete.components')}</span>
+          <span className="text-green-400 text-right break-all max-w-[16rem]">
+            {isCloudOnlyBuild
+              ? t('complete.cloudOnlyMode')
+              : (installedSkillNames || `${installedSkills.length} ${t('installing.status.installed')}`)}
           </span>
         </div>
         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-          <span>{t('complete.gateway')}</span>
-          <span className={gatewayStatus.state === 'running' ? 'text-green-400' : 'text-yellow-400'}>
-            {gatewayStatus.state === 'running' ? `✓ ${t('complete.running')}` : gatewayStatus.state}
-          </span>
+          <span>{isCloudOnlyBuild ? t('complete.workspace') : t('complete.gateway')}</span>
+          {isCloudOnlyBuild ? (
+            <span className="text-green-400 text-right break-all max-w-[16rem]">
+              {cloudWorkspaceId || remoteGatewayUrl || t('complete.connected')}
+            </span>
+          ) : isRemoteMode ? (
+            <span className="text-green-400 text-right break-all max-w-[16rem]">
+              {remoteGatewayUrl || t('complete.remoteConnected')}
+            </span>
+          ) : (
+            <span className={gatewayStatus.state === 'running' ? 'text-green-400' : 'text-yellow-400'}>
+              {gatewayStatus.state === 'running' ? `✓ ${t('complete.running')}` : gatewayStatus.state}
+            </span>
+          )}
         </div>
       </div>
 
       <p className="text-sm text-muted-foreground">
-        {t('complete.footer')}
+        {isCloudOnlyBuild ? t('complete.cloudOnlyFooter') : t('complete.footer')}
       </p>
     </div>
   );

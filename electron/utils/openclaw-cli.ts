@@ -327,31 +327,13 @@ export async function autoInstallCliIfNeeded(
 
 // ── Completion helpers ───────────────────────────────────────────────────────
 
-function getNodeExecForCli(): string {
-  if (process.platform === 'darwin' && app.isPackaged) {
-    const appName = app.getName();
-    const helperName = `${appName} Helper`;
-    const helperPath = join(
-      dirname(process.execPath),
-      '../Frameworks',
-      `${helperName}.app`,
-      'Contents/MacOS',
-      helperName,
-    );
-    if (existsSync(helperPath)) return helperPath;
-  }
-  return process.execPath;
-}
-
 export function generateCompletionCache(): void {
   if (!app.isPackaged) return;
 
   const entryPath = getOpenClawEntryPath();
   if (!existsSync(entryPath)) return;
 
-  const execPath = getNodeExecForCli();
-
-  const child = spawn(execPath, [entryPath, 'completion', '--write-state'], {
+  const child = spawn(process.execPath, [entryPath, 'completion', '--write-state'], {
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
@@ -383,10 +365,8 @@ export function installCompletionToProfile(): void {
   const entryPath = getOpenClawEntryPath();
   if (!existsSync(entryPath)) return;
 
-  const execPath = getNodeExecForCli();
-
   const child = spawn(
-    execPath,
+    process.execPath,
     [entryPath, 'completion', '--install', '-y'],
     {
       env: {

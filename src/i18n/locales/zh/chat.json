@@ -28,7 +28,8 @@
         "stop": "停止",
         "gatewayConnected": "已连接",
         "gatewayStatus": "gateway {{state}} | port: {{port}} {{pid}}",
-        "retryFailedAttachments": "重试失败的附件"
+        "retryFailedAttachments": "重试失败的附件",
+        "captureScreenshot": "截图"
     },
     "historyBuckets": {
         "today": "今天",

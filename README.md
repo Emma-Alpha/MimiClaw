@@ -15,8 +15,7 @@
   <a href="#getting-started">Getting Started</a> •
   <a href="#architecture">Architecture</a> •
   <a href="#development">Development</a> •
-  <a href="#contributing">Contributing</a> •
-  <a href="#contributors">Contributors</a>
+  <a href="#contributing">Contributing</a>
 </p>
 
 <p align="center">
@@ -99,7 +98,7 @@ We are committed to maintaining strict alignment with the upstream OpenClaw proj
 Complete the entire setup—from installation to your first AI interaction—through an intuitive graphical interface. No terminal commands, no YAML files, no environment variable hunting.
 
 ### 💬 Intelligent Chat Interface
-Communicate with AI agents through a modern chat experience. Support for multiple conversation contexts, message history, rich content rendering with Markdown, and direct `@agent` routing in the main composer for multi-agent setups.
+Communicate with AI agents through a modern chat experience. Support for multiple conversation contexts, message history, rich content rendering with Markdown, direct `@agent` routing in the main composer for multi-agent setups, and one-click screenshot capture from the chat input.
 When you target another agent with `@agent`, 极智 switches into that agent's own conversation context directly instead of relaying through the default agent. Agent workspaces stay separate by default, and stronger isolation depends on OpenClaw sandbox settings.
 
 ### 📡 Multi-Channel Management
@@ -158,6 +157,14 @@ pnpm run init
 # Start in development mode
 pnpm dev
 ```
+
+Environment file conventions:
+
+- Use `.env.development` for local development.
+- Use `.env.test` for staging / test builds with `vite build --mode test`.
+- Use `.env.production` for release builds.
+- Use `*.local` only for machine-specific overrides that should not be committed.
+
 ### First Launch
 
 When you launch 极智 for the first time, the **Setup Wizard** will guide you through:
@@ -375,12 +382,45 @@ pnpm run comms:compare    # Compare replay metrics against baseline thresholds
 
 # Build & Package
 pnpm run build:vite       # Build frontend only
+pnpm run build:vite:test  # Build renderer/main/preload with .env.test
+pnpm run build:vite:prod  # Build renderer/main/preload with .env.production
 pnpm build                # Full production build (with packaging assets)
 pnpm package              # Package for current platform (includes bundled preinstalled skills)
+pnpm run package:test     # Build packaging assets with .env.test
+pnpm run package:prod     # Build packaging assets with .env.production
 pnpm package:mac          # Package for macOS
+pnpm run package:mac:test # Package macOS build using .env.test
+pnpm run package:mac:prod # Package macOS build using .env.production
+pnpm run package:mac:cloud:prod # Package a cloud-only macOS build without bundled OpenClaw
 pnpm package:win          # Package for Windows
+pnpm run package:win:test # Package Windows build using .env.test
+pnpm run package:win:prod # Package Windows build using .env.production
+pnpm run package:win:cloud:prod # Package a cloud-only Windows build without bundled OpenClaw
 pnpm package:linux        # Package for Linux
+pnpm run package:linux:test # Package Linux build using .env.test
+pnpm run package:linux:prod # Package Linux build using .env.production
+pnpm run package:linux:cloud:prod # Package a cloud-only Linux build without bundled OpenClaw
 ```
+
+### Environment-Aware Packaging
+
+- `pnpm package`, `pnpm package:mac`, `pnpm package:win`, and `pnpm package:linux` keep the current default behavior and build with Vite `production` mode.
+- Use `pnpm run package:test` or the platform-specific `*:test` scripts to package against [.env.test](/Users/liangpingbo/Desktop/4399/electron/ClawX/.env.test).
+- Use `pnpm run package:prod` or the platform-specific `*:prod` scripts to package against [.env.production](/Users/liangpingbo/Desktop/4399/electron/ClawX/.env.production).
+- Use `pnpm run package:cloud:prod` or the platform-specific `*:cloud:*` scripts to produce a cloud-only build. These packages skip the bundled OpenClaw runtime, local CLI, preinstalled plugin mirrors, and extra local runtime resources.
+- Local development continues to use [.env.development](/Users/liangpingbo/Desktop/4399/electron/ClawX/.env.development) with `pnpm dev`.
+
+Cloud-only packaging trade-offs:
+
+- The app is smaller because it does not bundle local OpenClaw/Gateway resources.
+- Local Gateway startup, local CLI installation, and bundled local plugin bootstrap are skipped.
+- First-run onboarding automatically skips local runtime checks and local install/bootstrap steps in this variant.
+- This variant is intended for teams that primarily use the cloud control-plane and remote gateway flow.
+
+Bundled Snipaste for internal builds:
+
+- If you want the screenshot button to launch an app-bundled Snipaste first, place the binaries under [resources/snipaste/README.md](/Users/liangpingbo/Desktop/4399/electron/ClawX/resources/snipaste/README.md).
+- Packaged builds now prefer bundled Snipaste resources and only fall back to the system-installed Snipaste if no bundled binary is present.
 
 ### Communication Regression Checks
 
@@ -425,20 +465,6 @@ We welcome contributions from the community! Whether it's bug fixes, new feature
 - Write tests for new functionality
 - Update documentation as needed
 - Keep commits atomic and descriptive
-
----
-
-## Contributors
-
-Thanks to everyone who has contributed to this project.
-
-<p align="center">
-  <a href="https://github.com/Emma-Alpha/MimiClaw/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=Emma-Alpha/MimiClaw" alt="Contributors" />
-  </a>
-</p>
-
-The image above is generated from commit history and updates periodically. For the authoritative list, see the [contributors graph](https://github.com/Emma-Alpha/MimiClaw/graphs/contributors) on GitHub.
 
 ---
 

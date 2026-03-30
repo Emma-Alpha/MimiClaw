@@ -32,6 +32,7 @@ const electronAPI = {
         'shell:openExternal',
         'shell:showItemInFolder',
         'shell:openPath',
+        'screenshot:captureSnipaste',
         // Dialog
         'dialog:open',
         'dialog:save',
@@ -188,6 +189,7 @@ const electronAPI = {
         'openclaw:cli-installed',
         'pet:settings-updated',
         'pet:runtime-state',
+        'screenshot:capture',
       ];
 
       if (validChannels.includes(channel)) {
@@ -240,6 +242,7 @@ const electronAPI = {
         'cloud:auth-error',
         'pet:settings-updated',
         'pet:runtime-state',
+        'screenshot:capture',
       ];
 
       if (validChannels.includes(channel)) {
@@ -268,6 +271,13 @@ const electronAPI = {
    */
   openExternal: (url: string) => {
     return ipcRenderer.invoke('shell:openExternal', url);
+  },
+
+  /**
+   * Capture a screenshot via Snipaste and return the image result to the renderer.
+   */
+  captureScreenshot: async () => {
+    return ipcRenderer.invoke('screenshot:captureSnipaste');
   },
 
   /**

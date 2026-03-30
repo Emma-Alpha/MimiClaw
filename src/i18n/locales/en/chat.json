@@ -28,7 +28,8 @@
         "stop": "Stop",
         "gatewayConnected": "connected",
         "gatewayStatus": "gateway {{state}} | port: {{port}} {{pid}}",
-        "retryFailedAttachments": "Retry failed attachments"
+        "retryFailedAttachments": "Retry failed attachments",
+        "captureScreenshot": "Capture screenshot"
     },
     "historyBuckets": {
         "today": "Today",

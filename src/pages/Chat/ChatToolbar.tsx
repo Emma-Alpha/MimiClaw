@@ -70,7 +70,7 @@ export function ChatToolbar() {
 
       <ActionIcon
         icon={RefreshCw}
-        tooltip={t('toolbar.refresh')}
+        title={t('toolbar.refresh')}
         loading={loading}
         onClick={() => refresh()}
         size="small"
@@ -78,7 +78,7 @@ export function ChatToolbar() {
 
       <ActionIcon
         icon={Brain}
-        tooltip={showThinking ? t('toolbar.hideThinking') : t('toolbar.showThinking')}
+        title={showThinking ? t('toolbar.hideThinking') : t('toolbar.showThinking')}
         onClick={toggleThinking}
         size="small"
         className={cx(showThinking && styles.thinkingActive)}

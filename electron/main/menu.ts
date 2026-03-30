@@ -52,6 +52,15 @@ export function createMenu(): void {
             win?.webContents.send('navigate', '/chat');
           },
         },
+        {
+          label: 'Take Screenshot',
+          accelerator: 'CmdOrCtrl+Shift+S',
+          click: () => {
+            const win = BrowserWindow.getFocusedWindow();
+            win?.webContents.send('navigate', '/chat');
+            win?.webContents.send('screenshot:capture');
+          },
+        },
         { type: 'separator' },
         isMac ? { role: 'close' } : { role: 'quit' },
       ],

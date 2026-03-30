@@ -1,0 +1,24 @@
+extends: ./electron-builder.yml
+
+artifactName: jizhi-cloud-${version}-${os}-${arch}.${ext}
+
+extraResources:
+  - from: resources/
+    to: resources/
+    filter:
+      - "**/*"
+      - "!icons/*.md"
+      - "!icons/*.svg"
+      - "!icons/icon-source*.png"
+      - "!bin/**"
+      - "!cli/**"
+      - "!screenshot/**"
+
+mac:
+  extraResources: []
+
+win:
+  extraResources: []
+
+linux:
+  extraResources: []

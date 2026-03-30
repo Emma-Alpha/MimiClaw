@@ -64,14 +64,18 @@ location.reload()
 
 ## 环境变量
 
-后端启动时会按下面顺序读取环境变量，后者覆盖前者：
+后端启动时会按下面顺序读取环境变量，后者覆盖前者（`<env>` 来自 `APP_ENV` 或 `NODE_ENV`，可选值如 `development` / `test` / `production`）：
 
 1. `backend/.env`
 2. `backend/.env.local`
-3. 仓库根目录 `.env`
-4. 仓库根目录 `.env.local`
+3. `backend/.env.<env>`
+4. `backend/.env.<env>.local`
+5. 仓库根目录 `.env`
+6. 仓库根目录 `.env.local`
+7. 仓库根目录 `.env.<env>`
+8. 仓库根目录 `.env.<env>.local`
 
-推荐只维护仓库根目录 `.env`，尤其是 `XIAOJIU_CLIENT_SECRET`。
+推荐将公共配置放在 `.env.<env>`，将本机私有覆盖放在 `*.local`，尤其是 `XIAOJIU_CLIENT_SECRET` 这类敏感值。
 
 | 变量                 | 默认值                           | 说明                          |
 |----------------------|----------------------------------|-------------------------------|
@@ -88,11 +92,9 @@ location.reload()
 小九浏览器 OAuth 注意事项：
 
 - 不要把 `localhost` 或 `127.0.0.1` 配成小九白名单回调域名，企业 OAuth 通常会直接拦截。
-- ClawX 目前默认复用已经打通的小九联调域名：
-  `https://local-jizhiai-main.gz4399.com/om/desktop-callback`
-- 需要把你的云后端正式域名回调地址加入小九白名单：
+- ClawX 桌面端默认会优先使用当前 cloud API 对应的浏览器回调地址：
   `https://<your-cloud-domain>/api/auth/xiaojiu/browser-callback`
-- `local-jizhiai-main` 上的前端回调页收到 `code` 后，会再跳转到桌面端深链 `jizhi://auth/xiaojiu/callback`，由 ClawX 应用内完成最终登录。
+- 如需继续走联调页面，也可以显式配置 renderer 端的 `VITE_XIAOJIU_CALLBACK_URL`。
 
 ---
 

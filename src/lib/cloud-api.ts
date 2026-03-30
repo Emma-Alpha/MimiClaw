@@ -15,7 +15,7 @@ import {
 	type CloudSession,
 	type CloudSessionResponse,
 } from "../../shared/cloud-auth";
-import { REMOTE_JIZHI_CHAT_URL } from "./remote-jizhi-chat";
+import { resolveDefaultCloudApiBase } from "./app-env";
 export type { CloudSession } from "../../shared/cloud-auth";
 
 /** Base URL of the cloud control-plane API. Override via localStorage key for dev. */
@@ -26,7 +26,7 @@ export function getCloudApiBase(): string {
 	} catch {
 		// ignore
 	}
-	return REMOTE_JIZHI_CHAT_URL.replace(/\/$/, "");
+	return resolveDefaultCloudApiBase();
 }
 
 export interface CloudLoginResult {
@@ -60,8 +60,8 @@ function normalizeAbsoluteUrl(value: string, fallback: string): string {
 	return `https://${candidate.replace(/^\/+/, "").replace(/\/$/, "")}`;
 }
 
-function getDefaultXiaojiuCallbackUrl(): string {
-	return new URL("/om/desktop-callback", REMOTE_JIZHI_CHAT_URL).toString();
+function getDefaultXiaojiuCallbackUrl(cloudApiBase: string): string {
+	return new URL("/api/auth/xiaojiu/browser-callback", `${cloudApiBase}/`).toString();
 }
 
 export function getXiaojiuOAuthConfig(): XiaojiuOAuthConfig {
@@ -91,7 +91,7 @@ export function getXiaojiuOAuthConfig(): XiaojiuOAuthConfig {
 		getLocalStorageValue("clawx:xiaojiu-callback-url") ||
 			import.meta.env.VITE_XIAOJIU_CALLBACK_URL ||
 			"",
-		getDefaultXiaojiuCallbackUrl(),
+		getDefaultXiaojiuCallbackUrl(cloudApiBase),
 	);
 
 	return {

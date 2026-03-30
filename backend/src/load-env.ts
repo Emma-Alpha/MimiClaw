@@ -1,12 +1,38 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-const ENV_FILES = [
-  path.resolve(process.cwd(), 'backend/.env'),
-  path.resolve(process.cwd(), 'backend/.env.local'),
-  path.resolve(process.cwd(), '.env'),
-  path.resolve(process.cwd(), '.env.local'),
-];
+function resolveAppEnvName(value: string | undefined): 'development' | 'test' | 'production' | null {
+  const normalized = (value || '').trim().toLowerCase();
+  if (normalized === 'development' || normalized === 'dev' || normalized === 'local') {
+    return 'development';
+  }
+  if (normalized === 'test' || normalized === 'testing' || normalized === 'stage' || normalized === 'staging') {
+    return 'test';
+  }
+  if (normalized === 'production' || normalized === 'prod') {
+    return 'production';
+  }
+  return null;
+}
+
+function getEnvFiles(): string[] {
+  const appEnv = resolveAppEnvName(process.env.APP_ENV) ?? resolveAppEnvName(process.env.NODE_ENV);
+  const backendRoot = path.resolve(process.cwd(), 'backend');
+  const projectRoot = process.cwd();
+
+  const candidates = [
+    path.resolve(backendRoot, '.env'),
+    path.resolve(backendRoot, '.env.local'),
+    appEnv ? path.resolve(backendRoot, `.env.${appEnv}`) : null,
+    appEnv ? path.resolve(backendRoot, `.env.${appEnv}.local`) : null,
+    path.resolve(projectRoot, '.env'),
+    path.resolve(projectRoot, '.env.local'),
+    appEnv ? path.resolve(projectRoot, `.env.${appEnv}`) : null,
+    appEnv ? path.resolve(projectRoot, `.env.${appEnv}.local`) : null,
+  ];
+
+  return candidates.filter((value): value is string => Boolean(value));
+}
 
 function stripOuterQuotes(value: string): string {
   if (value.length >= 2) {
@@ -41,7 +67,7 @@ function parseEnvFile(source: string): Record<string, string> {
 }
 
 function loadEnvFiles(): void {
-  for (const filePath of ENV_FILES) {
+  for (const filePath of getEnvFiles()) {
     if (!existsSync(filePath)) continue;
 
     const parsed = parseEnvFile(readFileSync(filePath, 'utf8'));

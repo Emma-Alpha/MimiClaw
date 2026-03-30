@@ -166,11 +166,20 @@ function App() {
       }
     };
 
-    const unsubscribe = window.electron.ipcRenderer.on('navigate', handleNavigate);
+    const handleScreenshot = () => {
+      window.sessionStorage.setItem('clawx:capture-screenshot', '1');
+      navigate('/');
+    };
+
+    const unsubscribeNavigate = window.electron.ipcRenderer.on('navigate', handleNavigate);
+    const unsubscribeScreenshot = window.electron.ipcRenderer.on('screenshot:capture', handleScreenshot);
 
     return () => {
-      if (typeof unsubscribe === 'function') {
-        unsubscribe();
+      if (typeof unsubscribeNavigate === 'function') {
+        unsubscribeNavigate();
+      }
+      if (typeof unsubscribeScreenshot === 'function') {
+        unsubscribeScreenshot();
       }
     };
   }, [navigate]);

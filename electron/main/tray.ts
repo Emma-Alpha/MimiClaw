@@ -95,6 +95,15 @@ export function createTray(mainWindow: BrowserWindow): Tray {
             mainWindow.webContents.send('navigate', '/settings');
           },
         },
+        {
+          label: 'Take Screenshot',
+          click: () => {
+            if (mainWindow.isDestroyed()) return;
+            mainWindow.show();
+            mainWindow.webContents.send('navigate', '/chat');
+            mainWindow.webContents.send('screenshot:capture');
+          },
+        },
       ],
     },
     {
