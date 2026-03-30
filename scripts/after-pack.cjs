@@ -21,6 +21,7 @@
 
 const { cpSync, existsSync, readdirSync, rmSync, mkdirSync, realpathSync } = require('node:fs');
 const { join, dirname, basename } = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 // On Windows, paths in pnpm's virtual store can exceed the default MAX_PATH
 // limit (260 chars). Node.js 18.17+ respects the system LongPathsEnabled
@@ -38,6 +39,35 @@ const ARCH_MAP = { 0: 'ia32', 1: 'x64', 2: 'armv7l', 3: 'arm64', 4: 'universal' 
 
 function resolveArch(archEnum) {
   return ARCH_MAP[archEnum] || 'x64';
+}
+
+function copyDirPreservingBundles(src, dest, platform) {
+  if (!existsSync(src)) return false;
+
+  rmSync(dest, { recursive: true, force: true });
+  mkdirSync(dirname(dest), { recursive: true });
+
+  if (platform === 'darwin') {
+    // macOS app bundles contain signed frameworks with symlinks. Node's fs.cpSync
+    // expands those links and breaks the nested signature; ditto preserves them.
+    execFileSync('ditto', [src, dest]);
+    return true;
+  }
+
+  cpSync(src, dest, { recursive: true });
+  return true;
+}
+
+function copyBundledSnipaste(resourcesDir, platform) {
+  const src = join(__dirname, '..', 'resources', 'snipaste');
+  const dest = join(resourcesDir, 'snipaste');
+
+  if (!existsSync(src)) {
+    return;
+  }
+
+  copyDirPreservingBundles(src, dest, platform);
+  console.log(`[after-pack] ✅ Copied bundled Snipaste resources to ${dest}`);
 }
 
 // ── General cleanup ──────────────────────────────────────────────────────────
@@ -389,11 +419,6 @@ function bundlePlugin(nodeModulesRoot, npmName, destDir) {
 // ── Main hook ────────────────────────────────────────────────────────────────
 
 exports.default = async function afterPack(context) {
-  if (process.env.CLAWX_CLOUD_ONLY === '1') {
-    console.log('[after-pack] Cloud-only package: skipping bundled OpenClaw runtime and plugin mirrors.');
-    return;
-  }
-
   const appOutDir = context.appOutDir;
   const platform = context.electronPlatformName; // 'win32' | 'darwin' | 'linux'
   const arch = resolveArch(context.arch);
@@ -408,6 +433,13 @@ exports.default = async function afterPack(context) {
     resourcesDir = join(appOutDir, `${appName}.app`, 'Contents', 'Resources');
   } else {
     resourcesDir = join(appOutDir, 'resources');
+  }
+
+  copyBundledSnipaste(resourcesDir, platform);
+
+  if (process.env.CLAWX_CLOUD_ONLY === '1') {
+    console.log('[after-pack] Cloud-only package: skipping bundled OpenClaw runtime and plugin mirrors.');
+    return;
   }
 
   const openclawRoot = join(resourcesDir, 'openclaw');

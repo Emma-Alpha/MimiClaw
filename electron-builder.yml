@@ -13,6 +13,8 @@ directories:
   output: release
   buildResources: resources
 
+afterPack: scripts/after-pack.cjs
+
 files:
   - dist
   - dist-electron
@@ -26,6 +28,8 @@ extraResources:
       - "!icons/*.md"
       - "!icons/*.svg"
       - "!bin/**"
+      # Copy Snipaste in afterPack so macOS app bundles keep framework symlinks intact.
+      - "!snipaste/**"
       - "!screenshot/**"
 
 asar: true
