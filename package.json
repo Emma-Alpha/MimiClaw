@@ -76,12 +76,9 @@
         "package:linux:cloud:test": "zx scripts/package-cloud.mjs --mode=test --platform=linux",
         "package:linux:cloud:prod": "zx scripts/package-cloud.mjs --mode=production --platform=linux",
         "release": "pnpm run uv:download && pnpm run package && electron-builder --publish always",
-        "version:patch": "npm version patch",
-        "version:minor": "npm version minor",
-        "version:major": "npm version major",
-        "version:patch:only": "npm version patch --no-git-tag-version --ignore-scripts",
-        "version:minor:only": "npm version minor --no-git-tag-version --ignore-scripts",
-        "version:major:only": "npm version major --no-git-tag-version --ignore-scripts",
+        "version:patch": "node scripts/npm-version.mjs patch",
+        "version:minor": "node scripts/npm-version.mjs minor",
+        "version:major": "node scripts/npm-version.mjs major",
         "postversion": "git push && git push --tags"
     },
     "dependencies": {
