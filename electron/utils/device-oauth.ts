@@ -1,38 +1,162 @@
 /**
  * Device OAuth Manager
  *
- * Delegates MiniMax and Qwen OAuth to the OpenClaw extension oauth.ts functions
- * imported directly from the bundled openclaw package at build time.
- *
- * This approach:
- * - Avoids hardcoding client_id (lives in openclaw extension)
- * - Avoids duplicating HTTP OAuth logic
- * - Avoids spawning CLI process (which requires interactive TTY)
- * - Works identically on macOS, Windows, and Linux
- *
- * The extension oauth.ts files only use `node:crypto` and global `fetch` —
- * they are pure Node.js HTTP functions, no TTY, no prompter needed.
- *
- * We provide our own callbacks (openUrl/note/progress) that hook into
- * the Electron IPC system to display UI in the ClawX frontend.
+ * Implements MiniMax and Qwen Device/Portal OAuth flows natively using
+ * only Node.js built-ins (node:crypto) and global fetch. No external
+ * runtime dependencies required.
  */
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { EventEmitter } from 'events';
 import { BrowserWindow, shell } from 'electron';
 import { logger } from './logger';
 import { saveProvider, getProvider, ProviderConfig } from './secure-storage';
 import { getProviderDefaultModel } from './provider-registry';
-import { isOpenClawPresent } from './paths';
 import { proxyAwareFetch } from './proxy-fetch';
-import {
-    loginMiniMaxPortalOAuth,
-    type MiniMaxOAuthToken,
-    type MiniMaxRegion,
-} from '../../node_modules/openclaw/extensions/minimax-portal-auth/oauth';
-import {
-    loginQwenPortalOAuth,
-    type QwenOAuthToken,
-} from '../../node_modules/openclaw/extensions/qwen-portal-auth/oauth';
 import { saveOAuthTokenToOpenClaw, setOpenClawDefaultModelWithOverride } from './openclaw-auth';
+
+// ─────────────────────────────────────────────────────────────────────
+// OAuth utilities (pure Node.js, no external deps)
+// ─────────────────────────────────────────────────────────────────────
+
+function toFormUrlEncoded(data: Record<string, string>): string {
+    return Object.entries(data)
+        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+        .join('&');
+}
+
+function generatePkceVerifierChallenge(): { verifier: string; challenge: string } {
+    const verifier = randomBytes(32).toString('base64url');
+    const challenge = createHash('sha256').update(verifier).digest('base64url');
+    return { verifier, challenge };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// MiniMax Portal OAuth
+// ─────────────────────────────────────────────────────────────────────
+
+export type MiniMaxRegion = 'cn' | 'global';
+
+export type MiniMaxOAuthToken = {
+    access: string;
+    refresh: string;
+    expires: number;
+    resourceUrl?: string;
+    notification_message?: string;
+};
+
+const MINIMAX_OAUTH_CONFIG = {
+    cn: { baseUrl: 'https://api.minimaxi.com', clientId: '78257093-7e40-4613-99e0-527b14b39113' },
+    global: { baseUrl: 'https://api.minimax.io', clientId: '78257093-7e40-4613-99e0-527b14b39113' },
+} as const;
+const MINIMAX_OAUTH_SCOPE = 'group_id profile model.completion';
+const MINIMAX_OAUTH_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:user_code';
+
+async function loginMiniMaxPortalOAuth(params: {
+    openUrl: (url: string) => Promise<void>;
+    note: (message: string, title?: string) => Promise<void>;
+    progress: { update: (msg: string) => void; stop: (msg?: string) => void };
+    region?: MiniMaxRegion;
+}): Promise<MiniMaxOAuthToken> {
+    const region = params.region ?? 'global';
+    const cfg = MINIMAX_OAUTH_CONFIG[region];
+    const { verifier, challenge } = generatePkceVerifierChallenge();
+    const state = randomBytes(16).toString('base64url');
+
+    const codeRes = await fetch(`${cfg.baseUrl}/oauth/code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json', 'x-request-id': randomUUID() },
+        body: toFormUrlEncoded({ response_type: 'code', client_id: cfg.clientId, scope: MINIMAX_OAUTH_SCOPE, code_challenge: challenge, code_challenge_method: 'S256', state }),
+    });
+    if (!codeRes.ok) throw new Error(`MiniMax OAuth code request failed: ${await codeRes.text()}`);
+    const oauth = await codeRes.json() as { user_code: string; verification_uri: string; expired_in: number; interval?: number; state: string; error?: string };
+    if (!oauth.user_code || !oauth.verification_uri) throw new Error(oauth.error ?? 'MiniMax OAuth missing user_code/verification_uri');
+    if (oauth.state !== state) throw new Error('MiniMax OAuth state mismatch');
+
+    await params.note([`Open ${oauth.verification_uri} to approve access.`, `If prompted, enter the code ${oauth.user_code}.`].join('\n'), 'MiniMax OAuth');
+    params.openUrl(oauth.verification_uri).catch(() => undefined);
+
+    let pollIntervalMs = oauth.interval ?? 2000;
+    const expireTimeMs = oauth.expired_in;
+    while (Date.now() < expireTimeMs) {
+        params.progress.update('Waiting for MiniMax OAuth approval…');
+        const tokenRes = await fetch(`${cfg.baseUrl}/oauth/token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+            body: toFormUrlEncoded({ grant_type: MINIMAX_OAUTH_GRANT_TYPE, client_id: cfg.clientId, user_code: oauth.user_code, code_verifier: verifier }),
+        });
+        const payload = await tokenRes.json() as { status?: string; access_token?: string; refresh_token?: string; expired_in?: number; resource_url?: string; notification_message?: string; base_resp?: { status_msg?: string } };
+        if (payload.status === 'success' && payload.access_token && payload.refresh_token && payload.expired_in) {
+            return { access: payload.access_token, refresh: payload.refresh_token, expires: payload.expired_in, resourceUrl: payload.resource_url, notification_message: payload.notification_message };
+        }
+        if (payload.status === 'error') throw new Error(`MiniMax OAuth failed: ${payload.base_resp?.status_msg ?? 'unknown error'}`);
+        pollIntervalMs = Math.min(pollIntervalMs * 1.5, 10000);
+        await new Promise(r => setTimeout(r, pollIntervalMs));
+    }
+    throw new Error('MiniMax OAuth timed out.');
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Qwen Portal OAuth
+// ─────────────────────────────────────────────────────────────────────
+
+type QwenOAuthToken = {
+    access: string;
+    refresh: string;
+    expires: number;
+    resourceUrl?: string;
+};
+
+const QWEN_BASE = 'https://chat.qwen.ai';
+const QWEN_CLIENT_ID = 'f0304373b74a44d2b584a3fb70ca9e56';
+const QWEN_SCOPE = 'openid profile email model.completion';
+const QWEN_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:device_code';
+
+async function loginQwenPortalOAuth(params: {
+    openUrl: (url: string) => Promise<void>;
+    note: (message: string, title?: string) => Promise<void>;
+    progress: { update: (msg: string) => void; stop: (msg?: string) => void };
+}): Promise<QwenOAuthToken> {
+    const { verifier, challenge } = generatePkceVerifierChallenge();
+    const deviceRes = await fetch(`${QWEN_BASE}/api/v1/oauth2/device/code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json', 'x-request-id': randomUUID() },
+        body: toFormUrlEncoded({ client_id: QWEN_CLIENT_ID, scope: QWEN_SCOPE, code_challenge: challenge, code_challenge_method: 'S256' }),
+    });
+    if (!deviceRes.ok) throw new Error(`Qwen device authorization failed: ${await deviceRes.text()}`);
+    const device = await deviceRes.json() as { device_code: string; user_code: string; verification_uri: string; verification_uri_complete?: string; expires_in: number; interval?: number; error?: string };
+    if (!device.device_code || !device.user_code) throw new Error(device.error ?? 'Qwen device auth missing device_code/user_code');
+    const verificationUrl = device.verification_uri_complete || device.verification_uri;
+
+    await params.note([`Open ${verificationUrl} to approve access.`, `If prompted, enter the code ${device.user_code}.`].join('\n'), 'Qwen OAuth');
+    params.openUrl(verificationUrl).catch(() => undefined);
+
+    const start = Date.now();
+    let pollIntervalMs = device.interval ? device.interval * 1000 : 2000;
+    const timeoutMs = device.expires_in * 1000;
+    while (Date.now() - start < timeoutMs) {
+        params.progress.update('Waiting for Qwen OAuth approval…');
+        const tokenRes = await fetch(`${QWEN_BASE}/api/v1/oauth2/token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+            body: toFormUrlEncoded({ grant_type: QWEN_GRANT_TYPE, client_id: QWEN_CLIENT_ID, device_code: device.device_code, code_verifier: verifier }),
+        });
+        if (!tokenRes.ok) {
+            let err: { error?: string; error_description?: string } = {};
+            try { err = await tokenRes.json(); } catch { /* ignore */ }
+            if (err.error === 'authorization_pending') { /* keep polling */ }
+            else if (err.error === 'slow_down') { pollIntervalMs = Math.min(pollIntervalMs * 1.5, 10000); }
+            else throw new Error(`Qwen OAuth failed: ${err.error_description || err.error || tokenRes.statusText}`);
+        } else {
+            const t = await tokenRes.json() as { access_token?: string; refresh_token?: string; expires_in?: number; resource_url?: string };
+            if (t.access_token && t.refresh_token && t.expires_in) {
+                return { access: t.access_token, refresh: t.refresh_token, expires: Date.now() + t.expires_in * 1000, resourceUrl: t.resource_url };
+            }
+            throw new Error('Qwen OAuth returned incomplete token payload.');
+        }
+        await new Promise(r => setTimeout(r, pollIntervalMs));
+    }
+    throw new Error('Qwen OAuth timed out.');
+}
 
 export type OAuthProviderType = 'minimax-portal' | 'minimax-portal-cn' | 'qwen-portal';
 export type { MiniMaxRegion };
@@ -116,9 +240,6 @@ class DeviceOAuthManager extends EventEmitter {
     // ─────────────────────────────────────────────────────────
 
     private async runMiniMaxFlow(region?: MiniMaxRegion, providerType: OAuthProviderType = 'minimax-portal'): Promise<void> {
-        if (!isOpenClawPresent()) {
-            throw new Error('OpenClaw package not found');
-        }
         const provider = this.activeProvider!;
 
         const token: MiniMaxOAuthToken = await this.runWithProxyAwareFetch(() => loginMiniMaxPortalOAuth({
@@ -166,9 +287,6 @@ class DeviceOAuthManager extends EventEmitter {
     // ─────────────────────────────────────────────────────────
 
     private async runQwenFlow(): Promise<void> {
-        if (!isOpenClawPresent()) {
-            throw new Error('OpenClaw package not found');
-        }
         const provider = this.activeProvider!;
 
         const token: QwenOAuthToken = await this.runWithProxyAwareFetch(() => loginQwenPortalOAuth({
