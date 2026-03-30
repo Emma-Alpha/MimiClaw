@@ -110,8 +110,8 @@ jobs:
           pnpm run package:prep:ci
 
           if [[ "${{ steps.arch.outputs.prerelease }}" == "true" ]]; then
-            echo '{"mac":{"target":[{"target":"dmg","arch":["arm64"]},{"target":"zip","arch":["arm64"]}]}}' > /tmp/eb-arm64-only.json
-            pnpm exec electron-builder --mac --config /tmp/eb-arm64-only.json --publish never
+            # Pre-release: arm64 only (saves ~2 min vs building both arches)
+            pnpm exec electron-builder --mac --arm64 --publish never
           else
             pnpm exec electron-builder --mac --publish never
           fi
