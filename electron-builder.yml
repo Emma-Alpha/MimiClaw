@@ -71,7 +71,7 @@ mac:
   # that changes with every build, causing ShipIt (Squirrel.Mac) to fail
   # signature validation when installing updates. Setting this to only check
   # the bundle identifier makes the requirement stable across versions.
-  requirements: 'identifier "com.jizhi.gz4399"'
+  requirements: resources/mac-requirements.txt
   extendInfo:
     NSMicrophoneUsageDescription: 极智需要麦克风权限以支持语音功能
     NSCameraUsageDescription: 极智需要摄像头权限以支持视频功能
