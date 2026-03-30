@@ -62,17 +62,6 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: Get pnpm store directory
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      # ── pnpm packages (node_modules) ─────────────────────────────
-      - uses: actions/cache@v4
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: ${{ runner.os }}-pnpm-store-
-
       # ── Electron binaries — keyed to electron version, not pnpm-lock ──
       - uses: actions/cache@v4
         with:
@@ -129,9 +118,6 @@ jobs:
 
       - name: Remove builder-debug.yml
         run: find release/ -name "builder-debug.yml" -delete || true
-
-      - name: List release artifacts
-        run: find release/ -maxdepth 2 -type f | sort
 
       # ── Publish to GitHub Release ─────────────────────────────────
       # electron-updater with provider:github reads beta-mac.yml / latest-mac.yml
