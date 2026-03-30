@@ -79,7 +79,9 @@
         "version:patch": "node scripts/npm-version.mjs patch",
         "version:minor": "node scripts/npm-version.mjs minor",
         "version:major": "node scripts/npm-version.mjs major",
-        "postversion": "git push && git push --tags"
+        "postversion": "git push && git push --tags",
+        "tag:push": "node scripts/tag-push.mjs",
+        "tag:push:force": "node scripts/tag-push.mjs --force"
     },
     "dependencies": {
         "@4399ywkf/theme-system": "^1.0.13",
