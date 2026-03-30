@@ -122,43 +122,43 @@ jobs:
         run: find release/ -name "builder-debug.yml" -delete || true
 
       # ── Publish to GitHub Release ─────────────────────────────────
-      # electron-updater with provider:github reads beta-mac.yml / latest-mac.yml
-      # directly from these release assets — no CDN needed.
+      # Uses gh CLI with --clobber to safely overwrite existing assets on re-runs.
+      # electron-updater reads beta-mac.yml / latest-mac.yml from release assets.
       - name: Publish to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          fail_on_unmatched_files: true
-          files: |
-            release/**/*.dmg
-            release/**/*.zip
-            release/**/*.blockmap
-            release/**/*.yml
-          draft: false
-          prerelease: ${{ steps.arch.outputs.prerelease == 'true' }}
-          make_latest: ${{ steps.arch.outputs.prerelease == 'false' }}
-          generate_release_notes: true
-          body: |
-            ## 🚀 极智 ${{ github.ref_name }}
-
-            极智 - AI 智能助手
-
-            ### 📦 下载
-
-            #### macOS
-            - **Apple Silicon (M1/M2/M3/M4)**: `jizhi-*-mac-arm64.dmg`
-            ${{ steps.arch.outputs.prerelease == 'false' && '- **Intel (x64)**: `jizhi-*-mac-x64.dmg`' || '_（此预发版仅提供 Apple Silicon 版本）_' }}
-
-            ### 📝 更新说明
-
-            详见下方自动生成的更新日志。
-
-            ### ⚠️ 安装注意事项
-
-            - **macOS**：首次启动可能提示"来自未知开发者"，请前往系统设置 → 隐私与安全性，点击"仍要打开"；若提示"已损坏"，请在终端执行 `xattr -cr /Applications/极智.app` 后重新打开
-
-            ---
-
-            💬 遇到问题？请提交 [Issue](https://github.com/${{ github.repository }}/issues)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          PRERELEASE="${{ steps.arch.outputs.prerelease }}"
+
+          if [[ "$PRERELEASE" == "true" ]]; then
+            RELEASE_FLAGS="--prerelease --no-latest"
+          else
+            RELEASE_FLAGS="--latest"
+          fi
+
+          NOTES="## 🚀 极智 ${TAG}
+
+          极智 - AI 智能助手
+
+          ### 📦 下载
+
+          #### macOS
+          - **Apple Silicon (M1/M2/M3/M4)**: \`jizhi-*-mac-arm64.dmg\`
+          $([ "$PRERELEASE" == "false" ] && echo '- **Intel (x64)**: `jizhi-*-mac-x64.dmg`' || echo '_（此预发版仅提供 Apple Silicon 版本）_')
+
+          ### ⚠️ 安装注意事项
+
+          - **macOS**：首次启动可能提示"来自未知开发者"，请前往系统设置 → 隐私与安全性，点击"仍要打开"；若提示"已损坏"，请在终端执行 \`xattr -cr /Applications/极智.app\` 后重新打开
+
+          ---
+          💬 遇到问题？请提交 [Issue](https://github.com/${{ github.repository }}/issues)"
+
+          # Create release if not exists (ignore error on re-runs)
+          gh release create "$TAG" $RELEASE_FLAGS --generate-notes --title "🚀 极智 ${TAG}" --notes "$NOTES" 2>/dev/null || \
+            gh release edit "$TAG" $RELEASE_FLAGS 2>/dev/null || true
+
+          # Upload all artifacts — --clobber overwrites existing assets (safe for re-runs)
+          find release/ -maxdepth 1 -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.blockmap" -o -name "*.yml" \) \
+            | sort | xargs -I {} gh release upload "$TAG" {} --clobber
