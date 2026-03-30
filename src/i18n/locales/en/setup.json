@@ -1,0 +1,176 @@
+{
+    "steps": {
+        "welcome": {
+            "title": "Welcome to 极智",
+            "description": "Your AI assistant is ready to be configured"
+        },
+        "runtime": {
+            "title": "Environment Check",
+            "description": "Verifying system requirements"
+        },
+        "provider": {
+            "title": "AI Provider",
+            "description": "Configure your AI service"
+        },
+        "channel": {
+            "title": "Connect a Channel",
+            "description": "Connect a messaging platform (optional)"
+        },
+        "installing": {
+            "title": "Setting Up",
+            "description": "Installing essential components"
+        },
+        "complete": {
+            "title": "All Set!",
+            "description": "极智 is ready to use"
+        }
+    },
+    "welcome": {
+        "title": "Welcome to 极智",
+        "description": "极智 is a graphical interface for OpenClaw, making it easy to use AI assistants across your favorite messaging platforms.",
+        "features": {
+            "noCommand": "Zero command-line required",
+            "modernUI": "Modern, beautiful interface",
+            "bundles": "Pre-installed skill bundles",
+            "cloudWorkspace": "Cloud workspace ready out of the box",
+            "crossPlatform": "Cross-platform support"
+        }
+    },
+    "runtime": {
+        "title": "Checking Environment",
+        "cloudOnlyTitle": "This is a cloud-only build",
+        "cloudOnlyDesc": "This package does not include a local OpenClaw or Gateway runtime. Setup will continue against your cloud workspace.",
+        "viewLogs": "View Logs",
+        "recheck": "Re-check",
+        "nodejs": "Node.js Runtime",
+        "openclaw": "OpenClaw Package",
+        "gateway": "Gateway Service",
+        "startGateway": "Start Gateway",
+        "cloudLogin": "Cloud login",
+        "cloudWorkspace": "Cloud workspace",
+        "localRuntimeSkipped": "Local runtime setup",
+        "remoteGateway": "Remote gateway",
+        "status": {
+            "checking": "Checking...",
+            "success": "Node.js is available",
+            "error": "Failed",
+            "gatewayRunning": "Running on port {{port}}",
+            "packageReady": "OpenClaw package ready"
+        },
+        "issue": {
+            "title": "Environment issue detected",
+            "desc": "Please ensure OpenClaw is properly installed. Check the logs for details."
+        },
+        "logs": {
+            "title": "Application Logs",
+            "openFolder": "Open Log Folder",
+            "close": "Close",
+            "noLogs": "(No logs available yet)"
+        }
+    },
+    "provider": {
+        "label": "Model Provider",
+        "cloudOnlyTitle": "Provider settings sync to the cloud",
+        "cloudOnlyDesc": "This is a cloud-only build, so local OpenClaw has been removed. Any provider you configure here will sync to your cloud workspace for remote runtime use.",
+        "selectPlaceholder": "Select a provider...",
+        "baseUrl": "Base URL",
+        "modelId": "Model ID",
+        "modelIdDesc": "The model identifier from your provider (e.g. deepseek-ai/DeepSeek-V3)",
+        "codePlanPreset": "Code Plan Preset",
+        "codePlanMode": "Code Plan",
+        "useCodePlanPreset": "Use Ark Code Plan Preset",
+        "codePlanPresetDesc": "Code Plan uses https://ark.cn-beijing.volces.com/api/coding/v3 and model ark-code-latest. Do not use /api/v3 for Code Plan traffic.",
+        "codePlanDoc": "Code Plan docs",
+        "protocol": "Protocol",
+        "protocols": {
+            "openaiCompletions": "OpenAI Completions",
+            "openaiResponses": "OpenAI Responses",
+            "anthropic": "Anthropic Compatible"
+        },
+        "apiKey": "API Key",
+        "save": "Save",
+        "validateSave": "Validate & Save",
+        "valid": "Provider configured successfully",
+        "invalid": "Invalid API key",
+        "syncedToCloud": "This configuration will also sync to your cloud workspace.",
+        "storedLocally": "Your API key is stored locally on your machine."
+    },
+    "channel": {
+        "title": "Connect a Messaging Channel",
+        "subtitle": "Choose a platform to connect your AI assistant to. You can add more channels later in Settings.",
+        "configure": "Configure {{name}}",
+        "howTo": "How to connect:",
+        "viewDocs": "View docs",
+        "validationError": "Validation failed",
+        "connected": "{{name}} Connected",
+        "connectedDesc": "Your channel has been configured. It will connect when the Gateway starts.",
+        "configureAnother": "Configure another channel"
+    },
+    "installing": {
+        "title": "Installing Essential Components",
+        "subtitle": "Setting up the tools needed to power your AI assistant",
+        "cloudOnlyTitle": "Connecting your cloud workspace",
+        "cloudOnlySubtitle": "Cloud-only builds skip local OpenClaw, Gateway, and Python skill downloads.",
+        "cloudOnlyWait": "Switching to cloud-ready mode...",
+        "cloudOnlyItems": {
+            "runtime": "Skip local OpenClaw runtime",
+            "gateway": "Skip local Gateway bootstrap",
+            "providers": "Keep provider setup for the cloud workspace"
+        },
+        "progress": "Progress",
+        "status": {
+            "pending": "Pending",
+            "installing": "Installing...",
+            "installed": "Installed",
+            "failed": "Failed"
+        },
+        "error": "Setup Error:",
+        "restart": "Try restarting the app",
+        "wait": "This may take a few moments...",
+        "skip": "Skip this step"
+    },
+    "complete": {
+        "title": "Setup Complete!",
+        "subtitle": "极智 is configured and ready to use. You can now start chatting with your AI assistant.",
+        "provider": "AI Provider",
+        "components": "Components",
+        "runtime": "Runtime Mode",
+        "gateway": "Gateway",
+        "workspace": "Workspace",
+        "connected": "Connected",
+        "remoteConnected": "Connected to remote gateway",
+        "cloudOnlyMode": "Cloud-managed (no local OpenClaw)",
+        "running": "Running",
+        "footer": "You can customize skills and connect channels in Settings",
+        "cloudOnlyFooter": "You can adjust models, channels, and cloud connection details later from Settings."
+    },
+    "nav": {
+        "next": "Next",
+        "back": "Back",
+        "skipStep": "Skip this step",
+        "skipSetup": "Skip Setup",
+        "getStarted": "Get Started"
+    },
+    "defaultSkills": {
+        "opencode": {
+            "name": "OpenCode",
+            "description": "AI coding assistant backend"
+        },
+        "python-env": {
+            "name": "Python Environment",
+            "description": "Python runtime for skills"
+        },
+        "code-assist": {
+            "name": "Code Assist",
+            "description": "Code analysis and suggestions"
+        },
+        "file-tools": {
+            "name": "File Tools",
+            "description": "File operations and management"
+        },
+        "terminal": {
+            "name": "Terminal",
+            "description": "Shell command execution"
+        }
+    }
+}
