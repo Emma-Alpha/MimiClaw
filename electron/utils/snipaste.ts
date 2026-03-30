@@ -1,10 +1,11 @@
 import { spawn } from 'node:child_process';
 import { clipboard } from 'electron';
 import { createHash } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { getResourcesDir } from './paths';
+import { getDataDir, getResourcesDir } from './paths';
 
 type LaunchCommand = {
   command: string;
@@ -34,6 +35,10 @@ function hashImage(image: Electron.NativeImage): string | null {
 
 function getBundledSnipasteRoot(): string {
   return join(getResourcesDir(), 'snipaste');
+}
+
+function getExtractedSnipasteRoot(): string {
+  return join(getDataDir(), 'bundled-tools', 'snipaste');
 }
 
 function resolveExistingCandidate(candidates: string[]): string | null {
@@ -69,6 +74,56 @@ function getBundledPlatformDirs(): string[] {
   }
 }
 
+function getExtractedPlatformDir(): string {
+  switch (process.platform) {
+    case 'darwin':
+      return join(getExtractedSnipasteRoot(), `darwin-${process.arch}`);
+    case 'win32':
+      return join(getExtractedSnipasteRoot(), `win32-${process.arch}`);
+    case 'linux':
+      return join(getExtractedSnipasteRoot(), `linux-${process.arch}`);
+    default:
+      return getExtractedSnipasteRoot();
+  }
+}
+
+function getBundledMacSnipasteArchiveCandidates(): string[] {
+  return getBundledPlatformDirs().map((dir) => join(dir, 'Snipaste.app.zip'));
+}
+
+function getArchiveStamp(archivePath: string): string {
+  const stat = statSync(archivePath);
+  return `${stat.size}:${stat.mtimeMs}`;
+}
+
+function ensureBundledMacSnipasteExtracted(): string | null {
+  const archivePath = resolveExistingCandidate(getBundledMacSnipasteArchiveCandidates());
+  if (!archivePath) return null;
+
+  const extractDir = getExtractedPlatformDir();
+  const appPath = join(extractDir, 'Snipaste.app');
+  const binaryPath = join(appPath, 'Contents', 'MacOS', 'Snipaste');
+  const stampPath = join(extractDir, '.archive-stamp');
+  const nextStamp = getArchiveStamp(archivePath);
+
+  if (existsSync(binaryPath) && existsSync(stampPath)) {
+    try {
+      if (readFileSync(stampPath, 'utf8') === nextStamp) {
+        return binaryPath;
+      }
+    } catch {
+      // Re-extract if the cache stamp cannot be read.
+    }
+  }
+
+  rmSync(extractDir, { recursive: true, force: true });
+  mkdirSync(extractDir, { recursive: true });
+  execFileSync('ditto', ['-x', '-k', archivePath, extractDir]);
+  writeFileSync(stampPath, nextStamp, 'utf8');
+
+  return existsSync(binaryPath) ? binaryPath : null;
+}
+
 function resolveMacSnipasteBinary(): string | null {
   const bundled = resolveExistingCandidate(
     getBundledPlatformDirs().flatMap((dir) => [
@@ -78,6 +133,9 @@ function resolveMacSnipasteBinary(): string | null {
   );
   if (bundled) return bundled;
 
+  const extracted = ensureBundledMacSnipasteExtracted();
+  if (extracted) return extracted;
+
   const candidates = [
     '/Applications/Snipaste.app/Contents/MacOS/Snipaste',
     join(homedir(), 'Applications', 'Snipaste.app', 'Contents', 'MacOS', 'Snipaste'),
@@ -86,7 +144,7 @@ function resolveMacSnipasteBinary(): string | null {
   return resolveExistingCandidate(candidates);
 }
 
-function resolveWindowsSnipasteBinary(): string {
+function resolveWindowsSnipasteBinary(): string | null {
   const bundled = resolveExistingCandidate(
     getBundledPlatformDirs().flatMap((dir) => [
       join(dir, 'Snipaste.exe'),

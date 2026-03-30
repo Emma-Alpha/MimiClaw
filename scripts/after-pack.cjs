@@ -58,11 +58,44 @@ function copyDirPreservingBundles(src, dest, platform) {
   return true;
 }
 
-function copyBundledSnipaste(resourcesDir, platform) {
+function copyBundledSnipaste(resourcesDir, platform, arch) {
   const src = join(__dirname, '..', 'resources', 'snipaste');
   const dest = join(resourcesDir, 'snipaste');
 
   if (!existsSync(src)) {
+    return;
+  }
+
+  if (platform === 'darwin') {
+    rmSync(dest, { recursive: true, force: true });
+    mkdirSync(dest, { recursive: true });
+
+    const readmePath = join(src, 'README.md');
+    if (existsSync(readmePath)) {
+      cpSync(readmePath, join(dest, 'README.md'));
+    }
+
+    const sourceDirCandidates = [
+      join(src, `darwin-${arch}`),
+      join(src, 'darwin'),
+    ];
+    const sourceDir = sourceDirCandidates.find((candidate) => existsSync(candidate));
+    if (!sourceDir) {
+      console.warn('[after-pack] ⚠️  No bundled macOS Snipaste directory found.');
+      return;
+    }
+
+    const sourceApp = join(sourceDir, 'Snipaste.app');
+    if (!existsSync(sourceApp)) {
+      console.warn(`[after-pack] ⚠️  Missing Snipaste.app at ${sourceApp}`);
+      return;
+    }
+
+    const targetDir = join(dest, basename(sourceDir));
+    mkdirSync(targetDir, { recursive: true });
+    const archivePath = join(targetDir, 'Snipaste.app.zip');
+    execFileSync('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', sourceApp, archivePath]);
+    console.log(`[after-pack] ✅ Archived bundled Snipaste app to ${archivePath}`);
     return;
   }
 
@@ -105,7 +138,6 @@ function verifyMacCode(target, deep = false) {
 function resignBundledMacCode(resourcesDir) {
   const { statSync } = require('node:fs');
   const roots = [
-    join(resourcesDir, 'snipaste'),
     join(resourcesDir, 'bin'),
     join(resourcesDir, 'cli'),
   ];
@@ -534,7 +566,7 @@ exports.default = async function afterPack(context) {
     resourcesDir = join(appOutDir, 'resources');
   }
 
-  copyBundledSnipaste(resourcesDir, platform);
+  copyBundledSnipaste(resourcesDir, platform, arch);
 
   if (platform === 'darwin') {
     resignBundledMacCode(resourcesDir);
