@@ -132,7 +132,7 @@ jobs:
           ulimit -n 65536
           pnpm run package:prep:ci
           # Pre-release: arm64 only  |  Stable: both arches (x64 + arm64)
-          electron-builder --mac ${{ steps.arch.outputs.targets }} --publish never
+          pnpm exec electron-builder --mac ${{ steps.arch.outputs.targets }} --publish never
 
       - name: Remove builder-debug.yml
         run: find release/ -name "builder-debug.yml" -delete || true
