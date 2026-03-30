@@ -70,6 +70,105 @@ function copyBundledSnipaste(resourcesDir, platform) {
   console.log(`[after-pack] ✅ Copied bundled Snipaste resources to ${dest}`);
 }
 
+function isExecutableFile(mode) {
+  return (mode & 0o111) !== 0;
+}
+
+function isMachOFile(file) {
+  try {
+    const output = execFileSync('file', ['-b', file], { encoding: 'utf8' });
+    return output.includes('Mach-O');
+  } catch {
+    return false;
+  }
+}
+
+function signMacCode(target, deep = false) {
+  const args = ['--force', '--sign', '-'];
+  if (deep) {
+    args.push('--deep');
+  }
+  args.push('--preserve-metadata=identifier,requirements,flags,runtime');
+  args.push(target);
+  execFileSync('codesign', args, { stdio: 'pipe' });
+}
+
+function verifyMacCode(target, deep = false) {
+  const args = ['--verify'];
+  if (deep) {
+    args.push('--deep');
+  }
+  args.push('--strict', '--verbose=2', target);
+  execFileSync('codesign', args, { stdio: 'pipe' });
+}
+
+function resignBundledMacCode(resourcesDir) {
+  const { statSync } = require('node:fs');
+  const roots = [
+    join(resourcesDir, 'snipaste'),
+    join(resourcesDir, 'bin'),
+    join(resourcesDir, 'cli'),
+  ];
+
+  const visitedBundles = new Set();
+
+  function walk(currentPath) {
+    let entries;
+    try {
+      entries = readdirSync(currentPath, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      const fullPath = join(currentPath, entry.name);
+
+      if (entry.isDirectory()) {
+        if (entry.name.endsWith('.app') || entry.name.endsWith('.framework')) {
+          if (visitedBundles.has(fullPath)) continue;
+          visitedBundles.add(fullPath);
+          signMacCode(fullPath, true);
+          verifyMacCode(fullPath, true);
+          console.log(`[after-pack] ✅ Re-signed mac bundle ${fullPath}`);
+          continue;
+        }
+
+        walk(fullPath);
+        continue;
+      }
+
+      if (!entry.isFile()) {
+        continue;
+      }
+
+      if (entry.name.endsWith('.dylib') || entry.name.endsWith('.node')) {
+        signMacCode(fullPath, false);
+        verifyMacCode(fullPath, false);
+        console.log(`[after-pack] ✅ Re-signed mac library ${fullPath}`);
+        continue;
+      }
+
+      let stat;
+      try {
+        stat = statSync(fullPath);
+      } catch {
+        continue;
+      }
+
+      if (isExecutableFile(stat.mode) && isMachOFile(fullPath)) {
+        signMacCode(fullPath, false);
+        verifyMacCode(fullPath, false);
+        console.log(`[after-pack] ✅ Re-signed mac executable ${fullPath}`);
+      }
+    }
+  }
+
+  for (const root of roots) {
+    if (!existsSync(root)) continue;
+    walk(root);
+  }
+}
+
 // ── General cleanup ──────────────────────────────────────────────────────────
 
 function cleanupUnnecessaryFiles(dir) {
@@ -436,6 +535,10 @@ exports.default = async function afterPack(context) {
   }
 
   copyBundledSnipaste(resourcesDir, platform);
+
+  if (platform === 'darwin') {
+    resignBundledMacCode(resourcesDir);
+  }
 
   if (process.env.CLAWX_CLOUD_ONLY === '1') {
     console.log('[after-pack] Cloud-only package: skipping bundled OpenClaw runtime and plugin mirrors.');
