@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	type MouseEvent,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
 	DEFAULT_PET_ANIMATION,
@@ -20,18 +27,35 @@ const FALLBACK_RUNTIME_STATE: PetRuntimeState = {
 	updatedAt: 0,
 };
 
-const CLICK_THRESHOLD_PX = 6;
+/** Pixels the mouse must travel before a press-and-release is treated as a drag. */
+const DRAG_THRESHOLD_PX = 6;
+/** Minimum ms between IPC window-move calls (~60 fps). */
+const MOVE_THROTTLE_MS = 16;
+/** Minimum ms between two toggleMiniChat calls to prevent double-click ghost windows. */
+const TOGGLE_DEBOUNCE_MS = 400;
 
 export function PetFloating() {
 	const { i18n } = useTranslation("settings");
 	const videoRef = useRef<HTMLVideoElement | null>(null);
-	const mouseDownPos = useRef<{ x: number; y: number } | null>(null);
 	const initSettings = useSettingsStore((state) => state.init);
 	const petAnimation = useSettingsStore((state) => state.petAnimation);
 	const [runtimeState, setRuntimeState] = useState<PetRuntimeState>(
 		FALLBACK_RUNTIME_STATE,
 	);
 	const [hasPlayedIntro, setHasPlayedIntro] = useState(false);
+
+	// ── Toggle debounce ──────────────────────────────────────────
+	const lastToggleAt = useRef(0);
+
+	// ── Custom drag state ─────────────────────────────────────────
+	const dragRef = useRef<{
+		mouseScreenX: number;
+		mouseScreenY: number;
+		winX: number;
+		winY: number;
+		dragging: boolean;
+		lastMoveAt: number;
+	} | null>(null);
 
 	const currentAnimation = useMemo<PetAnimation>(() => {
 		const preferredIdleAnimation = PET_IDLE_ANIMATIONS.includes(
@@ -62,7 +86,6 @@ export function PetFloating() {
 				void initSettings();
 			}
 		};
-
 		window.addEventListener("storage", syncFromStorage);
 		return () => window.removeEventListener("storage", syncFromStorage);
 	}, [initSettings]);
@@ -83,27 +106,21 @@ export function PetFloating() {
 		bodyStyle.background = "transparent";
 		bodyStyle.overflow = "hidden";
 		bodyStyle.margin = "0";
-		if (rootStyle) {
-			rootStyle.background = "transparent";
-		}
+		if (rootStyle) rootStyle.background = "transparent";
 
 		return () => {
 			htmlStyle.background = previous.htmlBackground;
 			bodyStyle.background = previous.bodyBackground;
 			bodyStyle.overflow = previous.bodyOverflow;
 			bodyStyle.margin = previous.bodyMargin;
-			if (rootStyle) {
-				rootStyle.background = previous.rootBackground;
-			}
+			if (rootStyle) rootStyle.background = previous.rootBackground;
 		};
 	}, []);
 
 	useEffect(() => {
 		void invokeIpc<PetRuntimeState>("pet:getRuntimeState")
 			.then((state) => {
-				if (state && typeof state === "object") {
-					setRuntimeState(state);
-				}
+				if (state && typeof state === "object") setRuntimeState(state);
 			})
 			.catch(() => {});
 	}, []);
@@ -111,13 +128,9 @@ export function PetFloating() {
 	useEffect(() => {
 		const unsubscribe = window.electron.ipcRenderer.on(
 			"pet:settings-updated",
-			() => {
-				void initSettings();
-			},
+			() => { void initSettings(); },
 		);
-		return () => {
-			unsubscribe?.();
-		};
+		return () => { unsubscribe?.(); };
 	}, [initSettings]);
 
 	useEffect(() => {
@@ -129,15 +142,71 @@ export function PetFloating() {
 				}
 			},
 		);
-		return () => {
-			unsubscribe?.();
+		return () => { unsubscribe?.(); };
+	}, []);
+
+	// ── Drag + click handlers ─────────────────────────────────────
+	// Note: We do NOT use -webkit-app-region:drag here because that CSS property
+	// intercepts all left-button mouse events at the OS level, preventing
+	// onMouseDown/onMouseUp from firing in React. Instead, we implement dragging
+	// via IPC (pet:move → BrowserWindow.setPosition) so we can distinguish
+	// a click (< DRAG_THRESHOLD_PX movement) from a real drag.
+
+	const handleMouseDown = useCallback((e: MouseEvent<HTMLDivElement>) => {
+		if (e.button !== 0) return;
+		dragRef.current = {
+			mouseScreenX: e.screenX,
+			mouseScreenY: e.screenY,
+			winX: window.screenX,
+			winY: window.screenY,
+			dragging: false,
+			lastMoveAt: 0,
 		};
 	}, []);
 
+	const handleMouseMove = useCallback((e: MouseEvent<HTMLDivElement>) => {
+		const drag = dragRef.current;
+		if (!drag) return;
+
+		const dx = e.screenX - drag.mouseScreenX;
+		const dy = e.screenY - drag.mouseScreenY;
+
+		if (!drag.dragging && Math.sqrt(dx * dx + dy * dy) >= DRAG_THRESHOLD_PX) {
+			drag.dragging = true;
+		}
+
+		if (drag.dragging) {
+			const now = Date.now();
+			if (now - drag.lastMoveAt >= MOVE_THROTTLE_MS) {
+				drag.lastMoveAt = now;
+				void invokeIpc("pet:move", {
+					x: drag.winX + dx,
+					y: drag.winY + dy,
+				});
+			}
+		}
+	}, []);
+
+	const handleMouseUp = useCallback(() => {
+		const drag = dragRef.current;
+		dragRef.current = null;
+		if (!drag) return;
+		if (!drag.dragging) {
+			const now = Date.now();
+			if (now - lastToggleAt.current >= TOGGLE_DEBOUNCE_MS) {
+				lastToggleAt.current = now;
+				void invokeIpc("pet:toggleMiniChat");
+			}
+		}
+	}, []);
+
 	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: pet drag surface; drag vs click detection + context menu
+		// biome-ignore lint/a11y/noStaticElementInteractions: pet surface — custom drag + click detection; context menu via right-click
 		<div
-			className="drag-region relative flex h-screen w-screen items-end justify-center bg-transparent overflow-visible"
+			className="relative flex h-screen w-screen cursor-pointer items-end justify-center overflow-visible bg-transparent select-none"
+			onMouseDown={handleMouseDown}
+			onMouseMove={handleMouseMove}
+			onMouseUp={handleMouseUp}
 			onContextMenu={(event: MouseEvent<HTMLDivElement>) => {
 				event.preventDefault();
 				void invokeIpc("pet:showContextMenu", {
@@ -145,18 +214,6 @@ export function PetFloating() {
 					y: event.clientY,
 					language: i18n.resolvedLanguage || i18n.language,
 				});
-			}}
-			onMouseDown={(e) => {
-				mouseDownPos.current = { x: e.clientX, y: e.clientY };
-			}}
-			onMouseUp={(e) => {
-				if (!mouseDownPos.current) return;
-				const dx = e.clientX - mouseDownPos.current.x;
-				const dy = e.clientY - mouseDownPos.current.y;
-				mouseDownPos.current = null;
-				if (Math.sqrt(dx * dx + dy * dy) < CLICK_THRESHOLD_PX) {
-					void invokeIpc("pet:toggleMiniChat");
-				}
 			}}
 		>
 			{runtimeState.showTerminal && (
