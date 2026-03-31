@@ -79,6 +79,10 @@
         "error": "登录失败，请检查用户名和密码",
         "oauthSubmit": "使用小九认证登录",
         "oauthHint": "将在浏览器中打开小九授权页面，完成后自动返回桌面应用。",
-        "oauthError": "小九认证失败，请重试"
+        "oauthError": "小九认证失败，请重试",
+        "characterIdle": "移动鼠标时，左侧伙伴会跟着你一起看。",
+        "characterUsername": "输入账号时，大家都会靠过来看看。",
+        "characterSecret": "输入密码时，它们会认真把视线挪开。",
+        "characterVisible": "密码可见时，紫色的小家伙会偷偷瞄一眼。"
     }
 }

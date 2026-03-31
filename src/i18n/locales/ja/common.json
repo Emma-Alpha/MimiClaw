@@ -79,6 +79,10 @@
         "error": "ログインに失敗しました。認証情報を確認してください。",
         "oauthSubmit": "Xiaojiu でサインイン",
         "oauthHint": "ブラウザで Xiaojiu の認証ページを開き、完了後に自動でデスクトップアプリへ戻ります。",
-        "oauthError": "Xiaojiu ログインに失敗しました。もう一度お試しください。"
+        "oauthError": "Xiaojiu ログインに失敗しました。もう一度お試しください。",
+        "characterIdle": "カーソルを動かすと、左の仲間たちが視線で追いかけます。",
+        "characterUsername": "ユーザー名を入力すると、みんなが少し身を乗り出します。",
+        "characterSecret": "パスワード入力中は、きちんと目線をそらしてくれます。",
+        "characterVisible": "パスワードを表示すると、紫の子がこっそりのぞきます。"
     }
 }

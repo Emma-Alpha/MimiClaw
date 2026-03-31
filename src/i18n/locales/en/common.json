@@ -79,6 +79,10 @@
         "error": "Login failed. Please check your credentials.",
         "oauthSubmit": "Sign in with Xiaojiu",
         "oauthHint": "ClawX will open the Xiaojiu authorization page in your browser and finish sign-in here automatically.",
-        "oauthError": "Xiaojiu sign-in failed. Please try again."
+        "oauthError": "Xiaojiu sign-in failed. Please try again.",
+        "characterIdle": "Move your cursor around and the companions will follow along.",
+        "characterUsername": "Start typing your username and everyone leans in.",
+        "characterSecret": "While you type a hidden password, they politely look away.",
+        "characterVisible": "Reveal the password and the purple one gets curious."
     }
 }
