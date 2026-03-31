@@ -1,0 +1,111 @@
+# ClawX CI Workflow
+# Keeps the default PR path fast by running only core Linux checks.
+
+name: Check and Build
+
+on:
+  pull_request:
+    branches:
+      - main
+
+# Cancel stale check runs when new commits are pushed to the same PR
+concurrency:
+  group: check-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect Relevant Changes
+    runs-on: ubuntu-latest
+    outputs:
+      core: ${{ steps.filter.outputs.core }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            core:
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'index.html'
+              - 'vite.config.*'
+              - 'vitest.config.*'
+              - 'eslint.config.*'
+              - 'postcss.config.*'
+              - 'tailwind.config.*'
+              - 'tsconfig*.json'
+              - 'electron-builder*.yml'
+              - 'src/**'
+              - 'electron/**'
+              - 'shared/**'
+              - 'backend/**'
+              - 'tests/**'
+              - 'scripts/**'
+              - 'resources/**'
+              - 'build/**'
+              - '.github/workflows/check.yml'
+
+  core-checks:
+    name: Core Checks
+    needs: changes
+    if: needs.changes.outputs.core == 'true'
+    runs-on: ubuntu-latest
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Run linter
+        id: lint
+        continue-on-error: true
+        run: pnpm run lint:check
+
+      - name: Run typecheck
+        id: typecheck
+        continue-on-error: true
+        run: pnpm run typecheck
+
+      - name: Run tests
+        id: test
+        continue-on-error: true
+        run: pnpm run test:ci
+
+      - name: Summarize core checks
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### Core checks"
+            echo ""
+            echo "- lint: ${{ steps.lint.outcome }}"
+            echo "- typecheck: ${{ steps.typecheck.outcome }}"
+            echo "- unit tests: ${{ steps.test.outcome }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail if any core check failed
+        if: always()
+        shell: bash
+        run: |
+          [[ "${{ steps.lint.outcome }}" == "success" ]]
+          [[ "${{ steps.typecheck.outcome }}" == "success" ]]
+          [[ "${{ steps.test.outcome }}" == "success" ]]

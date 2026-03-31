@@ -1,0 +1,27 @@
+{
+  "id": "downloads-organizer",
+  "title": "下载目录整理",
+  "summary": "把下载目录中的文件按类型归档到子目录。",
+  "description": "适合做桌面端常驻 agent 的典型场景，先预览，再一键整理。",
+  "emoji": "🧹",
+  "category": "Automation",
+  "riskLevel": "medium",
+  "approvalMode": "mutating_only",
+  "capabilities": ["filesystem.read", "filesystem.organize", "job.runtime"],
+  "handler": "downloads-organizer",
+  "fields": [
+    {
+      "key": "directoryPath",
+      "label": "下载目录",
+      "description": "默认使用系统 Downloads 目录。",
+      "type": "directory"
+    },
+    {
+      "key": "dryRun",
+      "label": "仅预览",
+      "description": "开启后只返回将要移动的文件。",
+      "type": "boolean",
+      "defaultValue": true
+    }
+  ]
+}

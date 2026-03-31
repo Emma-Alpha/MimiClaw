@@ -1,0 +1,19 @@
+services:
+  github-runner:
+    build: .
+    image: github-runner-cos:latest
+    container_name: github-runner-cos
+    restart: always
+    environment:
+      - REPO_URL=${REPO_URL}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - RUNNER_NAME=tencent-guangzhou
+      - LABELS=self-hosted,linux,cos-upload
+      - RUNNER_WORKDIR=/tmp/runner/work
+      - RUNNER_SCOPE=repo
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner-work:/tmp/runner/work
+
+volumes:
+  runner-work:

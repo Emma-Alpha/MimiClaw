@@ -1,0 +1,200 @@
+# ClawX Release Workflow — GitHub Release (backup) + COS (primary update source)
+#
+# Topology:
+#   build-mac → publish to GitHub Release (archive) → sync .asar + manifest to COS
+#
+# Auto-update: client reads {COS_BASE}/channels/{channel}.json (macOS)
+# or {COS_BASE}/{channel}.yml (Windows/Linux generic provider).
+# COS avoids GitHub API 403 issues in mainland China.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  # ──────────────────────────────────────────────────────────────
+  # macOS pipeline: build → publish to GitHub Release
+  # ──────────────────────────────────────────────────────────────
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # ── Detect if this is a pre-release tag (beta/alpha/rc) ──────
+      # Pre-release builds only target arm64 to cut electron-builder time in half.
+      - name: Detect build arch
+        id: arch
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          if [[ "$TAG" =~ -(alpha|beta|rc) ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      # ── Extract electron version for stable cache key ─────────────
+      - name: Get electron version
+        id: electron-ver
+        run: echo "version=$(node -p "require('./package.json').devDependencies.electron.replace(/[^\\d.]/g,'')")" >> $GITHUB_OUTPUT
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      # ── Electron binaries — keyed to electron version, not pnpm-lock ──
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+          key: ${{ runner.os }}-electron-${{ steps.electron-ver.outputs.version }}
+          restore-keys: ${{ runner.os }}-electron-
+
+      # ── Vite dist output ─────────────────────────────────────────
+      - name: Cache Vite build output
+        id: cache-vite
+        uses: actions/cache@v4
+        with:
+          path: |
+            dist
+            dist-electron
+          key: ${{ runner.os }}-vite-${{ steps.arch.outputs.prerelease == 'true' && 'dev' || 'prod' }}-${{ hashFiles('src/**', 'electron/**', 'shared/**', 'vite.config.*', 'tsconfig*.json', 'pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-vite-${{ steps.arch.outputs.prerelease == 'true' && 'dev' || 'prod' }}-
+
+      # ── uv binaries — keyed to version in download script ────────
+      - name: Cache uv binaries
+        id: cache-uv
+        uses: actions/cache@v4
+        with:
+          path: resources/bin
+          key: ${{ runner.os }}-uv-mac-${{ hashFiles('scripts/download-bundled-uv.mjs') }}
+
+      # ── Install deps ─────────────────────────────────────────────
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ── Download uv only on cache miss ───────────────────────────
+      - name: Download uv binaries
+        if: steps.cache-uv.outputs.cache-hit != 'true'
+        run: pnpm run uv:download:mac
+
+      # ── Build ─────────────────────────────────────────────────────
+      - name: Build macOS
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CI_PARALLELISM: 4
+          SKIP_VITE_BUILD: ${{ steps.cache-vite.outputs.cache-hit == 'true' && 'true' || 'false' }}
+          # beta/alpha/rc → development env (.env.development); stable → production (.env.production)
+          VITE_MODE: ${{ steps.arch.outputs.prerelease == 'true' && 'development' || 'production' }}
+        run: |
+          ulimit -n 65536
+          pnpm run package:prep:ci
+
+          if [[ "${{ steps.arch.outputs.prerelease }}" == "true" ]]; then
+            # Pre-release: arm64 only (saves ~2 min vs building both arches)
+            pnpm exec electron-builder --mac --arm64 --publish never
+          else
+            pnpm exec electron-builder --mac --publish never
+          fi
+
+      - name: Remove builder-debug.yml
+        run: find release/ -name "builder-debug.yml" -delete || true
+
+      - name: Export macOS .asar update assets
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          FOUND=0
+
+          while IFS= read -r ASAR_PATH; do
+            PLATFORM_DIR=$(basename "$(dirname "$(dirname "$(dirname "$(dirname "$ASAR_PATH")")")")")
+            case "$PLATFORM_DIR" in
+              mac-arm64*)
+                ARCH=arm64
+                ;;
+              mac-universal*)
+                ARCH=universal
+                ;;
+              mac|mac-x64*)
+                ARCH=x64
+                ;;
+              *)
+                echo "Skipping unknown mac platform directory: $PLATFORM_DIR"
+                continue
+                ;;
+            esac
+
+            ASSET_PATH="release/jizhi-${VERSION}-darwin-${ARCH}.asar"
+            cp "$ASAR_PATH" "$ASSET_PATH"
+            shasum -a 256 "$ASSET_PATH" | awk '{print $1}' > "${ASSET_PATH}.sha256"
+            echo "Exported $ASSET_PATH"
+            FOUND=1
+          done < <(find release -type f -path "*/Contents/Resources/app.asar" | sort)
+
+          if [[ "$FOUND" != "1" ]]; then
+            echo "No macOS app.asar payloads were found in release/" >&2
+            exit 1
+          fi
+
+      # ── Publish to GitHub Release (archive copy) ─────────────────
+      # Kept as a historical backup; the client no longer reads from GitHub.
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          PRERELEASE="${{ steps.arch.outputs.prerelease }}"
+
+          if [[ "$PRERELEASE" == "true" ]]; then
+            RELEASE_FLAGS="--prerelease --latest=false"
+          else
+            RELEASE_FLAGS="--latest"
+          fi
+
+          if ! gh release create "$TAG" $RELEASE_FLAGS --title "极智 ${TAG}" --generate-notes; then
+            echo "Release already exists, updating flags..."
+            gh release edit "$TAG" $RELEASE_FLAGS
+          fi
+
+          find release/ -maxdepth 1 -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.blockmap" -o -name "*.yml" -o -name "*.asar" -o -name "*.asar.sha256" \) \
+            | sort | xargs -I {} gh release upload "$TAG" {} --clobber
+
+      # ── Sync to COS (primary update source for the client) ───────
+      # Uploads .asar/.sha256 files under {version}/ and writes/overwrites
+      # the channel manifest at channels/{channel}.json so clients can discover
+      # the update without touching GitHub API.
+      - name: Sync update assets to COS
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+          COS_BUCKET: cobot-1254397474
+          COS_REGION: ap-guangzhou
+          COS_PREFIX: jizhi/updates
+        run: |
+          export VERSION=$(node -p "require('./package.json').version")
+          PRERELEASE="${{ steps.arch.outputs.prerelease }}"
+          export CHANNEL=$([ "$PRERELEASE" = "true" ] && echo "beta" || echo "latest")
+          pip3 install cos-python-sdk-v5 --quiet --break-system-packages
+          python3 scripts/cos-publish.py
