@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import { logger } from './logger';
-import { PORTS } from './config';
 import { normalizeCloudSession, type CloudSession } from '../../shared/cloud-auth';
 
 export interface XiaojiuAuthStartConfig {
@@ -64,7 +63,7 @@ function cleanupExpiredPendingAuth(): void {
 }
 
 function getDefaultCallbackUrl(cloudApiBase: string): string {
-  return `${cloudApiBase}/om/desktop-callback`;
+  return new URL('/om/desktop-callback', `${cloudApiBase}/`).toString();
 }
 
 export function startXiaojiuAuthFlow(config: XiaojiuAuthStartConfig): {

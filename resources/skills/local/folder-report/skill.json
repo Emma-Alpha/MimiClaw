@@ -1,0 +1,29 @@
+{
+  "id": "folder-report",
+  "title": "目录扫描报告",
+  "summary": "扫描目录结构，统计文件类型、大小与最近文件。",
+  "description": "适合先做只读摸底，快速了解一个目录里到底有什么内容，再决定后续整理策略。",
+  "emoji": "📂",
+  "category": "Read-only",
+  "riskLevel": "low",
+  "approvalMode": "never",
+  "capabilities": ["filesystem.read", "job.runtime"],
+  "handler": "folder-report",
+  "fields": [
+    {
+      "key": "directoryPath",
+      "label": "目标目录",
+      "description": "要扫描的本地目录。",
+      "type": "directory",
+      "required": true,
+      "placeholder": "/Users/you/Downloads"
+    },
+    {
+      "key": "maxDepth",
+      "label": "扫描深度",
+      "description": "建议 1-4，越深越慢。",
+      "type": "number",
+      "defaultValue": 2
+    }
+  ]
+}

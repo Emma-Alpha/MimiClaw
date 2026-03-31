@@ -1,0 +1,34 @@
+{
+  "id": "command-runner",
+  "title": "命令执行器",
+  "summary": "在本地运行单条 shell 命令并收集输出。",
+  "description": "这是本地执行能力的最小通用壳，适合挂载企业脚本或私有 CLI。",
+  "emoji": "💻",
+  "category": "Power tools",
+  "riskLevel": "high",
+  "approvalMode": "always",
+  "capabilities": ["shell.exec", "job.runtime"],
+  "handler": "command-runner",
+  "fields": [
+    {
+      "key": "command",
+      "label": "命令",
+      "description": "例如 pnpm test 或 python script.py。",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "pnpm test"
+    },
+    {
+      "key": "cwd",
+      "label": "工作目录",
+      "description": "留空则使用当前项目目录。",
+      "type": "directory"
+    },
+    {
+      "key": "timeoutMs",
+      "label": "超时时间（毫秒）",
+      "type": "number",
+      "defaultValue": 15000
+    }
+  ]
+}

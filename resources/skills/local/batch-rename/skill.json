@@ -1,0 +1,54 @@
+{
+  "id": "batch-rename",
+  "title": "批量重命名",
+  "summary": "按搜索替换、前缀、后缀批量处理当前目录文件名。",
+  "description": "先预览再执行，适合图片素材、导出文件、日报附件等批量规范命名。",
+  "emoji": "🏷️",
+  "category": "File ops",
+  "riskLevel": "medium",
+  "approvalMode": "mutating_only",
+  "capabilities": ["filesystem.read", "filesystem.organize", "job.runtime"],
+  "handler": "batch-rename",
+  "fields": [
+    {
+      "key": "directoryPath",
+      "label": "目标目录",
+      "description": "只处理当前目录下的文件，不递归子目录。",
+      "type": "directory",
+      "required": true
+    },
+    {
+      "key": "searchText",
+      "label": "搜索文本",
+      "description": "留空则只追加前后缀。",
+      "type": "string",
+      "defaultValue": ""
+    },
+    {
+      "key": "replaceText",
+      "label": "替换文本",
+      "type": "string",
+      "defaultValue": ""
+    },
+    {
+      "key": "prefix",
+      "label": "前缀",
+      "type": "string",
+      "defaultValue": ""
+    },
+    {
+      "key": "suffix",
+      "label": "后缀",
+      "description": "后缀会加在扩展名前。",
+      "type": "string",
+      "defaultValue": ""
+    },
+    {
+      "key": "dryRun",
+      "label": "仅预览",
+      "description": "开启后只返回计划，不真的改名。",
+      "type": "boolean",
+      "defaultValue": true
+    }
+  ]
+}

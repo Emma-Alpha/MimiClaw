@@ -4,7 +4,7 @@
  */
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TitleBar } from '@/components/layout/TitleBar';
@@ -20,6 +20,26 @@ import { AnimatedCharacters } from '@/components/ui/animated-characters';
 type ActiveField = 'username' | 'password' | null;
 type LoginTab = 'xiaojiu' | 'password';
 
+const LOGIN_REQUEST_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error(message));
+    }, timeoutMs);
+
+    promise
+      .then((value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
 export function Login() {
   const { t } = useTranslation('common');
   const navigate = useNavigate();
@@ -33,6 +53,7 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [oauthNotice, setOauthNotice] = useState('');
   const [activeField, setActiveField] = useState<ActiveField>(null);
   const [activeTab, setActiveTab] = useState<LoginTab>('xiaojiu');
 
@@ -40,12 +61,14 @@ export function Login() {
     const offSuccess = subscribeHostEvent<CloudSession>('cloud:auth-success', (session) => {
       setOauthLoading(false);
       setErrorMsg('');
+      setOauthNotice('');
       applyCloudSession(session);
       navigate(setupComplete ? '/' : '/setup', { replace: true });
     });
 
     const offError = subscribeHostEvent<{ message?: string }>('cloud:auth-error', (payload) => {
       setOauthLoading(false);
+      setOauthNotice('');
       setErrorMsg(payload?.message || t('login.oauthError'));
     });
 
@@ -61,9 +84,14 @@ export function Login() {
 
     setLoading(true);
     setErrorMsg('');
+    setOauthNotice('');
 
     try {
-      await loginCloud(username.trim(), password.trim());
+      await withTimeout(
+        loginCloud(username.trim(), password.trim()),
+        LOGIN_REQUEST_TIMEOUT_MS,
+        t('login.timeout'),
+      );
       navigate(setupComplete ? '/' : '/setup', { replace: true });
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : t('login.error'));
@@ -75,17 +103,30 @@ export function Login() {
   const handleXiaojiuLogin = async () => {
     setOauthLoading(true);
     setErrorMsg('');
+    setOauthNotice('');
 
     try {
+      await hostApiFetch('/api/auth/xiaojiu/cancel', { method: 'POST' }).catch(() => undefined);
       const config = getXiaojiuOAuthConfig();
-      const result = await hostApiFetch<{ authorizationUrl: string }>('/api/auth/xiaojiu/start', {
-        method: 'POST',
-        body: JSON.stringify(config),
-      });
-      await window.electron.openExternal(result.authorizationUrl);
+      const result = await withTimeout(
+        hostApiFetch<{ authorizationUrl: string }>('/api/auth/xiaojiu/start', {
+          method: 'POST',
+          body: JSON.stringify(config),
+        }),
+        LOGIN_REQUEST_TIMEOUT_MS,
+        t('login.oauthStartTimeout'),
+      );
+      await withTimeout(
+        window.electron.openExternal(result.authorizationUrl),
+        LOGIN_REQUEST_TIMEOUT_MS,
+        t('login.oauthStartTimeout'),
+      );
+      setOauthNotice(t('login.oauthBrowserOpened'));
     } catch (err) {
-      setOauthLoading(false);
+      setOauthNotice('');
       setErrorMsg(err instanceof Error ? err.message : t('login.oauthError'));
+    } finally {
+      setOauthLoading(false);
     }
   };
 
@@ -143,6 +184,7 @@ export function Login() {
               onClick={() => {
                 setActiveTab('xiaojiu');
                 setActiveField(null);
+                setErrorMsg('');
               }}
             >
               小九认证
@@ -155,7 +197,10 @@ export function Login() {
               className={`pb-3 text-base font-medium transition-colors relative ${
                 activeTab === 'password' ? 'text-[#3478f6]' : 'text-slate-500 hover:text-slate-800'
               }`}
-              onClick={() => setActiveTab('password')}
+              onClick={() => {
+                setActiveTab('password');
+                setErrorMsg('');
+              }}
             >
               账号密码
               {activeTab === 'password' && (
@@ -189,6 +234,18 @@ export function Login() {
                     )}
                     使用小九认证登录
                   </Button>
+
+                  {errorMsg ? (
+                    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                      {errorMsg}
+                    </div>
+                  ) : null}
+
+                  {oauthNotice ? (
+                    <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700">
+                      {oauthNotice}
+                    </div>
+                  ) : null}
                 </motion.div>
               )}
 
@@ -211,6 +268,7 @@ export function Login() {
                         onChange={(event) => {
                           setUsername(event.target.value);
                           setErrorMsg('');
+                          setOauthNotice('');
                         }}
                         onFocus={() => setActiveField('username')}
                         onBlur={() => setActiveField(null)}
@@ -227,6 +285,7 @@ export function Login() {
                           onChange={(event) => {
                             setPassword(event.target.value);
                             setErrorMsg('');
+                            setOauthNotice('');
                           }}
                           onFocus={() => setActiveField('password')}
                           onBlur={() => setActiveField(null)}

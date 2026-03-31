@@ -36,6 +36,11 @@ export interface CloudLoginResult {
 	expiresAt?: number;
 }
 
+const DEV_LOGIN_USERNAME = "admin";
+const DEV_LOGIN_PASSWORD = "admin";
+const DEV_LOGIN_TOKEN = "clawx-dev-admin-token";
+const DEV_LOGIN_EXPIRES_IN_MS = 24 * 60 * 60 * 1000;
+
 export interface XiaojiuOAuthConfig {
 	authUrl: string;
 	clientId: string;
@@ -58,6 +63,15 @@ function normalizeAbsoluteUrl(value: string, fallback: string): string {
 	if (!candidate) return fallback;
 	if (/^https?:\/\//i.test(candidate)) return candidate.replace(/\/$/, "");
 	return `https://${candidate.replace(/^\/+/, "").replace(/\/$/, "")}`;
+}
+
+function isLocalLoopbackUrl(value: string): boolean {
+	try {
+		const url = new URL(value);
+		return url.hostname === "127.0.0.1" || url.hostname === "localhost";
+	} catch {
+		return false;
+	}
 }
 
 function getDefaultXiaojiuCallbackUrl(cloudApiBase: string): string {
@@ -87,11 +101,13 @@ export function getXiaojiuOAuthConfig(): XiaojiuOAuthConfig {
 		import.meta.env.VITE_XIAOJIU_EXCHANGE_PATH ||
 		"/api/main/v1/gateway/om_login"
 	).trim();
+	const defaultCallbackUrl = getDefaultXiaojiuCallbackUrl(cloudApiBase);
+	const callbackOverride = getLocalStorageValue("clawx:xiaojiu-callback-url")
+		|| import.meta.env.VITE_XIAOJIU_CALLBACK_URL
+		|| "";
 	const callbackUrl = normalizeAbsoluteUrl(
-		getLocalStorageValue("clawx:xiaojiu-callback-url") ||
-			import.meta.env.VITE_XIAOJIU_CALLBACK_URL ||
-			"",
-		getDefaultXiaojiuCallbackUrl(cloudApiBase),
+		isLocalLoopbackUrl(callbackOverride) ? "" : callbackOverride,
+		defaultCallbackUrl,
 	);
 
 	return {
@@ -239,6 +255,27 @@ function headersToRecord(headers?: HeadersInit): Record<string, string> {
 	return { ...(headers as Record<string, string>) };
 }
 
+export function isDevCloudLoginEnabled(): boolean {
+	try {
+		return Boolean(window.electron?.isDev);
+	} catch {
+		return false;
+	}
+}
+
+export function isDevCloudLoginCredential(username: string, password: string): boolean {
+	return username.trim() === DEV_LOGIN_USERNAME && password === DEV_LOGIN_PASSWORD;
+}
+
+function createDevCloudSession(): CloudSession {
+	return {
+		token: DEV_LOGIN_TOKEN,
+		userId: DEV_LOGIN_USERNAME,
+		workspaceId: DEV_LOGIN_USERNAME,
+		expiresAt: Date.now() + DEV_LOGIN_EXPIRES_IN_MS,
+	};
+}
+
 // ---------------------------------------------------------------------------
 // Auth operations
 // ---------------------------------------------------------------------------
@@ -252,6 +289,12 @@ export async function cloudLogin(
 	username: string,
 	password: string,
 ): Promise<CloudSession> {
+	if (isDevCloudLoginEnabled() && isDevCloudLoginCredential(username, password)) {
+		const session = createDevCloudSession();
+		setCloudSession(session);
+		return session;
+	}
+
 	const data = await cloudApiFetch<CloudSessionResponse>("/api/auth/login", {
 		method: "POST",
 		skipAuth: true,

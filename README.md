@@ -109,6 +109,10 @@ Each channel now supports multiple accounts, per-account agent binding, and swit
 ### ⏰ Cron-Based Automation
 Schedule AI tasks to run automatically. Define triggers, set intervals, and let your AI agents work around the clock without manual intervention.
 
+### 🖥️ Local Execution Center
+Run desktop-native local skills directly inside ClawX. The current MVP includes directory reports, batch rename previews, download-folder organization, and local command execution, turning the desktop client into a real execution node instead of only a chat shell.
+Bundled local skill packages are discovered from `resources/skills/local`, and user-defined local skill packages can be added under `~/.clawx/skills/local`. Recent execution records are persisted locally for audit and replay.
+
 ### 🧩 Extensible Skill System
 Extend your AI agents with pre-built skills. Browse, install, and manage skills through the integrated skill panel—no package managers required.
 极智 also pre-bundles full document-processing skills (`pdf`, `xlsx`, `docx`, `pptx`), deploys them automatically to the managed skills directory (default `~/.openclaw/skills`) on startup, and enables them by default on first install. Additional bundled skills (`find-skills`, `self-improving-agent`, `tavily-search`, `brave-web-search`) are also enabled by default; if required API keys are missing, OpenClaw will surface configuration errors in runtime.  

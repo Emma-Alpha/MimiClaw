@@ -15,6 +15,7 @@ import { RemoteJizhiChat } from './pages/RemoteJizhiChat';
 import { Agents } from './pages/Agents';
 import { Channels } from './pages/Channels';
 import { Skills } from './pages/Skills';
+import { LocalExecutor } from './pages/LocalExecutor';
 import { Cron } from './pages/Cron';
 import { Settings } from './pages/Settings';
 import { PetFloating } from './pages/PetFloating';
@@ -231,6 +232,7 @@ function App() {
             <Route path="/agents" element={<Agents />} />
             <Route path="/channels" element={<Channels />} />
             <Route path="/skills" element={<Skills />} />
+            <Route path="/executor" element={<LocalExecutor />} />
             <Route path="/cron" element={<Cron />} />
             <Route path="/settings/*" element={<Settings />} />
           </Route>

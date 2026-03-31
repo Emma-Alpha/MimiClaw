@@ -8,13 +8,17 @@ import { useState, useEffect } from 'react';
 import { Minus, Square, X, Copy } from 'lucide-react';
 import { invokeIpc } from '@/lib/api-client';
 
-export function TitleBar() {
+type TitleBarProps = {
+  className?: string;
+};
+
+export function TitleBar({ className = '' }: TitleBarProps) {
   const platform = window.electron?.platform;
 
   if (platform === 'darwin') {
     // macOS: just a drag region, traffic lights are native
     // We need a drag region at the top. We make it absolute so it doesn't push content down.
-    return <div className="drag-region h-10 w-full shrink-0 bg-transparent absolute top-0 left-0 z-[100]" />;
+    return <div className={`drag-region h-10 w-full shrink-0 bg-transparent absolute top-0 left-0 z-[100] ${className}`.trim()} />;
   }
 
   // Linux keeps the native frame/title bar for better IME compatibility.
@@ -22,10 +26,10 @@ export function TitleBar() {
     return null;
   }
 
-  return <WindowsTitleBar />;
+  return <WindowsTitleBar className={className} />;
 }
 
-function WindowsTitleBar() {
+function WindowsTitleBar({ className = '' }: TitleBarProps) {
   const [maximized, setMaximized] = useState(false);
 
   useEffect(() => {
@@ -52,7 +56,7 @@ function WindowsTitleBar() {
   };
 
   return (
-    <div className="drag-region flex h-10 w-full shrink-0 items-center justify-end bg-transparent absolute top-0 left-0 z-[100]">
+    <div className={`drag-region flex h-10 w-full shrink-0 items-center justify-end bg-transparent absolute top-0 left-0 z-[100] ${className}`.trim()}>
 
       {/* Right: Window Controls */}
       <div className="no-drag flex h-full pointer-events-auto">

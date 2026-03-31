@@ -260,7 +260,7 @@ export function AnimatedCharacters({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [passwordLength, showPassword]);
 
-  const calculatePosition = (ref: React.RefObject<HTMLDivElement>) => {
+  const calculatePosition = (ref: React.RefObject<HTMLDivElement | null>) => {
     if (!ref.current) return { faceX: 0, faceY: 0, bodySkew: 0 };
 
     const rect = ref.current.getBoundingClientRect();

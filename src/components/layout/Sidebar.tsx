@@ -211,6 +211,7 @@ export function Sidebar() {
     { to: '/agents', icon: <Bot className="h-[18px] w-[18px]" strokeWidth={2} />, label: t('sidebar.agents') },
     { to: '/channels', icon: <Network className="h-[18px] w-[18px]" strokeWidth={2} />, label: t('sidebar.channels') },
     { to: '/skills', icon: <Puzzle className="h-[18px] w-[18px]" strokeWidth={2} />, label: t('sidebar.skills') },
+    { to: '/executor', icon: <Terminal className="h-[18px] w-[18px]" strokeWidth={2} />, label: t('sidebar.localExecutor', { defaultValue: '本地执行' }) },
     { to: '/cron', icon: <Clock className="h-[18px] w-[18px]" strokeWidth={2} />, label: t('sidebar.cronTasks') },
   ];
 
