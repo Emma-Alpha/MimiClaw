@@ -62,6 +62,7 @@ import { validateApiKeyWithProvider } from '../services/providers/provider-valid
 import { appUpdater } from './updater';
 import { syncPetWindowFromSettings } from './pet-window';
 import { getPetRuntimeState, setPetInputActivity, setPetUiActivity, syncPetRuntimeIdleState, pushPetTerminalLine } from './pet-runtime';
+import { toggleMiniChatWindow, closeMiniChatWindow } from './mini-chat-window';
 import { PET_IDLE_ANIMATIONS, type PetUiActivity } from '../../shared/pet';
 import { PORTS } from '../utils/config';
 import { captureWithSnipaste } from '../utils/snipaste';
@@ -180,6 +181,32 @@ function registerPetHandlers(): void {
   ipcMain.handle('pet:pushTerminalLine', (_event, line: string) => {
     if (typeof line === 'string' && line.trim()) {
       pushPetTerminalLine(line.trim());
+    }
+    return { success: true };
+  });
+
+  ipcMain.handle('pet:toggleMiniChat', async () => {
+    await toggleMiniChatWindow();
+    return { success: true };
+  });
+
+  ipcMain.handle('pet:closeMiniChat', () => {
+    closeMiniChatWindow();
+    return { success: true };
+  });
+
+  ipcMain.handle('pet:openMainWindow', (_event) => {
+    const windows = BrowserWindow.getAllWindows();
+    // Find the main window (not pet, not mini-chat — identified by being the largest or first non-floating window)
+    const mainWin = windows.find((w) => {
+      if (w.isDestroyed()) return false;
+      const url = w.webContents.getURL();
+      return !url.includes('#/pet') && !url.includes('#/mini-chat');
+    });
+    if (mainWin) {
+      if (mainWin.isMinimized()) mainWin.restore();
+      mainWin.show();
+      mainWin.focus();
     }
     return { success: true };
   });
