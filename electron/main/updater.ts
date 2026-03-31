@@ -107,7 +107,7 @@ function getAppSemverVersion(): string {
 function buildGitHubHeaders(accept: string): Record<string, string> {
   return {
     Accept: accept,
-    'User-Agent': `${app.getName()}/${getAppSemverVersion()}`,
+    'User-Agent': `${GITHUB_REPO}/${getAppSemverVersion()}`,
   };
 }
 
