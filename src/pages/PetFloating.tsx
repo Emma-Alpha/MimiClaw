@@ -147,7 +147,7 @@ export function PetFloating() {
 			}}
 		>
 			{runtimeState.showTerminal && (
-				<div className="pointer-events-none absolute bottom-[60%] left-1/2 z-20 w-[85%] max-w-[260px] -translate-x-1/2 rounded-[14px] border border-white/10 bg-black/72 px-3 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.25)] backdrop-blur-[4px]">
+				<div className="pointer-events-none absolute bottom-[150px] left-1/2 z-20 w-[85%] max-w-[260px] -translate-x-1/2 rounded-[14px] border border-white/10 bg-black/72 px-3 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.25)] backdrop-blur-[4px]">
 					<div className="mb-1.5 flex items-center gap-1.5">
 						<span className="h-2 w-2 rounded-full bg-rose-400/75" />
 						<span className="h-2 w-2 rounded-full bg-amber-300/75" />
@@ -181,7 +181,7 @@ export function PetFloating() {
 			<video
 				key={displayAnimation}
 				ref={videoRef}
-				className="relative z-10 h-full w-full object-contain"
+				className="relative z-10 h-[200px] w-[200px] object-contain pointer-events-none"
 				src={PET_ANIMATION_SOURCES[displayAnimation]}
 				autoPlay
 				loop={shouldLoop}

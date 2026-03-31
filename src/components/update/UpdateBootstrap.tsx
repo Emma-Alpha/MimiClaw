@@ -4,6 +4,7 @@
 import { useEffect } from 'react';
 import { useUpdateStore } from '@/stores/update';
 import { ForceUpdateModal } from './ForceUpdateModal';
+import { UpdateAvailablePopup } from './UpdateAvailablePopup';
 
 export function UpdateBootstrap() {
   useEffect(() => {
@@ -14,5 +15,10 @@ export function UpdateBootstrap() {
     void run();
   }, []);
 
-  return <ForceUpdateModal />;
+  return (
+    <>
+      <ForceUpdateModal />
+      <UpdateAvailablePopup />
+    </>
+  );
 }

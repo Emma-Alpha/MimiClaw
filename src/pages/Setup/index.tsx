@@ -23,7 +23,6 @@ import {
 import { TitleBar } from '@/components/layout/TitleBar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useGatewayStore } from '@/stores/gateway';
@@ -173,7 +172,7 @@ export function Setup() {
       default:
         return true;
     }
-  }, [safeStepIndex, providerConfigured, runtimeChecksPassed, isRemoteMode]);
+  }, [safeStepIndex, providerConfigured, runtimeChecksPassed, isRemoteMode, isCloudOnlyBuild]);
 
   const handleNext = async () => {
     if (isLastStep) {
@@ -252,13 +251,15 @@ export function Setup() {
             exit={{ opacity: 0, x: -20 }}
             className="mx-auto max-w-2xl p-8"
           >
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold mb-2">{t(`steps.${step.id}.title`)}</h1>
-              <p className="text-slate-400">{t(`steps.${step.id}.description`)}</p>
-            </div>
+            {safeStepIndex !== STEP.RUNTIME && (
+              <div className="text-center mb-8">
+                <h1 className="text-3xl font-bold mb-2">{t(`steps.${step.id}.title`)}</h1>
+                <p className="text-slate-400">{t(`steps.${step.id}.description`)}</p>
+              </div>
+            )}
 
             {/* Step-specific content */}
-            <div className="rounded-xl bg-card text-card-foreground border shadow-sm p-8 mb-8">
+            <div className={cn("rounded-xl bg-card text-card-foreground border shadow-sm p-8 mb-8", safeStepIndex === STEP.RUNTIME && "border-none shadow-none bg-transparent p-0")}>
               {safeStepIndex === STEP.WELCOME && <WelcomeContent isCloudOnlyBuild={isCloudOnlyBuild} />}
               {safeStepIndex === STEP.RUNTIME && (
                 <RuntimeContent
@@ -418,7 +419,6 @@ function RuntimeContent({ onStatusChange, isRemoteMode, isCloudOnlyBuild }: Runt
   });
   const [showLogs, setShowLogs] = useState(false);
   const [logContent, setLogContent] = useState('');
-  const [openclawDir, setOpenclawDir] = useState('');
   const gatewayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const runChecks = useCallback(async () => {
@@ -443,8 +443,6 @@ function RuntimeContent({ onStatusChange, isRemoteMode, isCloudOnlyBuild }: Runt
         dir: string;
         version?: string;
       };
-
-      setOpenclawDir(openclawStatus.dir);
 
       if (!openclawStatus.packageExists) {
         setChecks((prev) => ({
@@ -601,47 +599,6 @@ function RuntimeContent({ onStatusChange, isRemoteMode, isCloudOnlyBuild }: Runt
     }
   };
 
-  const ERROR_TRUNCATE_LEN = 30;
-
-  const renderStatus = (status: 'checking' | 'success' | 'error', message: string) => {
-    if (status === 'checking') {
-      return (
-        <span className="flex items-center gap-2 text-yellow-400 whitespace-nowrap">
-          <Loader2 className="h-5 w-5 flex-shrink-0 animate-spin" />
-          {message || 'Checking...'}
-        </span>
-      );
-    }
-    if (status === 'success') {
-      return (
-        <span className="flex items-center gap-2 text-green-400 whitespace-nowrap">
-          <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
-          {message}
-        </span>
-      );
-    }
-
-    const isLong = message.length > ERROR_TRUNCATE_LEN;
-    const displayMsg = isLong ? message.slice(0, ERROR_TRUNCATE_LEN) : message;
-
-    return (
-      <span className="flex items-center gap-2 text-red-400 whitespace-nowrap">
-        <XCircle className="h-5 w-5 flex-shrink-0" />
-        <span>{displayMsg}</span>
-        {isLong && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="cursor-pointer text-red-300 hover:text-red-200 font-medium">...</span>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-sm whitespace-normal break-words text-xs">
-              {message}
-            </TooltipContent>
-          </Tooltip>
-        )}
-      </span>
-    );
-  };
-
   if (isRemoteMode) {
     return (
       <div className="space-y-4">
@@ -691,72 +648,169 @@ function RuntimeContent({ onStatusChange, isRemoteMode, isCloudOnlyBuild }: Runt
     );
   }
 
+  const renderStepIcon = (status: 'pending' | 'checking' | 'success' | 'error') => {
+    if (status === 'success') {
+      return <CheckCircle2 className="h-5 w-5 text-green-500" />;
+    }
+    if (status === 'checking') {
+      return <Loader2 className="h-5 w-5 text-foreground animate-spin" />;
+    }
+    if (status === 'error') {
+      return <XCircle className="h-5 w-5 text-red-500" />;
+    }
+    return <div className="h-2 w-2 rounded-full bg-muted-foreground/30 m-1.5" />;
+  };
+
+  // Determine overall status for the top header
+  const isAllSuccess = checks.nodejs.status === 'success' && checks.openclaw.status === 'success' && checks.gateway.status === 'success';
+  const isAnyError = checks.nodejs.status === 'error' || checks.openclaw.status === 'error' || checks.gateway.status === 'error';
+  const currentActiveStep = checks.nodejs.status === 'checking' || checks.openclaw.status === 'checking' 
+    ? '检查环境' 
+    : checks.gateway.status === 'checking' 
+      ? '启动 Gateway' 
+      : isAllSuccess 
+        ? '连接服务' 
+        : '出错了';
+
+  const currentActiveDesc = checks.nodejs.status === 'checking' || checks.openclaw.status === 'checking'
+    ? '正在检查本地环境...'
+    : checks.gateway.status === 'checking'
+      ? '等待 Gateway 启动...'
+      : isAllSuccess
+        ? '服务已连接'
+        : '启动失败，请查看日志';
+
+  // Calculate progress percentage
+  const progressPercent = isAllSuccess 
+    ? 100 
+    : checks.gateway.status === 'checking' 
+      ? 60 
+      : (checks.nodejs.status === 'success' && checks.openclaw.status === 'success') 
+        ? 30 
+        : 10;
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold">{t('runtime.title')}</h2>
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={handleShowLogs}>
-            {t('runtime.viewLogs')}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={runChecks}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            {t('runtime.recheck')}
-          </Button>
+    <div className="flex flex-col items-center justify-center py-8 space-y-10">
+      {/* Top Icon & Title */}
+      <div className="flex flex-col items-center text-center space-y-6">
+        <div className="relative flex items-center justify-center w-24 h-24">
+          <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+            <circle
+              cx="50"
+              cy="50"
+              r="46"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="text-muted/30"
+            />
+            <motion.circle
+              cx="50"
+              cy="50"
+              r="46"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className={isAnyError ? "text-red-500" : isAllSuccess ? "text-green-500" : "text-foreground"}
+              strokeDasharray="289"
+              strokeDashoffset={289 - (289 * progressPercent) / 100}
+              strokeLinecap="round"
+              initial={{ strokeDashoffset: 289 }}
+              animate={{ strokeDashoffset: 289 - (289 * progressPercent) / 100 }}
+              transition={{ duration: 0.5, ease: "easeInOut" }}
+            />
+          </svg>
+          <div className="w-14 h-14 bg-foreground text-background rounded-2xl flex items-center justify-center shadow-lg">
+            <img src={clawxIcon} alt="Logo" className="w-10 h-10 object-contain invert dark:invert-0" />
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold">{currentActiveStep}</h2>
+          <p className="text-muted-foreground">{currentActiveDesc}</p>
         </div>
       </div>
-      <div className="space-y-3">
-        <div className="grid grid-cols-[1fr_auto] items-center gap-4 p-3 rounded-lg bg-muted/50">
-          <span className="text-left">{t('runtime.nodejs')}</span>
-          <div className="flex justify-end">
-            {renderStatus(checks.nodejs.status, checks.nodejs.message)}
+
+      {/* Step List */}
+      <div className="w-full max-w-sm space-y-6 relative">
+        {/* Environment Check */}
+        <div className="flex items-start gap-4 relative">
+          <div className="relative z-10 bg-card flex items-center justify-center h-6 w-6 mt-0.5">
+            {renderStepIcon(checks.nodejs.status === 'success' && checks.openclaw.status === 'success' ? 'success' : checks.nodejs.status === 'error' || checks.openclaw.status === 'error' ? 'error' : 'checking')}
+          </div>
+          <div className="flex-1">
+            <p className={cn("font-medium", (checks.nodejs.status === 'success' && checks.openclaw.status === 'success') ? "text-muted-foreground" : "text-foreground")}>
+              检查环境
+            </p>
           </div>
         </div>
-        <div className="grid grid-cols-[1fr_auto] items-center gap-4 p-3 rounded-lg bg-muted/50">
-          <div className="text-left min-w-0">
-            <span>{t('runtime.openclaw')}</span>
-            {openclawDir && (
-              <p className="text-xs text-muted-foreground mt-0.5 font-mono break-all">
-                {openclawDir}
+
+        {/* Start Gateway */}
+        <div className="flex items-start gap-4 relative">
+          <div className="absolute left-[11px] top-[-32px] bottom-[24px] w-[2px] bg-border -z-0" />
+          <div className="relative z-10 bg-card flex items-center justify-center h-6 w-6 mt-0.5">
+            {renderStepIcon(checks.gateway.status === 'success' ? 'success' : (checks.nodejs.status === 'success' && checks.openclaw.status === 'success' ? checks.gateway.status : 'pending'))}
+          </div>
+          <div className="flex-1 flex justify-between items-center">
+            <div className="space-y-1">
+              <p className={cn("font-medium", checks.gateway.status === 'success' ? "text-muted-foreground" : checks.gateway.status === 'checking' ? "text-foreground" : "text-muted-foreground/50")}>
+                启动 Gateway
               </p>
-            )}
-          </div>
-          <div className="flex justify-end self-start mt-0.5">
-            {renderStatus(checks.openclaw.status, checks.openclaw.message)}
-          </div>
-        </div>
-        <div className="grid grid-cols-[1fr_auto] items-center gap-4 p-3 rounded-lg bg-muted/50">
-          <div className="flex items-center gap-2 text-left">
-            <span>{t('runtime.gateway')}</span>
+              {checks.gateway.status === 'checking' && (
+                <p className="text-sm text-muted-foreground">等待 Gateway 启动...</p>
+              )}
+            </div>
             {checks.gateway.status === 'error' && (
               <Button variant="outline" size="sm" onClick={handleStartGateway}>
-                {t('runtime.startGateway')}
+                重试
               </Button>
             )}
           </div>
-          <div className="flex justify-end">
-            {renderStatus(checks.gateway.status, checks.gateway.message)}
+        </div>
+
+        {/* Connect Service */}
+        <div className="flex items-start gap-4 relative">
+          <div className="absolute left-[11px] top-[-32px] bottom-[24px] w-[2px] bg-border -z-0" />
+          <div className="relative z-10 bg-card flex items-center justify-center h-6 w-6 mt-0.5">
+            {renderStepIcon(checks.gateway.status === 'success' ? 'success' : 'pending')}
+          </div>
+          <div className="flex-1 flex justify-between items-center">
+            <p className={cn("font-medium", checks.gateway.status === 'success' ? "text-foreground" : "text-muted-foreground/50")}>
+              连接服务
+            </p>
+            {checks.gateway.status === 'success' && (
+              <span className="text-sm text-muted-foreground">已连接</span>
+            )}
           </div>
         </div>
       </div>
 
-      {(checks.nodejs.status === 'error' || checks.openclaw.status === 'error') && (
-        <div className="mt-4 p-4 rounded-lg bg-red-900/20 border border-red-500/20">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="h-5 w-5 text-red-400 mt-0.5" />
-            <div>
-              <p className="font-medium text-red-400">{t('runtime.issue.title')}</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {t('runtime.issue.desc')}
-              </p>
-            </div>
-          </div>
+      {/* Bottom Progress Bar */}
+      <div className="w-full max-w-sm pt-4">
+        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+          <motion.div 
+            className={cn("h-full", isAnyError ? "bg-red-500" : "bg-green-500")}
+            initial={{ width: 0 }}
+            animate={{ width: `${progressPercent}%` }}
+            transition={{ duration: 0.5 }}
+          />
         </div>
-      )}
+      </div>
+
+      {/* Error / Logs Actions */}
+      <div className="flex gap-4 pt-2">
+        <Button variant="ghost" size="sm" onClick={handleShowLogs} className="text-muted-foreground">
+          查看日志
+        </Button>
+        <Button variant="ghost" size="sm" onClick={runChecks} className="text-muted-foreground">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          重新检查
+        </Button>
+      </div>
 
       {/* Log viewer panel */}
       {showLogs && (
-        <div className="mt-4 p-4 rounded-lg bg-black/40 border border-border">
+        <div className="w-full mt-4 p-4 rounded-lg bg-black/40 border border-border text-left">
           <div className="flex items-center justify-between mb-2">
             <p className="font-medium text-foreground text-sm">{t('runtime.logs.title')}</p>
             <div className="flex gap-2">
@@ -1769,11 +1823,11 @@ function InstallingContent({ skills, onComplete, onSkip, isCloudOnlyBuild }: Ins
     installStarted.current = true;
 
     if (isCloudOnlyBuild) {
-      setOverallProgress(100);
-      const timer = setTimeout(() => {
+      setTimeout(() => {
+        setOverallProgress(100);
         onComplete([]);
       }, 700);
-      return () => clearTimeout(timer);
+      return;
     }
 
     const runRealInstall = async () => {
