@@ -24,17 +24,17 @@ extraResources:
   - from: resources/
     to: resources/
     filter:
-      - "**/*"
-      - "!icons/*.md"
-      - "!icons/*.svg"
-      - "!bin/**"
+      - '**/*'
+      - '!icons/*.md'
+      - '!icons/*.svg'
+      - '!bin/**'
       # Copy Snipaste in afterPack so macOS app bundles keep framework symlinks intact.
-      - "!snipaste/**"
-      - "!screenshot/**"
+      - '!snipaste/**'
+      - '!screenshot/**'
 
 asar: true
 asarUnpack:
-  - "**/*.node"
+  - '**/*.node'
 
 npmRebuild: false
 
@@ -73,7 +73,7 @@ mac:
   hardenedRuntime: false
   gatekeeperAssess: false
   notarize: false
-  identity: "-"
+  identity: '-'
   extendInfo:
     NSMicrophoneUsageDescription: 极智需要麦克风权限以支持语音功能
     NSCameraUsageDescription: 极智需要摄像头权限以支持视频功能
