@@ -38,14 +38,12 @@ asarUnpack:
 
 npmRebuild: false
 
-# Auto-update configuration — GitHub Releases
-# electron-updater queries the GitHub API to find the latest release asset
-# matching the installed channel (beta-mac.yml, latest-mac.yml, etc.)
+# Auto-update configuration — Tencent COS (generic provider)
+# electron-updater fetches {url}/{channel}.yml for Windows/Linux.
+# macOS uses a custom manifest at {url}/channels/{channel}.json.
 publish:
-  - provider: github
-    owner: Emma-Alpha
-    repo: MimiClaw
-    releaseType: release
+  - provider: generic
+    url: https://cobot-1254397474.cos.ap-guangzhou.myqcloud.com/jizhi/updates
 
 # macOS Configuration
 mac:

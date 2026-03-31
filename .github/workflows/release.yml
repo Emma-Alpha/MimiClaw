@@ -1,11 +1,11 @@
-# ClawX Release Workflow — GitHub Releases only
+# ClawX Release Workflow — GitHub Release (backup) + COS (primary update source)
 #
 # Topology:
-#   build-mac → publish to GitHub Release (tag push or manual trigger)
+#   build-mac → publish to GitHub Release (archive) → sync .asar + manifest to COS
 #
-# Auto-update: electron-updater queries GitHub Releases API for
-# the channel-specific yml asset (beta-mac.yml / latest-mac.yml).
-# No COS / self-hosted runner required.
+# Auto-update: client reads {COS_BASE}/channels/{channel}.json (macOS)
+# or {COS_BASE}/{channel}.yml (Windows/Linux generic provider).
+# COS avoids GitHub API 403 issues in mainland China.
 
 name: Release
 
@@ -156,9 +156,8 @@ jobs:
             exit 1
           fi
 
-      # ── Publish to GitHub Release ─────────────────────────────────
-      # Uses gh CLI with --clobber to safely overwrite existing assets on re-runs.
-      # electron-updater reads beta-mac.yml / latest-mac.yml from release assets.
+      # ── Publish to GitHub Release (archive copy) ─────────────────
+      # Kept as a historical backup; the client no longer reads from GitHub.
       - name: Publish to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         env:
@@ -173,13 +172,101 @@ jobs:
             RELEASE_FLAGS="--latest"
           fi
 
-          # Create release; if it already exists on a re-run, edit its flags instead.
-          # NOTE: --notes and --generate-notes are mutually exclusive in gh CLI — use only one.
           if ! gh release create "$TAG" $RELEASE_FLAGS --title "极智 ${TAG}" --generate-notes; then
             echo "Release already exists, updating flags..."
             gh release edit "$TAG" $RELEASE_FLAGS
           fi
 
-          # Upload all artifacts — --clobber overwrites existing assets (safe for re-runs)
           find release/ -maxdepth 1 -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.blockmap" -o -name "*.yml" -o -name "*.asar" -o -name "*.asar.sha256" \) \
             | sort | xargs -I {} gh release upload "$TAG" {} --clobber
+
+      # ── Sync to COS (primary update source for the client) ───────
+      # Uploads .asar/.sha256 files under {version}/ and writes/overwrites
+      # the channel manifest at channels/{channel}.json so clients can discover
+      # the update without touching GitHub API.
+      - name: Sync update assets to COS
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+          COS_BUCKET: cobot-1254397474
+          COS_REGION: ap-guangzhou
+          COS_PREFIX: jizhi/updates
+        run: |
+          export VERSION=$(node -p "require('./package.json').version")
+          PRERELEASE="${{ steps.arch.outputs.prerelease }}"
+          export CHANNEL=$([ "$PRERELEASE" = "true" ] && echo "beta" || echo "latest")
+
+          pip3 install cos-python-sdk-v5 --quiet
+
+          python3 /dev/stdin <<'PYEOF'
+import os, sys, json, glob, datetime
+from qcloud_cos import CosConfig, CosS3Client
+
+config = CosConfig(
+    Region=os.environ['COS_REGION'],
+    SecretId=os.environ['COS_SECRET_ID'],
+    SecretKey=os.environ['COS_SECRET_KEY'],
+)
+client = CosS3Client(config)
+bucket = os.environ['COS_BUCKET']
+prefix = os.environ['COS_PREFIX']
+version = os.environ['VERSION']
+channel = os.environ['CHANNEL']
+base_url = f'https://{bucket}.cos.{os.environ["COS_REGION"]}.myqcloud.com/{prefix}'
+
+# 1. Upload .asar and .sha256 under {version}/
+uploaded = []
+for pattern in ['release/*.asar', 'release/*.sha256']:
+    for f in sorted(glob.glob(pattern)):
+        key = f'{prefix}/{version}/{os.path.basename(f)}'
+        print(f'Uploading {f} → cos://{bucket}/{key}')
+        client.upload_file(Bucket=bucket, LocalFilePath=f, Key=key)
+        uploaded.append(os.path.basename(f))
+
+if not uploaded:
+    print('ERROR: No .asar or .sha256 files found in release/', file=sys.stderr)
+    sys.exit(1)
+
+print(f'Uploaded {len(uploaded)} file(s).')
+
+# 2. Build channel manifest from darwin .asar files
+files_entry = {}
+for asar in sorted(glob.glob('release/*-darwin-*.asar')):
+    fname = os.path.basename(asar)
+    arch = fname.replace('.asar', '').split('-')[-1]
+    files_entry[arch] = {
+        'name': fname,
+        'url': f'{base_url}/{version}/{fname}',
+        'size': os.path.getsize(asar),
+        'sha256Url': f'{base_url}/{version}/{fname}.sha256',
+    }
+
+if not files_entry:
+    print('ERROR: No darwin .asar files found; cannot generate manifest.', file=sys.stderr)
+    sys.exit(1)
+
+manifest = {
+    'version': version,
+    'releaseDate': datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+    'releaseNotes': None,
+    'releaseUrl': f'https://github.com/Emma-Alpha/MimiClaw/releases/tag/v{version}',
+    'files': files_entry,
+}
+print(json.dumps(manifest, indent=2))
+
+# 3. Upload manifest to channels/{channel}.json
+manifest_path = '/tmp/cos-manifest.json'
+with open(manifest_path, 'w') as fp:
+    json.dump(manifest, fp, indent=2)
+
+key = f'{prefix}/channels/{channel}.json'
+print(f'Uploading manifest → cos://{bucket}/{key}')
+client.upload_file(
+    Bucket=bucket,
+    LocalFilePath=manifest_path,
+    Key=key,
+    ContentType='application/json',
+)
+print('Done — COS manifest updated.')
+PYEOF

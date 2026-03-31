@@ -1,13 +1,13 @@
 /**
  * Auto-Updater Module
- * Handles automatic application updates using electron-updater with GitHub Releases.
+ * Handles automatic application updates using a COS-hosted manifest + assets.
  *
- * Windows/Linux keep using electron-updater directly.
- * macOS uses a custom GitHub Releases -> app.asar flow so unsigned builds can
+ * Windows/Linux use electron-updater with a generic COS provider.
+ * macOS uses a custom COS manifest -> app.asar flow so unsigned builds can
  * replace the packaged asar after the app exits, then relaunch the app bundle.
  */
-import { autoUpdater, UpdateInfo, ProgressInfo, UpdateDownloadedEvent } from 'electron-updater';
-import { BrowserWindow, app, ipcMain } from 'electron';
+import { autoUpdater, type UpdateInfo, type ProgressInfo, type UpdateDownloadedEvent } from 'electron-updater';
+import { type BrowserWindow, app, ipcMain } from 'electron';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
@@ -19,24 +19,21 @@ import { logger } from '../utils/logger';
 import { EventEmitter } from 'events';
 import { setInstallingUpdate, setQuitting } from './app-state';
 
-const GITHUB_OWNER = 'Emma-Alpha';
-const GITHUB_REPO = 'MimiClaw';
-const GITHUB_API_BASE = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}`;
+/** COS bucket base URL for update manifest and assets. */
+const COS_UPDATES_BASE = 'https://cobot-1254397474.cos.ap-guangzhou.myqcloud.com/jizhi/updates';
 
-type GitHubReleaseAsset = {
-  name: string;
-  size: number;
-  browser_download_url: string;
-};
-
-type GitHubRelease = {
-  tag_name: string;
-  body?: string | null;
-  draft: boolean;
-  prerelease: boolean;
-  html_url: string;
-  published_at?: string;
-  assets: GitHubReleaseAsset[];
+/** Manifest JSON hosted at {COS_UPDATES_BASE}/channels/{channel}.json */
+type CosUpdateManifest = {
+  version: string;
+  releaseDate?: string;
+  releaseNotes?: string | null;
+  releaseUrl?: string;
+  files: Record<string, {
+    name: string;
+    url: string;
+    size: number;
+    sha256Url: string;
+  }>;
 };
 
 type MacAsarUpdate = {
@@ -104,13 +101,6 @@ function getAppSemverVersion(): string {
   return app.getVersion();
 }
 
-function buildGitHubHeaders(accept: string): Record<string, string> {
-  return {
-    Accept: accept,
-    'User-Agent': `${GITHUB_REPO}/${getAppSemverVersion()}`,
-  };
-}
-
 function parseComparableVersion(version: string): string | null {
   const valid = semver.valid(version);
   if (valid) return valid;
@@ -126,10 +116,6 @@ function isNewerVersion(candidate: string, current: string): boolean {
     return candidate !== current;
   }
   return semver.gt(next, existing);
-}
-
-function stripLeadingV(version: string): string {
-  return version.startsWith('v') ? version.slice(1) : version;
 }
 
 function shellQuote(value: string): string {
@@ -198,13 +184,15 @@ export class AppUpdater extends EventEmitter {
     const detectedChannel = normalizeChannel(detectChannel(version));
     this.currentChannel = detectedChannel;
 
-    logger.info(`[Updater] Version: ${version}, channel: ${detectedChannel}, provider: github (${GITHUB_OWNER}/${GITHUB_REPO})`);
+    logger.info(`[Updater] Version: ${version}, channel: ${detectedChannel}, provider: cos (${COS_UPDATES_BASE})`);
 
+    // Windows/Linux: use generic COS provider so electron-updater reads
+    // {COS_UPDATES_BASE}/{channel}.yml instead of hitting GitHub API.
     autoUpdater.setFeedURL({
-      provider: 'github',
-      owner: GITHUB_OWNER,
-      repo: GITHUB_REPO,
-    });
+      provider: 'generic',
+      url: COS_UPDATES_BASE,
+      channel: detectedChannel,
+    } as Parameters<typeof autoUpdater.setFeedURL>[0]);
 
     autoUpdater.channel = detectedChannel;
     autoUpdater.allowPrerelease = detectedChannel !== 'latest';
@@ -297,37 +285,31 @@ export class AppUpdater extends EventEmitter {
     return process.platform === 'darwin';
   }
 
-  private async fetchGitHubJson<T>(pathname: string): Promise<T> {
-    const response = await fetch(`${GITHUB_API_BASE}${pathname}`, {
-      headers: buildGitHubHeaders('application/vnd.github+json'),
-      redirect: 'follow',
-    });
-
+  /**
+   * Fetch the COS update manifest for the current channel.
+   * URL pattern: {COS_UPDATES_BASE}/channels/{channel}.json
+   */
+  private async fetchCosManifest(): Promise<CosUpdateManifest> {
+    const channel = this.currentChannel === 'latest' ? 'latest' : this.currentChannel;
+    const url = `${COS_UPDATES_BASE}/channels/${channel}.json`;
+    const response = await fetch(url, { redirect: 'follow' });
     if (!response.ok) {
-      throw new Error(`GitHub update request failed (${response.status})`);
+      throw new Error(`COS update manifest request failed (${response.status})`);
     }
-
-    return await response.json() as T;
+    return await response.json() as CosUpdateManifest;
   }
 
   private async resolveMacAsarRelease(): Promise<MacAsarUpdate | null> {
-    const release = this.currentChannel === 'latest'
-      ? await this.fetchGitHubJson<GitHubRelease>('/releases/latest')
-      : await this.selectLatestPrerelease();
-
-    const version = stripLeadingV(release.tag_name);
+    const manifest = await this.fetchCosManifest();
+    const version = manifest.version;
     const currentVersion = getAppSemverVersion();
 
     if (!isNewerVersion(version, currentVersion)) {
       return null;
     }
 
-    const assetSuffix = `-darwin-${process.arch}.asar`;
-    const checksumSuffix = `${assetSuffix}.sha256`;
-    const asarAsset = release.assets.find((asset) => asset.name.endsWith(assetSuffix));
-    const checksumAsset = release.assets.find((asset) => asset.name.endsWith(checksumSuffix));
-
-    if (!asarAsset || !checksumAsset) {
+    const archEntry = manifest.files?.[process.arch];
+    if (!archEntry) {
       throw new Error(
         `Release v${version} is missing the macOS ${process.arch} .asar update assets.`,
       );
@@ -335,34 +317,15 @@ export class AppUpdater extends EventEmitter {
 
     return {
       version,
-      releaseDate: release.published_at,
-      releaseNotes: release.body ?? null,
-      releaseUrl: release.html_url,
-      assetName: asarAsset.name,
-      assetUrl: asarAsset.browser_download_url,
-      assetSize: asarAsset.size,
-      sha256AssetName: checksumAsset.name,
-      sha256AssetUrl: checksumAsset.browser_download_url,
+      releaseDate: manifest.releaseDate,
+      releaseNotes: manifest.releaseNotes ?? null,
+      releaseUrl: manifest.releaseUrl ?? '',
+      assetName: archEntry.name,
+      assetUrl: archEntry.url,
+      assetSize: archEntry.size,
+      sha256AssetName: `${archEntry.name}.sha256`,
+      sha256AssetUrl: archEntry.sha256Url,
     };
-  }
-
-  private async selectLatestPrerelease(): Promise<GitHubRelease> {
-    const releases = await this.fetchGitHubJson<GitHubRelease[]>('/releases?per_page=20');
-    const preferred = releases.find((release) => {
-      if (release.draft || !release.prerelease) return false;
-      if (this.currentChannel === 'latest') return true;
-      return stripLeadingV(release.tag_name).includes(`-${this.currentChannel}`);
-    });
-
-    if (preferred) {
-      return preferred;
-    }
-
-    const fallback = releases.find((release) => !release.draft && release.prerelease);
-    if (!fallback) {
-      throw new Error(`No prerelease builds available for channel "${this.currentChannel}".`);
-    }
-    return fallback;
   }
 
   private toUpdateInfo(update: MacAsarUpdate): UpdateInfo {
@@ -378,10 +341,7 @@ export class AppUpdater extends EventEmitter {
   }
 
   private async verifyMacAsarChecksum(update: MacAsarUpdate, digest: string): Promise<void> {
-    const response = await fetch(update.sha256AssetUrl, {
-      headers: buildGitHubHeaders('text/plain'),
-      redirect: 'follow',
-    });
+    const response = await fetch(update.sha256AssetUrl, { redirect: 'follow' });
 
     if (!response.ok) {
       throw new Error(`Failed to fetch ${update.sha256AssetName} (${response.status})`);
@@ -407,10 +367,7 @@ export class AppUpdater extends EventEmitter {
     );
     const tempPath = `${finalPath}.download`;
 
-    const response = await fetch(update.assetUrl, {
-      headers: buildGitHubHeaders('application/octet-stream'),
-      redirect: 'follow',
-    });
+    const response = await fetch(update.assetUrl, { redirect: 'follow' });
 
     if (!response.ok || !response.body) {
       throw new Error(`Failed to download ${update.assetName} (${response.status})`);
