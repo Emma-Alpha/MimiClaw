@@ -138,26 +138,12 @@ jobs:
             RELEASE_FLAGS="--latest"
           fi
 
-          NOTES="## 🚀 极智 ${TAG}
-
-          极智 - AI 智能助手
-
-          ### 📦 下载
-
-          #### macOS
-          - **Apple Silicon (M1/M2/M3/M4)**: \`jizhi-*-mac-arm64.dmg\`
-          $([ "$PRERELEASE" == "false" ] && echo '- **Intel (x64)**: `jizhi-*-mac-x64.dmg`' || echo '_（此预发版仅提供 Apple Silicon 版本）_')
-
-          ### ⚠️ 安装注意事项
-
-          - **macOS**：首次启动可能提示"来自未知开发者"，请前往系统设置 → 隐私与安全性，点击"仍要打开"；若提示"已损坏"，请在终端执行 \`xattr -cr /Applications/极智.app\` 后重新打开
-
-          ---
-          💬 遇到问题？请提交 [Issue](https://github.com/${{ github.repository }}/issues)"
-
-          # Create release if not exists (ignore error on re-runs)
-          gh release create "$TAG" $RELEASE_FLAGS --generate-notes --title "🚀 极智 ${TAG}" --notes "$NOTES" 2>/dev/null || \
-            gh release edit "$TAG" $RELEASE_FLAGS 2>/dev/null || true
+          # Create release; if it already exists on a re-run, edit its flags instead.
+          # NOTE: --notes and --generate-notes are mutually exclusive in gh CLI — use only one.
+          if ! gh release create "$TAG" $RELEASE_FLAGS --title "极智 ${TAG}" --generate-notes; then
+            echo "Release already exists, updating flags..."
+            gh release edit "$TAG" $RELEASE_FLAGS
+          fi
 
           # Upload all artifacts — --clobber overwrites existing assets (safe for re-runs)
           find release/ -maxdepth 1 -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.blockmap" -o -name "*.yml" \) \
