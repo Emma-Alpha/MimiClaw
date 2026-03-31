@@ -55,6 +55,9 @@ const electronAPI = {
         'pet:setUiActivity',
         'pet:showContextMenu',
         'pet:pushTerminalLine',
+        'pet:toggleMiniChat',
+        'pet:closeMiniChat',
+        'pet:openMainWindow',
         // Settings
         'settings:get',
         'settings:set',
