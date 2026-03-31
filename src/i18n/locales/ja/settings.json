@@ -200,6 +200,7 @@
       "downloading": "更新をダウンロード中...",
       "available": "更新あり: v{{version}}",
       "downloaded": "インストール準備完了: v{{version}}",
+      "downloadedMac": "v{{version}} のダウンロードが完了しました。再起動後に app.asar を差し替えます",
       "autoInstalling": "{{seconds}} 秒後に再起動して更新をインストールします...",
       "failed": "更新の確認に失敗しました",
       "latest": "最新バージョンです",
@@ -210,6 +211,7 @@
       "downloading": "ダウンロード中...",
       "download": "更新をダウンロード",
       "install": "インストールして再起動",
+      "openDownload": "ダウンロードページを開く",
       "cancelAutoInstall": "キャンセル",
       "retry": "再試行",
       "check": "更新を確認"
@@ -218,6 +220,7 @@
     "whatsNew": "更新内容：",
     "errorDetails": "エラー詳細：",
     "help": "自動アップデートが有効な場合、更新は自動的にダウンロードされインストールされます。",
+    "helpMac": "macOS では app.asar をダウンロードして再起動時に差し替えます。ネイティブバイナリや外部リソースも変更されるリリースでは、完全なインストーラーを利用してください。",
     "forceModal": {
       "titleDefault": "アップデートが必要です",
       "belowMinimum": "サポート対象より古いバージョンです。続行するには更新してください。",

@@ -121,6 +121,41 @@ jobs:
       - name: Remove builder-debug.yml
         run: find release/ -name "builder-debug.yml" -delete || true
 
+      - name: Export macOS .asar update assets
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          FOUND=0
+
+          while IFS= read -r ASAR_PATH; do
+            BUNDLE_DIR=$(basename "$(dirname "$(dirname "$(dirname "$ASAR_PATH")")")")
+            case "$BUNDLE_DIR" in
+              mac-arm64*)
+                ARCH=arm64
+                ;;
+              mac-universal*)
+                ARCH=universal
+                ;;
+              mac|mac-x64*)
+                ARCH=x64
+                ;;
+              *)
+                echo "Skipping unknown mac bundle directory: $BUNDLE_DIR"
+                continue
+                ;;
+            esac
+
+            ASSET_PATH="release/jizhi-${VERSION}-darwin-${ARCH}.asar"
+            cp "$ASAR_PATH" "$ASSET_PATH"
+            shasum -a 256 "$ASSET_PATH" | awk '{print $1}' > "${ASSET_PATH}.sha256"
+            echo "Exported $ASSET_PATH"
+            FOUND=1
+          done < <(find release -type f -path "*/Contents/Resources/app.asar" | sort)
+
+          if [[ "$FOUND" != "1" ]]; then
+            echo "No macOS app.asar payloads were found in release/" >&2
+            exit 1
+          fi
+
       # ── Publish to GitHub Release ─────────────────────────────────
       # Uses gh CLI with --clobber to safely overwrite existing assets on re-runs.
       # electron-updater reads beta-mac.yml / latest-mac.yml from release assets.
@@ -146,5 +181,5 @@ jobs:
           fi
 
           # Upload all artifacts — --clobber overwrites existing assets (safe for re-runs)
-          find release/ -maxdepth 1 -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.blockmap" -o -name "*.yml" \) \
+          find release/ -maxdepth 1 -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.blockmap" -o -name "*.yml" -o -name "*.asar" -o -name "*.asar.sha256" \) \
             | sort | xargs -I {} gh release upload "$TAG" {} --clobber

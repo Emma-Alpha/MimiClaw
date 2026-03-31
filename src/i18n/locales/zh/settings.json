@@ -201,6 +201,7 @@
       "downloading": "正在下载更新...",
       "available": "可用更新：v{{version}}",
       "downloaded": "准备安装：v{{version}}",
+      "downloadedMac": "新版本 v{{version}} 已下载，重启后将替换核心程序包",
       "autoInstalling": "将在 {{seconds}} 秒后重启并安装更新...",
       "failed": "检查更新失败",
       "latest": "您已拥有最新版本",
@@ -211,6 +212,7 @@
       "downloading": "下载中...",
       "download": "下载更新",
       "install": "安装并重启",
+      "openDownload": "前往下载",
       "cancelAutoInstall": "取消",
       "retry": "重试",
       "check": "检查更新"
@@ -219,6 +221,7 @@
     "whatsNew": "更新内容：",
     "errorDetails": "错误详情：",
     "help": "开启自动更新后，更新将自动下载并安装。",
+    "helpMac": "macOS 会下载并替换应用内的 app.asar 后重启。若本次发布包含原生二进制或外部资源变更，请改为下载安装完整安装包。",
     "forceModal": {
       "titleDefault": "需要更新",
       "belowMinimum": "当前版本过低，请更新到受支持的版本后再继续使用。",

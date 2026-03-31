@@ -148,6 +148,8 @@ Skills 页面可展示来自多个 OpenClaw 来源的技能（托管目录、wor
 
 从 [Releases](https://github.com/Emma-Alpha/MimiClaw/releases) 页面下载适用于你平台的最新版本。
 
+在 macOS 上，应用可以通过下载发布里的 `app.asar` 增量包并重启来应用站内更新。如果某个版本同时变更了内置二进制或额外资源，请改为安装完整的 `.dmg`/`.zip` 安装包。
+
 #### 从源码构建
 
 ```bash

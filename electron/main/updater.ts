@@ -2,20 +2,55 @@
  * Auto-Updater Module
  * Handles automatic application updates using electron-updater with GitHub Releases.
  *
- * electron-updater queries the GitHub Releases API to find the latest release
- * whose assets include the channel-specific yml file (beta-mac.yml, latest-mac.yml, …).
- * No external CDN or self-hosted runner required.
+ * Windows/Linux keep using electron-updater directly.
+ * macOS uses a custom GitHub Releases -> app.asar flow so unsigned builds can
+ * replace the packaged asar after the app exits, then relaunch the app bundle.
  */
 import { autoUpdater, UpdateInfo, ProgressInfo, UpdateDownloadedEvent } from 'electron-updater';
 import { BrowserWindow, app, ipcMain } from 'electron';
+import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { Readable, Transform } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+import semver from 'semver';
 import { logger } from '../utils/logger';
 import { EventEmitter } from 'events';
 import { setInstallingUpdate, setQuitting } from './app-state';
 
 const GITHUB_OWNER = 'Emma-Alpha';
 const GITHUB_REPO = 'MimiClaw';
+const GITHUB_API_BASE = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}`;
+
+type GitHubReleaseAsset = {
+  name: string;
+  size: number;
+  browser_download_url: string;
+};
+
+type GitHubRelease = {
+  tag_name: string;
+  body?: string | null;
+  draft: boolean;
+  prerelease: boolean;
+  html_url: string;
+  published_at?: string;
+  assets: GitHubReleaseAsset[];
+};
+
+type MacAsarUpdate = {
+  version: string;
+  releaseDate?: string;
+  releaseNotes?: string | null;
+  releaseUrl: string;
+  assetName: string;
+  assetUrl: string;
+  assetSize: number;
+  sha256AssetName: string;
+  sha256AssetUrl: string;
+  downloadedFilePath?: string;
+};
 
 export interface UpdateStatus {
   status: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
@@ -30,7 +65,7 @@ export interface UpdaterEvents {
   'update-available': (info: UpdateInfo) => void;
   'update-not-available': (info: UpdateInfo) => void;
   'download-progress': (progress: ProgressInfo) => void;
-  'update-downloaded': (event: UpdateDownloadedEvent) => void;
+  'update-downloaded': (event: UpdateDownloadedEvent | UpdateInfo) => void;
   'error': (error: Error) => void;
 }
 
@@ -41,6 +76,10 @@ export interface UpdaterEvents {
 function detectChannel(version: string): string {
   const match = version.match(/-([a-zA-Z]+)/);
   return match ? match[1] : 'latest';
+}
+
+function normalizeChannel(channel: string): string {
+  return channel === 'stable' || channel === 'dev' ? 'latest' : channel;
 }
 
 /**
@@ -63,6 +102,42 @@ function getAppSemverVersion(): string {
     }
   }
   return app.getVersion();
+}
+
+function buildGitHubHeaders(accept: string): Record<string, string> {
+  return {
+    Accept: accept,
+    'User-Agent': `${app.getName()}/${getAppSemverVersion()}`,
+  };
+}
+
+function parseComparableVersion(version: string): string | null {
+  const valid = semver.valid(version);
+  if (valid) return valid;
+  const cleaned = semver.clean(version);
+  return cleaned && semver.valid(cleaned) ? cleaned : null;
+}
+
+function isNewerVersion(candidate: string, current: string): boolean {
+  const next = parseComparableVersion(candidate);
+  const existing = parseComparableVersion(current);
+  if (!next || !existing) {
+    logger.warn(`[Updater] Unable to compare versions candidate=${candidate} current=${current}`);
+    return candidate !== current;
+  }
+  return semver.gt(next, existing);
+}
+
+function stripLeadingV(version: string): string {
+  return version.startsWith('v') ? version.slice(1) : version;
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function escapeAppleScriptString(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
 /**
@@ -93,6 +168,9 @@ export class AppUpdater extends EventEmitter {
   private status: UpdateStatus = { status: 'idle' };
   private autoInstallTimer: NodeJS.Timeout | null = null;
   private autoInstallCountdown = 0;
+  private currentChannel = 'latest';
+  private autoDownloadEnabled = false;
+  private pendingMacAsarUpdate: MacAsarUpdate | null = null;
 
   /** Delay (in seconds) before auto-installing a downloaded update. */
   private static readonly AUTO_INSTALL_DELAY_SECONDS = 5;
@@ -105,10 +183,10 @@ export class AppUpdater extends EventEmitter {
     this.on('error', (error: Error) => {
       logger.error('[Updater] AppUpdater emitted error:', error);
     });
-    
+
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
-    
+
     autoUpdater.logger = {
       info: (msg: string) => logger.info('[Updater]', msg),
       warn: (msg: string) => logger.warn('[Updater]', msg),
@@ -116,28 +194,20 @@ export class AppUpdater extends EventEmitter {
       debug: (msg: string) => logger.debug('[Updater]', msg),
     };
 
-    // Detect channel from full semver (see getAppSemverVersion).
-    // e.g. "0.2.11-beta.1" → "beta", "1.0.0" → "latest"
     const version = getAppSemverVersion();
-    const channel = detectChannel(version);
+    const detectedChannel = normalizeChannel(detectChannel(version));
+    this.currentChannel = detectedChannel;
 
-    logger.info(`[Updater] Version: ${version}, channel: ${channel}, provider: github (${GITHUB_OWNER}/${GITHUB_REPO})`);
+    logger.info(`[Updater] Version: ${version}, channel: ${detectedChannel}, provider: github (${GITHUB_OWNER}/${GITHUB_REPO})`);
 
-    // setFeedURL must be called BEFORE setting channel/allowPrerelease.
-    // Calling setFeedURL reconfigures the internal updater provider, which
-    // resets any previously assigned channel back to the default ('latest').
-    // Setting these AFTER ensures they are not overwritten.
     autoUpdater.setFeedURL({
       provider: 'github',
       owner: GITHUB_OWNER,
       repo: GITHUB_REPO,
     });
 
-    // Set channel so electron-updater requests the correct yml asset
-    // from the GitHub Release: beta → beta-mac.yml, latest → latest-mac.yml
-    autoUpdater.channel = channel;
-    // Allow pre-release releases when not on the stable channel
-    autoUpdater.allowPrerelease = channel !== 'latest';
+    autoUpdater.channel = detectedChannel;
+    autoUpdater.allowPrerelease = detectedChannel !== 'latest';
 
     this.setupListeners();
   }
@@ -184,7 +254,7 @@ export class AppUpdater extends EventEmitter {
       this.updateStatus({ status: 'downloaded', info: event });
       this.emit('update-downloaded', event);
 
-      if (autoUpdater.autoDownload) {
+      if (this.autoDownloadEnabled) {
         this.startAutoInstallCountdown();
       }
     });
@@ -195,15 +265,17 @@ export class AppUpdater extends EventEmitter {
     });
   }
 
-  /**
-   * Update status and notify renderer
-   */
   private updateStatus(newStatus: Partial<UpdateStatus>): void {
     const nextStatus = newStatus.status ?? this.status.status;
     const shouldPreserveInfo = newStatus.info === undefined
       && ['available', 'downloading', 'downloaded', 'error'].includes(nextStatus);
     const shouldPreserveProgress = newStatus.progress === undefined && nextStatus === 'downloading';
     const shouldPreserveError = newStatus.error === undefined && nextStatus === 'error';
+
+    if (nextStatus !== 'downloaded' && this.autoInstallTimer) {
+      this.clearAutoInstallTimer();
+      this.sendToRenderer('update:auto-install-countdown', { seconds: -1, cancelled: true });
+    }
 
     this.status = {
       status: nextStatus,
@@ -212,14 +284,335 @@ export class AppUpdater extends EventEmitter {
       error: newStatus.error ?? (shouldPreserveError ? this.status.error : undefined),
     };
     this.sendToRenderer('update:status-changed', this.status);
+    this.emit('status-changed', this.status);
   }
 
-  /**
-   * Send event to renderer process
-   */
   private sendToRenderer(channel: string, data: unknown): void {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.webContents.send(channel, data);
+    }
+  }
+
+  private isMacAsarFlow(): boolean {
+    return process.platform === 'darwin';
+  }
+
+  private async fetchGitHubJson<T>(pathname: string): Promise<T> {
+    const response = await fetch(`${GITHUB_API_BASE}${pathname}`, {
+      headers: buildGitHubHeaders('application/vnd.github+json'),
+      redirect: 'follow',
+    });
+
+    if (!response.ok) {
+      throw new Error(`GitHub update request failed (${response.status})`);
+    }
+
+    return await response.json() as T;
+  }
+
+  private async resolveMacAsarRelease(): Promise<MacAsarUpdate | null> {
+    const release = this.currentChannel === 'latest'
+      ? await this.fetchGitHubJson<GitHubRelease>('/releases/latest')
+      : await this.selectLatestPrerelease();
+
+    const version = stripLeadingV(release.tag_name);
+    const currentVersion = getAppSemverVersion();
+
+    if (!isNewerVersion(version, currentVersion)) {
+      return null;
+    }
+
+    const assetSuffix = `-darwin-${process.arch}.asar`;
+    const checksumSuffix = `${assetSuffix}.sha256`;
+    const asarAsset = release.assets.find((asset) => asset.name.endsWith(assetSuffix));
+    const checksumAsset = release.assets.find((asset) => asset.name.endsWith(checksumSuffix));
+
+    if (!asarAsset || !checksumAsset) {
+      throw new Error(
+        `Release v${version} is missing the macOS ${process.arch} .asar update assets.`,
+      );
+    }
+
+    return {
+      version,
+      releaseDate: release.published_at,
+      releaseNotes: release.body ?? null,
+      releaseUrl: release.html_url,
+      assetName: asarAsset.name,
+      assetUrl: asarAsset.browser_download_url,
+      assetSize: asarAsset.size,
+      sha256AssetName: checksumAsset.name,
+      sha256AssetUrl: checksumAsset.browser_download_url,
+    };
+  }
+
+  private async selectLatestPrerelease(): Promise<GitHubRelease> {
+    const releases = await this.fetchGitHubJson<GitHubRelease[]>('/releases?per_page=20');
+    const preferred = releases.find((release) => {
+      if (release.draft || !release.prerelease) return false;
+      if (this.currentChannel === 'latest') return true;
+      return stripLeadingV(release.tag_name).includes(`-${this.currentChannel}`);
+    });
+
+    if (preferred) {
+      return preferred;
+    }
+
+    const fallback = releases.find((release) => !release.draft && release.prerelease);
+    if (!fallback) {
+      throw new Error(`No prerelease builds available for channel "${this.currentChannel}".`);
+    }
+    return fallback;
+  }
+
+  private toUpdateInfo(update: MacAsarUpdate): UpdateInfo {
+    return {
+      version: update.version,
+      releaseDate: update.releaseDate,
+      releaseNotes: update.releaseNotes,
+    };
+  }
+
+  private getMacAsarUpdateDir(): string {
+    return path.join(app.getPath('userData'), 'updates', 'mac-asar');
+  }
+
+  private async verifyMacAsarChecksum(update: MacAsarUpdate, digest: string): Promise<void> {
+    const response = await fetch(update.sha256AssetUrl, {
+      headers: buildGitHubHeaders('text/plain'),
+      redirect: 'follow',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ${update.sha256AssetName} (${response.status})`);
+    }
+
+    const body = (await response.text()).trim();
+    const expected = body.split(/\s+/)[0]?.toLowerCase();
+    if (!expected || !/^[a-f0-9]{64}$/.test(expected)) {
+      throw new Error(`Invalid checksum in ${update.sha256AssetName}`);
+    }
+
+    if (digest.toLowerCase() !== expected) {
+      throw new Error(`Checksum mismatch for ${update.assetName}`);
+    }
+  }
+
+  private async downloadMacAsarUpdateAsset(update: MacAsarUpdate): Promise<string> {
+    await fs.promises.mkdir(this.getMacAsarUpdateDir(), { recursive: true });
+
+    const finalPath = path.join(
+      this.getMacAsarUpdateDir(),
+      `${app.getName()}-${update.version}-${process.arch}.app.asar`,
+    );
+    const tempPath = `${finalPath}.download`;
+
+    const response = await fetch(update.assetUrl, {
+      headers: buildGitHubHeaders('application/octet-stream'),
+      redirect: 'follow',
+    });
+
+    if (!response.ok || !response.body) {
+      throw new Error(`Failed to download ${update.assetName} (${response.status})`);
+    }
+
+    const contentLength = Number(response.headers.get('content-length') || 0);
+    const total = contentLength > 0 ? contentLength : update.assetSize;
+    const hash = createHash('sha256');
+    let transferred = 0;
+    const startedAt = Date.now();
+
+    const progressTap = new Transform({
+      transform: (chunk, _encoding, callback) => {
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        transferred += buffer.length;
+        hash.update(buffer);
+
+        const elapsedSeconds = Math.max((Date.now() - startedAt) / 1000, 0.001);
+        const progress: ProgressInfo = {
+          total,
+          delta: buffer.length,
+          transferred,
+          percent: total > 0 ? (transferred / total) * 100 : 0,
+          bytesPerSecond: Math.round(transferred / elapsedSeconds),
+        };
+
+        this.updateStatus({ status: 'downloading', info: this.toUpdateInfo(update), progress });
+        callback(null, buffer);
+      },
+    });
+
+    try {
+      await pipeline(
+        Readable.fromWeb(response.body as globalThis.ReadableStream<Uint8Array>),
+        progressTap,
+        fs.createWriteStream(tempPath),
+      );
+      const digest = hash.digest('hex');
+      await this.verifyMacAsarChecksum(update, digest);
+      await fs.promises.rename(tempPath, finalPath);
+      return finalPath;
+    } catch (error) {
+      await fs.promises.rm(tempPath, { force: true }).catch(() => {});
+      throw error;
+    }
+  }
+
+  private getMacAppBundlePath(): string {
+    return path.resolve(process.resourcesPath, '..', '..');
+  }
+
+  private getMacTargetAsarPath(): string {
+    return path.join(process.resourcesPath, 'app.asar');
+  }
+
+  private buildMacAsarInstallerScript(options: {
+    pid: number;
+    stagedAsarPath: string;
+    targetAsarPath: string;
+    appBundlePath: string;
+    scriptPath: string;
+  }): string {
+    const { pid, stagedAsarPath, targetAsarPath, appBundlePath, scriptPath } = options;
+    const backupPath = `${targetAsarPath}.bak`;
+    const nextPath = `${targetAsarPath}.next`;
+    const dialogTitle = `${app.getName()} Update Failed`;
+    const dialogMessage = `Unable to apply the downloaded update automatically. Please reinstall ${app.getName()} manually if the app does not reopen.`;
+    const dialogScript = `display dialog "${escapeAppleScriptString(dialogMessage)}" buttons {"OK"} default button "OK" with title "${escapeAppleScriptString(dialogTitle)}"`;
+
+    return `#!/bin/sh
+set -eu
+
+PID=${pid}
+STAGED_ASAR=${shellQuote(stagedAsarPath)}
+TARGET_ASAR=${shellQuote(targetAsarPath)}
+BACKUP_ASAR=${shellQuote(backupPath)}
+NEXT_ASAR=${shellQuote(nextPath)}
+APP_BUNDLE=${shellQuote(appBundlePath)}
+SCRIPT_PATH=${shellQuote(scriptPath)}
+
+show_error() {
+  /usr/bin/osascript -e ${shellQuote(dialogScript)} >/dev/null 2>&1 || true
+}
+
+cleanup() {
+  rm -f "$NEXT_ASAR" "$SCRIPT_PATH"
+}
+
+wait_count=0
+while kill -0 "$PID" 2>/dev/null; do
+  sleep 1
+  wait_count=$((wait_count + 1))
+  if [ "$wait_count" -ge 60 ]; then
+    break
+  fi
+done
+
+if [ ! -f "$STAGED_ASAR" ]; then
+  show_error
+  cleanup
+  exit 1
+fi
+
+if ! cp "$STAGED_ASAR" "$NEXT_ASAR"; then
+  show_error
+  cleanup
+  exit 1
+fi
+
+if [ -f "$TARGET_ASAR" ]; then
+  mv "$TARGET_ASAR" "$BACKUP_ASAR"
+fi
+
+if ! mv "$NEXT_ASAR" "$TARGET_ASAR"; then
+  if [ -f "$BACKUP_ASAR" ] && [ ! -f "$TARGET_ASAR" ]; then
+    mv "$BACKUP_ASAR" "$TARGET_ASAR" || true
+  fi
+  show_error
+  cleanup
+  exit 1
+fi
+
+rm -f "$BACKUP_ASAR" "$STAGED_ASAR"
+cleanup
+/usr/bin/open -n "$APP_BUNDLE" >/dev/null 2>&1 || show_error
+`;
+  }
+
+  private async stageMacAsarInstall(): Promise<void> {
+    if (!app.isPackaged) {
+      throw new Error('Asar updates require a packaged app build.');
+    }
+
+    const update = this.pendingMacAsarUpdate;
+    if (!update?.downloadedFilePath) {
+      throw new Error('No downloaded macOS update is ready to install.');
+    }
+
+    const stagedAsarPath = update.downloadedFilePath;
+    const targetAsarPath = this.getMacTargetAsarPath();
+    const appBundlePath = this.getMacAppBundlePath();
+    const scriptDir = this.getMacAsarUpdateDir();
+    const scriptPath = path.join(scriptDir, `apply-update-${Date.now()}.sh`);
+
+    await fs.promises.mkdir(scriptDir, { recursive: true });
+    await fs.promises.writeFile(
+      scriptPath,
+      this.buildMacAsarInstallerScript({
+        pid: process.pid,
+        stagedAsarPath,
+        targetAsarPath,
+        appBundlePath,
+        scriptPath,
+      }),
+      { mode: 0o700 },
+    );
+
+    spawn('/bin/sh', [scriptPath], {
+      detached: true,
+      stdio: 'ignore',
+    }).unref();
+
+    setInstallingUpdate();
+    setQuitting();
+    app.quit();
+  }
+
+  private async checkForMacAsarUpdates(): Promise<UpdateInfo | null> {
+    this.pendingMacAsarUpdate = null;
+    this.updateStatus({ status: 'checking', error: undefined, progress: undefined });
+
+    if (!app.isPackaged) {
+      this.updateStatus({
+        status: 'error',
+        error: 'Update check skipped (dev mode – app is not packaged)',
+      });
+      return null;
+    }
+
+    try {
+      const update = await this.resolveMacAsarRelease();
+      if (!update) {
+        this.updateStatus({ status: 'not-available' });
+        return null;
+      }
+
+      this.pendingMacAsarUpdate = update;
+      const info = this.toUpdateInfo(update);
+      this.updateStatus({ status: 'available', info });
+      this.emit('update-available', info);
+
+      if (this.autoDownloadEnabled) {
+        void this.downloadUpdate().catch((error) => {
+          logger.error('[Updater] Auto-download failed for macOS .asar update:', error);
+        });
+      }
+
+      return info;
+    } catch (error) {
+      logger.error('[Updater] Check for macOS .asar updates failed:', error);
+      this.updateStatus({ status: 'error', error: (error as Error).message || String(error) });
+      throw error;
     }
   }
 
@@ -232,12 +625,13 @@ export class AppUpdater extends EventEmitter {
    * final status so the UI never gets stuck in 'checking'.
    */
   async checkForUpdates(): Promise<UpdateInfo | null> {
+    if (this.isMacAsarFlow()) {
+      return await this.checkForMacAsarUpdates();
+    }
+
     try {
       const result = await autoUpdater.checkForUpdates();
 
-      // In dev mode (app not packaged), autoUpdater silently returns null
-      // without emitting ANY events (not even checking-for-update).
-      // Detect this and force an error so the UI never stays silent.
       if (result == null) {
         this.updateStatus({
           status: 'error',
@@ -246,7 +640,6 @@ export class AppUpdater extends EventEmitter {
         return null;
       }
 
-      // Safety net: if events somehow didn't fire, force a final state.
       if (this.status.status === 'checking' || this.status.status === 'idle') {
         this.updateStatus({ status: 'not-available' });
       }
@@ -263,6 +656,30 @@ export class AppUpdater extends EventEmitter {
    * Download available update
    */
   async downloadUpdate(): Promise<void> {
+    if (this.isMacAsarFlow()) {
+      try {
+        const update = this.pendingMacAsarUpdate;
+        if (!update) {
+          throw new Error('No macOS update is available to download.');
+        }
+
+        this.updateStatus({ status: 'downloading', info: this.toUpdateInfo(update), progress: undefined, error: undefined });
+        update.downloadedFilePath = await this.downloadMacAsarUpdateAsset(update);
+        const info = this.toUpdateInfo(update);
+        this.updateStatus({ status: 'downloaded', info, progress: undefined });
+        this.emit('update-downloaded', info);
+
+        if (this.autoDownloadEnabled) {
+          this.startAutoInstallCountdown();
+        }
+      } catch (error) {
+        logger.error('[Updater] Download macOS .asar update failed:', error);
+        this.updateStatus({ status: 'error', error: (error as Error).message || String(error) });
+        throw error;
+      }
+      return;
+    }
+
     try {
       await autoUpdater.downloadUpdate();
     } catch (error) {
@@ -274,16 +691,21 @@ export class AppUpdater extends EventEmitter {
   /**
    * Install update and restart.
    *
-   * On macOS, electron-updater delegates to Squirrel.Mac (ShipIt). The
-   * native quitAndInstall() spawns ShipIt then internally calls app.quit().
-   * However, the tray close handler in index.ts intercepts window close
-   * and hides to tray unless isQuitting is true. Squirrel's internal quit
-   * sometimes fails to trigger before-quit in time, so we set isQuitting
-   * BEFORE calling quitAndInstall(). This lets the native quit flow close
-   * the window cleanly while ShipIt runs independently to replace the app.
+   * macOS uses a custom post-quit app.asar replacement flow because unsigned
+   * app bundles cannot use Squirrel.Mac's code-signature based installation.
+   * Windows/Linux still rely on electron-updater's native install behavior.
    */
   quitAndInstall(): void {
     logger.info('[Updater] quitAndInstall called');
+
+    if (this.isMacAsarFlow()) {
+      void this.stageMacAsarInstall().catch((error) => {
+        logger.error('[Updater] Failed to stage macOS .asar install:', error);
+        this.updateStatus({ status: 'error', error: (error as Error).message || String(error) });
+      });
+      return;
+    }
+
     setInstallingUpdate();
     setQuitting();
     autoUpdater.quitAndInstall();
@@ -326,15 +748,17 @@ export class AppUpdater extends EventEmitter {
    * electron-updater expects `latest` for stable, not the string `stable`.
    */
   setChannel(channel: 'stable' | 'beta' | 'dev'): void {
-    const updaterChannel = channel === 'stable' ? 'latest' : channel === 'dev' ? 'latest' : 'beta';
+    const updaterChannel = normalizeChannel(channel);
+    this.currentChannel = updaterChannel;
     autoUpdater.channel = updaterChannel;
-    autoUpdater.allowPrerelease = channel !== 'stable';
+    autoUpdater.allowPrerelease = updaterChannel !== 'latest';
   }
 
   /**
    * Set auto-download preference
    */
   setAutoDownload(enable: boolean): void {
+    this.autoDownloadEnabled = enable;
     autoUpdater.autoDownload = enable;
   }
 
@@ -355,18 +779,14 @@ export function registerUpdateHandlers(
 ): void {
   updater.setMainWindow(mainWindow);
 
-  // Get current update status
   ipcMain.handle('update:status', () => {
     return updater.getStatus();
   });
 
-  // Get current version
   ipcMain.handle('update:version', () => {
     return updater.getCurrentVersion();
   });
 
-  // Check for updates – always return final status so the renderer
-  // never gets stuck in 'checking' waiting for a push event.
   ipcMain.handle('update:check', async () => {
     try {
       await updater.checkForUpdates();
@@ -376,7 +796,6 @@ export function registerUpdateHandlers(
     }
   });
 
-  // Download update
   ipcMain.handle('update:download', async () => {
     try {
       await updater.downloadUpdate();
@@ -386,25 +805,21 @@ export function registerUpdateHandlers(
     }
   });
 
-  // Install update and restart
   ipcMain.handle('update:install', () => {
     updater.quitAndInstall();
     return { success: true };
   });
 
-  // Set update channel
   ipcMain.handle('update:setChannel', (_, channel: 'stable' | 'beta' | 'dev') => {
     updater.setChannel(channel);
     return { success: true };
   });
 
-  // Set auto-download preference
   ipcMain.handle('update:setAutoDownload', (_, enable: boolean) => {
     updater.setAutoDownload(enable);
     return { success: true };
   });
 
-  // Cancel pending auto-install countdown
   ipcMain.handle('update:cancelAutoInstall', () => {
     updater.cancelAutoInstall();
     return { success: true };

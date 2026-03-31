@@ -201,6 +201,7 @@
       "downloading": "Downloading update...",
       "available": "Update available: v{{version}}",
       "downloaded": "Ready to install: v{{version}}",
+      "downloadedMac": "v{{version}} has been downloaded and will replace the bundled app.asar after restart",
       "autoInstalling": "Restarting to install update in {{seconds}}s...",
       "failed": "Update check failed",
       "latest": "You have the latest version",
@@ -211,6 +212,7 @@
       "downloading": "Downloading...",
       "download": "Download Update",
       "install": "Install & Restart",
+      "openDownload": "Go to Download",
       "cancelAutoInstall": "Cancel",
       "retry": "Retry",
       "check": "Check for Updates"
@@ -219,6 +221,7 @@
     "whatsNew": "What's New:",
     "errorDetails": "Error Details:",
     "help": "When auto-update is enabled, updates are downloaded and installed automatically.",
+    "helpMac": "On macOS, the app downloads a replacement app.asar and restarts to apply it. If a release changes native binaries or external resources, install the full package instead.",
     "forceModal": {
       "titleDefault": "Update required",
       "belowMinimum": "Your version is below the minimum supported version. Please update to continue.",

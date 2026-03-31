@@ -2,7 +2,7 @@
  * Update Settings Component
  * Displays update status and allows manual update checking/installation
  */
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
 import { Download, RefreshCw, Loader2, Rocket, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -45,6 +45,8 @@ export function UpdateSettings() {
     await checkForUpdates();
   }, [checkForUpdates, clearError]);
 
+  const isMacOS = useMemo(() => window.electron?.platform === 'darwin', []);
+
   const renderStatusIcon = () => {
     switch (status) {
       case 'checking':
@@ -73,6 +75,9 @@ export function UpdateSettings() {
       case 'available':
         return t('updates.status.available', { version: updateInfo?.version });
       case 'downloaded':
+        if (isMacOS) {
+          return t('updates.status.downloadedMac', { version: updateInfo?.version });
+        }
         return t('updates.status.downloaded', { version: updateInfo?.version });
       case 'error':
         return error || t('updates.status.failed');
@@ -210,7 +215,7 @@ export function UpdateSettings() {
 
       {/* Help Text */}
       <p className="text-xs text-muted-foreground">
-        {t('updates.help')}
+        {isMacOS ? t('updates.helpMac') : t('updates.help')}
       </p>
     </div>
   );

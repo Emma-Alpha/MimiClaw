@@ -148,6 +148,8 @@ In **Settings → General**, you can enable **Launch at system startup** so 极�
 
 Download the latest release for your platform from the [Releases](https://github.com/Emma-Alpha/MimiClaw/releases) page.
 
+On macOS, the app can apply incremental in-app updates by downloading a release `app.asar` payload and restarting. If a release changes bundled binaries or extra resources, install the full `.dmg`/`.zip` package instead.
+
 #### Build from Source
 
 ```bash
