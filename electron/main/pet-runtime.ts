@@ -157,7 +157,7 @@ function extractLineFromMessage(message: Record<string, unknown>): string | null
           ? b.input as Record<string, unknown>
           : {};
         const cmd = input.command ?? input.cmd ?? input.script ?? input.code;
-        if (cmd) return `$ ${String(cmd).split('\n')[0].slice(0, 60)}`;
+        if (cmd) return `› exec ${String(cmd).split('\n')[0].slice(0, 60)}`;
         const filePath = input.path ?? input.file_path ?? input.filepath;
         if (filePath) return `› ${toolName} ${String(filePath).split(/[\\/]/).slice(-2).join('/')}`;
         if (toolName) return `› ${toolName}`;
@@ -189,7 +189,7 @@ function extractLineFromMessage(message: Record<string, unknown>): string | null
     try {
       const args = JSON.parse(String(fn?.arguments ?? '{}')) as Record<string, unknown>;
       const cmd = args.command ?? args.cmd ?? args.script;
-      if (cmd) return `$ ${String(cmd).split('\n')[0].slice(0, 60)}`;
+      if (cmd) return `› exec ${String(cmd).split('\n')[0].slice(0, 60)}`;
     } catch { /* ignore */ }
     if (toolName) return `› ${toolName}`;
   }

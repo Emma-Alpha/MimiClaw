@@ -59,14 +59,14 @@ const useStyles = createStyles(({ token, css, prefixCls }) => ({
     border-radius: 16px;
     border: 1px solid ${token.colorBorder};
     background: ${token.colorBgContainer};
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
     overflow: visible;
     padding: 12px 12px 8px 12px;
     transition: border-color 0.2s, box-shadow 0.2s;
 
     &:focus-within {
       border-color: ${token.colorPrimary};
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
     }
   `,
 	inputBoxDragOver: css`
