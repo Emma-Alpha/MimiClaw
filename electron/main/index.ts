@@ -2,7 +2,7 @@
  * Electron Main Process Entry
  * Manages window creation, system tray, and IPC handlers
  */
-import { app, autoUpdater as electronAutoUpdater, BrowserWindow, nativeImage, session, shell } from 'electron';
+import { app, autoUpdater as electronAutoUpdater, BrowserWindow, globalShortcut, nativeImage, session, shell } from 'electron';
 import type { Server } from 'node:http';
 import { join, resolve } from 'node:path';
 import { GatewayManager } from '../gateway/manager';
@@ -23,6 +23,7 @@ import { applyProxySettings } from './proxy';
 import { syncLaunchAtStartupSettingFromStore } from './launch-at-startup';
 import { syncPetWindowFromSettings } from './pet-window';
 import { registerPetRuntime } from './pet-runtime';
+import { startClipboardWatcher, stopClipboardWatcher, triggerTranslateFromSelection } from './clipboard-watcher';
 import {
   clearPendingSecondInstanceFocus,
   consumeMainWindowReady,
@@ -421,7 +422,7 @@ async function initialize(): Promise<void> {
   // Register IPC handlers
   registerIpcHandlers(gatewayManager, clawHubService, window);
 
-  hostApiServer = startHostApiServer({
+  hostApiServer = await startHostApiServer({
     gatewayManager,
     clawHubService,
     eventBus: hostEventBus,
@@ -429,6 +430,17 @@ async function initialize(): Promise<void> {
   });
 
   await syncPetWindowFromSettings();
+  startClipboardWatcher();
+
+  // Global hotkey for "translate selection" — Alt+Shift+T
+  // Select text anywhere, press hotkey, cat offers to translate
+  const TRANSLATE_HOTKEY = 'Alt+Shift+T';
+  const hotkeyRegistered = globalShortcut.register(TRANSLATE_HOTKEY, () => {
+    void triggerTranslateFromSelection();
+  });
+  if (!hotkeyRegistered) {
+    logger.warn(`[translate] Failed to register global hotkey ${TRANSLATE_HOTKEY} (already in use)`);
+  }
 
   // Register update handlers
   registerUpdateHandlers(appUpdater, window);
@@ -539,32 +551,51 @@ async function initialize(): Promise<void> {
     hostEventBus.emit('channel:whatsapp-error', error);
   });
 
-  // Start Gateway automatically (this seeds missing bootstrap files with full templates)
-  const gatewayAutoStart = await getSetting('gatewayAutoStart');
-  if (gatewayAutoStart && openclawAvailable) {
-    try {
-      await syncAllProviderAuthToRuntime();
-      logger.debug('Auto-starting Gateway...');
-      await gatewayManager.start();
-      logger.info('Gateway auto-start succeeded');
-    } catch (error) {
-      logger.error('Gateway auto-start failed:', error);
-      mainWindow?.webContents.send('gateway:error', String(error));
-    }
-  } else if (gatewayAutoStart && !openclawAvailable) {
-    logger.info('Gateway auto-start skipped because no bundled OpenClaw runtime is available');
-  } else {
-    logger.info('Gateway auto-start disabled in settings');
-  }
+  // Defer gateway auto-start until the renderer has fully loaded.
+  // This guarantees that:
+  //   1. The Host API server (port 3210) is definitely listening before the
+  //      renderer calls initGateway() → GET /api/gateway/status.
+  //   2. The renderer has had time to mount React, call initGateway(), and
+  //      subscribe to gateway:status-changed IPC events before the first
+  //      state transition fires — so no status event is silently dropped.
+  window.webContents.once('did-finish-load', () => {
+    void (async () => {
+      // Start Gateway automatically (this seeds missing bootstrap files with full templates)
+      const gatewayAutoStart = await getSetting('gatewayAutoStart');
+      const remoteGatewayUrl = await getSetting('remoteGatewayUrl');
+      const hasRemoteGateway = !!(remoteGatewayUrl && String(remoteGatewayUrl).trim());
+      // Allow auto-start when either a local runtime exists OR a remote gateway URL is configured.
+      if (gatewayAutoStart && (openclawAvailable || hasRemoteGateway)) {
+        try {
+          // Provider auth sync only applies to the local openclaw runtime.
+          if (openclawAvailable) {
+            await syncAllProviderAuthToRuntime();
+          }
+          logger.debug('Auto-starting Gateway...');
+          await gatewayManager.start();
+          logger.info('Gateway auto-start succeeded');
+        } catch (error) {
+          logger.error('Gateway auto-start failed:', error);
+          if (!window.isDestroyed()) {
+            window.webContents.send('gateway:error', String(error));
+          }
+        }
+      } else if (gatewayAutoStart && !openclawAvailable && !hasRemoteGateway) {
+        logger.info('Gateway auto-start skipped because no bundled OpenClaw runtime is available');
+      } else {
+        logger.info('Gateway auto-start disabled in settings');
+      }
 
-  // Merge ClawX context snippets into the workspace bootstrap files.
-  // The gateway seeds workspace files asynchronously after its HTTP server
-  // is ready, so ensureClawXContext will retry until the target files appear.
-  void ensureClawXContext().catch((error) => {
-    logger.warn('Failed to merge ClawX context into workspace:', error);
+      // Merge ClawX context snippets into the workspace bootstrap files.
+      // The gateway seeds workspace files asynchronously after its HTTP server
+      // is ready, so ensureClawXContext will retry until the target files appear.
+      void ensureClawXContext().catch((error) => {
+        logger.warn('Failed to merge ClawX context into workspace:', error);
+      });
+    })();
   });
 
-  // Auto-install openclaw CLI and shell completions (non-blocking).
+  // Auto-install openclaw CLI and shell completions (non-blocking, no renderer dependency).
   if (openclawAvailable) {
     void autoInstallCliIfNeeded((installedPath) => {
       mainWindow?.webContents.send('openclaw:cli-installed', installedPath);
@@ -591,6 +622,8 @@ if (gotTheLock) {
   process.once('SIGTERM', () => requestQuitOnSignal('SIGTERM'));
 
   app.on('will-quit', () => {
+    globalShortcut.unregisterAll();
+    stopClipboardWatcher();
     releaseProcessInstanceFileLock();
   });
 

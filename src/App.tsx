@@ -12,6 +12,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Models } from "./pages/Models";
 import { Chat } from "./pages/Chat";
 import { RemoteJizhiChat } from "./pages/RemoteJizhiChat";
+import { XiaojiuChat } from "./pages/XiaojiuChat";
 import { Agents } from "./pages/Agents";
 import { Channels } from "./pages/Channels";
 import { Skills } from "./pages/Skills";
@@ -24,7 +25,7 @@ import { Login } from "./pages/Login";
 import { useSettingsStore } from "./stores/settings";
 import { useGatewayStore } from "./stores/gateway";
 import { useChatStore } from "./stores/chat";
-import { applyGatewayTransportPreference } from "./lib/api-client";
+import { applyGatewayTransportPreference, invokeIpc } from "./lib/api-client";
 import { ThemeWrapper } from "./components/theme/ThemeWrapper";
 import { UpdateBootstrap } from "@/components/update/UpdateBootstrap";
 
@@ -228,8 +229,7 @@ function App() {
 
 	useEffect(() => {
 		if (isPetRoute || isMiniChatRoute || isMainChatRoute) return;
-		void window.electron.ipcRenderer
-			.invoke("pet:setUiActivity", { activity: petUiActivity })
+		void invokeIpc("pet:setUiActivity", { activity: petUiActivity })
 			.catch(() => {});
 	}, [isMainChatRoute, isPetRoute, isMiniChatRoute, petUiActivity]);
 
@@ -254,6 +254,7 @@ function App() {
 						{/* Main application routes */}
 						<Route element={<MainLayout />}>
 							<Route path="/" element={<Chat />} />
+							<Route path="/xiaojiu-chat" element={<XiaojiuChat />} />
 							<Route path="/jizhi-chat" element={<RemoteJizhiChat />} />
 							<Route path="/models" element={<Models />} />
 							<Route path="/agents" element={<Agents />} />

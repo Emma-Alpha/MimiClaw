@@ -3,7 +3,7 @@
  * Navigation sidebar with menu items.
  * No longer fixed - sits inside the flex layout below the title bar.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
 	Network,
@@ -23,6 +23,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { useChatStore } from "@/stores/chat";
 import { useGatewayStore } from "@/stores/gateway";
 import { useAgentsStore } from "@/stores/agents";
+import { useRemoteMessengerStore } from "@/stores/remote-messenger";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -117,6 +118,24 @@ function getAgentIdFromSessionKey(sessionKey: string): string {
 	return agentId || "main";
 }
 
+type UnifiedSessionItem =
+	| {
+			key: string;
+			source: "openclaw";
+			label: string;
+			activityMs: number;
+			agentName: string;
+			deletable: true;
+	  }
+	| {
+			key: string;
+			source: "xiaojiu";
+			label: string;
+			activityMs: number;
+			tagLabel: string;
+			deletable: false;
+	  };
+
 export function Sidebar() {
 	const sidebarCollapsed = useSettingsStore((state) => state.sidebarCollapsed);
 	const setSidebarCollapsed = useSettingsStore(
@@ -151,12 +170,23 @@ export function Sidebar() {
 	}, [isGatewayRunning, loadHistory, loadSessions]);
 	const agents = useAgentsStore((s) => s.agents);
 	const fetchAgents = useAgentsStore((s) => s.fetchAgents);
+	const remoteSessions = useRemoteMessengerStore((s) => s.sessions);
+	const remoteLastSyncedAt = useRemoteMessengerStore((s) => s.lastSyncedAt);
+	const remoteActiveSessionId = useRemoteMessengerStore((s) => s.activeSessionId);
+	const setRemoteActiveSessionId = useRemoteMessengerStore(
+		(s) => s.setActiveSessionId,
+	);
 
 	const navigate = useNavigate();
-	const isOnChat = useLocation().pathname === "/";
+	const pathname = useLocation().pathname;
+	const isOnChat = pathname === "/";
+	const isOnRemoteChat = pathname.startsWith("/xiaojiu-chat");
 
-	const getSessionLabel = (key: string, displayName?: string, label?: string) =>
-		sessionLabels[key] ?? label ?? displayName ?? key;
+	const getSessionLabel = useCallback(
+		(key: string, displayName?: string, label?: string) =>
+			sessionLabels[key] ?? label ?? displayName ?? key,
+		[sessionLabels],
+	);
 
 	const { t } = useTranslation(["common", "chat"]);
 	const [sessionToDelete, setSessionToDelete] = useState<{
@@ -181,10 +211,44 @@ export function Sidebar() {
 			Object.fromEntries((agents ?? []).map((agent) => [agent.id, agent.name])),
 		[agents],
 	);
+	const unifiedSessions = useMemo<UnifiedSessionItem[]>(() => {
+		const nativeSessions = [...sessions].map((session) => {
+			const agentId = getAgentIdFromSessionKey(session.key);
+			return {
+				key: session.key,
+				source: "openclaw" as const,
+				label: getSessionLabel(session.key, session.displayName, session.label),
+				activityMs: sessionLastActivity[session.key] ?? 0,
+				agentName: agentNameById[agentId] || agentId,
+				deletable: true as const,
+			};
+		});
+		const syncBaseMs = remoteLastSyncedAt ?? nowMs;
+		const messengerSessions = remoteSessions.map((session) => ({
+			key: `xiaojiu:${session.id}`,
+			source: "xiaojiu" as const,
+			label: session.name,
+			activityMs:
+				session.updatedAt ?? Math.max(1, syncBaseMs - session.sortIndex * 1000),
+			tagLabel: "小九",
+			deletable: false as const,
+		}));
+		return [...nativeSessions, ...messengerSessions].sort(
+			(a, b) => b.activityMs - a.activityMs,
+		);
+	}, [
+		agentNameById,
+		getSessionLabel,
+		nowMs,
+		remoteLastSyncedAt,
+		remoteSessions,
+		sessionLastActivity,
+		sessions,
+	]);
 	const sessionBuckets: Array<{
 		key: SessionBucketKey;
 		label: string;
-		sessions: typeof sessions;
+		sessions: UnifiedSessionItem[];
 	}> = [
 		{ key: "today", label: t("chat:historyBuckets.today"), sessions: [] },
 		{
@@ -213,14 +277,8 @@ export function Sidebar() {
 		sessionBuckets.map((bucket) => [bucket.key, bucket]),
 	) as Record<SessionBucketKey, (typeof sessionBuckets)[number]>;
 
-	for (const session of [...sessions].sort(
-		(a, b) =>
-			(sessionLastActivity[b.key] ?? 0) - (sessionLastActivity[a.key] ?? 0),
-	)) {
-		const bucketKey = getSessionBucket(
-			sessionLastActivity[session.key] ?? 0,
-			nowMs,
-		);
+	for (const session of unifiedSessions) {
+		const bucketKey = getSessionBucket(session.activityMs, nowMs);
 		sessionBucketMap[bucketKey].sessions.push(session);
 	}
 
@@ -318,7 +376,7 @@ export function Sidebar() {
 				</button>
 
 				<NavItem
-					to="/jizhi-chat"
+					to="/xiaojiu-chat"
 					icon={<MessageSquare className="h-[18px] w-[18px]" strokeWidth={2} />}
 					label={t("sidebar.remoteWebChat")}
 					collapsed={sidebarCollapsed}
@@ -330,7 +388,7 @@ export function Sidebar() {
 			</nav>
 
 			{/* Session list — below Settings, only when expanded */}
-			{!sidebarCollapsed && sessions.length > 0 && (
+			{!sidebarCollapsed && unifiedSessions.length > 0 && (
 				<div className="flex-1 overflow-y-auto overflow-x-hidden px-2 mt-4 space-y-0.5 pb-2">
 					{sessionBuckets.map((bucket) =>
 						bucket.sessions.length > 0 ? (
@@ -339,8 +397,11 @@ export function Sidebar() {
 									{bucket.label}
 								</div>
 								{bucket.sessions.map((s) => {
-									const agentId = getAgentIdFromSessionKey(s.key);
-									const agentName = agentNameById[agentId] || agentId;
+									const isNativeSession = s.source === "openclaw";
+									const isActive = isNativeSession
+										? isOnChat && currentSessionKey === s.key
+										: isOnRemoteChat &&
+											remoteActiveSessionId === s.key.replace(/^xiaojiu:/, "");
 									return (
 										<div
 											key={s.key}
@@ -348,49 +409,54 @@ export function Sidebar() {
 										>
 											<button
 												onClick={() => {
-													switchSession(s.key);
-													navigate("/");
+													if (isNativeSession) {
+														switchSession(s.key);
+														navigate("/");
+														return;
+													}
+													setRemoteActiveSessionId(
+														s.key.replace(/^xiaojiu:/, ""),
+													);
+													navigate("/xiaojiu-chat");
 												}}
 												className={cn(
 													"w-full text-left rounded-lg px-2.5 py-1.5 text-[13px] transition-colors pr-7",
 													"hover:bg-black/5 dark:hover:bg-white/5",
-													isOnChat && currentSessionKey === s.key
+													isActive
 														? "bg-black/5 dark:bg-white/10 text-foreground font-medium"
 														: "text-foreground/75",
 												)}
 												type="button"
-											>
-												<div className="flex min-w-0 items-center gap-2">
-													<span className="shrink-0 rounded-full bg-black/[0.04] px-2 py-0.5 text-[10px] font-medium text-foreground/70 dark:bg-white/[0.08]">
-														{agentName}
-													</span>
-													<span className="truncate">
-														{getSessionLabel(s.key, s.displayName, s.label)}
-													</span>
-												</div>
-											</button>
-											<button
-												aria-label="Delete session"
-												onClick={(e) => {
-													e.stopPropagation();
-													setSessionToDelete({
-														key: s.key,
-														label: getSessionLabel(
-															s.key,
-															s.displayName,
-															s.label,
-														),
-													});
-												}}
-												type="button"
-												className={cn(
-													"absolute right-1 flex items-center justify-center rounded p-0.5 transition-opacity",
-													"opacity-0 group-hover:opacity-100",
-													"text-muted-foreground hover:text-destructive hover:bg-destructive/10",
-												)}
-											>
-												<Trash2 className="h-3.5 w-3.5" />
-											</button>
+												>
+													<div className="flex min-w-0 items-center gap-2">
+														<span className="shrink-0 rounded-full bg-black/[0.04] px-2 py-0.5 text-[10px] font-medium text-foreground/70 dark:bg-white/[0.08]">
+															{isNativeSession ? s.agentName : s.tagLabel}
+														</span>
+														<span className="truncate">
+															{s.label}
+														</span>
+													</div>
+												</button>
+											{s.deletable ? (
+												<button
+													aria-label="Delete session"
+													onClick={(e) => {
+														e.stopPropagation();
+														setSessionToDelete({
+															key: s.key,
+															label: s.label,
+														});
+													}}
+													type="button"
+													className={cn(
+														"absolute right-1 flex items-center justify-center rounded p-0.5 transition-opacity",
+														"opacity-0 group-hover:opacity-100",
+														"text-muted-foreground hover:text-destructive hover:bg-destructive/10",
+													)}
+												>
+													<Trash2 className="h-3.5 w-3.5" />
+												</button>
+											) : null}
 										</div>
 									);
 								})}

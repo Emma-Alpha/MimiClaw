@@ -62,7 +62,7 @@ import { validateApiKeyWithProvider } from '../services/providers/provider-valid
 import { appUpdater } from './updater';
 import { syncPetWindowFromSettings } from './pet-window';
 import { getPetRuntimeState, setPetInputActivity, setPetUiActivity, syncPetRuntimeIdleState, pushPetTerminalLine } from './pet-runtime';
-import { toggleMiniChatWindow, closeMiniChatWindow } from './mini-chat-window';
+import { toggleMiniChatWindow, closeMiniChatWindow, openMiniChatWithMessage, consumePendingInitialMessage } from './mini-chat-window';
 import { PET_IDLE_ANIMATIONS, type PetUiActivity } from '../../shared/pet';
 import { PORTS } from '../utils/config';
 import { captureWithSnipaste } from '../utils/snipaste';
@@ -185,6 +185,14 @@ function registerPetHandlers(): void {
     return { success: true };
   });
 
+  ipcMain.handle('pet:setIgnoreMouseEvents', (event, ignore: boolean, options?: { forward?: boolean }) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win && !win.isDestroyed()) {
+      win.setIgnoreMouseEvents(ignore, options ?? {});
+    }
+    return { success: true };
+  });
+
   ipcMain.handle('pet:move', (event, payload?: { x?: number; y?: number }) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (win && !win.isDestroyed()) {
@@ -205,6 +213,15 @@ function registerPetHandlers(): void {
   ipcMain.handle('pet:closeMiniChat', () => {
     closeMiniChatWindow();
     return { success: true };
+  });
+
+  ipcMain.handle('pet:openMiniChatWithMessage', async (_event, text: string) => {
+    await openMiniChatWithMessage(text);
+    return { success: true };
+  });
+
+  ipcMain.handle('pet:consumeInitialMessage', () => {
+    return consumePendingInitialMessage();
   });
 
   ipcMain.handle('pet:openMainWindow', (_event) => {

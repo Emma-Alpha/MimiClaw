@@ -1,8 +1,11 @@
 /**
- * 嵌入远程极智 Chat（独立会话分区，便于 Cookie 等状态持久化）
+ * 嵌入小九 Messenger（共享会话分区，便于 Cookie 等状态持久化）
  */
 import { useRef, useEffect } from 'react';
-import { REMOTE_JIZHI_CHAT_URL } from '@/lib/remote-jizhi-chat';
+import {
+  REMOTE_MESSENGER_URL,
+  REMOTE_MESSENGER_PARTITION,
+} from '@/lib/remote-jizhi-chat';
 
 type WebviewElement = HTMLElement & {
   insertCSS: (css: string) => Promise<string>;
@@ -66,9 +69,9 @@ export function RemoteJizhiChat() {
       <webview
         ref={webviewRef}
         className="min-h-0 flex-1 w-full border-0"
-        src={REMOTE_JIZHI_CHAT_URL}
+        src={REMOTE_MESSENGER_URL}
         allowpopups
-        partition="persist:jizhi-remote-chat"
+        partition={REMOTE_MESSENGER_PARTITION}
         style={{ display: 'flex' }}
       />
     </div>

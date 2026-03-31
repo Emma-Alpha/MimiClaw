@@ -55,10 +55,13 @@ const electronAPI = {
         'pet:setUiActivity',
         'pet:showContextMenu',
         'pet:pushTerminalLine',
+        'pet:setIgnoreMouseEvents',
         'pet:move',
         'pet:toggleMiniChat',
         'pet:closeMiniChat',
         'pet:openMainWindow',
+        'pet:openMiniChatWithMessage',
+        'pet:consumeInitialMessage',
         // Settings
         'settings:get',
         'settings:set',
@@ -193,6 +196,8 @@ const electronAPI = {
         'openclaw:cli-installed',
         'pet:settings-updated',
         'pet:runtime-state',
+        'pet:clipboard-changed',
+        'mini-chat:initial-message',
         'screenshot:capture',
       ];
 

@@ -125,14 +125,23 @@ export function MiniChat() {
 	const messages = useChatStore((s) => s.messages);
 	const sending = useChatStore((s) => s.sending);
 	const streamingText = useChatStore((s) => s.streamingText);
+	const streamingTools = useChatStore((s) => s.streamingTools);
 	const pendingFinal = useChatStore((s) => s.pendingFinal);
-	const loadHistory = useChatStore((s) => s.loadHistory);
+	const newSession = useChatStore((s) => s.newSession);
 	const sendMessage = useChatStore((s) => s.sendMessage);
 
 	const [input, setInput] = useState("");
 	const [isComposing, setIsComposing] = useState(false);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	/** Text queued for auto-send once the gateway becomes ready. */
+	const pendingAutoSend = useRef<string | null>(null);
+
+	// Derived gateway state — must be above any hooks that use these values.
+	const gatewayState = gatewayStatus.state;
+	const isConnecting = gatewayState === "starting" || gatewayState === "reconnecting";
+	const isError = gatewayState === "error";
+	const isReady = gatewayState === "running";
 
 	useEffect(() => {
 		void initSettings();
@@ -144,15 +153,62 @@ export function MiniChat() {
 		}
 	}, [language]);
 
+	// Create a fresh session immediately on mount — BEFORE initGateway() so that
+	// any gateway notification that auto-triggers loadHistory() uses this new key
+	// instead of the default ":main" session.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally runs once on mount
+	useEffect(() => {
+		newSession();
+	}, []);
+
 	useEffect(() => {
 		void initGateway();
 	}, [initGateway]);
 
+	// On mount: consume any initial message queued by the translate bubble.
 	useEffect(() => {
-		if (gatewayStatus === "ready") {
-			void loadHistory();
+		void invokeIpc<string | null>("pet:consumeInitialMessage").then((text) => {
+			if (text) pendingAutoSend.current = text;
+		});
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
+
+	// Handle initial messages pushed to an already-open window.
+	useEffect(() => {
+		const unsubscribe = window.electron.ipcRenderer.on(
+			"mini-chat:initial-message",
+			(payload) => {
+				const text = payload as string;
+				if (!text) return;
+				if (isReady && !sending) {
+					void sendMessage(text);
+				} else {
+					pendingAutoSend.current = text;
+				}
+			},
+		);
+		return () => { unsubscribe?.(); };
+	}, [isReady, sending, sendMessage]);
+
+	// Auto-send the pending initial message once the gateway is ready.
+	useEffect(() => {
+		if (isReady && !sending && pendingAutoSend.current) {
+			const text = pendingAutoSend.current;
+			pendingAutoSend.current = null;
+			void sendMessage(text);
 		}
-	}, [gatewayStatus, loadHistory]);
+	}, [isReady, sending, sendMessage]);
+
+	// Keep pet runtime in sync with the mini chat's sending state.
+	useEffect(() => {
+		const activity =
+			!sending
+				? "idle"
+				: pendingFinal || streamingText || streamingTools.length > 0
+					? "working"
+					: "listening";
+		void invokeIpc("pet:setUiActivity", { activity }).catch(() => {});
+	}, [sending, streamingText, pendingFinal, streamingTools]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: scroll on new content
 	useEffect(() => {
@@ -189,10 +245,6 @@ export function MiniChat() {
 	);
 
 	const visibleMessages = messages.filter(isVisibleMessage).slice(-10);
-	const isConnecting =
-		gatewayStatus === "connecting" || gatewayStatus === "starting";
-	const isError = gatewayStatus === "error" || gatewayStatus === "stopped";
-	const isReady = gatewayStatus === "ready";
 
 	return (
 		<div className="flex h-screen w-screen flex-col overflow-hidden bg-background">

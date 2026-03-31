@@ -34,6 +34,9 @@ const MOVE_THROTTLE_MS = 16;
 /** Minimum ms between two toggleMiniChat calls to prevent double-click ghost windows. */
 const TOGGLE_DEBOUNCE_MS = 400;
 
+/** Auto-dismiss delay for the translate bubble (ms). */
+const TRANSLATE_BUBBLE_TTL_MS = 10_000;
+
 export function PetFloating() {
 	const { i18n } = useTranslation("settings");
 	const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -43,19 +46,11 @@ export function PetFloating() {
 		FALLBACK_RUNTIME_STATE,
 	);
 	const [hasPlayedIntro, setHasPlayedIntro] = useState(false);
+	const [translateBubble, setTranslateBubble] = useState<{ text: string } | null>(null);
+	const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-	// ── Toggle debounce ──────────────────────────────────────────
 	const lastToggleAt = useRef(0);
-
-	// ── Custom drag state ─────────────────────────────────────────
-	const dragRef = useRef<{
-		mouseScreenX: number;
-		mouseScreenY: number;
-		winX: number;
-		winY: number;
-		dragging: boolean;
-		lastMoveAt: number;
-	} | null>(null);
+	const isDragging = useRef(false);
 
 	const currentAnimation = useMemo<PetAnimation>(() => {
 		const preferredIdleAnimation = PET_IDLE_ANIMATIONS.includes(
@@ -71,10 +66,13 @@ export function PetFloating() {
 			? preferred
 			: DEFAULT_PET_ANIMATION;
 	}, [petAnimation, runtimeState.activity, runtimeState.animation]);
+
 	const displayAnimation = hasPlayedIntro ? currentAnimation : "begin";
 	const shouldLoop = PET_LOOPING_ANIMATIONS.includes(
 		displayAnimation as (typeof PET_LOOPING_ANIMATIONS)[number],
 	);
+
+	// ── Settings & runtime state sync ────────────────────────────
 
 	useEffect(() => {
 		void initSettings();
@@ -82,9 +80,7 @@ export function PetFloating() {
 
 	useEffect(() => {
 		const syncFromStorage = (event: StorageEvent) => {
-			if (event.key === "clawx-settings") {
-				void initSettings();
-			}
+			if (event.key === "clawx-settings") void initSettings();
 		};
 		window.addEventListener("storage", syncFromStorage);
 		return () => window.removeEventListener("storage", syncFromStorage);
@@ -94,26 +90,24 @@ export function PetFloating() {
 		const htmlStyle = document.documentElement.style;
 		const bodyStyle = document.body.style;
 		const rootStyle = document.getElementById("root")?.style;
-		const previous = {
-			htmlBackground: htmlStyle.background,
-			bodyBackground: bodyStyle.background,
-			rootBackground: rootStyle?.background ?? "",
+		const prev = {
+			htmlBg: htmlStyle.background,
+			bodyBg: bodyStyle.background,
+			rootBg: rootStyle?.background ?? "",
 			bodyOverflow: bodyStyle.overflow,
 			bodyMargin: bodyStyle.margin,
 		};
-
 		htmlStyle.background = "transparent";
 		bodyStyle.background = "transparent";
 		bodyStyle.overflow = "hidden";
 		bodyStyle.margin = "0";
 		if (rootStyle) rootStyle.background = "transparent";
-
 		return () => {
-			htmlStyle.background = previous.htmlBackground;
-			bodyStyle.background = previous.bodyBackground;
-			bodyStyle.overflow = previous.bodyOverflow;
-			bodyStyle.margin = previous.bodyMargin;
-			if (rootStyle) rootStyle.background = previous.rootBackground;
+			htmlStyle.background = prev.htmlBg;
+			bodyStyle.background = prev.bodyBg;
+			bodyStyle.overflow = prev.bodyOverflow;
+			bodyStyle.margin = prev.bodyMargin;
+			if (rootStyle) rootStyle.background = prev.rootBg;
 		};
 	}, []);
 
@@ -145,77 +139,148 @@ export function PetFloating() {
 		return () => { unsubscribe?.(); };
 	}, []);
 
-	// ── Drag + click handlers ─────────────────────────────────────
-	// Note: We do NOT use -webkit-app-region:drag here because that CSS property
-	// intercepts all left-button mouse events at the OS level, preventing
-	// onMouseDown/onMouseUp from firing in React. Instead, we implement dragging
-	// via IPC (pet:move → BrowserWindow.setPosition) so we can distinguish
-	// a click (< DRAG_THRESHOLD_PX movement) from a real drag.
+	// ── Translate bubble ─────────────────────────────────────────
 
-	const handleMouseDown = useCallback((e: MouseEvent<HTMLDivElement>) => {
-		if (e.button !== 0) return;
-		dragRef.current = {
-			mouseScreenX: e.screenX,
-			mouseScreenY: e.screenY,
-			winX: window.screenX,
-			winY: window.screenY,
-			dragging: false,
-			lastMoveAt: 0,
+	const dismissBubble = useCallback(() => {
+		setTranslateBubble(null);
+		if (dismissTimerRef.current) {
+			clearTimeout(dismissTimerRef.current);
+			dismissTimerRef.current = null;
+		}
+	}, []);
+
+	useEffect(() => {
+		const unsubscribe = window.electron.ipcRenderer.on(
+			"pet:clipboard-changed",
+			(payload) => {
+				const { text } = payload as { text: string };
+				if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+				setTranslateBubble({ text });
+				dismissTimerRef.current = setTimeout(dismissBubble, TRANSLATE_BUBBLE_TTL_MS);
+			},
+		);
+		return () => {
+			unsubscribe?.();
+			if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+		};
+	}, [dismissBubble]);
+
+	// ── Mouse pass-through setup ──────────────────────────────────
+	// By default the entire window ignores mouse events (they fall through to
+	// whatever is behind). When the cursor enters the pet's video area we
+	// temporarily capture events so drag/click works. `forward: true` ensures
+	// the renderer still receives forwarded events in pass-through mode so
+	// onMouseEnter/onMouseLeave fire correctly.
+
+	useEffect(() => {
+		void invokeIpc("pet:setIgnoreMouseEvents", true, { forward: true });
+		return () => {
+			// Restore normal behaviour when the component unmounts
+			void invokeIpc("pet:setIgnoreMouseEvents", false);
 		};
 	}, []);
 
-	const handleMouseMove = useCallback((e: MouseEvent<HTMLDivElement>) => {
-		const drag = dragRef.current;
-		if (!drag) return;
+	// ── Drag & click handlers (attached to document during drag) ─
 
-		const dx = e.screenX - drag.mouseScreenX;
-		const dy = e.screenY - drag.mouseScreenY;
+	const handleVideoMouseDown = useCallback((e: MouseEvent<HTMLButtonElement>) => {
+		if (e.button !== 0) return;
 
-		if (!drag.dragging && Math.sqrt(dx * dx + dy * dy) >= DRAG_THRESHOLD_PX) {
-			drag.dragging = true;
-		}
+		const startScreenX = e.screenX;
+		const startScreenY = e.screenY;
+		const startWinX = window.screenX;
+		const startWinY = window.screenY;
+		let lastMoveAt = 0;
+		isDragging.current = false;
 
-		if (drag.dragging) {
-			const now = Date.now();
-			if (now - drag.lastMoveAt >= MOVE_THROTTLE_MS) {
-				drag.lastMoveAt = now;
-				void invokeIpc("pet:move", {
-					x: drag.winX + dx,
-					y: drag.winY + dy,
-				});
+		const onMove = (ev: globalThis.MouseEvent) => {
+			const dx = ev.screenX - startScreenX;
+			const dy = ev.screenY - startScreenY;
+
+			if (!isDragging.current && Math.sqrt(dx * dx + dy * dy) >= DRAG_THRESHOLD_PX) {
+				isDragging.current = true;
 			}
-		}
+
+			if (isDragging.current) {
+				const now = Date.now();
+				if (now - lastMoveAt >= MOVE_THROTTLE_MS) {
+					lastMoveAt = now;
+					void invokeIpc("pet:move", {
+						x: startWinX + dx,
+						y: startWinY + dy,
+					});
+				}
+			}
+		};
+
+		const onUp = () => {
+			document.removeEventListener("mousemove", onMove);
+			document.removeEventListener("mouseup", onUp);
+
+			if (!isDragging.current) {
+				const now = Date.now();
+				if (now - lastToggleAt.current >= TOGGLE_DEBOUNCE_MS) {
+					lastToggleAt.current = now;
+					void invokeIpc("pet:toggleMiniChat");
+				}
+			}
+			isDragging.current = false;
+		};
+
+		document.addEventListener("mousemove", onMove);
+		document.addEventListener("mouseup", onUp);
 	}, []);
 
-	const handleMouseUp = useCallback(() => {
-		const drag = dragRef.current;
-		dragRef.current = null;
-		if (!drag) return;
-		if (!drag.dragging) {
-			const now = Date.now();
-			if (now - lastToggleAt.current >= TOGGLE_DEBOUNCE_MS) {
-				lastToggleAt.current = now;
-				void invokeIpc("pet:toggleMiniChat");
-			}
+	const handleVideoMouseEnter = useCallback(() => {
+		void invokeIpc("pet:setIgnoreMouseEvents", false);
+	}, []);
+
+	const handleVideoMouseLeave = useCallback(() => {
+		// Don't pass through while dragging — the drag tracks the mouse globally
+		if (!isDragging.current) {
+			void invokeIpc("pet:setIgnoreMouseEvents", true, { forward: true });
 		}
 	}, []);
 
 	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: pet surface — custom drag + click detection; context menu via right-click
-		<div
-			className="relative flex h-screen w-screen cursor-pointer items-end justify-center overflow-visible bg-transparent select-none"
-			onMouseDown={handleMouseDown}
-			onMouseMove={handleMouseMove}
-			onMouseUp={handleMouseUp}
-			onContextMenu={(event: MouseEvent<HTMLDivElement>) => {
-				event.preventDefault();
-				void invokeIpc("pet:showContextMenu", {
-					x: event.clientX,
-					y: event.clientY,
-					language: i18n.resolvedLanguage || i18n.language,
-				});
-			}}
-		>
+		<div className="relative flex h-screen w-screen items-end justify-center overflow-visible bg-transparent">
+			{/* Translate bubble — appears when clipboard text changes */}
+			{translateBubble && (
+				<div className="pointer-events-none absolute top-2 left-1/2 z-30 w-[290px] -translate-x-1/2">
+					{/* biome-ignore lint/a11y/noStaticElementInteractions: hover handlers toggle Electron setIgnoreMouseEvents, not DOM interactivity */}
+					<div
+						className="pointer-events-auto flex items-center gap-2 rounded-[12px] border border-white/10 bg-black/75 px-3 py-2 shadow-[0_4px_18px_rgba(0,0,0,0.35)] backdrop-blur-[6px]"
+						onMouseEnter={handleVideoMouseEnter}
+						onMouseLeave={handleVideoMouseLeave}
+					>
+						<span className="shrink-0 text-base" aria-hidden="true">🌐</span>
+						<span className="min-w-0 flex-1 truncate text-[11px] leading-tight text-white/80">
+							{translateBubble.text.length > 24
+								? `${translateBubble.text.slice(0, 24)}…`
+								: translateBubble.text}
+						</span>
+						<button
+							type="button"
+							className="shrink-0 rounded-[6px] bg-blue-500/90 px-2 py-0.5 text-[11px] font-semibold text-white transition-all hover:bg-blue-400 active:scale-95"
+							onClick={() => {
+								const prompt = `请帮我翻译以下内容：\n\n${translateBubble.text}`;
+								void invokeIpc("pet:openMiniChatWithMessage", prompt);
+								dismissBubble();
+							}}
+						>
+							翻译
+						</button>
+						<button
+							type="button"
+							className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[13px] leading-none text-white/45 transition-colors hover:text-white/80"
+							onClick={dismissBubble}
+							aria-label="关闭"
+						>
+							×
+						</button>
+					</div>
+				</div>
+			)}
+
 			{runtimeState.showTerminal && (
 				<div className="pointer-events-none absolute bottom-[150px] left-1/2 z-20 w-[85%] max-w-[260px] -translate-x-1/2 rounded-[14px] border border-white/10 bg-black/72 px-3 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.25)] backdrop-blur-[4px]">
 					<div className="mb-1.5 flex items-center gap-1.5">
@@ -248,26 +313,44 @@ export function PetFloating() {
 				</div>
 			)}
 
-			<video
-				key={displayAnimation}
-				ref={videoRef}
-				className="relative z-10 h-[200px] w-[200px] object-contain pointer-events-none"
-				src={PET_ANIMATION_SOURCES[displayAnimation]}
-				autoPlay
-				loop={shouldLoop}
-				muted
-				playsInline
-				onLoadedData={(e) => {
-					const video = e.currentTarget;
-					video.currentTime = 0;
-					void video.play().catch(() => {});
+			{/* Interactive area: only the pet character itself captures mouse events */}
+			<button
+				type="button"
+				className="relative z-10 cursor-pointer border-0 bg-transparent p-0 select-none"
+				onMouseEnter={handleVideoMouseEnter}
+				onMouseLeave={handleVideoMouseLeave}
+				onMouseDown={handleVideoMouseDown}
+				onContextMenu={(event: MouseEvent<HTMLButtonElement>) => {
+					event.preventDefault();
+					void invokeIpc("pet:showContextMenu", {
+						x: event.clientX,
+						y: event.clientY,
+						language: i18n.resolvedLanguage || i18n.language,
+					});
 				}}
-				onEnded={() => {
-					if (!hasPlayedIntro && displayAnimation === "begin") {
-						setHasPlayedIntro(true);
-					}
-				}}
-			/>
+				title="点击打开快捷聊天 · 拖动移位"
+			>
+				<video
+					key={displayAnimation}
+					ref={videoRef}
+					className="h-[200px] w-[200px] object-contain pointer-events-none"
+					src={PET_ANIMATION_SOURCES[displayAnimation]}
+					autoPlay
+					loop={shouldLoop}
+					muted
+					playsInline
+					onLoadedData={(e) => {
+						const video = e.currentTarget;
+						video.currentTime = 0;
+						void video.play().catch(() => {});
+					}}
+					onEnded={() => {
+						if (!hasPlayedIntro && displayAnimation === "begin") {
+							setHasPlayedIntro(true);
+						}
+					}}
+				/>
+			</button>
 		</div>
 	);
 }

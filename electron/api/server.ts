@@ -16,6 +16,7 @@ import { handleFileRoutes } from './routes/files';
 import { handleSessionRoutes } from './routes/sessions';
 import { handleCronRoutes } from './routes/cron';
 import { handleLocalExecutorRoutes } from './routes/local-executor';
+import { handleXiaojiuRoutes } from './routes/xiaojiu';
 import { sendJson } from './route-utils';
 
 type RouteHandler = (
@@ -37,12 +38,13 @@ const routeHandlers: RouteHandler[] = [
   handleLocalExecutorRoutes,
   handleFileRoutes,
   handleSessionRoutes,
+  handleXiaojiuRoutes,
   handleCronRoutes,
   handleLogRoutes,
   handleUsageRoutes,
 ];
 
-export function startHostApiServer(ctx: HostApiContext, port = PORTS.CLAWX_HOST_API): Server {
+export function startHostApiServer(ctx: HostApiContext, port = PORTS.CLAWX_HOST_API): Promise<Server> {
   const server = createServer(async (req, res) => {
     const requestUrl = new URL(req.url || '/', `http://127.0.0.1:${port}`);
     try {
@@ -58,9 +60,12 @@ export function startHostApiServer(ctx: HostApiContext, port = PORTS.CLAWX_HOST_
     }
   });
 
-  server.listen(port, '127.0.0.1', () => {
-    logger.info(`Host API server listening on http://127.0.0.1:${port}`);
+  return new Promise<Server>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(port, '127.0.0.1', () => {
+      server.off('error', reject);
+      logger.info(`Host API server listening on http://127.0.0.1:${port}`);
+      resolve(server);
+    });
   });
-
-  return server;
 }

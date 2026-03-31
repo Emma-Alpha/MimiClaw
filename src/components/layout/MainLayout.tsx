@@ -6,6 +6,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Sidebar } from './Sidebar';
 import { TitleBar } from './TitleBar';
+import { RemoteMessengerSessionBridge } from './RemoteMessengerSessionBridge';
 
 const FULL_BLEED_PATHS = new Set(['/jizhi-chat']);
 
@@ -15,6 +16,7 @@ export function MainLayout() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background relative">
+      <RemoteMessengerSessionBridge />
       {/* Global Title Bar for dragging */}
       <TitleBar />
       <div className="flex h-full flex-1 overflow-hidden">

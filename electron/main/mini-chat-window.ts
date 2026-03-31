@@ -4,6 +4,8 @@ import { getPetWindow } from "./pet-window";
 
 let miniChatWindow: BrowserWindow | null = null;
 let isCreatingMiniChat = false;
+/** Message queued from translate-bubble click; consumed once by MiniChat on mount. */
+let pendingInitialMessage: string | null = null;
 
 const MINI_CHAT_WIDTH = 360;
 const MINI_CHAT_HEIGHT = 520;
@@ -37,7 +39,12 @@ function computeMiniChatPosition(): { x: number; y: number } {
 		y: refBounds.y + refBounds.height / 2,
 	});
 	const workArea = display.workArea;
-	const GAP = 2;
+	const GAP = 8;
+	// The pet video is 200 px wide and centered inside the 320 px pet window.
+	// Anchor to the cat image itself so there's no transparent-padding gap.
+	const PET_VIDEO_WIDTH = 200;
+	const catLeft = refBounds.x + Math.round((refBounds.width - PET_VIDEO_WIDTH) / 2);
+	const catRight = catLeft + PET_VIDEO_WIDTH;
 
 	// Vertical: align mini chat bottom with pet bottom, clamped to work area
 	let y = refBounds.y + refBounds.height - MINI_CHAT_HEIGHT;
@@ -46,9 +53,9 @@ function computeMiniChatPosition(): { x: number; y: number } {
 		Math.min(y, workArea.y + workArea.height - MINI_CHAT_HEIGHT - GAP),
 	);
 
-	// Prefer left side; fall back to right if not enough space
-	const leftX = refBounds.x - MINI_CHAT_WIDTH - GAP;
-	const rightX = refBounds.x + refBounds.width + GAP;
+	// Prefer left side (flush with cat's left edge); fall back to right
+	const leftX = catLeft - MINI_CHAT_WIDTH - GAP;
+	const rightX = catRight + GAP;
 
 	let x: number;
 	if (leftX >= workArea.x + GAP) {
@@ -115,6 +122,35 @@ async function createMiniChatWindow(): Promise<BrowserWindow> {
 
 	miniChatWindow = win;
 	return win;
+}
+
+/**
+ * Open the mini chat window with a pre-filled message that will be auto-sent.
+ * If the window is already open, sends the message directly to the renderer.
+ */
+export async function openMiniChatWithMessage(text: string): Promise<void> {
+  if (miniChatWindow && !miniChatWindow.isDestroyed()) {
+    miniChatWindow.webContents.send('mini-chat:initial-message', text);
+    miniChatWindow.focus();
+    return;
+  }
+
+  if (isCreatingMiniChat) return;
+
+  pendingInitialMessage = text;
+  isCreatingMiniChat = true;
+  try {
+    await createMiniChatWindow();
+  } finally {
+    isCreatingMiniChat = false;
+  }
+}
+
+/** Consume the pending initial message (called once by MiniChat renderer on mount). */
+export function consumePendingInitialMessage(): string | null {
+  const msg = pendingInitialMessage;
+  pendingInitialMessage = null;
+  return msg;
 }
 
 export async function toggleMiniChatWindow(): Promise<void> {
