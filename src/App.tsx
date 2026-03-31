@@ -18,6 +18,7 @@ import { Skills } from "./pages/Skills";
 import { Cron } from "./pages/Cron";
 import { Settings } from "./pages/Settings";
 import { PetFloating } from "./pages/PetFloating";
+import { MiniChat } from "./pages/MiniChat";
 import { Setup } from "./pages/Setup";
 import { Login } from "./pages/Login";
 import { useSettingsStore } from "./stores/settings";
@@ -116,6 +117,7 @@ function App() {
 	const chatStreamingTools = useChatStore((state) => state.streamingTools);
 	const chatPendingFinal = useChatStore((state) => state.pendingFinal);
 	const isPetRoute = location.pathname.startsWith("/pet");
+	const isMiniChatRoute = location.pathname.startsWith("/mini-chat");
 	const isMainChatRoute = location.pathname === "/";
 
 	const petUiActivity = !chatSending
@@ -139,21 +141,22 @@ function App() {
 
 	// Initialize Gateway connection on mount
 	useEffect(() => {
-		if (!isPetRoute) {
+		if (!isPetRoute && !isMiniChatRoute) {
 			initGateway();
 		}
-	}, [initGateway, isPetRoute]);
+	}, [initGateway, isPetRoute, isMiniChatRoute]);
 
 	// Gate 1: Must be logged in first in all environments.
 	useEffect(() => {
 		if (
 			!cloudLoggedIn &&
 			!location.pathname.startsWith("/login") &&
-			!isPetRoute
+			!isPetRoute &&
+			!isMiniChatRoute
 		) {
 			navigate("/login", { replace: true });
 		}
-	}, [cloudLoggedIn, isPetRoute, location.pathname, navigate]);
+	}, [cloudLoggedIn, isPetRoute, isMiniChatRoute, location.pathname, navigate]);
 
 	// Gate 2: After login, redirect to setup wizard if onboarding not complete.
 	useEffect(() => {
@@ -163,11 +166,12 @@ function App() {
 			!setupComplete &&
 			!location.pathname.startsWith("/setup") &&
 			!location.pathname.startsWith("/login") &&
-			!isPetRoute
+			!isPetRoute &&
+			!isMiniChatRoute
 		) {
 			navigate("/setup", { replace: true });
 		}
-	}, [cloudLoggedIn, isPetRoute, setupComplete, location.pathname, navigate]);
+	}, [cloudLoggedIn, isPetRoute, isMiniChatRoute, setupComplete, location.pathname, navigate]);
 
 	// Listen for navigation events from main process
 	useEffect(() => {
@@ -223,17 +227,17 @@ function App() {
 	}, []);
 
 	useEffect(() => {
-		if (isPetRoute || isMainChatRoute) return;
+		if (isPetRoute || isMiniChatRoute || isMainChatRoute) return;
 		void window.electron.ipcRenderer
 			.invoke("pet:setUiActivity", { activity: petUiActivity })
 			.catch(() => {});
-	}, [isMainChatRoute, isPetRoute, petUiActivity]);
+	}, [isMainChatRoute, isPetRoute, isMiniChatRoute, petUiActivity]);
 
 	return (
 		<ErrorBoundary>
 			<ThemeWrapper>
 				<TooltipProvider delayDuration={300}>
-					{!isPetRoute ? <UpdateBootstrap /> : null}
+					{!isPetRoute && !isMiniChatRoute ? <UpdateBootstrap /> : null}
 					<Routes>
 						{/* Cloud login gate */}
 						<Route path="/login" element={<Login />} />
@@ -243,6 +247,9 @@ function App() {
 
 						{/* Floating pet window */}
 						<Route path="/pet" element={<PetFloating />} />
+
+						{/* Mini chat popup (opened by clicking the floating pet) */}
+						<Route path="/mini-chat" element={<MiniChat />} />
 
 						{/* Main application routes */}
 						<Route element={<MainLayout />}>

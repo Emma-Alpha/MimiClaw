@@ -20,9 +20,12 @@ const FALLBACK_RUNTIME_STATE: PetRuntimeState = {
 	updatedAt: 0,
 };
 
+const CLICK_THRESHOLD_PX = 6;
+
 export function PetFloating() {
 	const { i18n } = useTranslation("settings");
 	const videoRef = useRef<HTMLVideoElement | null>(null);
+	const mouseDownPos = useRef<{ x: number; y: number } | null>(null);
 	const initSettings = useSettingsStore((state) => state.init);
 	const petAnimation = useSettingsStore((state) => state.petAnimation);
 	const [runtimeState, setRuntimeState] = useState<PetRuntimeState>(
@@ -131,10 +134,8 @@ export function PetFloating() {
 		};
 	}, []);
 
-	console.log("runtimeState", runtimeState);
-
 	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: pet drag surface; context menu only
+		// biome-ignore lint/a11y/noStaticElementInteractions: pet drag surface; drag vs click detection + context menu
 		<div
 			className="drag-region relative flex h-screen w-screen items-end justify-center bg-transparent overflow-visible"
 			onContextMenu={(event: MouseEvent<HTMLDivElement>) => {
@@ -144,6 +145,18 @@ export function PetFloating() {
 					y: event.clientY,
 					language: i18n.resolvedLanguage || i18n.language,
 				});
+			}}
+			onMouseDown={(e) => {
+				mouseDownPos.current = { x: e.clientX, y: e.clientY };
+			}}
+			onMouseUp={(e) => {
+				if (!mouseDownPos.current) return;
+				const dx = e.clientX - mouseDownPos.current.x;
+				const dy = e.clientY - mouseDownPos.current.y;
+				mouseDownPos.current = null;
+				if (Math.sqrt(dx * dx + dy * dy) < CLICK_THRESHOLD_PX) {
+					void invokeIpc("pet:toggleMiniChat");
+				}
 			}}
 		>
 			{runtimeState.showTerminal && (

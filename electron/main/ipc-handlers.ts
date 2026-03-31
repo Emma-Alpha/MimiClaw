@@ -185,6 +185,18 @@ function registerPetHandlers(): void {
     return { success: true };
   });
 
+  ipcMain.handle('pet:move', (event, payload?: { x?: number; y?: number }) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win && !win.isDestroyed()) {
+      const x = typeof payload?.x === 'number' ? Math.round(payload.x) : undefined;
+      const y = typeof payload?.y === 'number' ? Math.round(payload.y) : undefined;
+      if (x !== undefined && y !== undefined) {
+        win.setPosition(x, y);
+      }
+    }
+    return { success: true };
+  });
+
   ipcMain.handle('pet:toggleMiniChat', async () => {
     await toggleMiniChatWindow();
     return { success: true };
