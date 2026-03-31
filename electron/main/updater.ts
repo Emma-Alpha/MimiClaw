@@ -8,6 +8,8 @@
  */
 import { autoUpdater, UpdateInfo, ProgressInfo, UpdateDownloadedEvent } from 'electron-updater';
 import { BrowserWindow, app, ipcMain } from 'electron';
+import fs from 'node:fs';
+import path from 'node:path';
 import { logger } from '../utils/logger';
 import { EventEmitter } from 'events';
 import { setQuitting } from './app-state';
@@ -39,6 +41,28 @@ export interface UpdaterEvents {
 function detectChannel(version: string): string {
   const match = version.match(/-([a-zA-Z]+)/);
   return match ? match[1] : 'latest';
+}
+
+/**
+ * Full semver from bundled package.json. On macOS, `app.getVersion()` follows
+ * CFBundleShortVersionString (x.y.z only), which drops prerelease tags like
+ * -beta.N — that would mis-detect the updater channel as `latest` and request
+ * latest-mac.yml while CI publishes beta-mac.yml for prerelease builds.
+ */
+function getAppSemverVersion(): string {
+  if (app.isPackaged) {
+    try {
+      const pkgPath = path.join(app.getAppPath(), 'package.json');
+      const raw = fs.readFileSync(pkgPath, 'utf-8');
+      const pkg = JSON.parse(raw) as { version?: string };
+      if (typeof pkg.version === 'string' && pkg.version.length > 0) {
+        return pkg.version;
+      }
+    } catch {
+      // fall through
+    }
+  }
+  return app.getVersion();
 }
 
 /**
@@ -92,9 +116,9 @@ export class AppUpdater extends EventEmitter {
       debug: (msg: string) => logger.debug('[Updater]', msg),
     };
 
-    // Detect channel from version semver prerelease tag.
+    // Detect channel from full semver (see getAppSemverVersion).
     // e.g. "0.2.11-beta.1" → "beta", "1.0.0" → "latest"
-    const version = app.getVersion();
+    const version = getAppSemverVersion();
     const channel = detectChannel(version);
 
     logger.info(`[Updater] Version: ${version}, channel: ${channel}, provider: github (${GITHUB_OWNER}/${GITHUB_REPO})`);
@@ -291,10 +315,13 @@ export class AppUpdater extends EventEmitter {
   }
 
   /**
-   * Set update channel (stable, beta, dev)
+   * Set update channel (UI: stable / beta / dev).
+   * electron-updater expects `latest` for stable, not the string `stable`.
    */
   setChannel(channel: 'stable' | 'beta' | 'dev'): void {
-    autoUpdater.channel = channel;
+    const updaterChannel = channel === 'stable' ? 'latest' : channel === 'dev' ? 'latest' : 'beta';
+    autoUpdater.channel = updaterChannel;
+    autoUpdater.allowPrerelease = channel !== 'stable';
   }
 
   /**
@@ -308,7 +335,7 @@ export class AppUpdater extends EventEmitter {
    * Get current version
    */
   getCurrentVersion(): string {
-    return app.getVersion();
+    return getAppSemverVersion();
   }
 }
 
