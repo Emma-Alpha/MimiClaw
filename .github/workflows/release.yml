@@ -196,5 +196,5 @@ jobs:
           export VERSION=$(node -p "require('./package.json').version")
           PRERELEASE="${{ steps.arch.outputs.prerelease }}"
           export CHANNEL=$([ "$PRERELEASE" = "true" ] && echo "beta" || echo "latest")
-          pip3 install cos-python-sdk-v5 --quiet
+          pip3 install cos-python-sdk-v5 --quiet --break-system-packages
           python3 scripts/cos-publish.py
