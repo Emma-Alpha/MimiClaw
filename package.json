@@ -1,6 +1,6 @@
 {
     "name": "jizhi",
-    "version": "0.2.12-beta.24",
+    "version": "0.2.12-beta.25",
     "pnpm": {
         "onlyBuiltDependencies": [
             "@discordjs/opus",
