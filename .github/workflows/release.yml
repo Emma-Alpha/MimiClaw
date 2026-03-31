@@ -133,7 +133,7 @@ jobs:
           PRERELEASE="${{ steps.arch.outputs.prerelease }}"
 
           if [[ "$PRERELEASE" == "true" ]]; then
-            RELEASE_FLAGS="--prerelease --no-latest"
+            RELEASE_FLAGS="--prerelease --latest=false"
           else
             RELEASE_FLAGS="--latest"
           fi
