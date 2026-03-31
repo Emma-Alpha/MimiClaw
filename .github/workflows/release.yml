@@ -127,8 +127,8 @@ jobs:
           FOUND=0
 
           while IFS= read -r ASAR_PATH; do
-            BUNDLE_DIR=$(basename "$(dirname "$(dirname "$(dirname "$ASAR_PATH")")")")
-            case "$BUNDLE_DIR" in
+            PLATFORM_DIR=$(basename "$(dirname "$(dirname "$(dirname "$(dirname "$ASAR_PATH")")")")")
+            case "$PLATFORM_DIR" in
               mac-arm64*)
                 ARCH=arm64
                 ;;
@@ -139,7 +139,7 @@ jobs:
                 ARCH=x64
                 ;;
               *)
-                echo "Skipping unknown mac bundle directory: $BUNDLE_DIR"
+                echo "Skipping unknown mac platform directory: $PLATFORM_DIR"
                 continue
                 ;;
             esac
