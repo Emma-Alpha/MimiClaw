@@ -99,17 +99,21 @@ export class AppUpdater extends EventEmitter {
 
     logger.info(`[Updater] Version: ${version}, channel: ${channel}, provider: github (${GITHUB_OWNER}/${GITHUB_REPO})`);
 
-    // Set channel so electron-updater requests the correct yml asset
-    // from the GitHub Release: beta → beta-mac.yml, latest → latest-mac.yml
-    autoUpdater.channel = channel;
-    // Allow pre-release releases when not on the stable channel
-    autoUpdater.allowPrerelease = channel !== 'latest';
-
+    // setFeedURL must be called BEFORE setting channel/allowPrerelease.
+    // Calling setFeedURL reconfigures the internal updater provider, which
+    // resets any previously assigned channel back to the default ('latest').
+    // Setting these AFTER ensures they are not overwritten.
     autoUpdater.setFeedURL({
       provider: 'github',
       owner: GITHUB_OWNER,
       repo: GITHUB_REPO,
     });
+
+    // Set channel so electron-updater requests the correct yml asset
+    // from the GitHub Release: beta → beta-mac.yml, latest → latest-mac.yml
+    autoUpdater.channel = channel;
+    // Allow pre-release releases when not on the stable channel
+    autoUpdater.allowPrerelease = channel !== 'latest';
 
     this.setupListeners();
   }
