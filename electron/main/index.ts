@@ -2,7 +2,7 @@
  * Electron Main Process Entry
  * Manages window creation, system tray, and IPC handlers
  */
-import { app, BrowserWindow, nativeImage, session, shell } from 'electron';
+import { app, autoUpdater as electronAutoUpdater, BrowserWindow, nativeImage, session, shell } from 'electron';
 import type { Server } from 'node:http';
 import { join, resolve } from 'node:path';
 import { GatewayManager } from '../gateway/manager';
@@ -18,7 +18,7 @@ import { initTelemetry } from '../utils/telemetry';
 import { ClawHubService } from '../gateway/clawhub';
 import { ensureClawXContext, repairClawXOnlyBootstrapFiles } from '../utils/openclaw-workspace';
 import { autoInstallCliIfNeeded, generateCompletionCache, installCompletionToProfile } from '../utils/openclaw-cli';
-import { isQuitting, setQuitting } from './app-state';
+import { isInstallingUpdate, isQuitting, setInstallingUpdate, setQuitting } from './app-state';
 import { applyProxySettings } from './proxy';
 import { syncLaunchAtStartupSettingFromStore } from './launch-at-startup';
 import { syncPetWindowFromSettings } from './pet-window';
@@ -351,6 +351,14 @@ function syncMacDockIcon(): void {
   app.dock.setIcon(icon);
 }
 
+function performBestEffortQuitCleanup(): void {
+  hostEventBus?.closeAll();
+  hostApiServer?.close();
+  void gatewayManager?.stop().catch((err) => {
+    logger.warn('gatewayManager.stop() error during quit:', err);
+  });
+}
+
 /**
  * Initialize the application
  */
@@ -655,8 +663,19 @@ if (gotTheLock) {
     }
   });
 
+  electronAutoUpdater.on('before-quit-for-update', () => {
+    setInstallingUpdate();
+    setQuitting();
+  });
+
   app.on('before-quit', (event) => {
     setQuitting();
+
+    if (isInstallingUpdate()) {
+      performBestEffortQuitCleanup();
+      return;
+    }
+
     const action = requestQuitLifecycleAction(quitLifecycleState);
 
     if (action === 'allow-quit') {

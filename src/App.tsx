@@ -213,7 +213,7 @@ function App() {
     <ErrorBoundary>
       <ThemeWrapper>
       <TooltipProvider delayDuration={300}>
-        <UpdateBootstrap />
+        {!isPetRoute ? <UpdateBootstrap /> : null}
         <Routes>
           {/* Cloud login gate */}
           <Route path="/login" element={<Login />} />

@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { logger } from '../utils/logger';
 import { EventEmitter } from 'events';
-import { setQuitting } from './app-state';
+import { setInstallingUpdate, setQuitting } from './app-state';
 
 const GITHUB_OWNER = 'Emma-Alpha';
 const GITHUB_REPO = 'MimiClaw';
@@ -199,11 +199,17 @@ export class AppUpdater extends EventEmitter {
    * Update status and notify renderer
    */
   private updateStatus(newStatus: Partial<UpdateStatus>): void {
+    const nextStatus = newStatus.status ?? this.status.status;
+    const shouldPreserveInfo = newStatus.info === undefined
+      && ['available', 'downloading', 'downloaded', 'error'].includes(nextStatus);
+    const shouldPreserveProgress = newStatus.progress === undefined && nextStatus === 'downloading';
+    const shouldPreserveError = newStatus.error === undefined && nextStatus === 'error';
+
     this.status = {
-      status: newStatus.status ?? this.status.status,
-      info: newStatus.info,
-      progress: newStatus.progress,
-      error: newStatus.error,
+      status: nextStatus,
+      info: newStatus.info ?? (shouldPreserveInfo ? this.status.info : undefined),
+      progress: newStatus.progress ?? (shouldPreserveProgress ? this.status.progress : undefined),
+      error: newStatus.error ?? (shouldPreserveError ? this.status.error : undefined),
     };
     this.sendToRenderer('update:status-changed', this.status);
   }
@@ -278,6 +284,7 @@ export class AppUpdater extends EventEmitter {
    */
   quitAndInstall(): void {
     logger.info('[Updater] quitAndInstall called');
+    setInstallingUpdate();
     setQuitting();
     autoUpdater.quitAndInstall();
   }

@@ -8,6 +8,7 @@
  * closing on Windows/Linux.
  */
 let _isQuitting = false;
+let _isInstallingUpdate = false;
 
 export function isQuitting(): boolean {
   return _isQuitting;
@@ -15,4 +16,12 @@ export function isQuitting(): boolean {
 
 export function setQuitting(value = true): void {
   _isQuitting = value;
+}
+
+export function isInstallingUpdate(): boolean {
+  return _isInstallingUpdate;
+}
+
+export function setInstallingUpdate(value = true): void {
+  _isInstallingUpdate = value;
 }
