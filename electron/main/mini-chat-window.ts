@@ -1,11 +1,16 @@
 import { app, BrowserWindow, screen } from "electron";
 import { join } from "node:path";
+import type { PetMiniChatSeed } from "../../shared/pet";
+import {
+	DEFAULT_PET_WINDOW_BOUNDS,
+	PET_WINDOW_WIDTH,
+} from "./pet-layout";
 import { getPetWindow } from "./pet-window";
 
 let miniChatWindow: BrowserWindow | null = null;
 let isCreatingMiniChat = false;
-/** Message queued from translate-bubble click; consumed once by MiniChat on mount. */
-let pendingInitialMessage: string | null = null;
+/** Seed payload queued from pet interactions; consumed once by MiniChat on mount. */
+let pendingInitialPayload: PetMiniChatSeed | null = null;
 
 const MINI_CHAT_WIDTH = 360;
 const MINI_CHAT_HEIGHT = 520;
@@ -28,7 +33,7 @@ function getMiniChatWindowUrl():
 
 function computeMiniChatPosition(): { x: number; y: number } {
 	const petWin = getPetWindow();
-	let refBounds = { x: 0, y: 0, width: 320, height: 280 };
+	let refBounds = { ...DEFAULT_PET_WINDOW_BOUNDS };
 
 	if (petWin && !petWin.isDestroyed()) {
 		refBounds = petWin.getBounds();
@@ -40,11 +45,8 @@ function computeMiniChatPosition(): { x: number; y: number } {
 	});
 	const workArea = display.workArea;
 	const GAP = 8;
-	// The pet video is 200 px wide and centered inside the 320 px pet window.
-	// Anchor to the cat image itself so there's no transparent-padding gap.
-	const PET_VIDEO_WIDTH = 200;
-	const catLeft = refBounds.x + Math.round((refBounds.width - PET_VIDEO_WIDTH) / 2);
-	const catRight = catLeft + PET_VIDEO_WIDTH;
+	const catLeft = refBounds.x;
+	const catRight = catLeft + PET_WINDOW_WIDTH;
 
 	// Vertical: align mini chat bottom with pet bottom, clamped to work area
 	let y = refBounds.y + refBounds.height - MINI_CHAT_HEIGHT;
@@ -65,6 +67,21 @@ function computeMiniChatPosition(): { x: number; y: number } {
 	}
 
 	return { x, y };
+}
+
+function normalizeMiniChatSeed(seed: string | PetMiniChatSeed): PetMiniChatSeed {
+	if (typeof seed === "string") {
+		return {
+			text: seed,
+			autoSend: true,
+		};
+	}
+
+	return {
+		text: seed.text || "",
+		attachments: seed.attachments ?? [],
+		autoSend: seed.autoSend ?? true,
+	};
 }
 
 async function createMiniChatWindow(): Promise<BrowserWindow> {
@@ -129,15 +146,21 @@ async function createMiniChatWindow(): Promise<BrowserWindow> {
  * If the window is already open, sends the message directly to the renderer.
  */
 export async function openMiniChatWithMessage(text: string): Promise<void> {
+  await openMiniChatWithPayload({ text, autoSend: true });
+}
+
+export async function openMiniChatWithPayload(seed: string | PetMiniChatSeed): Promise<void> {
+  const payload = normalizeMiniChatSeed(seed);
+
   if (miniChatWindow && !miniChatWindow.isDestroyed()) {
-    miniChatWindow.webContents.send('mini-chat:initial-message', text);
+    miniChatWindow.webContents.send('mini-chat:initial-message', payload);
     miniChatWindow.focus();
     return;
   }
 
   if (isCreatingMiniChat) return;
 
-  pendingInitialMessage = text;
+  pendingInitialPayload = payload;
   isCreatingMiniChat = true;
   try {
     await createMiniChatWindow();
@@ -147,10 +170,10 @@ export async function openMiniChatWithMessage(text: string): Promise<void> {
 }
 
 /** Consume the pending initial message (called once by MiniChat renderer on mount). */
-export function consumePendingInitialMessage(): string | null {
-  const msg = pendingInitialMessage;
-  pendingInitialMessage = null;
-  return msg;
+export function consumePendingInitialMessage(): PetMiniChatSeed | null {
+  const payload = pendingInitialPayload;
+  pendingInitialPayload = null;
+  return payload;
 }
 
 export async function toggleMiniChatWindow(): Promise<void> {

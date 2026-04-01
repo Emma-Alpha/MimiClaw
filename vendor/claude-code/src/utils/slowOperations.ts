@@ -131,7 +131,7 @@ function slowLoggingAnt(
   _strings: TemplateStringsArray,
   ..._values: unknown[]
 ): AntSlowLogger {
-  // eslint-disable-next-line prefer-rest-params
+   
   return new AntSlowLogger(arguments)
 }
 

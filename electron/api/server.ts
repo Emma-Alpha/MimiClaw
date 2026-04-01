@@ -14,9 +14,12 @@ import { handleLogRoutes } from './routes/logs';
 import { handleUsageRoutes } from './routes/usage';
 import { handleSkillRoutes } from './routes/skills';
 import { handleFileRoutes } from './routes/files';
+import { handleSpeechRoutes } from './routes/speech';
 import { handleSessionRoutes } from './routes/sessions';
 import { handleCronRoutes } from './routes/cron';
 import { handleLocalExecutorRoutes } from './routes/local-executor';
+import { handleJizhiRoutes } from './routes/jizhi';
+import { handleVoiceChatRoutes } from './routes/voice-chat';
 import { handleXiaojiuRoutes } from './routes/xiaojiu';
 import { sendJson } from './route-utils';
 
@@ -39,8 +42,11 @@ const routeHandlers: RouteHandler[] = [
   handleSkillRoutes,
   handleLocalExecutorRoutes,
   handleFileRoutes,
+  handleSpeechRoutes,
   handleSessionRoutes,
+  handleJizhiRoutes,
   handleXiaojiuRoutes,
+  handleVoiceChatRoutes,
   handleCronRoutes,
   handleLogRoutes,
   handleUsageRoutes,

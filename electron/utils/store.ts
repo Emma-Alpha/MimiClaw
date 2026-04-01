@@ -47,6 +47,8 @@ export interface AppSettings {
   cloudApiUrl: string;
   /** JWT token obtained after cloud login, used by main-process cloud API calls */
   cloudApiToken: string;
+  /** Session cookie value (jizhi_token) obtained after Jizhi website login */
+  jizhiToken: string;
   proxyEnabled: boolean;
   proxyServer: string;
   proxyHttpServer: string;
@@ -105,6 +107,7 @@ function createDefaultSettings(): AppSettings {
     remoteGatewayToken: '',
     cloudApiUrl: '',
     cloudApiToken: '',
+    jizhiToken: '',
     proxyEnabled: false,
     proxyServer: '',
     proxyHttpServer: '',

@@ -8,6 +8,7 @@ export interface RemoteMessengerSession {
   draftText?: string;
   updatedAt?: number;
   sortIndex: number;
+  lastMsgId?: string | null;
 }
 
 interface RemoteMessengerState {

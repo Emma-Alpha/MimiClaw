@@ -35,6 +35,7 @@ import { invokeIpc } from '@/lib/api-client';
 import { hostApiFetch } from '@/lib/host-api';
 import { subscribeHostEvent } from '@/lib/host-events';
 import { resolveCloudOnlyMode } from '@/lib/app-env';
+import { fetchVolcengineSpeechConfig, type VolcengineSpeechConfigState } from '@/lib/volcengine-speech';
 interface SetupStep {
   id: string;
   title: string;
@@ -343,6 +344,31 @@ interface WelcomeContentProps {
 function WelcomeContent({ isCloudOnlyBuild }: WelcomeContentProps) {
   const { t } = useTranslation(['setup', 'settings']);
   const { language, setLanguage } = useSettingsStore();
+  const [speechStatus, setSpeechStatus] = useState<VolcengineSpeechConfigState | null>(null);
+  const [speechStatusLoading, setSpeechStatusLoading] = useState(!isCloudOnlyBuild);
+
+  const loadSpeechStatus = useCallback(async () => {
+    if (isCloudOnlyBuild) {
+      setSpeechStatusLoading(false);
+      setSpeechStatus(null);
+      return;
+    }
+
+    setSpeechStatusLoading(true);
+    try {
+      const status = await fetchVolcengineSpeechConfig();
+      setSpeechStatus(status);
+    } catch (error) {
+      console.error('[setup] Failed to load Volcengine speech status', error);
+      setSpeechStatus(null);
+    } finally {
+      setSpeechStatusLoading(false);
+    }
+  }, [isCloudOnlyBuild]);
+
+  useEffect(() => {
+    void loadSpeechStatus();
+  }, [loadSpeechStatus]);
 
   return (
     <div className="text-center space-y-4">
@@ -387,6 +413,80 @@ function WelcomeContent({ isCloudOnlyBuild }: WelcomeContentProps) {
           {t('welcome.features.crossPlatform')}
         </li>
       </ul>
+
+      {!isCloudOnlyBuild && (
+        <div className="mt-6 rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 text-left">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <div className={cn(
+                  'h-2.5 w-2.5 rounded-full',
+                  speechStatusLoading
+                    ? 'bg-amber-400'
+                    : speechStatus?.configured
+                      ? 'bg-emerald-500'
+                      : 'bg-orange-400',
+                )} />
+                <p className="text-sm font-semibold text-slate-900">{t('welcome.speech.title')}</p>
+              </div>
+              <p className="text-sm text-slate-600">{t('welcome.speech.description')}</p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => { void loadSpeechStatus(); }}
+              disabled={speechStatusLoading}
+              className="shrink-0"
+            >
+              <RefreshCw className={cn('mr-2 h-4 w-4', speechStatusLoading && 'animate-spin')} />
+              {t('welcome.speech.refresh')}
+            </Button>
+          </div>
+
+          <div className="mt-3 space-y-2 text-sm">
+            {speechStatusLoading ? (
+              <div className="flex items-center gap-2 text-slate-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t('welcome.speech.checking')}
+              </div>
+            ) : speechStatus?.configured ? (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-900">
+                <p className="font-medium">{t('welcome.speech.ready')}</p>
+                <p className="mt-1 text-xs text-emerald-700">
+                  {t('welcome.speech.readyDesc', { endpoint: speechStatus.endpoint, cluster: speechStatus.cluster })}
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-orange-900">
+                <p className="font-medium">{t('welcome.speech.missing')}</p>
+                <p className="mt-1 text-xs text-orange-700">{t('welcome.speech.missingDesc')}</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-2 text-xs text-slate-500 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                {t('welcome.speech.appId')}: {speechStatus?.appId || t('welcome.speech.notConfigured')}
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                {t('welcome.speech.cluster')}: {speechStatus?.cluster || t('welcome.speech.notConfigured')}
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                {t('welcome.speech.language')}: {speechStatus?.language || 'zh-CN'}
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                {t('welcome.speech.token')}: {speechStatus?.tokenMasked || t('welcome.speech.notConfigured')}
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-500">
+              {speechStatus?.configured
+                ? t('welcome.speech.firstRunReady')
+                : t('welcome.speech.firstRunHint')}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,10 +1,15 @@
 import { app, BrowserWindow } from "electron";
 import { join } from "node:path";
 import { getAllSettings } from "../utils/store";
+import { PET_WINDOW_HEIGHT, PET_WINDOW_WIDTH } from "./pet-layout";
+import {
+	closePetBubbleWindow,
+	ensurePetBubbleWindow,
+	setPetBubbleVisible,
+	syncPetBubbleWindowToPet,
+} from "./pet-bubble-window";
 
 let petWindow: BrowserWindow | null = null;
-const PET_WINDOW_WIDTH = 320;
-const PET_WINDOW_HEIGHT = 280;
 
 function getPetWindowUrl():
 	| { type: "url"; value: string }
@@ -27,14 +32,14 @@ async function createPetWindow(): Promise<BrowserWindow> {
 	const win = new BrowserWindow({
 		width: PET_WINDOW_WIDTH,
 		height: PET_WINDOW_HEIGHT,
-		minWidth: 240,
-		minHeight: 135,
-		maxWidth: 480,
-		maxHeight: 400,
+		minWidth: PET_WINDOW_WIDTH,
+		minHeight: PET_WINDOW_HEIGHT,
+		maxWidth: PET_WINDOW_WIDTH,
+		maxHeight: PET_WINDOW_HEIGHT,
 		useContentSize: true,
 		frame: false,
 		transparent: true,
-		resizable: true,
+		resizable: false,
 		maximizable: false,
 		minimizable: false,
 		fullscreenable: false,
@@ -57,13 +62,27 @@ async function createPetWindow(): Promise<BrowserWindow> {
 	);
 	win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 	win.setContentSize(PET_WINDOW_WIDTH, PET_WINDOW_HEIGHT);
+	win.on("move", () => {
+		syncPetBubbleWindowToPet(win);
+	});
+	win.on("resize", () => {
+		syncPetBubbleWindowToPet(win);
+	});
+	win.on("show", () => {
+		syncPetBubbleWindowToPet(win);
+	});
+	win.on("hide", () => {
+		void setPetBubbleVisible(false);
+	});
 	win.once("ready-to-show", () => {
 		if (!win.isDestroyed()) {
+			syncPetBubbleWindowToPet(win);
 			win.showInactive();
 		}
 	});
 
 	win.on("closed", () => {
+		closePetBubbleWindow();
 		if (petWindow === win) {
 			petWindow = null;
 		}
@@ -77,6 +96,9 @@ async function createPetWindow(): Promise<BrowserWindow> {
 	}
 
 	petWindow = win;
+	void ensurePetBubbleWindow().then(() => {
+		syncPetBubbleWindowToPet(win);
+	}).catch(() => {});
 	return win;
 }
 

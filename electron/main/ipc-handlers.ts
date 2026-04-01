@@ -62,10 +62,16 @@ import { validateApiKeyWithProvider } from '../services/providers/provider-valid
 import { appUpdater } from './updater';
 import { syncPetWindowFromSettings } from './pet-window';
 import { getPetRuntimeState, setPetInputActivity, setPetUiActivity, syncPetRuntimeIdleState, pushPetTerminalLine } from './pet-runtime';
-import { toggleMiniChatWindow, closeMiniChatWindow, openMiniChatWithMessage, consumePendingInitialMessage } from './mini-chat-window';
-import { PET_IDLE_ANIMATIONS, type PetUiActivity } from '../../shared/pet';
+import { toggleMiniChatWindow, closeMiniChatWindow, openMiniChatWithMessage, openMiniChatWithPayload, consumePendingInitialMessage } from './mini-chat-window';
+import { getPetWindow } from './pet-window';
+import { setPetBubbleVisible, syncPetBubbleWindowToPet } from './pet-bubble-window';
+import { PET_IDLE_ANIMATIONS, type PetMiniChatSeed, type PetRecordingCommandAction, type PetUiActivity } from '../../shared/pet';
 import { PORTS } from '../utils/config';
 import { captureWithSnipaste } from '../utils/snipaste';
+import { createVolcengineAsrSession, type VolcengineAsrSession } from '../services/volcengine-asr';
+import { createVolcengineRealtimeVoiceSession, type VolcengineRealtimeVoiceSession } from '../services/volcengine-realtime-voice';
+import { createVoiceChatSession } from '../services/voice-chat-store';
+import { closeVoiceChatWindow, getVoiceChatWindow, openVoiceChatWindow, setVoiceDialogState } from './voice-chat-window';
 
 type AppRequest = {
   id?: string;
@@ -99,6 +105,9 @@ const PET_ANIMATION_MENU_LABELS: Record<string, { zh: string; en: string; ja: st
   'task-leave': { zh: '任务结束', en: 'Task End', ja: 'タスク終了' },
 };
 
+const petAsrSessions = new Map<string, VolcengineAsrSession>();
+const voiceRealtimeSessions = new Map<string, VolcengineRealtimeVoiceSession>();
+
 function resolvePetMenuLanguage(language?: string): 'zh' | 'en' | 'ja' {
   if (language?.startsWith('ja')) return 'ja';
   if (language?.startsWith('en')) return 'en';
@@ -114,13 +123,36 @@ async function emitPetSettingsUpdated(): Promise<void> {
 }
 
 function registerPetHandlers(): void {
+  function dispatchPetRecordingCommand(action: PetRecordingCommandAction): void {
+    const petWindow = getPetWindow();
+    if (!petWindow || petWindow.isDestroyed()) {
+      logger.warn(`[pet] Unable to deliver recording command "${action}" because the pet window is unavailable`);
+      return;
+    }
+
+    logger.info(`[pet] Delivering recording command: ${action}`);
+    petWindow.webContents.send('pet:recording-command', { action });
+  }
+
+  function emitPetAsrEvent(sessionId: string, payload: Record<string, unknown>): void {
+    const petWindow = getPetWindow();
+    if (!petWindow || petWindow.isDestroyed()) {
+      return;
+    }
+
+    petWindow.webContents.send('pet:asr-event', {
+      sessionId,
+      ...payload,
+    });
+  }
+
   ipcMain.handle('pet:getRuntimeState', async () => {
     return getPetRuntimeState();
   });
 
-  ipcMain.handle('pet:setInputActivity', async (_, payload?: { activity?: 'idle' | 'recording' } | 'idle' | 'recording') => {
+  ipcMain.handle('pet:setInputActivity', async (_, payload?: { activity?: 'idle' | 'recording' | 'transcribing' } | 'idle' | 'recording' | 'transcribing') => {
     const activity = typeof payload === 'string' ? payload : payload?.activity;
-    setPetInputActivity(activity === 'recording' ? 'recording' : 'idle');
+    setPetInputActivity(activity === 'recording' || activity === 'transcribing' ? activity : 'idle');
     return { success: true, state: getPetRuntimeState() };
   });
 
@@ -128,6 +160,88 @@ function registerPetHandlers(): void {
     const activity = typeof payload === 'string' ? payload : payload?.activity;
     setPetUiActivity(activity === 'working' || activity === 'listening' ? activity : 'idle');
     return { success: true, state: getPetRuntimeState() };
+  });
+
+  ipcMain.handle('pet:recordingCommand', async (_event, payload?: { action?: 'start' | 'cancel' | 'confirm' }) => {
+    const action = payload?.action === 'start'
+      ? 'start'
+      : payload?.action === 'confirm'
+        ? 'confirm'
+        : 'cancel';
+    dispatchPetRecordingCommand(action);
+    return { success: true };
+  });
+
+  ipcMain.handle('pet:asrSessionStart', async () => {
+    const sessionId = crypto.randomUUID();
+    const session = await createVolcengineAsrSession((event) => {
+      emitPetAsrEvent(sessionId, event);
+      if (event.type === 'error' || event.type === 'final') {
+        petAsrSessions.delete(sessionId);
+      }
+    });
+    petAsrSessions.set(sessionId, session);
+    return { success: true, sessionId };
+  });
+
+  ipcMain.handle('pet:asrSessionChunk', async (_event, payload?: { sessionId?: string; audioChunk?: Uint8Array }) => {
+    const sessionId = payload?.sessionId?.trim();
+    if (!sessionId) {
+      throw new Error('sessionId is required');
+    }
+
+    const session = petAsrSessions.get(sessionId);
+    if (!session) {
+      throw new Error(`Unknown ASR session: ${sessionId}`);
+    }
+
+    const chunk = payload?.audioChunk instanceof Uint8Array
+      ? payload.audioChunk
+      : new Uint8Array(payload?.audioChunk ?? []);
+    await session.pushAudio(chunk);
+    return { success: true };
+  });
+
+  ipcMain.handle('pet:asrSessionFinish', async (_event, payload?: { sessionId?: string; audioChunk?: Uint8Array }) => {
+    const sessionId = payload?.sessionId?.trim();
+    if (!sessionId) {
+      throw new Error('sessionId is required');
+    }
+
+    const session = petAsrSessions.get(sessionId);
+    if (!session) {
+      throw new Error(`Unknown ASR session: ${sessionId}`);
+    }
+
+    const chunk = payload?.audioChunk instanceof Uint8Array
+      ? payload.audioChunk
+      : new Uint8Array(payload?.audioChunk ?? []);
+    try {
+      const result = await session.finish(chunk);
+      return { success: true, text: result.text };
+    } finally {
+      petAsrSessions.delete(sessionId);
+    }
+  });
+
+  ipcMain.handle('pet:asrSessionCancel', async (_event, payload?: { sessionId?: string }) => {
+    const sessionId = payload?.sessionId?.trim();
+    if (!sessionId) {
+      return { success: true };
+    }
+
+    const session = petAsrSessions.get(sessionId);
+    if (session) {
+      session.cancel();
+      petAsrSessions.delete(sessionId);
+    }
+    return { success: true };
+  });
+
+  ipcMain.handle('pet:setBubbleVisible', async (_event, payload?: { visible?: boolean } | boolean) => {
+    const visible = typeof payload === 'boolean' ? payload : !!payload?.visible;
+    await setPetBubbleVisible(visible);
+    return { success: true };
   });
 
   ipcMain.handle('pet:showContextMenu', async (event, payload?: { x?: number; y?: number; language?: string }) => {
@@ -160,10 +274,21 @@ function registerPetHandlers(): void {
       en: 'Open Code Assistant',
       ja: 'コードアシスタントを開く',
     } as const;
+    const voiceDialogLabels = {
+      zh: '语音对话',
+      en: 'Voice Chat',
+      ja: '音声会話',
+    } as const;
 
     const menu = Menu.buildFromTemplate([
       ...items,
       { type: 'separator' },
+      {
+        label: voiceDialogLabels[language],
+        click: async () => {
+          await openVoiceChatWindow();
+        },
+      },
       {
         label: openCodeAssistantLabels[language],
         click: async () => {
@@ -171,7 +296,7 @@ function registerPetHandlers(): void {
           const mainWin = windows.find((window) => {
             if (window.isDestroyed()) return false;
             const url = window.webContents.getURL();
-            return !url.includes('#/pet') && !url.includes('#/mini-chat');
+            return !url.includes('#/pet') && !url.includes('#/mini-chat') && !url.includes('#/voice-dialog');
           });
           if (mainWin) {
             if (mainWin.isMinimized()) mainWin.restore();
@@ -222,6 +347,7 @@ function registerPetHandlers(): void {
       const y = typeof payload?.y === 'number' ? Math.round(payload.y) : undefined;
       if (x !== undefined && y !== undefined) {
         win.setPosition(x, y);
+        syncPetBubbleWindowToPet(win);
       }
     }
     return { success: true };
@@ -242,6 +368,11 @@ function registerPetHandlers(): void {
     return { success: true };
   });
 
+  ipcMain.handle('pet:openMiniChatWithPayload', async (_event, payload: PetMiniChatSeed) => {
+    await openMiniChatWithPayload(payload);
+    return { success: true };
+  });
+
   ipcMain.handle('pet:consumeInitialMessage', () => {
     return consumePendingInitialMessage();
   });
@@ -252,7 +383,7 @@ function registerPetHandlers(): void {
     const mainWin = windows.find((w) => {
       if (w.isDestroyed()) return false;
       const url = w.webContents.getURL();
-      return !url.includes('#/pet') && !url.includes('#/mini-chat');
+      return !url.includes('#/pet') && !url.includes('#/mini-chat') && !url.includes('#/voice-dialog');
     });
     if (mainWin) {
       if (mainWin.isMinimized()) mainWin.restore();
@@ -267,7 +398,7 @@ function registerPetHandlers(): void {
     const mainWin = windows.find((window) => {
       if (window.isDestroyed()) return false;
       const url = window.webContents.getURL();
-      return !url.includes('#/pet') && !url.includes('#/mini-chat');
+      return !url.includes('#/pet') && !url.includes('#/mini-chat') && !url.includes('#/voice-dialog');
     });
     if (mainWin) {
       if (mainWin.isMinimized()) mainWin.restore();
@@ -275,6 +406,120 @@ function registerPetHandlers(): void {
       mainWin.focus();
       mainWin.webContents.send('navigate', '/code-agent');
     }
+    return { success: true };
+  });
+
+  function emitVoiceRealtimeEvent(sessionId: string, payload: Record<string, unknown>): void {
+    const voiceWindow = getVoiceChatWindow();
+    if (!voiceWindow || voiceWindow.isDestroyed()) {
+      return;
+    }
+
+    voiceWindow.webContents.send('voice:realtime-event', {
+      sessionId,
+      ...payload,
+    });
+  }
+
+  ipcMain.handle('voice:openDialog', async () => {
+    await openVoiceChatWindow();
+    return { success: true };
+  });
+
+  ipcMain.handle('voice:closeDialog', async () => {
+    closeVoiceChatWindow();
+    return { success: true };
+  });
+
+  ipcMain.handle('voice:setDialogState', async (_event, payload?: { state?: 'idle' | 'connecting' | 'connected' }) => {
+    const nextState = payload?.state === 'connected'
+      ? 'connected'
+      : payload?.state === 'connecting'
+        ? 'connecting'
+        : 'idle';
+    setVoiceDialogState(nextState);
+    return { success: true };
+  });
+
+  ipcMain.handle('voice:sessionStart', async () => {
+    const realtimeSessionId = crypto.randomUUID();
+    const realtimeSession = await createVolcengineRealtimeVoiceSession((event) => {
+      emitVoiceRealtimeEvent(realtimeSessionId, event as Record<string, unknown>);
+      if (event.type === 'voice.connection.error' || (event.type === 'voice.connection.status' && event.status === 'closed')) {
+        voiceRealtimeSessions.delete(realtimeSessionId);
+      }
+    });
+    const historySession = await createVoiceChatSession();
+    voiceRealtimeSessions.set(realtimeSessionId, realtimeSession);
+    return {
+      success: true,
+      realtimeSessionId,
+      historySessionId: historySession.id,
+      historySessionTitle: historySession.title,
+    };
+  });
+
+  ipcMain.handle('voice:appendAudio', async (_event, payload?: { realtimeSessionId?: string; audioChunk?: Uint8Array }) => {
+    const realtimeSessionId = payload?.realtimeSessionId?.trim();
+    if (!realtimeSessionId) {
+      throw new Error('realtimeSessionId is required');
+    }
+
+    const session = voiceRealtimeSessions.get(realtimeSessionId);
+    if (!session) {
+      throw new Error(`Unknown realtime voice session: ${realtimeSessionId}`);
+    }
+
+    const chunk = payload?.audioChunk instanceof Uint8Array
+      ? payload.audioChunk
+      : new Uint8Array(payload?.audioChunk ?? []);
+    await session.appendAudio(chunk);
+    return { success: true };
+  });
+
+  ipcMain.handle('voice:commitTurn', async (_event, payload?: { realtimeSessionId?: string }) => {
+    const realtimeSessionId = payload?.realtimeSessionId?.trim();
+    if (!realtimeSessionId) {
+      throw new Error('realtimeSessionId is required');
+    }
+
+    const session = voiceRealtimeSessions.get(realtimeSessionId);
+    if (!session) {
+      throw new Error(`Unknown realtime voice session: ${realtimeSessionId}`);
+    }
+
+    await session.commitAudio();
+    await session.createResponse();
+    return { success: true };
+  });
+
+  ipcMain.handle('voice:cancelResponse', async (_event, payload?: { realtimeSessionId?: string }) => {
+    const realtimeSessionId = payload?.realtimeSessionId?.trim();
+    if (!realtimeSessionId) {
+      throw new Error('realtimeSessionId is required');
+    }
+
+    const session = voiceRealtimeSessions.get(realtimeSessionId);
+    if (!session) {
+      throw new Error(`Unknown realtime voice session: ${realtimeSessionId}`);
+    }
+
+    await session.cancelResponse();
+    return { success: true };
+  });
+
+  ipcMain.handle('voice:endSession', async (_event, payload?: { realtimeSessionId?: string }) => {
+    const realtimeSessionId = payload?.realtimeSessionId?.trim();
+    if (!realtimeSessionId) {
+      return { success: true };
+    }
+
+    const session = voiceRealtimeSessions.get(realtimeSessionId);
+    if (session) {
+      await session.close();
+      voiceRealtimeSessions.delete(realtimeSessionId);
+    }
+    setVoiceDialogState('idle');
     return { success: true };
   });
 }

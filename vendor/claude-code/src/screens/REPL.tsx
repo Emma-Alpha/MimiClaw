@@ -722,7 +722,7 @@ export function REPL({
     removeNotification
   } = useNotifications();
 
-  // eslint-disable-next-line prefer-const
+   
   let trySuggestBgPRIntercept = SUGGEST_BG_PR_NOOP;
   const mcpClients = useMergedClients(initialMcpClients, mcp.clients);
 
@@ -1027,7 +1027,7 @@ export function REPL({
         }
       })();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
   const [toolJSX, setToolJSXInternal] = useState<{
     jsx: React.ReactNode | null;
@@ -4065,7 +4065,7 @@ export function REPL({
 
   if ("external" === 'ant') {
     // Tasks mode: watch for tasks and auto-process them
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+     
     // biome-ignore lint/correctness/useHookAtTopLevel: conditional for dead code elimination in external builds
     useTaskListWatcher({
       taskListId,
@@ -4074,7 +4074,7 @@ export function REPL({
     });
 
     // Loop mode: auto-tick when enabled (via /job command)
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+     
     // biome-ignore lint/correctness/useHookAtTopLevel: conditional for dead code elimination in external builds
     useProactive?.({
       // Suppress ticks while an initial message is pending — the initial

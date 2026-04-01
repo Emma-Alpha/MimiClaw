@@ -63,6 +63,16 @@ import {
 import { subscribeHostEvent } from '@/lib/host-events';
 import { cn } from '@/lib/utils';
 import { PET_IDLE_ANIMATIONS, PET_ANIMATION_LABEL_KEYS, type PetAnimation } from '@/lib/pet-floating';
+import {
+  fetchVolcengineSpeechConfig,
+  saveVolcengineSpeechConfig,
+  type VolcengineSpeechConfigState,
+  type VolcengineSpeechLanguage,
+} from '@/lib/volcengine-speech';
+import {
+  fetchVoiceChatConfig,
+  saveVoiceChatConfig,
+} from '@/lib/voice-chat';
 import type {
   CodeAgentExecutionMode,
   CodeAgentHealth,
@@ -71,6 +81,7 @@ import type {
   CodeAgentRuntimeConfig,
   CodeAgentStatus,
 } from '../../../shared/code-agent';
+import type { VoiceChatConfigState } from '../../../shared/voice-chat';
 
 const CODE_AGENT_WORKSPACE_ROOT_STORAGE_KEY = 'clawx:code-agent-workspace-root';
 
@@ -176,6 +187,21 @@ export function Settings() {
   const [cloudGatewayLoading, setCloudGatewayLoading] = useState(false);
   const [showTelemetryViewer, setShowTelemetryViewer] = useState(false);
   const [telemetryEntries, setTelemetryEntries] = useState<UiTelemetryEntry[]>([]);
+  const [speechConfig, setSpeechConfig] = useState<VolcengineSpeechConfigState | null>(null);
+  const [speechLoading, setSpeechLoading] = useState(true);
+  const [speechSaving, setSpeechSaving] = useState(false);
+  const [speechAppIdDraft, setSpeechAppIdDraft] = useState('');
+  const [speechClusterDraft, setSpeechClusterDraft] = useState('');
+  const [speechLanguageDraft, setSpeechLanguageDraft] = useState<VolcengineSpeechLanguage>('zh-CN');
+  const [speechEndpointDraft, setSpeechEndpointDraft] = useState('wss://openspeech.bytedance.com/api/v2/asr');
+  const [speechTokenDraft, setSpeechTokenDraft] = useState('');
+  const [showSpeechToken, setShowSpeechToken] = useState(false);
+  const [voiceChatConfig, setVoiceChatConfig] = useState<VoiceChatConfigState | null>(null);
+  const [voiceChatLoading, setVoiceChatLoading] = useState(true);
+  const [voiceChatSaving, setVoiceChatSaving] = useState(false);
+  const [voiceChatAppIdDraft, setVoiceChatAppIdDraft] = useState('');
+  const [voiceChatAccessKeyDraft, setVoiceChatAccessKeyDraft] = useState('');
+  const [showVoiceChatAccessKey, setShowVoiceChatAccessKey] = useState(false);
 
   const isWindows = window.electron.platform === 'win32';
   const showCliTools = true;
@@ -215,11 +241,50 @@ export function Settings() {
     }
   }, []);
 
+  const loadSpeechConfig = useCallback(async () => {
+    setSpeechLoading(true);
+    try {
+      const config = await fetchVolcengineSpeechConfig();
+      setSpeechConfig(config);
+      setSpeechAppIdDraft(config.appId);
+      setSpeechClusterDraft(config.cluster);
+      setSpeechLanguageDraft(config.language);
+      setSpeechEndpointDraft(config.endpoint);
+      setSpeechTokenDraft('');
+    } catch (error) {
+      toast.error(`${t('speech.loadFailed')}: ${String(error)}`);
+    } finally {
+      setSpeechLoading(false);
+    }
+  }, [t]);
+
+  const loadVoiceChatRealtimeConfig = useCallback(async () => {
+    setVoiceChatLoading(true);
+    try {
+      const config = await fetchVoiceChatConfig();
+      setVoiceChatConfig(config);
+      setVoiceChatAppIdDraft(config.appId);
+      setVoiceChatAccessKeyDraft('');
+    } catch (error) {
+      toast.error(`${t('voiceChat.loadFailed')}: ${String(error)}`);
+    } finally {
+      setVoiceChatLoading(false);
+    }
+  }, [t]);
+
   useEffect(() => {
     void refreshCloudGateway();
     const timer = setInterval(() => { void refreshCloudGateway(); }, 10_000);
     return () => clearInterval(timer);
   }, [refreshCloudGateway]);
+
+  useEffect(() => {
+    void loadSpeechConfig();
+  }, [loadSpeechConfig]);
+
+  useEffect(() => {
+    void loadVoiceChatRealtimeConfig();
+  }, [loadVoiceChatRealtimeConfig]);
 
   const handleCloudGatewayAction = async (action: 'start' | 'stop' | 'restart') => {
     setCloudGatewayLoading(true);
@@ -780,6 +845,43 @@ export function Settings() {
     );
   };
 
+  const handleSaveSpeechConfig = async () => {
+    setSpeechSaving(true);
+    try {
+      const next = await saveVolcengineSpeechConfig({
+        appId: speechAppIdDraft,
+        cluster: speechClusterDraft,
+        language: speechLanguageDraft,
+        endpoint: speechEndpointDraft,
+        token: speechTokenDraft,
+      });
+      setSpeechConfig(next);
+      setSpeechTokenDraft('');
+      toast.success(t('speech.saved'));
+    } catch (error) {
+      toast.error(`${t('speech.saveFailed')}: ${String(error)}`);
+    } finally {
+      setSpeechSaving(false);
+    }
+  };
+
+  const handleSaveVoiceChatRealtimeConfig = async () => {
+    setVoiceChatSaving(true);
+    try {
+      const next = await saveVoiceChatConfig({
+        appId: voiceChatAppIdDraft,
+        accessKey: voiceChatAccessKeyDraft,
+      });
+      setVoiceChatConfig(next);
+      setVoiceChatAccessKeyDraft('');
+      toast.success(t('voiceChat.saved'));
+    } catch (error) {
+      toast.error(`${t('voiceChat.saveFailed')}: ${String(error)}`);
+    } finally {
+      setVoiceChatSaving(false);
+    }
+  };
+
   return (
     <div className="flex flex-col -m-6 dark:bg-background h-[calc(100vh-2.5rem)] overflow-hidden">
       <div className="w-full max-w-5xl mx-auto flex flex-col h-full p-10 pt-16">
@@ -896,6 +998,221 @@ export function Settings() {
                     </Select>
                     <p className="text-[12px] text-muted-foreground">
                       {t('pet.tip')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-black/5 bg-black/[0.03] p-5 dark:border-white/10 dark:bg-white/[0.03]">
+                <div className="flex flex-col gap-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <Label className="text-[15px] font-medium text-foreground/80">{t('speech.title')}</Label>
+                      <p className="text-[13px] text-muted-foreground mt-1">
+                        {t('speech.description')}
+                      </p>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'rounded-full border px-3 py-1 text-[12px]',
+                        speechConfig?.configured
+                          ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                          : 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+                      )}
+                    >
+                      {speechLoading
+                        ? t('speech.loading')
+                        : speechConfig?.configured
+                          ? t('speech.configured')
+                          : t('speech.missing')}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="speech-appid" className="text-[13px] text-foreground/80">{t('speech.appId')}</Label>
+                      <Input
+                        id="speech-appid"
+                        value={speechAppIdDraft}
+                        onChange={(event) => setSpeechAppIdDraft(event.target.value)}
+                        placeholder={t('speech.appIdPlaceholder')}
+                        className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent font-mono text-[13px]"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="speech-cluster" className="text-[13px] text-foreground/80">{t('speech.cluster')}</Label>
+                      <Input
+                        id="speech-cluster"
+                        value={speechClusterDraft}
+                        onChange={(event) => setSpeechClusterDraft(event.target.value)}
+                        placeholder={t('speech.clusterPlaceholder')}
+                        className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent font-mono text-[13px]"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="speech-language" className="text-[13px] text-foreground/80">{t('speech.language')}</Label>
+                      <Select
+                        id="speech-language"
+                        value={speechLanguageDraft}
+                        onChange={(event) => setSpeechLanguageDraft(event.target.value as VolcengineSpeechLanguage)}
+                        className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent text-[13px]"
+                      >
+                        <option value="zh-CN">{t('speech.languages.zhCN')}</option>
+                        <option value="en-US">{t('speech.languages.enUS')}</option>
+                        <option value="ja-JP">{t('speech.languages.jaJP')}</option>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="speech-endpoint" className="text-[13px] text-foreground/80">{t('speech.endpoint')}</Label>
+                      <Input
+                        id="speech-endpoint"
+                        value={speechEndpointDraft}
+                        onChange={(event) => setSpeechEndpointDraft(event.target.value)}
+                        placeholder="wss://openspeech.bytedance.com/api/v2/asr"
+                        className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent font-mono text-[13px]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="speech-token" className="text-[13px] text-foreground/80">{t('speech.token')}</Label>
+                    <div className="relative">
+                      <Input
+                        id="speech-token"
+                        type={showSpeechToken ? 'text' : 'password'}
+                        value={speechTokenDraft}
+                        onChange={(event) => setSpeechTokenDraft(event.target.value)}
+                        placeholder={speechConfig?.hasToken ? (speechConfig.tokenMasked ?? t('speech.tokenConfigured')) : t('speech.tokenPlaceholder')}
+                        className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent pr-10 font-mono text-[13px]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowSpeechToken((value) => !value)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showSpeechToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <p className="text-[12px] text-muted-foreground">
+                      {speechConfig?.hasToken
+                        ? t('speech.tokenSaved', { token: speechConfig.tokenMasked ?? '***' })
+                        : t('speech.tokenHelp')}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                      type="button"
+                      onClick={() => void handleSaveSpeechConfig()}
+                      disabled={speechSaving}
+                      className="rounded-full px-5"
+                    >
+                      {speechSaving ? t('speech.saving') : t('speech.save')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => { void loadSpeechConfig(); }}
+                      disabled={speechLoading || speechSaving}
+                      className="rounded-full px-5"
+                    >
+                      {t('common:actions.refresh')}
+                    </Button>
+                    <p className="text-[12px] text-muted-foreground">
+                      {t('speech.tip')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-black/5 bg-black/[0.03] p-5 dark:border-white/10 dark:bg-white/[0.03]">
+                <div className="flex flex-col gap-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <Label className="text-[15px] font-medium text-foreground/80">{t('voiceChat.title')}</Label>
+                      <p className="text-[13px] text-muted-foreground mt-1">
+                        {t('voiceChat.description')}
+                      </p>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'rounded-full border px-3 py-1 text-[12px]',
+                        voiceChatConfig?.configured
+                          ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                          : 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+                      )}
+                    >
+                      {voiceChatLoading
+                        ? t('voiceChat.loading')
+                        : voiceChatConfig?.configured
+                          ? t('voiceChat.configured')
+                          : t('voiceChat.missing')}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="voice-chat-app-id" className="text-[13px] text-foreground/80">{t('voiceChat.appId')}</Label>
+                      <Input
+                        id="voice-chat-app-id"
+                        value={voiceChatAppIdDraft}
+                        onChange={(event) => setVoiceChatAppIdDraft(event.target.value)}
+                        placeholder={t('voiceChat.appIdPlaceholder')}
+                        className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent font-mono text-[13px]"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="voice-chat-access-key" className="text-[13px] text-foreground/80">{t('voiceChat.accessKey')}</Label>
+                      <div className="relative">
+                        <Input
+                          id="voice-chat-access-key"
+                          type={showVoiceChatAccessKey ? 'text' : 'password'}
+                          value={voiceChatAccessKeyDraft}
+                          onChange={(event) => setVoiceChatAccessKeyDraft(event.target.value)}
+                          placeholder={voiceChatConfig?.hasAccessKey ? (voiceChatConfig.accessKeyMasked ?? t('voiceChat.accessKeyConfigured')) : t('voiceChat.accessKeyPlaceholder')}
+                          className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent pr-10 font-mono text-[13px]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowVoiceChatAccessKey((value) => !value)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showVoiceChatAccessKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-[12px] text-muted-foreground">
+                    {voiceChatConfig?.hasAccessKey
+                      ? voiceChatConfig.accessKeySource === 'speech-asr'
+                        ? t('voiceChat.accessKeyReused', { token: voiceChatConfig.accessKeyMasked ?? '***' })
+                        : t('voiceChat.accessKeySaved', { token: voiceChatConfig.accessKeyMasked ?? '***' })
+                      : t('voiceChat.accessKeyHelp')}
+                  </p>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                      type="button"
+                      onClick={() => void handleSaveVoiceChatRealtimeConfig()}
+                      disabled={voiceChatSaving}
+                      className="rounded-full px-5"
+                    >
+                      {voiceChatSaving ? t('voiceChat.saving') : t('voiceChat.save')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => { void loadVoiceChatRealtimeConfig(); }}
+                      disabled={voiceChatLoading || voiceChatSaving}
+                      className="rounded-full px-5"
+                    >
+                      {t('common:actions.refresh')}
+                    </Button>
+                    <p className="text-[12px] text-muted-foreground">
+                      {t('voiceChat.tip')}
                     </p>
                   </div>
                 </div>

@@ -818,7 +818,7 @@ export function getIsScrollDraining(): boolean {
 export async function waitForScrollIdle(): Promise<void> {
   while (scrollDraining) {
     // bootstrap-isolation forbids importing sleep() from src/utils/
-    // eslint-disable-next-line no-restricted-syntax
+     
     await new Promise(r => setTimeout(r, SCROLL_DRAIN_IDLE_MS).unref?.())
   }
 }

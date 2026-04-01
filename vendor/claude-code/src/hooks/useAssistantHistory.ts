@@ -188,7 +188,7 @@ export function useAssistantHistory({
     } finally {
       inflightRef.current = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mkSentinel reads refs only
+     
   }, [enabled, prepend, setMessages])
 
   // Scroll-anchor compensation — after React commits the prepended items,

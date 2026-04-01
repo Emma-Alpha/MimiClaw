@@ -1,4 +1,5 @@
 import { session } from 'electron';
+import { logger } from '../utils/logger';
 
 const REMOTE_MESSENGER_PARTITION = 'persist:jizhi-remote-chat';
 const REMOTE_MESSENGER_ORIGIN = 'https://im.4399om.com';
@@ -6,6 +7,10 @@ const REMOTE_MESSENGER_REFERER = `${REMOTE_MESSENGER_ORIGIN}/main/messenger`;
 const REMOTE_MESSENGER_API_BASE = 'https://messenger-api.4399om.com';
 const REMOTE_MESSENGER_IM_VERSION = '5.2.7-b260';
 const DEFAULT_PAGE_SIZE = 20;
+
+function traceXiaojiu(step: string, payload?: Record<string, unknown>): void {
+  logger.info(`[xiaojiu-trace][service] ${step}`, payload ?? {});
+}
 
 export interface XiaojiuAttachment {
   type: 'image' | 'video' | 'audio' | 'file';
@@ -22,6 +27,7 @@ export interface XiaojiuSession {
   draftText?: string;
   updatedAt?: number;
   sortIndex: number;
+  lastMsgId?: string | null;
 }
 
 export interface XiaojiuMessage {
@@ -98,6 +104,42 @@ function firstNumber(...values: unknown[]): number | undefined {
     }
   }
   return undefined;
+}
+
+function compareMessageIdValues(left: string, right: string): number {
+  const normalizedLeft = left.trim();
+  const normalizedRight = right.trim();
+
+  if (/^\d+$/.test(normalizedLeft) && /^\d+$/.test(normalizedRight)) {
+    if (normalizedLeft.length !== normalizedRight.length) {
+      return normalizedLeft.length - normalizedRight.length;
+    }
+    return normalizedLeft.localeCompare(normalizedRight);
+  }
+
+  const leftNumber = Number(normalizedLeft);
+  const rightNumber = Number(normalizedRight);
+  if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber) && leftNumber !== rightNumber) {
+    return leftNumber - rightNumber;
+  }
+
+  return normalizedLeft.localeCompare(normalizedRight);
+}
+
+function collectLikelyMessageIds(...values: unknown[]): string[] {
+  const seen = new Set<string>();
+
+  values.forEach((value) => {
+    const items = Array.isArray(value) ? value : [value];
+    items.forEach((item) => {
+      if (typeof item !== 'string') return;
+      const normalized = item.trim();
+      if (!normalized) return;
+      seen.add(normalized);
+    });
+  });
+
+  return Array.from(seen).sort((left, right) => compareMessageIdValues(right, left));
 }
 
 function parseJsonValue(value: unknown): unknown {
@@ -299,12 +341,26 @@ function ensureSuccess(envelope: ApiEnvelope | null, fallbackMessage: string): v
   throw new Error(message);
 }
 
+function compareMessagesByOrder(
+  left: Pick<XiaojiuMessage, 'id' | 'timestamp'>,
+  right: Pick<XiaojiuMessage, 'id' | 'timestamp'>,
+): number {
+  const leftTime = left.timestamp ?? 0;
+  const rightTime = right.timestamp ?? 0;
+  if (leftTime !== rightTime) return leftTime - rightTime;
+  return compareMessageIdValues(left.id, right.id);
+}
+
 function resolveHasMore(
   envelope: Record<string, unknown> | null,
   data: Record<string, unknown>,
   list: XiaojiuMessage[],
   pageSize: number,
 ): boolean {
+  // isFirst: true means we've reached the oldest messages — no more older messages to load
+  const isFirst = data.isFirst ?? envelope?.isFirst;
+  if (typeof isFirst === 'boolean') return !isFirst;
+
   const explicitHasMore = [
     data.hasMore,
     data.hasNext,
@@ -351,6 +407,17 @@ function normalizeSession(entry: Record<string, unknown>, index: number): Xiaoji
     ?? entry.msgContent,
   );
 
+  const lastMsgId = collectLikelyMessageIds(
+    entry.lastMsgId,
+    entry.latestMsgId,
+    entry.lastMessageId,
+    entry.maxMsgId,
+    entry.newestMsgId,
+    entry.lastSyncMsgId,
+    entry.lastReadMsgId,
+    entry.jumpMsgId,
+  )[0] || null;
+
   return {
     id,
     name: firstString(
@@ -379,6 +446,7 @@ function normalizeSession(entry: Record<string, unknown>, index: number): Xiaoji
       .map(normalizeTimestamp)
       .find((value): value is number => typeof value === 'number'),
     sortIndex: index,
+    lastMsgId,
   };
 }
 
@@ -485,6 +553,11 @@ async function postMessengerApi(path: string, body: Record<string, unknown>): Pr
     throw new Error('小九 Messenger 未登录，缺少 Authorization cookie');
   }
 
+  traceXiaojiu('post api:start', {
+    path,
+    body,
+  });
+
   const form = new URLSearchParams();
   Object.entries(body).forEach(([key, value]) => {
     if (value == null || value === '') return;
@@ -509,6 +582,14 @@ async function postMessengerApi(path: string, body: Record<string, unknown>): Pr
   const text = await response.text();
   const { envelope } = parseEnvelope(text);
 
+  traceXiaojiu('post api:response', {
+    path,
+    status: response.status,
+    ok: response.ok,
+    code: envelope?.code ?? null,
+    message: firstString(envelope?.msg, envelope?.message) || null,
+  });
+
   if (response.status === 401 || response.status === 403) {
     throw new Error(firstString(envelope?.msg, envelope?.message, '小九 Messenger 登录已失效'));
   }
@@ -531,32 +612,21 @@ async function fetchSessionInfo(sessionId: string): Promise<Record<string, unkno
   }
 }
 
-function findLikelyLatestMessageId(data: Record<string, unknown> | null): string | null {
-  if (!data) return null;
+function findLikelyLatestMessageIds(data: Record<string, unknown> | null): string[] {
+  if (!data) return [];
 
-  const candidates = [
+  return collectLikelyMessageIds(
     data.latestMsgId,
     data.lastMsgId,
     data.msgId,
     data.jumpMsgId,
     data.lastMessageId,
     data.lastReadMsgId,
-  ]
-    .map((value) => firstString(value))
-    .filter(Boolean)
-    .sort((left, right) => {
-      const leftNum = Number(left);
-      const rightNum = Number(right);
-      if (Number.isFinite(leftNum) && Number.isFinite(rightNum)) {
-        return rightNum - leftNum;
-      }
-      return right.localeCompare(left);
-    });
-
-  return candidates[0] || null;
+  );
 }
 
 export async function fetchXiaojiuSessions(): Promise<XiaojiuSession[]> {
+  traceXiaojiu('fetch sessions:start');
   const [topPayload, listPayload] = await Promise.all([
     postMessengerApi('/session/top-list', {}).catch(() => null),
     postMessengerApi('/session/list', {}),
@@ -578,7 +648,12 @@ export async function fetchXiaojiuSessions(): Promise<XiaojiuSession[]> {
     });
   });
 
-  return uniqueSessions(collected);
+  const sessions = uniqueSessions(collected);
+  traceXiaojiu('fetch sessions:success', {
+    count: sessions.length,
+    ids: sessions.slice(0, 5).map((session) => session.id),
+  });
+  return sessions;
 }
 
 function resolveMessageCandidates(
@@ -587,22 +662,43 @@ function resolveMessageCandidates(
   anchorMsgId: string | null,
   sessionInfo: Record<string, unknown> | null,
   pageSize: number,
+  providedLatestMsgId?: string | null,
 ): Array<Record<string, unknown>> {
-  const latestMsgId = findLikelyLatestMessageId(sessionInfo);
-
   if (mode === 'older') {
+    // anchorMsgId is the oldest message ID we currently have — pass as msgId so the API
+    // returns the page of messages that precede it.
+    const anchor = anchorMsgId || null;
     return [
-      { snSessionId: sessionId, msgId: anchorMsgId || latestMsgId || '1', next: 1, jump: 2, pageSize, listen: true },
-      { snSessionId: sessionId, msgId: anchorMsgId || latestMsgId || '1', next: 1, jump: 2, pageSize, listen: 'true' },
-      { snSessionId: sessionId, msgId: anchorMsgId || latestMsgId || '1', next: 1, jump: 2, pageSize: Math.max(pageSize, 50) },
-      { snSessionId: sessionId, msgId: anchorMsgId || latestMsgId || '1', next: 1, jump: 2, pageSize },
+      { snSessionId: sessionId, msgId: anchor, next: 1, jump: 2, pageSize, listen: true },
+      { snSessionId: sessionId, msgId: anchor, next: 1, jump: 2, pageSize, listen: 'true' },
+      { snSessionId: sessionId, msgId: anchor, next: 1, jump: 2, pageSize: Math.max(pageSize, 50) },
+      { snSessionId: sessionId, msgId: anchor, next: 1, jump: 2, pageSize },
     ];
   }
 
+  // For latest mode: msgId MUST be the most recent message ID in the session so the
+  // API returns the newest page (isLatest: true). Without a valid msgId the API returns
+  // from the very beginning of history. Try, in priority order:
+  //   1. latestMsgId passed directly from the session list (most reliable)
+  //   2. latestMsgId extracted from the session-info endpoint
+  //   3. Fallbacks without msgId
+  const latestMsgIds = collectLikelyMessageIds(
+    providedLatestMsgId,
+    findLikelyLatestMessageIds(sessionInfo),
+  );
+
+  const base = { snSessionId: sessionId, next: 1, jump: 2, pageSize, listen: true as boolean | string };
+  const latestCandidates: Array<Record<string, unknown>> = [];
+  latestMsgIds.forEach((msgId) => {
+    latestCandidates.push({ ...base, msgId });
+    latestCandidates.push({ ...base, msgId, listen: 'true' });
+  });
+
   return [
-    { snSessionId: sessionId, msgId: latestMsgId || '1', next: 1, jump: 2, pageSize, listen: true },
-    { snSessionId: sessionId, msgId: latestMsgId || '1', next: 1, jump: 2, pageSize, listen: 'true' },
-    { snSessionId: sessionId, msgId: '1', next: 1, jump: 2, pageSize, listen: true },
+    ...latestCandidates,
+    // Fallbacks when no latestMsgId is available — these may return oldest messages
+    { ...base },
+    { ...base, listen: 'true' },
     { snSessionId: sessionId, head: true, pageSize },
     { snSessionId: sessionId, head: true, pageSize: Math.max(pageSize, 50) },
     { snSessionId: sessionId, pageSize },
@@ -613,11 +709,19 @@ export async function fetchXiaojiuMessages(options: {
   sessionId: string;
   mode?: 'latest' | 'older';
   anchorMsgId?: string | null;
+  latestMsgId?: string | null;
   pageSize?: number;
 }): Promise<XiaojiuMessagePage> {
   const sessionId = options.sessionId;
   const mode = options.mode ?? 'latest';
   const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
+  traceXiaojiu('fetch messages:start', {
+    sessionId,
+    mode,
+    anchorMsgId: options.anchorMsgId ?? null,
+    latestMsgId: options.latestMsgId ?? null,
+    pageSize,
+  });
   const sessionInfo = await fetchSessionInfo(sessionId);
   const viewerHints = [
     firstString(sessionInfo?.uid),
@@ -632,6 +736,7 @@ export async function fetchXiaojiuMessages(options: {
     options.anchorMsgId ?? null,
     sessionInfo,
     pageSize,
+    options.latestMsgId ?? null,
   );
 
   const successfulPages: XiaojiuMessagePage[] = [];
@@ -639,6 +744,11 @@ export async function fetchXiaojiuMessages(options: {
 
   for (const payload of candidates) {
     try {
+      traceXiaojiu('fetch messages:try payload', {
+        sessionId,
+        mode,
+        payload,
+      });
       const responsePayload = await postMessengerApi('/message/list', payload);
       const { envelope, data } = parseEnvelope(responsePayload);
       ensureSuccess(envelope, '获取小九消息失败');
@@ -649,12 +759,7 @@ export async function fetchXiaojiuMessages(options: {
 
       const messages = list
         .map((item, index) => normalizeMessage(sessionId, item, index, viewerHints))
-        .sort((left, right) => {
-          const leftTime = left.timestamp ?? 0;
-          const rightTime = right.timestamp ?? 0;
-          if (leftTime !== rightTime) return leftTime - rightTime;
-          return left.id.localeCompare(right.id);
-        });
+        .sort(compareMessagesByOrder);
 
       successfulPages.push({
         messages,
@@ -662,10 +767,26 @@ export async function fetchXiaojiuMessages(options: {
         oldestMessageId: messages[0]?.id ?? null,
       });
 
+      traceXiaojiu('fetch messages:payload success', {
+        sessionId,
+        mode,
+        payload,
+        count: messages.length,
+        hasMore: successfulPages[successfulPages.length - 1]?.hasMore ?? false,
+        oldestMessageId: messages[0]?.id ?? null,
+        newestMessageId: messages[messages.length - 1]?.id ?? null,
+      });
+
       if (mode === 'older') {
         break;
       }
     } catch (error) {
+      traceXiaojiu('fetch messages:payload error', {
+        sessionId,
+        mode,
+        payload,
+        message: error instanceof Error ? error.message : String(error),
+      });
       if (!firstError) {
         firstError = error instanceof Error ? error : new Error(String(error));
       }
@@ -677,13 +798,32 @@ export async function fetchXiaojiuMessages(options: {
   }
 
   if (mode === 'older') {
+    traceXiaojiu('fetch messages:final older', {
+      sessionId,
+      count: successfulPages[0].messages.length,
+      hasMore: successfulPages[0].hasMore,
+      oldestMessageId: successfulPages[0].oldestMessageId,
+    });
     return successfulPages[0];
   }
 
-  return successfulPages.sort((left, right) => {
-    const leftNewest = left.messages[left.messages.length - 1]?.timestamp ?? 0;
-    const rightNewest = right.messages[right.messages.length - 1]?.timestamp ?? 0;
-    if (leftNewest !== rightNewest) return rightNewest - leftNewest;
+  const finalPage = successfulPages.sort((left, right) => {
+    const leftNewest = left.messages[left.messages.length - 1];
+    const rightNewest = right.messages[right.messages.length - 1];
+    if (leftNewest && rightNewest) {
+      const orderResult = compareMessagesByOrder(rightNewest, leftNewest);
+      if (orderResult !== 0) return orderResult;
+    }
     return right.messages.length - left.messages.length;
   })[0];
+
+  traceXiaojiu('fetch messages:final latest', {
+    sessionId,
+    count: finalPage.messages.length,
+    hasMore: finalPage.hasMore,
+    oldestMessageId: finalPage.oldestMessageId,
+    newestMessageId: finalPage.messages[finalPage.messages.length - 1]?.id ?? null,
+  });
+
+  return finalPage;
 }

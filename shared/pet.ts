@@ -18,8 +18,31 @@ export const PET_LOOPING_ANIMATIONS = ['static', 'listening', 'sleep-loop', 'tas
 
 export const DEFAULT_PET_ANIMATION: PetAnimation = 'static';
 
-export type PetRuntimeActivity = 'idle' | 'listening' | 'working' | 'sleeping' | 'recording';
+export type PetRuntimeActivity = 'idle' | 'listening' | 'working' | 'sleeping' | 'recording' | 'transcribing';
 export type PetUiActivity = 'idle' | 'listening' | 'working';
+
+export type PetRecordingCommandAction = 'start' | 'confirm' | 'cancel';
+
+export interface PetRecordingCommandPayload {
+  action: PetRecordingCommandAction;
+}
+
+export interface PetMiniChatSeedAttachment {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  stagedPath: string;
+  preview: string | null;
+  status: 'staging' | 'ready' | 'error';
+  error?: string;
+}
+
+export interface PetMiniChatSeed {
+  text: string;
+  attachments?: PetMiniChatSeedAttachment[];
+  autoSend?: boolean;
+}
 
 export interface PetRuntimeState {
   animation: PetAnimation;

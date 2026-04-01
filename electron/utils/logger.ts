@@ -147,6 +147,10 @@ function formatMessage(level: string, message: string, ...args: unknown[]): stri
   return `[${timestamp}] [${level.padEnd(5)}] ${message}${formattedArgs}`;
 }
 
+function shouldMuteTerminalOutput(message: string): boolean {
+  return message.includes('[xiaojiu-trace]');
+}
+
 // ── Core write ───────────────────────────────────────────────────
 
 /**
@@ -180,7 +184,9 @@ function writeLog(formatted: string): void {
 export function debug(message: string, ...args: unknown[]): void {
   if (currentLevel <= LogLevel.DEBUG) {
     const formatted = formatMessage('DEBUG', message, ...args);
-    console.debug(formatted);
+    if (!shouldMuteTerminalOutput(message)) {
+      console.debug(formatted);
+    }
     writeLog(formatted);
   }
 }
@@ -188,7 +194,9 @@ export function debug(message: string, ...args: unknown[]): void {
 export function info(message: string, ...args: unknown[]): void {
   if (currentLevel <= LogLevel.INFO) {
     const formatted = formatMessage('INFO', message, ...args);
-    console.info(formatted);
+    if (!shouldMuteTerminalOutput(message)) {
+      console.info(formatted);
+    }
     writeLog(formatted);
   }
 }
@@ -196,7 +204,9 @@ export function info(message: string, ...args: unknown[]): void {
 export function warn(message: string, ...args: unknown[]): void {
   if (currentLevel <= LogLevel.WARN) {
     const formatted = formatMessage('WARN', message, ...args);
-    console.warn(formatted);
+    if (!shouldMuteTerminalOutput(message)) {
+      console.warn(formatted);
+    }
     writeLog(formatted);
   }
 }
@@ -204,7 +214,9 @@ export function warn(message: string, ...args: unknown[]): void {
 export function error(message: string, ...args: unknown[]): void {
   if (currentLevel <= LogLevel.ERROR) {
     const formatted = formatMessage('ERROR', message, ...args);
-    console.error(formatted);
+    if (!shouldMuteTerminalOutput(message)) {
+      console.error(formatted);
+    }
     writeLog(formatted);
   }
 }

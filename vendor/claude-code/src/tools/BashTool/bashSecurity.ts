@@ -1895,7 +1895,7 @@ function validateBraceExpansion(context: ValidationContext): PermissionResult {
 // separators but bash treats as literal word content. While this differential
 // is defense-favorable (shell-quote over-splits), blocking these proactively
 // prevents future edge cases.
-// eslint-disable-next-line no-misleading-character-class
+ 
 const UNICODE_WS_RE =
   /[\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]/
 

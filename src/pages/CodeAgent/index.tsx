@@ -8,7 +8,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { fetchCodeAgentHealth, fetchCodeAgentStatus, fetchLatestCodeAgentRun, restartCodeAgent, runCodeAgentTask, startCodeAgent, stopCodeAgent } from '@/lib/code-agent';
+import {
+  fetchCodeAgentHealth,
+  fetchCodeAgentStatus,
+  fetchLatestCodeAgentRun,
+  inferCodeAgentWorkspaceRoot,
+  readStoredCodeAgentWorkspaceRoot,
+  restartCodeAgent,
+  runCodeAgentTask,
+  startCodeAgent,
+  stopCodeAgent,
+  writeStoredCodeAgentWorkspaceRoot,
+} from '@/lib/code-agent';
 import { subscribeHostEvent } from '@/lib/host-events';
 import { hostApiFetch } from '@/lib/host-api';
 import { toUserMessage } from '@/lib/api-client';
@@ -21,36 +32,6 @@ import type {
   CodeAgentRuntimeConfig,
   CodeAgentStatus,
 } from '../../../shared/code-agent';
-
-const CODE_AGENT_WORKSPACE_ROOT_STORAGE_KEY = 'clawx:code-agent-workspace-root';
-
-function readStoredCodeAgentWorkspaceRoot(): string {
-  try {
-    return window.localStorage.getItem(CODE_AGENT_WORKSPACE_ROOT_STORAGE_KEY)?.trim() ?? '';
-  } catch {
-    return '';
-  }
-}
-
-function writeStoredCodeAgentWorkspaceRoot(value: string): void {
-  try {
-    if (value) {
-      window.localStorage.setItem(CODE_AGENT_WORKSPACE_ROOT_STORAGE_KEY, value);
-    } else {
-      window.localStorage.removeItem(CODE_AGENT_WORKSPACE_ROOT_STORAGE_KEY);
-    }
-  } catch {
-    // ignore localStorage write failures
-  }
-}
-
-function inferCodeAgentWorkspaceRoot(candidate: string | null | undefined): string {
-  if (!candidate) return '';
-  const trimmed = candidate.trim();
-  if (!trimmed) return '';
-  const withoutVendor = trimmed.replace(/[\\/]vendor[\\/]claude-code$/, '');
-  return withoutVendor || trimmed;
-}
 
 export function CodeAgent() {
   const { t } = useTranslation(['settings', 'common']);

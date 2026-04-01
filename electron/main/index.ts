@@ -2,6 +2,7 @@
  * Electron Main Process Entry
  * Manages window creation, system tray, and IPC handlers
  */
+import '../load-env';
 import { app, autoUpdater as electronAutoUpdater, BrowserWindow, globalShortcut, nativeImage, session, shell } from 'electron';
 import type { Server } from 'node:http';
 import { join, resolve } from 'node:path';
@@ -24,7 +25,7 @@ import { applyProxySettings } from './proxy';
 import { syncLaunchAtStartupSettingFromStore } from './launch-at-startup';
 import { syncPetWindowFromSettings } from './pet-window';
 import { registerPetRuntime } from './pet-runtime';
-import { startClipboardWatcher, stopClipboardWatcher, triggerTranslateFromSelection } from './clipboard-watcher';
+import { startVoiceShortcutMonitor, stopVoiceShortcutMonitor } from './voice-shortcut';
 import {
   clearPendingSecondInstanceFocus,
   consumeMainWindowReady,
@@ -162,12 +163,50 @@ function isXiaojiuAuthDeepLink(url: URL): boolean {
     && url.pathname === '/xiaojiu/callback';
 }
 
+function isJizhiAuthDeepLink(url: URL): boolean {
+  return url.protocol === `${APP_PROTOCOL}:`
+    && url.hostname === 'auth'
+    && url.pathname === '/jizhi/callback';
+}
+
+async function handleJizhiAuthDeepLink(url: URL): Promise<void> {
+  const token = url.searchParams.get('token')?.trim() || '';
+  if (!token) {
+    logger.warn('[jizhi-auth] Deep link missing token parameter');
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('jizhi:auth-error', { message: '极智登录回调缺少 token 参数' });
+    }
+    return;
+  }
+
+  try {
+    await setSetting('jizhiToken', token);
+    logger.info('[jizhi-auth] jizhiToken saved from deep link');
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('jizhi:auth-success', {});
+    }
+    focusMainWindow();
+  } catch (error) {
+    logger.error('[jizhi-auth] Failed to save jizhiToken:', error);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('jizhi:auth-error', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+}
+
 async function handleDeepLink(urlString: string): Promise<void> {
   let url: URL;
   try {
     url = new URL(urlString);
   } catch (error) {
     logger.warn('[oauth] Ignoring invalid deep link URL:', error);
+    return;
+  }
+
+  if (isJizhiAuthDeepLink(url)) {
+    await handleJizhiAuthDeepLink(url);
     return;
   }
 
@@ -436,17 +475,7 @@ async function initialize(): Promise<void> {
   });
 
   await syncPetWindowFromSettings();
-  startClipboardWatcher();
-
-  // Global hotkey for "translate selection" — Alt+Shift+T
-  // Select text anywhere, press hotkey, cat offers to translate
-  const TRANSLATE_HOTKEY = 'Alt+Shift+T';
-  const hotkeyRegistered = globalShortcut.register(TRANSLATE_HOTKEY, () => {
-    void triggerTranslateFromSelection();
-  });
-  if (!hotkeyRegistered) {
-    logger.warn(`[translate] Failed to register global hotkey ${TRANSLATE_HOTKEY} (already in use)`);
-  }
+  void startVoiceShortcutMonitor();
 
   // Register update handlers
   registerUpdateHandlers(appUpdater, window);
@@ -675,7 +704,7 @@ if (gotTheLock) {
 
   app.on('will-quit', () => {
     globalShortcut.unregisterAll();
-    stopClipboardWatcher();
+    stopVoiceShortcutMonitor();
     releaseProcessInstanceFileLock();
   });
 

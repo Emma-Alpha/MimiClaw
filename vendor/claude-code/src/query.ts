@@ -303,7 +303,7 @@ async function* queryLoop(
     state.toolUseContext,
   )
 
-  // eslint-disable-next-line no-constant-condition
+   
   while (true) {
     // Destructure state at the top of each iteration. toolUseContext alone
     // is reassigned within an iteration (queryTracking, messages updates);

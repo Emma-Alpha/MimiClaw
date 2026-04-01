@@ -16,14 +16,15 @@ import {
 	Plus,
 	Trash2,
 	Cpu,
-	MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/stores/settings";
 import { useChatStore } from "@/stores/chat";
 import { useGatewayStore } from "@/stores/gateway";
 import { useAgentsStore } from "@/stores/agents";
+import { useJizhiSessionsStore } from "@/stores/jizhi-sessions";
 import { useRemoteMessengerStore } from "@/stores/remote-messenger";
+import { useVoiceChatSessionsStore } from "@/stores/voice-chat-sessions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -134,7 +135,36 @@ type UnifiedSessionItem =
 			activityMs: number;
 			tagLabel: string;
 			deletable: false;
+	  }
+	| {
+			key: string;
+			source: "jizhi";
+			label: string;
+			activityMs: number;
+			tagLabel: string;
+			deletable: false;
+	  }
+	| {
+			key: string;
+			source: "voice";
+			label: string;
+			activityMs: number;
+			tagLabel: string;
+			deletable: false;
 	  };
+
+function getSessionSourceTagClass(source: UnifiedSessionItem["source"]): string {
+	switch (source) {
+		case "xiaojiu":
+			return "bg-[#E8F2FF] text-[#2667D8] dark:bg-[#1D3557] dark:text-[#9CC4FF]";
+		case "jizhi":
+			return "bg-[#EAF8EF] text-[#157347] dark:bg-[#183D2A] dark:text-[#8EE3B0]";
+		case "voice":
+			return "bg-[#FCEFE1] text-[#B45309] dark:bg-[#4A2C09] dark:text-[#F6C57A]";
+		default:
+			return "bg-black/[0.04] text-foreground/70 dark:bg-white/[0.08]";
+	}
+}
 
 export function Sidebar() {
 	const sidebarCollapsed = useSettingsStore((state) => state.sidebarCollapsed);
@@ -176,11 +206,24 @@ export function Sidebar() {
 	const setRemoteActiveSessionId = useRemoteMessengerStore(
 		(s) => s.setActiveSessionId,
 	);
+	const jizhiSessions = useJizhiSessionsStore((s) => s.sessions);
+	const jizhiLastSyncedAt = useJizhiSessionsStore((s) => s.lastSyncedAt);
+	const jizhiSyncError = useJizhiSessionsStore((s) => s.syncError);
+	const jizhiActiveSessionId = useJizhiSessionsStore((s) => s.activeSessionId);
+	const setJizhiActiveSessionId = useJizhiSessionsStore(
+		(s) => s.setActiveSessionId,
+	);
+	const voiceSessions = useVoiceChatSessionsStore((s) => s.sessions);
+	const voiceLastSyncedAt = useVoiceChatSessionsStore((s) => s.lastSyncedAt);
+	const voiceActiveSessionId = useVoiceChatSessionsStore((s) => s.activeSessionId);
+	const setVoiceActiveSessionId = useVoiceChatSessionsStore((s) => s.setActiveSessionId);
 
 	const navigate = useNavigate();
 	const pathname = useLocation().pathname;
 	const isOnChat = pathname === "/";
-	const isOnRemoteChat = pathname.startsWith("/xiaojiu-chat");
+	const isOnXiaojiuChat = pathname.startsWith("/xiaojiu-chat");
+	const isOnJizhiChat = pathname.startsWith("/jizhi-chat");
+	const isOnVoiceChat = pathname.startsWith("/voice-chat");
 
 	const getSessionLabel = useCallback(
 		(key: string, displayName?: string, label?: string) =>
@@ -233,17 +276,42 @@ export function Sidebar() {
 			tagLabel: "小九",
 			deletable: false as const,
 		}));
-		return [...nativeSessions, ...messengerSessions].sort(
+		const jizhiSyncBaseMs = jizhiLastSyncedAt ?? nowMs;
+		const jizhiSessionItems = jizhiSessions.map((session, index) => ({
+			key: `jizhi:${session.id}`,
+			source: "jizhi" as const,
+			label: session.name,
+			activityMs:
+				session.lastMessageCreatedAt
+				?? session.updatedAt
+				?? Math.max(1, jizhiSyncBaseMs - index * 1000),
+			tagLabel: "极智",
+			deletable: false as const,
+		}));
+		const voiceSyncBaseMs = voiceLastSyncedAt ?? nowMs;
+		const voiceSessionItems = voiceSessions.map((session, index) => ({
+			key: `voice:${session.id}`,
+			source: "voice" as const,
+			label: session.title,
+			activityMs: session.lastActivityAt || Math.max(1, voiceSyncBaseMs - index * 1000),
+			tagLabel: "语音",
+			deletable: false as const,
+		}));
+		return [...nativeSessions, ...messengerSessions, ...jizhiSessionItems, ...voiceSessionItems].sort(
 			(a, b) => b.activityMs - a.activityMs,
 		);
 	}, [
 		agentNameById,
 		getSessionLabel,
+		jizhiLastSyncedAt,
+		jizhiSessions,
 		nowMs,
 		remoteLastSyncedAt,
 		remoteSessions,
 		sessionLastActivity,
 		sessions,
+		voiceLastSyncedAt,
+		voiceSessions,
 	]);
 	const sessionBuckets: Array<{
 		key: SessionBucketKey;
@@ -374,14 +442,6 @@ export function Sidebar() {
 						</span>
 					)}
 				</button>
-
-				<NavItem
-					to="/xiaojiu-chat"
-					icon={<MessageSquare className="h-[18px] w-[18px]" strokeWidth={2} />}
-					label={t("sidebar.remoteWebChat")}
-					collapsed={sidebarCollapsed}
-				/>
-
 				{navItems.map((item) => (
 					<NavItem key={item.to} {...item} collapsed={sidebarCollapsed} />
 				))}
@@ -390,19 +450,30 @@ export function Sidebar() {
 			{/* Session list — below Settings, only when expanded */}
 			{!sidebarCollapsed && unifiedSessions.length > 0 && (
 				<div className="flex-1 overflow-y-auto overflow-x-hidden px-2 mt-4 space-y-0.5 pb-2">
+					{jizhiSyncError ? (
+						<div className="mx-2 mb-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] leading-4 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
+							极智会话同步失败
+						</div>
+					) : null}
 					{sessionBuckets.map((bucket) =>
 						bucket.sessions.length > 0 ? (
 							<div key={bucket.key} className="pt-2">
 								<div className="px-2.5 pb-1 text-[11px] font-medium text-muted-foreground/60 tracking-tight">
 									{bucket.label}
 								</div>
-								{bucket.sessions.map((s) => {
-									const isNativeSession = s.source === "openclaw";
-									const isActive = isNativeSession
-										? isOnChat && currentSessionKey === s.key
-										: isOnRemoteChat &&
-											remoteActiveSessionId === s.key.replace(/^xiaojiu:/, "");
-									return (
+									{bucket.sessions.map((s) => {
+										const isNativeSession = s.source === "openclaw";
+										const isActive = isNativeSession
+											? isOnChat && currentSessionKey === s.key
+											: s.source === "xiaojiu"
+												? isOnXiaojiuChat &&
+													remoteActiveSessionId === s.key.replace(/^xiaojiu:/, "")
+												: s.source === "jizhi"
+													? isOnJizhiChat &&
+														jizhiActiveSessionId === s.key.replace(/^jizhi:/, "")
+													: isOnVoiceChat &&
+														voiceActiveSessionId === s.key.replace(/^voice:/, "");
+										return (
 										<div
 											key={s.key}
 											className="group relative flex items-center"
@@ -414,10 +485,24 @@ export function Sidebar() {
 														navigate("/");
 														return;
 													}
-													setRemoteActiveSessionId(
-														s.key.replace(/^xiaojiu:/, ""),
+													if (s.source === "xiaojiu") {
+														setRemoteActiveSessionId(
+															s.key.replace(/^xiaojiu:/, ""),
+														);
+														navigate("/xiaojiu-chat");
+														return;
+													}
+													if (s.source === "voice") {
+														setVoiceActiveSessionId(
+															s.key.replace(/^voice:/, ""),
+														);
+														navigate("/voice-chat");
+														return;
+													}
+													setJizhiActiveSessionId(
+														s.key.replace(/^jizhi:/, ""),
 													);
-													navigate("/xiaojiu-chat");
+													navigate("/jizhi-chat");
 												}}
 												className={cn(
 													"w-full text-left rounded-lg px-2.5 py-1.5 text-[13px] transition-colors pr-7",
@@ -429,7 +514,10 @@ export function Sidebar() {
 												type="button"
 												>
 													<div className="flex min-w-0 items-center gap-2">
-														<span className="shrink-0 rounded-full bg-black/[0.04] px-2 py-0.5 text-[10px] font-medium text-foreground/70 dark:bg-white/[0.08]">
+														<span className={cn(
+															"shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium",
+															getSessionSourceTagClass(s.source),
+														)}>
 															{isNativeSession ? s.agentName : s.tagLabel}
 														</span>
 														<span className="truncate">

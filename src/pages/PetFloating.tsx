@@ -7,6 +7,7 @@ import {
 	type MouseEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import {
 	DEFAULT_PET_ANIMATION,
 	PET_IDLE_ANIMATIONS,
@@ -16,8 +17,17 @@ import {
 	type PetAnimation,
 } from "@/lib/pet-floating";
 import { invokeIpc } from "@/lib/api-client";
+import {
+	float32ToPcm16Bytes,
+	mixToMono,
+	resampleLinear,
+	type PetAsrEventPayload,
+} from "@/lib/volcengine-speech";
 import { useSettingsStore } from "@/stores/settings";
-import type { PetRuntimeState } from "../../shared/pet";
+import type {
+	PetRecordingCommandPayload,
+	PetRuntimeState,
+} from "../../shared/pet";
 
 const FALLBACK_RUNTIME_STATE: PetRuntimeState = {
 	animation: DEFAULT_PET_ANIMATION,
@@ -34,8 +44,190 @@ const MOVE_THROTTLE_MS = 16;
 /** Minimum ms between two toggleMiniChat calls to prevent double-click ghost windows. */
 const TOGGLE_DEBOUNCE_MS = 400;
 
-/** Auto-dismiss delay for the translate bubble (ms). */
-const TRANSLATE_BUBBLE_TTL_MS = 10_000;
+function PetThinkingBubble({ label }: { label: string }) {
+	return (
+		<div
+			className="pointer-events-none absolute top-[16%] left-1/2 z-20 flex h-[34px] min-w-[120px] -translate-x-1/2 scale-[0.65] items-center justify-center overflow-hidden rounded-full border border-white/[0.08] px-4 text-[16px] font-medium text-white/60 shadow-[0_6px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[24px]"
+			style={{
+				background: "rgba(10, 10, 10, 0.94)",
+				transformOrigin: "center bottom",
+				animation: "pet-claw-wave-in 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+			}}
+		>
+			<span className="relative z-10">{label}</span>
+			<div
+				className="absolute inset-0"
+				style={{
+					background:
+						"linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 45%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 55%, transparent 100%)",
+					backgroundSize: "200% 100%",
+					animation: "pet-claw-shimmer 1.8s ease-in-out infinite",
+				}}
+			/>
+		</div>
+	);
+}
+
+function PetVoiceWaveformCanvas({
+	analyser,
+	barCount = 12,
+}: {
+	analyser: AnalyserNode | null;
+	barCount?: number;
+}) {
+	const canvasRef = useRef<HTMLCanvasElement | null>(null);
+	const frameRef = useRef<number | null>(null);
+	const smoothedRef = useRef<Float32Array | null>(null);
+
+	useEffect(() => {
+		const canvas = canvasRef.current;
+		if (!canvas) return;
+
+		const rect = canvas.getBoundingClientRect();
+		const dpr = window.devicePixelRatio || 1;
+		canvas.width = rect.width * dpr;
+		canvas.height = rect.height * dpr;
+
+		const context = canvas.getContext("2d");
+		if (!context) return;
+		context.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+		const width = rect.width;
+		const height = rect.height;
+		const centerY = height / 2;
+		const barWidth = 2.5;
+		const gap = 2.5;
+		const totalWidth = barCount * barWidth + (barCount - 1) * gap;
+		const startX = (width - totalWidth) / 2;
+		const frequencyBinCount = analyser?.frequencyBinCount ?? 256;
+		const frequencyData = new Uint8Array(frequencyBinCount);
+
+		if (!smoothedRef.current || smoothedRef.current.length !== barCount) {
+			smoothedRef.current = new Float32Array(barCount);
+		}
+
+		const draw = () => {
+			frameRef.current = window.requestAnimationFrame(draw);
+			context.clearRect(0, 0, width, height);
+
+			if (analyser) {
+				analyser.getByteFrequencyData(frequencyData);
+			}
+
+			const bucketSize = Math.max(1, Math.floor(frequencyBinCount / barCount));
+			for (let index = 0; index < barCount; index += 1) {
+				const rawLevel = analyser
+					? frequencyData[Math.min(index * bucketSize, frequencyData.length - 1)] / 255
+					: (Math.sin(Date.now() / 180 + index * 0.9) + 1) / 2;
+				const smoothed = smoothedRef.current?.[index] ?? 0;
+				const nextLevel = smoothed + (rawLevel - smoothed) * 0.22;
+				if (smoothedRef.current) smoothedRef.current[index] = nextLevel;
+
+				const maxHalfHeight = centerY * 0.95;
+				const barHeight = Math.max(2, nextLevel * maxHalfHeight + 2);
+				const x = startX + index * (barWidth + gap);
+				const opacity = 0.35 + nextLevel * 0.6;
+				const gradient = context.createLinearGradient(x, centerY - barHeight, x, centerY + barHeight);
+				gradient.addColorStop(0, `rgba(255, 255, 255, ${opacity * 0.5})`);
+				gradient.addColorStop(0.5, `rgba(255, 255, 255, ${opacity})`);
+				gradient.addColorStop(1, `rgba(255, 255, 255, ${opacity * 0.5})`);
+				context.shadowColor = `rgba(255, 255, 255, ${nextLevel * 0.15})`;
+				context.shadowBlur = 3 + nextLevel * 4;
+				context.fillStyle = gradient;
+				context.beginPath();
+				context.roundRect(x, centerY - barHeight, barWidth, barHeight * 2, barWidth / 2);
+				context.fill();
+			}
+
+			context.shadowColor = "transparent";
+			context.shadowBlur = 0;
+		};
+
+		draw();
+		return () => {
+			if (frameRef.current != null) {
+				window.cancelAnimationFrame(frameRef.current);
+				frameRef.current = null;
+			}
+		};
+	}, [analyser, barCount]);
+
+	return <canvas ref={canvasRef} className="block h-6 w-14 shrink-0" />;
+}
+
+function PetRecordingBubble({
+	analyser,
+	transcript,
+	label,
+	onCancel,
+	onConfirm,
+	onMouseEnter,
+	onMouseLeave,
+}: {
+	analyser: AnalyserNode | null;
+	transcript: string;
+	label: string;
+	onCancel: () => void;
+	onConfirm: () => void;
+	onMouseEnter: () => void;
+	onMouseLeave: () => void;
+}) {
+	return (
+		<div
+			className="pointer-events-auto absolute top-[16%] left-1/2 z-20 flex -translate-x-1/2 scale-[0.65] items-center gap-1 rounded-full border border-white/[0.08] p-1 shadow-[0_6px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[24px]"
+			style={{
+				background: "rgba(10, 10, 10, 0.94)",
+				transformOrigin: "center bottom",
+				animation: "pet-claw-wave-in 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+			}}
+			onMouseDown={(event) => {
+				event.stopPropagation();
+			}}
+			onClick={(event) => {
+				event.stopPropagation();
+			}}
+			onMouseEnter={onMouseEnter}
+			onMouseLeave={onMouseLeave}
+		>
+			<button
+				type="button"
+				className="flex h-6 w-6 items-center justify-center rounded-full border-0 text-white/90 transition-all duration-150 hover:bg-white/[0.35] hover:text-white"
+				style={{ background: "rgba(255, 255, 255, 0.22)" }}
+				onClick={onCancel}
+				aria-label="取消录音"
+			>
+				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
+					<path d="M18 6L6 18M6 6l12 12" />
+				</svg>
+			</button>
+			<div className="flex min-w-0 items-center gap-2 px-1">
+				<PetVoiceWaveformCanvas analyser={analyser} />
+				<span className="max-w-[120px] truncate text-[13px] font-medium text-white/80">
+					{transcript || label}
+				</span>
+			</div>
+			<button
+				type="button"
+				className="flex h-6 w-6 items-center justify-center rounded-full border-0 bg-white text-[#111] transition-all duration-150 hover:bg-[#e8e8e8]"
+				onClick={onConfirm}
+				aria-label="结束录音并发送"
+			>
+				<svg
+					width="15"
+					height="15"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="2.8"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				>
+					<path d="M20 6L9 17l-5-5" />
+				</svg>
+			</button>
+		</div>
+	);
+}
 
 export function PetFloating() {
 	const { i18n } = useTranslation("settings");
@@ -45,9 +237,21 @@ export function PetFloating() {
 	const [runtimeState, setRuntimeState] = useState<PetRuntimeState>(
 		FALLBACK_RUNTIME_STATE,
 	);
+	const [recordingAnalyser, setRecordingAnalyser] = useState<AnalyserNode | null>(null);
+	const [liveTranscript, setLiveTranscript] = useState("");
 	const [hasPlayedIntro, setHasPlayedIntro] = useState(false);
-	const [translateBubble, setTranslateBubble] = useState<{ text: string } | null>(null);
-	const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const recordingStreamRef = useRef<MediaStream | null>(null);
+	const recordingAudioContextRef = useRef<AudioContext | null>(null);
+	const recordingSourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
+	const recordingProcessorNodeRef = useRef<ScriptProcessorNode | null>(null);
+	const recordingSilenceNodeRef = useRef<GainNode | null>(null);
+	const recordingSampleRateRef = useRef(48_000);
+	const pendingInputSamplesRef = useRef<number[]>([]);
+	const asrSessionIdRef = useRef<string | null>(null);
+	const isFinalizingRecordingRef = useRef(false);
+	const isRecordingRef = useRef(false);
+	const isStartingRecordingRef = useRef(false);
+	const pendingRecordingActionRef = useRef<"confirm" | "cancel" | null>(null);
 
 	const lastToggleAt = useRef(0);
 	const isDragging = useRef(false);
@@ -71,6 +275,281 @@ export function PetFloating() {
 	const shouldLoop = PET_LOOPING_ANIMATIONS.includes(
 		displayAnimation as (typeof PET_LOOPING_ANIMATIONS)[number],
 	);
+	const statusOverlay = useMemo(() => {
+		if (runtimeState.activity === "recording") {
+			return {
+				variant: "recording" as const,
+				label: i18n.resolvedLanguage?.startsWith("zh")
+					? "语音录入中"
+					: i18n.resolvedLanguage?.startsWith("ja")
+						? "音声入力中"
+						: "Voice Input",
+			};
+		}
+
+		if (runtimeState.activity === "transcribing") {
+			return {
+				variant: "thinking" as const,
+				label: liveTranscript || "Thinking",
+			};
+		}
+
+		return null;
+	}, [i18n.resolvedLanguage, liveTranscript, runtimeState.activity]);
+
+	const teardownRecordingAudioPipeline = useCallback(() => {
+		const processor = recordingProcessorNodeRef.current;
+		if (processor) {
+			processor.onaudioprocess = null;
+			processor.disconnect();
+		}
+		recordingProcessorNodeRef.current = null;
+		recordingSourceNodeRef.current?.disconnect();
+		recordingSourceNodeRef.current = null;
+		recordingSilenceNodeRef.current?.disconnect();
+		recordingSilenceNodeRef.current = null;
+		recordingStreamRef.current?.getTracks().forEach((track) => {
+			track.stop();
+		});
+		recordingStreamRef.current = null;
+		if (recordingAudioContextRef.current) {
+			void recordingAudioContextRef.current.close().catch(() => {});
+		}
+		recordingAudioContextRef.current = null;
+		pendingInputSamplesRef.current = [];
+		setRecordingAnalyser(null);
+	}, []);
+
+	const cleanupRecordingPreview = useCallback(() => {
+		isRecordingRef.current = false;
+		isStartingRecordingRef.current = false;
+		isFinalizingRecordingRef.current = false;
+		pendingRecordingActionRef.current = null;
+		teardownRecordingAudioPipeline();
+	}, [teardownRecordingAudioPipeline]);
+
+	const syncPetInputActivity = useCallback((activity: "idle" | "recording" | "transcribing") => {
+		void invokeIpc("pet:setInputActivity", { activity }).catch(() => {});
+	}, []);
+
+	const consumePendingAudioChunk = useCallback(() => {
+		const pendingSamples = pendingInputSamplesRef.current;
+		if (pendingSamples.length === 0) {
+			return new Uint8Array(0);
+		}
+
+		const resampled = resampleLinear(
+			Float32Array.from(pendingSamples),
+			recordingSampleRateRef.current,
+			16_000,
+		);
+		pendingInputSamplesRef.current = [];
+		return float32ToPcm16Bytes(resampled);
+	}, []);
+
+	const cancelCurrentRecording = useCallback(() => {
+		const sessionId = asrSessionIdRef.current;
+		asrSessionIdRef.current = null;
+		cleanupRecordingPreview();
+		setLiveTranscript("");
+		syncPetInputActivity("idle");
+		if (sessionId) {
+			void invokeIpc("pet:asrSessionCancel", { sessionId }).catch(() => {});
+		}
+	}, [cleanupRecordingPreview, syncPetInputActivity]);
+
+	const finalizeCurrentRecording = useCallback(async () => {
+		if (isFinalizingRecordingRef.current) return;
+		isFinalizingRecordingRef.current = true;
+
+		const sessionId = asrSessionIdRef.current;
+		const finalAudioChunk = consumePendingAudioChunk();
+		asrSessionIdRef.current = null;
+		teardownRecordingAudioPipeline();
+		isRecordingRef.current = false;
+		isStartingRecordingRef.current = false;
+		pendingRecordingActionRef.current = null;
+
+		if (!sessionId) {
+			isFinalizingRecordingRef.current = false;
+			syncPetInputActivity("idle");
+			toast.error(
+				i18n.resolvedLanguage?.startsWith("zh")
+					? "语音识别会话未启动"
+					: i18n.resolvedLanguage?.startsWith("ja")
+						? "音声認識セッションが開始されていません"
+						: "Speech session was not started.",
+			);
+			return;
+		}
+
+		try {
+			const result = await invokeIpc<{ success: boolean; text?: string }>(
+				"pet:asrSessionFinish",
+				{
+					sessionId,
+					audioChunk: finalAudioChunk,
+				},
+			);
+			const transcriptText = (result.text || "").trim();
+
+			if (!transcriptText) {
+				throw new Error("Speech transcription returned empty text");
+			}
+
+			await invokeIpc("pet:openMiniChatWithPayload", {
+				text: transcriptText,
+				autoSend: true,
+			});
+			setLiveTranscript("");
+		} catch (error) {
+			console.error("[pet-floating] Failed to finalize voice recording", error);
+			toast.error(
+				i18n.resolvedLanguage?.startsWith("zh")
+					? "语音转写失败，请检查火山 ASR 配置"
+					: i18n.resolvedLanguage?.startsWith("ja")
+						? "音声文字起こしに失敗しました。Volcengine ASR 設定を確認してください"
+						: "Speech transcription failed. Please check the Volcengine ASR settings.",
+			);
+		} finally {
+			isFinalizingRecordingRef.current = false;
+			syncPetInputActivity("idle");
+		}
+	}, [consumePendingAudioChunk, i18n.resolvedLanguage, syncPetInputActivity, teardownRecordingAudioPipeline]);
+
+	const applyRecordingCommand = useCallback((action: "confirm" | "cancel") => {
+		if (!isRecordingRef.current) {
+			if (isStartingRecordingRef.current) {
+				pendingRecordingActionRef.current = action;
+			}
+			return;
+		}
+
+		if (action === "confirm") {
+			syncPetInputActivity("transcribing");
+			void finalizeCurrentRecording();
+			return;
+		}
+
+		cancelCurrentRecording();
+	}, [cancelCurrentRecording, finalizeCurrentRecording, syncPetInputActivity]);
+
+	const startPetRecording = useCallback(async () => {
+		if (isRecordingRef.current || isStartingRecordingRef.current) return;
+
+		isStartingRecordingRef.current = true;
+		pendingRecordingActionRef.current = null;
+		setLiveTranscript("");
+		pendingInputSamplesRef.current = [];
+
+		try {
+			const stream = await navigator.mediaDevices.getUserMedia({
+				audio: {
+					channelCount: 1,
+					echoCancellation: true,
+					noiseSuppression: true,
+					autoGainControl: true,
+				},
+			});
+			const startResult = await invokeIpc<{ success: boolean; sessionId: string }>("pet:asrSessionStart");
+			const sessionId = startResult.sessionId;
+			const AudioContextCtor = window.AudioContext;
+			let audioContext: AudioContext | null = null;
+			let analyser: AnalyserNode | null = null;
+			let sourceNode: MediaStreamAudioSourceNode | null = null;
+			let processorNode: ScriptProcessorNode | null = null;
+			let silenceNode: GainNode | null = null;
+
+			if (!AudioContextCtor) {
+				throw new Error("AudioContext is unavailable");
+			}
+
+			audioContext = new AudioContextCtor();
+			await audioContext.resume().catch(() => {});
+			sourceNode = audioContext.createMediaStreamSource(stream);
+			analyser = audioContext.createAnalyser();
+			analyser.fftSize = 256;
+			sourceNode.connect(analyser);
+			processorNode = audioContext.createScriptProcessor(4096, 1, 1);
+			silenceNode = audioContext.createGain();
+			silenceNode.gain.value = 0;
+			recordingSampleRateRef.current = audioContext.sampleRate;
+
+			processorNode.onaudioprocess = (event) => {
+				if (!isRecordingRef.current) return;
+
+				const inputBuffer = event.inputBuffer;
+				const channelData: Float32Array[] = [];
+				for (let channelIndex = 0; channelIndex < inputBuffer.numberOfChannels; channelIndex += 1) {
+					channelData.push(inputBuffer.getChannelData(channelIndex));
+				}
+
+				const monoSamples = mixToMono(channelData);
+				for (let index = 0; index < monoSamples.length; index += 1) {
+					pendingInputSamplesRef.current.push(monoSamples[index] ?? 0);
+				}
+
+				const chunkSize = Math.max(1, Math.round(recordingSampleRateRef.current * 0.2));
+				while (pendingInputSamplesRef.current.length >= chunkSize) {
+					const inputChunk = pendingInputSamplesRef.current.splice(0, chunkSize);
+					const resampledChunk = resampleLinear(
+						Float32Array.from(inputChunk),
+						recordingSampleRateRef.current,
+						16_000,
+					);
+					const pcmBytes = float32ToPcm16Bytes(resampledChunk);
+					void invokeIpc("pet:asrSessionChunk", {
+						sessionId,
+						audioChunk: pcmBytes,
+					}).catch((error) => {
+						console.error("[pet-floating] Failed to push realtime ASR chunk", error);
+					});
+				}
+			};
+
+			sourceNode.connect(processorNode);
+			processorNode.connect(silenceNode);
+			silenceNode.connect(audioContext.destination);
+
+			recordingStreamRef.current = stream;
+			recordingAudioContextRef.current = audioContext;
+			recordingSourceNodeRef.current = sourceNode;
+			recordingProcessorNodeRef.current = processorNode;
+			recordingSilenceNodeRef.current = silenceNode;
+			asrSessionIdRef.current = sessionId;
+			setRecordingAnalyser(analyser);
+			isStartingRecordingRef.current = false;
+			isRecordingRef.current = true;
+			syncPetInputActivity("recording");
+
+			const pendingAction = pendingRecordingActionRef.current;
+			if (pendingAction) {
+				pendingRecordingActionRef.current = null;
+				queueMicrotask(() => {
+					applyRecordingCommand(pendingAction);
+				});
+			}
+		} catch (error) {
+			console.error("[pet-floating] Failed to start voice recording", error);
+			isStartingRecordingRef.current = false;
+			isRecordingRef.current = false;
+			pendingRecordingActionRef.current = null;
+			const sessionId = asrSessionIdRef.current;
+			asrSessionIdRef.current = null;
+			syncPetInputActivity("idle");
+			cleanupRecordingPreview();
+			if (sessionId) {
+				void invokeIpc("pet:asrSessionCancel", { sessionId }).catch(() => {});
+			}
+			toast.error(
+				i18n.resolvedLanguage?.startsWith("zh")
+					? "无法启动语音识别，请先在设置里配置火山引擎 ASR"
+					: i18n.resolvedLanguage?.startsWith("ja")
+						? "音声認識を開始できません。先に設定で Volcengine ASR を構成してください"
+						: "Unable to start speech recognition. Please configure Volcengine ASR in Settings first.",
+			);
+		}
+	}, [applyRecordingCommand, cleanupRecordingPreview, i18n.resolvedLanguage, syncPetInputActivity]);
 
 	// ── Settings & runtime state sync ────────────────────────────
 
@@ -139,31 +618,64 @@ export function PetFloating() {
 		return () => { unsubscribe?.(); };
 	}, []);
 
-	// ── Translate bubble ─────────────────────────────────────────
+	useEffect(() => {
+		const unsubscribe = window.electron.ipcRenderer.on(
+			"pet:asr-event",
+			(payload) => {
+				const event = payload as PetAsrEventPayload | undefined;
+				if (!event || event.sessionId !== asrSessionIdRef.current) {
+					return;
+				}
 
-	const dismissBubble = useCallback(() => {
-		setTranslateBubble(null);
-		if (dismissTimerRef.current) {
-			clearTimeout(dismissTimerRef.current);
-			dismissTimerRef.current = null;
-		}
-	}, []);
+				if (event.type === "partial" || event.type === "final") {
+					setLiveTranscript((event.text || "").trim());
+					return;
+				}
+
+				if (event.type === "error") {
+					console.error("[pet-floating] Realtime ASR error", event.message);
+					asrSessionIdRef.current = null;
+					cleanupRecordingPreview();
+					setLiveTranscript("");
+					syncPetInputActivity("idle");
+					toast.error(
+						i18n.resolvedLanguage?.startsWith("zh")
+							? `语音识别失败：${event.message || "请检查火山 ASR 配置"}`
+							: i18n.resolvedLanguage?.startsWith("ja")
+								? `音声認識に失敗しました: ${event.message || "Volcengine ASR 設定を確認してください"}`
+								: `Speech recognition failed: ${event.message || "Please check the Volcengine ASR settings."}`,
+					);
+				}
+			},
+		);
+		return () => { unsubscribe?.(); };
+	}, [cleanupRecordingPreview, i18n.resolvedLanguage, syncPetInputActivity]);
 
 	useEffect(() => {
 		const unsubscribe = window.electron.ipcRenderer.on(
-			"pet:clipboard-changed",
+			"pet:recording-command",
 			(payload) => {
-				const { text } = payload as { text: string };
-				if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-				setTranslateBubble({ text });
-				dismissTimerRef.current = setTimeout(dismissBubble, TRANSLATE_BUBBLE_TTL_MS);
+				const action = (
+					payload as PetRecordingCommandPayload | undefined
+				)?.action;
+				if (action === "start") {
+					void startPetRecording();
+					return;
+				}
+				applyRecordingCommand(action === "confirm" ? "confirm" : "cancel");
 			},
 		);
+
 		return () => {
 			unsubscribe?.();
-			if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+			if (asrSessionIdRef.current) {
+				void invokeIpc("pet:asrSessionCancel", { sessionId: asrSessionIdRef.current }).catch(() => {});
+				asrSessionIdRef.current = null;
+			}
+			cleanupRecordingPreview();
+			syncPetInputActivity("idle");
 		};
-	}, [dismissBubble]);
+	}, [applyRecordingCommand, cleanupRecordingPreview, startPetRecording, syncPetInputActivity]);
 
 	// ── Mouse pass-through setup ──────────────────────────────────
 	// By default the entire window ignores mouse events (they fall through to
@@ -176,13 +688,18 @@ export function PetFloating() {
 		void invokeIpc("pet:setIgnoreMouseEvents", true, { forward: true });
 		return () => {
 			// Restore normal behaviour when the component unmounts
+			if (asrSessionIdRef.current) {
+				void invokeIpc("pet:asrSessionCancel", { sessionId: asrSessionIdRef.current }).catch(() => {});
+				asrSessionIdRef.current = null;
+			}
+			cleanupRecordingPreview();
 			void invokeIpc("pet:setIgnoreMouseEvents", false);
 		};
-	}, []);
+	}, [cleanupRecordingPreview]);
 
 	// ── Drag & click handlers (attached to document during drag) ─
 
-	const handleVideoMouseDown = useCallback((e: MouseEvent<HTMLButtonElement>) => {
+	const handleVideoMouseDown = useCallback((e: MouseEvent<HTMLDivElement>) => {
 		if (e.button !== 0) return;
 
 		const startScreenX = e.screenX;
@@ -243,84 +760,26 @@ export function PetFloating() {
 
 	return (
 		<div className="relative flex h-screen w-screen items-end justify-center overflow-visible bg-transparent">
-			{/* Translate bubble — appears when clipboard text changes */}
-			{translateBubble && (
-				<div className="pointer-events-none absolute top-2 left-1/2 z-30 w-[290px] -translate-x-1/2">
-					{/* biome-ignore lint/a11y/noStaticElementInteractions: hover handlers toggle Electron setIgnoreMouseEvents, not DOM interactivity */}
-					<div
-						className="pointer-events-auto flex items-center gap-2 rounded-[12px] border border-white/10 bg-black/75 px-3 py-2 shadow-[0_4px_18px_rgba(0,0,0,0.35)] backdrop-blur-[6px]"
-						onMouseEnter={handleVideoMouseEnter}
-						onMouseLeave={handleVideoMouseLeave}
-					>
-						<span className="shrink-0 text-base" aria-hidden="true">🌐</span>
-						<span className="min-w-0 flex-1 truncate text-[11px] leading-tight text-white/80">
-							{translateBubble.text.length > 24
-								? `${translateBubble.text.slice(0, 24)}…`
-								: translateBubble.text}
-						</span>
-						<button
-							type="button"
-							className="shrink-0 rounded-[6px] bg-blue-500/90 px-2 py-0.5 text-[11px] font-semibold text-white transition-all hover:bg-blue-400 active:scale-95"
-							onClick={() => {
-								const prompt = `请帮我翻译以下内容：\n\n${translateBubble.text}`;
-								void invokeIpc("pet:openMiniChatWithMessage", prompt);
-								dismissBubble();
-							}}
-						>
-							翻译
-						</button>
-						<button
-							type="button"
-							className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[13px] leading-none text-white/45 transition-colors hover:text-white/80"
-							onClick={dismissBubble}
-							aria-label="关闭"
-						>
-							×
-						</button>
-					</div>
-				</div>
-			)}
+			<style>{`
+				@keyframes pet-claw-shimmer {
+					0% { background-position: 100% 0; }
+					100% { background-position: -100% 0; }
+				}
 
-			{runtimeState.showTerminal && (
-				<div className="pointer-events-none absolute bottom-[150px] left-1/2 z-20 w-[85%] max-w-[260px] -translate-x-1/2 rounded-[14px] border border-white/10 bg-black/72 px-3 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.25)] backdrop-blur-[4px]">
-					<div className="mb-1.5 flex items-center gap-1.5">
-						<span className="h-2 w-2 rounded-full bg-rose-400/75" />
-						<span className="h-2 w-2 rounded-full bg-amber-300/75" />
-						<span className="h-2 w-2 rounded-full bg-emerald-400/75" />
-						<span className="ml-auto h-1 w-1 animate-pulse rounded-full bg-emerald-400/80" />
-					</div>
-					<div className="space-y-[3px] font-mono">
-						{runtimeState.terminalLines.length > 0 ? (
-							runtimeState.terminalLines.map((line, i) => (
-								<div
-									key={`${i}-${line.slice(0, 8)}`}
-									className="truncate text-[10px] leading-tight"
-									style={{
-										color: `rgba(${i === runtimeState.terminalLines.length - 1 ? "110,231,183" : "134,239,172"}, ${i === runtimeState.terminalLines.length - 1 ? 0.9 : 0.45})`,
-									}}
-								>
-									{line}
-								</div>
-							))
-						) : (
-							<>
-								<div className="h-[9px] w-[82%] animate-pulse rounded-full bg-emerald-300/50" />
-								<div className="h-[9px] w-[60%] animate-pulse rounded-full bg-emerald-200/35 [animation-delay:180ms]" />
-								<div className="h-[9px] w-[70%] animate-pulse rounded-full bg-emerald-100/25 [animation-delay:320ms]" />
-							</>
-						)}
-					</div>
-				</div>
-			)}
-
+				@keyframes pet-claw-wave-in {
+					0% { opacity: 0; transform: translateX(-50%) scale(0.55) translateY(6px); }
+					100% { opacity: 1; transform: translateX(-50%) scale(0.65) translateY(0); }
+				}
+			`}</style>
 			{/* Interactive area: only the pet character itself captures mouse events */}
-			<button
-				type="button"
+			<div
+				role="button"
+				tabIndex={0}
 				className="relative z-10 cursor-pointer border-0 bg-transparent p-0 select-none"
 				onMouseEnter={handleVideoMouseEnter}
 				onMouseLeave={handleVideoMouseLeave}
 				onMouseDown={handleVideoMouseDown}
-				onContextMenu={(event: MouseEvent<HTMLButtonElement>) => {
+				onContextMenu={(event: MouseEvent<HTMLDivElement>) => {
 					event.preventDefault();
 					void invokeIpc("pet:showContextMenu", {
 						x: event.clientX,
@@ -328,12 +787,37 @@ export function PetFloating() {
 						language: i18n.resolvedLanguage || i18n.language,
 					});
 				}}
-				title="点击打开快捷聊天 · 拖动移位"
+				onKeyDown={(event) => {
+					if (event.key === "Enter" || event.key === " ") {
+						event.preventDefault();
+						void invokeIpc("pet:toggleMiniChat");
+					}
+				}}
+				title="点击打开轻量聊天 / CLI · 拖动移位"
 			>
+				{statusOverlay?.variant === "thinking" ? (
+					<PetThinkingBubble label={statusOverlay.label} />
+				) : null}
+				{statusOverlay?.variant === "recording" ? (
+					<PetRecordingBubble
+						analyser={recordingAnalyser}
+						transcript={liveTranscript}
+						label={statusOverlay.label}
+						onMouseEnter={handleVideoMouseEnter}
+						onMouseLeave={handleVideoMouseLeave}
+						onCancel={() => {
+							void invokeIpc("pet:recordingCommand", { action: "cancel" });
+						}}
+						onConfirm={() => {
+							void invokeIpc("pet:recordingCommand", { action: "confirm" });
+						}}
+					/>
+				) : null}
 				<video
 					key={displayAnimation}
 					ref={videoRef}
 					className="h-[200px] w-[200px] object-contain pointer-events-none"
+					style={{ clipPath: "inset(2px)" }}
 					src={PET_ANIMATION_SOURCES[displayAnimation]}
 					autoPlay
 					loop={shouldLoop}
@@ -350,7 +834,7 @@ export function PetFloating() {
 						}
 					}}
 				/>
-			</button>
+			</div>
 		</div>
 	);
 }

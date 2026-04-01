@@ -257,7 +257,7 @@ export function AnimatedCharacters({
     } else {
       setIsPurplePeeking(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [passwordLength, showPassword]);
 
   const calculatePosition = (ref: React.RefObject<HTMLDivElement | null>) => {

@@ -396,6 +396,12 @@ export function ChatInput({
 	const [recordingTime, setRecordingTime] = useState(0);
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 	const audioChunksRef = useRef<Blob[]>([]);
+	const isRecordingRef = useRef(false);
+	const isStartingRecordingRef = useRef(false);
+	const recordingStopModeRef = useRef<"stage" | "send" | "discard">("stage");
+	const pendingExternalRecordingActionRef = useRef<"confirm" | "cancel" | null>(null);
+	const applyRecordingCommandRef = useRef<((action: "confirm" | "cancel") => void) | null>(null);
+	const pendingRecordingSendRef = useRef(false);
 
 	const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -560,6 +566,11 @@ export function ChatInput({
 
 	// ── Audio Recording ──────────────────────────────────────────────
 
+	const syncPetInputActivity = useCallback((activity: "idle" | "recording" | "transcribing") => {
+		void invokeIpc("pet:setInputActivity", { activity }).catch(() => {});
+	}, []);
+	const toggleRecordingRef = useRef<(() => Promise<void>) | null>(null);
+
 	const formatTime = (seconds: number) => {
 		const m = Math.floor(seconds / 60);
 		const s = seconds % 60;
@@ -579,13 +590,38 @@ export function ChatInput({
 		};
 	}, [isRecording]);
 
+	useEffect(() => {
+		isRecordingRef.current = isRecording;
+	}, [isRecording]);
+
+	useEffect(() => {
+		applyRecordingCommandRef.current = (action) => {
+			if (!isRecordingRef.current) {
+				if (isStartingRecordingRef.current) {
+					pendingExternalRecordingActionRef.current = action;
+				}
+				return;
+			}
+
+			recordingStopModeRef.current = action === "confirm" ? "send" : "discard";
+			mediaRecorderRef.current?.stop();
+			setIsRecording(false);
+			syncPetInputActivity(action === "confirm" ? "transcribing" : "idle");
+		};
+	}, [syncPetInputActivity]);
+
 	const toggleRecording = useCallback(async () => {
 		if (isRecording) {
+			isStartingRecordingRef.current = false;
+			pendingExternalRecordingActionRef.current = null;
+			recordingStopModeRef.current = "stage";
 			if (mediaRecorderRef.current) {
 				mediaRecorderRef.current.stop();
 			}
 			setIsRecording(false);
+			syncPetInputActivity("idle");
 		} else {
+			isStartingRecordingRef.current = true;
 			try {
 				const stream = await navigator.mediaDevices.getUserMedia({
 					audio: true,
@@ -593,42 +629,105 @@ export function ChatInput({
 				const mediaRecorder = new MediaRecorder(stream);
 				mediaRecorderRef.current = mediaRecorder;
 				audioChunksRef.current = [];
+				recordingStopModeRef.current = "stage";
 
 				mediaRecorder.ondataavailable = (e) => {
 					if (e.data.size > 0) audioChunksRef.current.push(e.data);
 				};
 
 				mediaRecorder.onstop = async () => {
-					const audioBlob = new Blob(audioChunksRef.current, {
-						type: "audio/webm",
-					});
-					const file = new File(
-						[audioBlob],
-						`Voice_${new Date().toISOString().replace(/[:.]/g, "-")}.webm`,
-						{ type: "audio/webm" },
-					);
-					await stageBufferFiles([file]);
-					stream.getTracks().forEach((track) => {
-						track.stop();
-					});
+					const stopMode = recordingStopModeRef.current;
+					recordingStopModeRef.current = "stage";
+					setIsRecording(false);
+					setRecordingTime(0);
+					mediaRecorderRef.current = null;
+					if (stopMode !== "send") {
+						syncPetInputActivity("idle");
+					}
+					try {
+						if (stopMode === "discard") {
+							audioChunksRef.current = [];
+							return;
+						}
+
+						const audioBlob = new Blob(audioChunksRef.current, {
+							type: "audio/webm",
+						});
+						const file = new File(
+							[audioBlob],
+							`Voice_${new Date().toISOString().replace(/[:.]/g, "-")}.webm`,
+							{ type: "audio/webm" },
+						);
+						await stageBufferFiles([file]);
+						if (stopMode === "send") {
+							pendingRecordingSendRef.current = true;
+						}
+						if (stopMode !== "send") {
+							syncPetInputActivity("idle");
+						}
+					} catch (error) {
+						syncPetInputActivity("idle");
+						throw error;
+					} finally {
+						audioChunksRef.current = [];
+						stream.getTracks().forEach((track) => {
+							track.stop();
+						});
+					}
 				};
 
 				setRecordingTime(0);
 				setIsRecording(true);
 				mediaRecorder.start();
+				isStartingRecordingRef.current = false;
+				syncPetInputActivity("recording");
+				const pendingAction = pendingExternalRecordingActionRef.current;
+				if (pendingAction) {
+					pendingExternalRecordingActionRef.current = null;
+					queueMicrotask(() => {
+						applyRecordingCommandRef.current?.(pendingAction);
+					});
+				}
 			} catch (err) {
+				isStartingRecordingRef.current = false;
+				pendingExternalRecordingActionRef.current = null;
+				syncPetInputActivity("idle");
 				toast.error(t("composer.recordingFailed", "录音失败: ") + String(err));
 			}
 		}
-	}, [isRecording, stageBufferFiles, t]);
+	}, [isRecording, stageBufferFiles, syncPetInputActivity, t]);
 
 	useEffect(() => {
+		toggleRecordingRef.current = toggleRecording;
+	}, [toggleRecording]);
+
+	useEffect(() => {
+		const unsubscribe = window.electron.ipcRenderer.on(
+			"pet:recording-command",
+			(payload) => {
+				const action =
+					payload && typeof payload === "object" && "action" in payload
+						? (payload as { action?: "start" | "cancel" | "confirm" }).action
+						: undefined;
+				if (action === "start") {
+					if (!isRecordingRef.current && !isStartingRecordingRef.current) {
+						pendingExternalRecordingActionRef.current = null;
+						void toggleRecordingRef.current?.();
+					}
+					return;
+				}
+				applyRecordingCommandRef.current?.(action === "confirm" ? "confirm" : "cancel");
+			},
+		);
+
 		return () => {
-			if (mediaRecorderRef.current && isRecording) {
+			if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
 				mediaRecorderRef.current.stop();
 			}
+			syncPetInputActivity("idle");
+			unsubscribe?.();
 		};
-	}, [isRecording]);
+	}, [syncPetInputActivity]);
 
 	const captureScreenshot = useCallback(async () => {
 		let tempId: string | null = null;
@@ -751,6 +850,19 @@ export function ChatInput({
 	const handleStop = useCallback(() => {
 		if (sending && onStop) onStop();
 	}, [sending, onStop]);
+
+	useEffect(() => {
+		if (!pendingRecordingSendRef.current) return;
+		if (isRecording) return;
+		if (hasFailedAttachments) {
+			pendingRecordingSendRef.current = false;
+			syncPetInputActivity("idle");
+			return;
+		}
+		if (!canSend) return;
+		pendingRecordingSendRef.current = false;
+		handleSend();
+	}, [canSend, handleSend, hasFailedAttachments, isRecording, syncPetInputActivity]);
 
 	const handlePaste = useCallback(
 		(e: React.ClipboardEvent) => {

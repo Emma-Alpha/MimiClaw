@@ -28,6 +28,23 @@
     "welcome": {
         "title": "极智へようこそ",
         "description": "极智はOpenClawのグラフィカルインターフェースで、お気に入りのメッセージングプラットフォームでAIアシスタントを簡単に使用できます。",
+        "speech": {
+            "title": "Volcengine リアルタイム ASR",
+            "description": "フローティングペットは録音を Volcengine のリアルタイム ASR に送信し、直接テキスト化します。",
+            "checking": "Volcengine ASR 設定を確認中...",
+            "refresh": "再確認",
+            "ready": "Volcengine ASR の設定が完了しています",
+            "readyDesc": "現在は {{endpoint}} に接続し、cluster {{cluster}} でリアルタイム認識を行います。",
+            "missing": "Volcengine ASR がまだ設定されていません",
+            "missingDesc": "フローティングペットの音声入力を使う前に、設定ページで App ID、Cluster、Access Token を入力してください。",
+            "appId": "App ID",
+            "cluster": "Cluster",
+            "language": "認識言語",
+            "token": "Access Token",
+            "notConfigured": "未設定",
+            "firstRunHint": "先に設定画面で Volcengine ASR を構成してください。保存後、F2 を押すとリアルタイム音声入力を開始できます。",
+            "firstRunReady": "Volcengine ASR の準備が完了しているため、今後のフローティングペット録音はリアルタイムで文字起こしされます。"
+        },
         "features": {
             "noCommand": "コマンドライン不要",
             "modernUI": "モダンで美しいインターフェース",

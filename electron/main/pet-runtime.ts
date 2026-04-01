@@ -21,7 +21,7 @@ const TASK_LEAVE_DURATION_MS = 8_908;
 let activeRunIds = new Set<string>();
 let transitionTimer: NodeJS.Timeout | null = null;
 let sleepTimer: NodeJS.Timeout | null = null;
-let inputActivity: 'idle' | 'recording' = 'idle';
+let inputActivity: 'idle' | 'recording' | 'transcribing' = 'idle';
 let uiActivity: PetUiActivity = 'idle';
 let terminalLines: string[] = [];
 let runtimeState: PetRuntimeState = {
@@ -93,13 +93,13 @@ function hasListeningSignal(): boolean {
 
 function scheduleSleepCountdown(): void {
   clearSleepTimer();
-  if (hasWorkingSignal() || hasListeningSignal() || inputActivity === 'recording') {
+  if (hasWorkingSignal() || hasListeningSignal() || inputActivity === 'recording' || inputActivity === 'transcribing') {
     return;
   }
 
   sleepTimer = setTimeout(() => {
     sleepTimer = null;
-    if (hasWorkingSignal() || hasListeningSignal() || inputActivity === 'recording' || runtimeState.activity !== 'idle') {
+    if (hasWorkingSignal() || hasListeningSignal() || inputActivity === 'recording' || inputActivity === 'transcribing' || runtimeState.activity !== 'idle') {
       return;
     }
 
@@ -112,7 +112,7 @@ function scheduleSleepCountdown(): void {
     clearTransitionTimer();
     transitionTimer = setTimeout(() => {
       transitionTimer = null;
-      if (hasWorkingSignal() || hasListeningSignal() || inputActivity === 'recording') {
+      if (hasWorkingSignal() || hasListeningSignal() || inputActivity === 'recording' || inputActivity === 'transcribing') {
         return;
       }
       setRuntimeState({
@@ -217,6 +217,39 @@ function extractTerminalLine(notification: { method?: string; params?: unknown }
   if (directLine) return directLine;
 
   logger.debug('[pet-runtime] extractTerminalLine: no line found. params keys:', Object.keys(params));
+  return null;
+}
+
+function extractErrorLine(notification: { method?: string; params?: unknown }): string | null {
+  const params = notification?.params && typeof notification.params === 'object'
+    ? notification.params as Record<string, unknown>
+    : {};
+  const dataBlock = params.data && typeof params.data === 'object'
+    ? params.data as Record<string, unknown>
+    : {};
+
+  const candidates = [
+    dataBlock.errorMessage,
+    params.errorMessage,
+    dataBlock.error,
+    params.error,
+    dataBlock.message,
+    params.message,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return `! ${candidate.trim().split('\n').filter(Boolean)[0]?.slice(0, 72) ?? '执行失败'}`;
+    }
+
+    if (candidate && typeof candidate === 'object') {
+      const line = extractLineFromMessage(candidate as Record<string, unknown>);
+      if (line) {
+        return `! ${line.replace(/^!\s*/, '').slice(0, 72)}`;
+      }
+    }
+  }
+
   return null;
 }
 
@@ -351,6 +384,16 @@ function enterRecording(): void {
   }, RECORDING_PULSE_MS);
 }
 
+function enterTranscribing(): void {
+  clearTransitionTimer();
+  clearSleepTimer();
+  setRuntimeState({
+    animation: 'listening',
+    activity: 'transcribing',
+    showTerminal: false,
+  });
+}
+
 function wakeThen(next: () => void): void {
   if (!isSleepingState()) {
     next();
@@ -413,6 +456,9 @@ export function registerPetRuntime(gatewayManager: GatewayManager): void {
     wakeThen(() => {
       if (inputActivity === 'recording') {
         enterRecording();
+      } else if (inputActivity === 'transcribing') {
+        inputActivity = 'idle';
+        enterListening();
       } else {
         enterListening();
       }
@@ -424,6 +470,9 @@ export function registerPetRuntime(gatewayManager: GatewayManager): void {
       wakeThen(() => {
         if (inputActivity === 'recording') {
           enterRecording();
+        } else if (inputActivity === 'transcribing') {
+          inputActivity = 'idle';
+          enterListening();
         } else {
           enterListening();
         }
@@ -463,6 +512,9 @@ export function registerPetRuntime(gatewayManager: GatewayManager): void {
       || event.state === 'error'
       || event.state === 'aborted'
     ) {
+      if (event.state === 'error') {
+        pushTerminalLine(extractErrorLine(notification) ?? '! 执行失败');
+      }
       finishRun(event.runId);
     }
   });
@@ -478,17 +530,25 @@ export function pushPetTerminalLine(line: string): void {
 }
 
 export async function syncPetRuntimeIdleState(): Promise<void> {
-  if (activeRunIds.size === 0 && uiActivity === 'idle' && runtimeState.activity === 'idle' && inputActivity !== 'recording') {
+  if (activeRunIds.size === 0 && uiActivity === 'idle' && runtimeState.activity === 'idle' && inputActivity !== 'recording' && inputActivity !== 'transcribing') {
     await enterIdle();
   }
 }
 
-export function setPetInputActivity(activity: 'idle' | 'recording'): void {
+export function setPetInputActivity(activity: 'idle' | 'recording' | 'transcribing'): void {
+  logger.info(`[pet-runtime] input activity -> ${activity}`);
   inputActivity = activity;
 
   if (activity === 'recording') {
     wakeThen(() => {
       enterRecording();
+    });
+    return;
+  }
+
+  if (activity === 'transcribing') {
+    wakeThen(() => {
+      enterTranscribing();
     });
     return;
   }
@@ -514,6 +574,19 @@ export function setPetUiActivity(activity: PetUiActivity): void {
   if (inputActivity === 'recording') {
     wakeThen(() => {
       enterRecording();
+    });
+    return;
+  }
+
+  if (inputActivity === 'transcribing') {
+    if (activity === 'idle' && activeRunIds.size === 0) {
+      inputActivity = 'idle';
+      void enterIdle();
+      return;
+    }
+
+    wakeThen(() => {
+      enterTranscribing();
     });
     return;
   }

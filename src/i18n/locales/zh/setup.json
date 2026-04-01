@@ -28,6 +28,23 @@
     "welcome": {
         "title": "欢迎使用 极智",
         "description": "极智 是 OpenClaw 的图形界面，让您可以在喜爱的消息平台上轻松使用 AI 助手。",
+        "speech": {
+            "title": "火山引擎实时 ASR",
+            "description": "悬浮宠物现在会把录音实时推送到火山引擎流式语音识别，并直接输出文字。",
+            "checking": "正在检查火山 ASR 配置...",
+            "refresh": "重新检查",
+            "ready": "火山引擎 ASR 已配置完成",
+            "readyDesc": "当前将连接 {{endpoint}}，并使用集群 {{cluster}} 进行实时识别。",
+            "missing": "尚未配置火山引擎 ASR",
+            "missingDesc": "请在设置页填写 App ID、Cluster 和 Access Token 后，再使用悬浮宠物语音输入。",
+            "appId": "App ID",
+            "cluster": "Cluster",
+            "language": "识别语言",
+            "token": "Access Token",
+            "notConfigured": "未配置",
+            "firstRunHint": "推荐先在设置页完成火山引擎 ASR 配置，保存后按 F2 即可体验实时语音转文字。",
+            "firstRunReady": "火山引擎 ASR 已准备好，后续悬浮宠物录音会直接实时转写为文字。"
+        },
         "features": {
             "noCommand": "无需命令行",
             "modernUI": "现代美观的界面",

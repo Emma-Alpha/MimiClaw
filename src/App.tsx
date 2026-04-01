@@ -11,7 +11,7 @@ import { MainLayout } from "./components/layout/MainLayout";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Models } from "./pages/Models";
 import { Chat } from "./pages/Chat";
-import { RemoteJizhiChat } from "./pages/RemoteJizhiChat";
+import { JizhiChat } from "./pages/JizhiChat";
 import { XiaojiuChat } from "./pages/XiaojiuChat";
 import { Agents } from "./pages/Agents";
 import { Channels } from "./pages/Channels";
@@ -20,7 +20,10 @@ import { Cron } from "./pages/Cron";
 import { Settings } from "./pages/Settings";
 import { CodeAgent } from "./pages/CodeAgent";
 import { PetFloating } from "./pages/PetFloating";
+import { PetBubble } from "./pages/PetBubble";
 import { MiniChat } from "./pages/MiniChat";
+import { VoiceDialog } from "./pages/VoiceDialog";
+import { VoiceChatHistory } from "./pages/VoiceChatHistory";
 import { Setup } from "./pages/Setup";
 import { Login } from "./pages/Login";
 import { useSettingsStore } from "./stores/settings";
@@ -118,8 +121,10 @@ function App() {
 	const chatStreamingMessage = useChatStore((state) => state.streamingMessage);
 	const chatStreamingTools = useChatStore((state) => state.streamingTools);
 	const chatPendingFinal = useChatStore((state) => state.pendingFinal);
-	const isPetRoute = location.pathname.startsWith("/pet");
+	const isPetBubbleRoute = location.pathname.startsWith("/pet-bubble");
+	const isPetRoute = location.pathname === "/pet" || location.pathname.startsWith("/pet/");
 	const isMiniChatRoute = location.pathname.startsWith("/mini-chat");
+	const isVoiceDialogRoute = location.pathname.startsWith("/voice-dialog");
 	const isMainChatRoute = location.pathname === "/";
 
 	const petUiActivity = !chatSending
@@ -143,10 +148,10 @@ function App() {
 
 	// Initialize Gateway connection on mount
 	useEffect(() => {
-		if (!isPetRoute && !isMiniChatRoute) {
+		if (!isPetRoute && !isPetBubbleRoute && !isMiniChatRoute && !isVoiceDialogRoute) {
 			initGateway();
 		}
-	}, [initGateway, isPetRoute, isMiniChatRoute]);
+	}, [initGateway, isMiniChatRoute, isPetBubbleRoute, isPetRoute, isVoiceDialogRoute]);
 
 	// Gate 1: Must be logged in first in all environments.
 	useEffect(() => {
@@ -154,11 +159,13 @@ function App() {
 			!cloudLoggedIn &&
 			!location.pathname.startsWith("/login") &&
 			!isPetRoute &&
-			!isMiniChatRoute
+			!isPetBubbleRoute &&
+			!isMiniChatRoute &&
+			!isVoiceDialogRoute
 		) {
 			navigate("/login", { replace: true });
 		}
-	}, [cloudLoggedIn, isPetRoute, isMiniChatRoute, location.pathname, navigate]);
+	}, [cloudLoggedIn, isMiniChatRoute, isPetBubbleRoute, isPetRoute, isVoiceDialogRoute, location.pathname, navigate]);
 
 	// Gate 2: After login, redirect to setup wizard if onboarding not complete.
 	useEffect(() => {
@@ -169,11 +176,13 @@ function App() {
 			!location.pathname.startsWith("/setup") &&
 			!location.pathname.startsWith("/login") &&
 			!isPetRoute &&
-			!isMiniChatRoute
+			!isPetBubbleRoute &&
+			!isMiniChatRoute &&
+			!isVoiceDialogRoute
 		) {
 			navigate("/setup", { replace: true });
 		}
-	}, [cloudLoggedIn, isPetRoute, isMiniChatRoute, setupComplete, location.pathname, navigate]);
+	}, [cloudLoggedIn, isMiniChatRoute, isPetBubbleRoute, isPetRoute, isVoiceDialogRoute, setupComplete, location.pathname, navigate]);
 
 	// Listen for navigation events from main process
 	useEffect(() => {
@@ -229,16 +238,16 @@ function App() {
 	}, []);
 
 	useEffect(() => {
-		if (isPetRoute || isMiniChatRoute || isMainChatRoute) return;
+		if (isPetRoute || isPetBubbleRoute || isMiniChatRoute || isVoiceDialogRoute || isMainChatRoute) return;
 		void invokeIpc("pet:setUiActivity", { activity: petUiActivity })
 			.catch(() => {});
-	}, [isMainChatRoute, isPetRoute, isMiniChatRoute, petUiActivity]);
+	}, [isMainChatRoute, isMiniChatRoute, isPetBubbleRoute, isPetRoute, isVoiceDialogRoute, petUiActivity]);
 
 	return (
 		<ErrorBoundary>
 			<ThemeWrapper>
 				<TooltipProvider delayDuration={300}>
-					{!isPetRoute && !isMiniChatRoute ? <UpdateBootstrap /> : null}
+					{!isPetRoute && !isPetBubbleRoute && !isMiniChatRoute && !isVoiceDialogRoute ? <UpdateBootstrap /> : null}
 					<Routes>
 						{/* Cloud login gate */}
 						<Route path="/login" element={<Login />} />
@@ -248,15 +257,18 @@ function App() {
 
 						{/* Floating pet window */}
 						<Route path="/pet" element={<PetFloating />} />
+						<Route path="/pet-bubble" element={<PetBubble />} />
 
 						{/* Mini chat popup (opened by clicking the floating pet) */}
 						<Route path="/mini-chat" element={<MiniChat />} />
+						<Route path="/voice-dialog" element={<VoiceDialog />} />
 
 						{/* Main application routes */}
 						<Route element={<MainLayout />}>
 							<Route path="/" element={<Chat />} />
 							<Route path="/xiaojiu-chat" element={<XiaojiuChat />} />
-							<Route path="/jizhi-chat" element={<RemoteJizhiChat />} />
+							<Route path="/jizhi-chat" element={<JizhiChat />} />
+							<Route path="/voice-chat" element={<VoiceChatHistory />} />
 							<Route path="/models" element={<Models />} />
 							<Route path="/agents" element={<Agents />} />
 							<Route path="/channels" element={<Channels />} />

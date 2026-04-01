@@ -17,6 +17,10 @@ const REMOTE_SYNC_INTERVAL_MS = 15_000;
 const REMOTE_MESSAGE_SYNC_INTERVAL_MS = 12_000;
 const REMOTE_MESSAGE_PAGE_SIZE = 20;
 
+function traceXiaojiu(step: string, payload?: Record<string, unknown>): void {
+  console.info('[xiaojiu-trace][bridge]', step, payload ?? {});
+}
+
 function isMessengerLoginError(message: string): boolean {
   return /未登录|登录已失效|authorization cookie|missing sessionid/i.test(message);
 }
@@ -30,6 +34,7 @@ function toSession(session: RemoteMessengerSession): RemoteMessengerSession {
     draftText: session.draftText,
     updatedAt: session.updatedAt,
     sortIndex: session.sortIndex,
+    lastMsgId: session.lastMsgId ?? null,
   };
 }
 
@@ -55,6 +60,7 @@ export function RemoteMessengerSessionBridge() {
   const setSessions = useRemoteMessengerStore((state) => state.setSessions);
   const setSyncError = useRemoteMessengerStore((state) => state.setSyncError);
   const activeSessionId = useRemoteMessengerStore((state) => state.activeSessionId);
+  const remoteSessions = useRemoteMessengerStore((state) => state.sessions);
 
   const refreshNonce = useXiaojiuChatStore((state) => state.refreshNonce);
   const loadMoreNonceBySession = useXiaojiuChatStore((state) => state.loadMoreNonceBySession);
@@ -69,6 +75,9 @@ export function RemoteMessengerSessionBridge() {
   const activeLoadMoreNonce = activeSessionId ? (loadMoreNonceBySession[activeSessionId] ?? 0) : 0;
   const activeOldestMessageId = activeSessionId ? (oldestMessageIdBySession[activeSessionId] ?? null) : null;
   const activeHasMore = activeSessionId ? (hasMoreBySession[activeSessionId] ?? false) : false;
+  const activeSessionLastMsgId = activeSessionId
+    ? (remoteSessions.find((s) => s.id === activeSessionId)?.lastMsgId ?? null)
+    : null;
 
   useEffect(() => {
     let disposed = false;
@@ -76,15 +85,21 @@ export function RemoteMessengerSessionBridge() {
     const syncSessions = async () => {
       if (disposed) return;
       setLoading(true);
+      traceXiaojiu('session sync:start');
 
       try {
         const syncedAt = Date.now();
         const sessions = (await fetchHostXiaojiuSessions()).map((session) => toSession(session));
         if (disposed) return;
+        traceXiaojiu('session sync:success', {
+          syncedAt,
+          count: sessions.length,
+        });
         setSessions(sessions, syncedAt);
       } catch (error) {
         if (disposed) return;
         const message = error instanceof Error ? error.message : String(error);
+        traceXiaojiu('session sync:error', { message });
         if (isMessengerLoginError(message)) {
           setSyncError(null);
           setSessions([], Date.now());
@@ -113,16 +128,27 @@ export function RemoteMessengerSessionBridge() {
     const syncMessages = async () => {
       if (disposed) return;
       setLoadingSession(activeSessionId);
+      traceXiaojiu('latest sync:start', { sessionId: activeSessionId });
 
       try {
         const result = await fetchHostXiaojiuLatestMessages(
           activeSessionId,
           REMOTE_MESSAGE_PAGE_SIZE,
+          activeSessionLastMsgId,
         );
         if (disposed) return;
 
         const syncedAt = Date.now();
         const messages = result.messages.map((message) => toMessage(message));
+        traceXiaojiu('latest sync:success', {
+          sessionId: activeSessionId,
+          syncedAt,
+          count: messages.length,
+          hasMore: result.hasMore,
+          oldestMessageId: result.oldestMessageId,
+          newestMessageId: messages[messages.length - 1]?.id ?? null,
+          latestMsgId: activeSessionLastMsgId,
+        });
         mergeLatestMessages(activeSessionId, messages, syncedAt, {
           hasMore: result.hasMore,
           oldestMessageId: result.oldestMessageId,
@@ -130,6 +156,7 @@ export function RemoteMessengerSessionBridge() {
       } catch (error) {
         if (disposed) return;
         const message = error instanceof Error ? error.message : String(error);
+        traceXiaojiu('latest sync:error', { sessionId: activeSessionId, message });
         setChatSyncError(message);
       }
     };
@@ -145,6 +172,7 @@ export function RemoteMessengerSessionBridge() {
     };
   }, [
     activeSessionId,
+    activeSessionLastMsgId,
     refreshNonce,
     mergeLatestMessages,
     setChatSyncError,
@@ -161,6 +189,11 @@ export function RemoteMessengerSessionBridge() {
       if (disposed) return;
       handledLoadMoreNonceRef.current[activeSessionId] = activeLoadMoreNonce;
       setLoadingMoreSession(activeSessionId);
+      traceXiaojiu('load more:start', {
+        sessionId: activeSessionId,
+        anchorMsgId: activeOldestMessageId,
+        nonce: activeLoadMoreNonce,
+      });
 
       try {
         const result = await fetchHostXiaojiuOlderMessages(
@@ -172,6 +205,14 @@ export function RemoteMessengerSessionBridge() {
 
         const syncedAt = Date.now();
         const messages = result.messages.map((message) => toMessage(message));
+        traceXiaojiu('load more:success', {
+          sessionId: activeSessionId,
+          syncedAt,
+          anchorMsgId: activeOldestMessageId,
+          count: messages.length,
+          hasMore: result.hasMore,
+          oldestMessageId: result.oldestMessageId,
+        });
         prependMessages(activeSessionId, messages, syncedAt, {
           hasMore: result.hasMore,
           oldestMessageId: result.oldestMessageId,
@@ -179,6 +220,11 @@ export function RemoteMessengerSessionBridge() {
       } catch (error) {
         if (disposed) return;
         const message = error instanceof Error ? error.message : String(error);
+        traceXiaojiu('load more:error', {
+          sessionId: activeSessionId,
+          anchorMsgId: activeOldestMessageId,
+          message,
+        });
         setChatSyncError(message);
       }
     };

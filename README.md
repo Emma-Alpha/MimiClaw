@@ -100,6 +100,8 @@ Complete the entire setup—from installation to your first AI interaction—thr
 ### 💬 Intelligent Chat Interface
 Communicate with AI agents through a modern chat experience. Support for multiple conversation contexts, message history, rich content rendering with Markdown, direct `@agent` routing in the main composer for multi-agent setups, and one-click screenshot capture from the chat input.
 When you target another agent with `@agent`, 极智 switches into that agent's own conversation context directly instead of relaying through the default agent. Agent workspaces stay separate by default, and stronger isolation depends on OpenClaw sandbox settings.
+The floating pet voice input now streams microphone audio to Volcengine realtime ASR, shows live partial transcription, and sends the recognized text directly into Mini Chat after recording ends. Configure the Volcengine `App ID`, `Cluster`, and `Access Token` in **Settings → General → Volcengine ASR** first.
+You can also open a dedicated **Voice Chat** window from the floating pet's right-click menu for full-duplex always-on microphone conversations backed by Volcengine realtime voice, with stable utterances synced into a read-only `Voice Chat` history. Configure the `APP ID` and `Access Token` in **Settings → General → Voice Chat** first. If Volcengine ASR is already configured, the voice dialog can reuse the existing ASR `Access Token`.
 
 ### 📡 Multi-Channel Management
 Configure and monitor multiple AI channels simultaneously. Each channel operates independently, allowing you to run specialized agents for different tasks.

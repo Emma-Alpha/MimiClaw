@@ -150,6 +150,10 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
             learnMoreUrl: opt?.learnMoreUrl,
             reason: 'update-available',
           };
+          console.log('✅ Update available! Creating forcedUpdateModal:', {
+            optAllowDismiss: opt?.allowDismiss,
+            blockDismiss: !opt?.allowDismiss,
+          });
           patch.pendingForceModalWhenAvailable = false;
           patch.pendingForceModalOptions = null;
         } else if (
@@ -204,7 +208,12 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
         set({ updatePolicyBootstrapDone: true });
         return;
       }
+
       const policy = parseUpdatePolicy(result.json);
+      console.log('🔍 Remote update policy loaded:', {
+        rawJson: result.json,
+        parsedPolicy: policy,
+      });
       if (!policy || (!policy.minimumVersion && !policy.forceUpdateModalWhenAvailable)) {
         set({ updatePolicyBootstrapDone: true });
         return;
@@ -213,6 +222,7 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
       const current = get().currentVersion;
 
       if (policy.minimumVersion && isVersionBelow(current, policy.minimumVersion)) {
+        console.log('⚠️ Version below minimum! Current:', current, 'Minimum:', policy.minimumVersion);
         set({
           updatePolicyBootstrapDone: true,
           pendingForceModalWhenAvailable: false,
@@ -220,10 +230,14 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
           forcedUpdateModal: {
             title: policy.title,
             message: policy.message,
-            blockDismiss: true,
+            blockDismiss: policy.allowDismiss !== true, // Respect allowDismiss even for minimum version
             learnMoreUrl: policy.learnMoreUrl,
             reason: 'below-minimum',
           },
+        });
+        console.log('📋 Created forcedUpdateModal (below-minimum):', {
+          policyAllowDismiss: policy.allowDismiss,
+          blockDismiss: policy.allowDismiss !== true,
         });
         void get().checkForUpdates().catch(() => {});
         return;
@@ -234,11 +248,15 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
           updatePolicyBootstrapDone: true,
           pendingForceModalWhenAvailable: true,
           pendingForceModalOptions: {
-            allowDismiss: policy.allowDismiss === true,
+            allowDismiss: policy.allowDismiss !== false, // Default to true
             title: policy.title,
             message: policy.message,
             learnMoreUrl: policy.learnMoreUrl,
           },
+        });
+        console.log('📋 Set pendingForceModalOptions:', {
+          allowDismiss: policy.allowDismiss !== false,
+          policyAllowDismiss: policy.allowDismiss,
         });
         void get().checkForUpdates().catch(() => {});
         return;

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
+import { ChatItem } from '@lobehub/ui/chat';
 import { Loader2, MessageSquare, RefreshCw, Image as ImageIcon, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -44,6 +45,17 @@ function formatMessageTypeLabel(type?: string): string | null {
   return trimmed;
 }
 
+function getMessageSenderLabel(message: XiaojiuMessage): string {
+  if (message.isSelf) return '我';
+  const senderName = message.senderName?.trim();
+  return senderName || '未知发送者';
+}
+
+function getMessageAvatarText(message: XiaojiuMessage): string {
+  const senderLabel = getMessageSenderLabel(message);
+  return senderLabel.slice(0, 1).toUpperCase();
+}
+
 function AttachmentCard({ attachment }: { attachment: XiaojiuAttachment }) {
   if (attachment.type === 'image' && attachment.url) {
     return (
@@ -82,58 +94,82 @@ function MessageBubble({ message }: { message: XiaojiuMessage }) {
   const hasAttachments = message.attachments.length > 0;
   const rawPreview = formatRawMessage(message.raw);
   const typeLabel = formatMessageTypeLabel(message.type);
+  const senderLabel = getMessageSenderLabel(message);
+
+  const belowMessage = hasAttachments ? (
+    <div className="mt-3 grid w-full gap-2">
+      {message.attachments.map((attachment, index) => (
+        <AttachmentCard
+          key={`${message.id}-attachment-${index}-${attachment.url || attachment.name || attachment.type}`}
+          attachment={attachment}
+        />
+      ))}
+    </div>
+  ) : undefined;
 
   return (
-    <div
-      className={cn(
-        'flex w-full',
-        message.isSelf ? 'justify-end' : 'justify-start',
-      )}
-    >
-      <div className={cn('flex max-w-[78%] flex-col gap-2', message.isSelf ? 'items-end' : 'items-start')}>
-        <div className="px-1 text-[11px] text-foreground/45">
-          <span>{message.senderName}</span>
-          {typeLabel ? <span className="ml-2 rounded-full bg-black/5 px-1.5 py-0.5 dark:bg-white/10">{typeLabel}</span> : null}
-          {message.timestamp ? <span className="ml-2">{formatMessageTime(message.timestamp)}</span> : null}
-        </div>
+    <ChatItem
+      aboveMessage={(
         <div
           className={cn(
-            'rounded-[20px] px-4 py-3 shadow-sm',
-            message.isSelf
-              ? 'bg-[#E8F2FF] text-foreground'
-              : 'border border-black/5 bg-white text-foreground dark:border-white/10 dark:bg-[#202126]',
+            'mb-2 flex flex-wrap items-center gap-2 px-1 text-[11px] text-foreground/45',
+            message.isSelf ? 'justify-end' : 'justify-start',
           )}
         >
-          {hasText ? (
-            <div className="whitespace-pre-wrap break-words text-[14px] leading-6">
-              {message.text}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="text-[13px] text-foreground/55">暂不支持直接解析的消息内容</div>
-              <details className="rounded-2xl bg-black/[0.03] p-3 text-left dark:bg-white/[0.04]">
-                <summary className="cursor-pointer select-none text-[12px] text-foreground/60">
-                  查看原始消息
-                </summary>
-                <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-[11px] leading-5 text-foreground/70">
-                  {rawPreview}
-                </pre>
-              </details>
-            </div>
-          )}
+          <span>{senderLabel}</span>
+          {typeLabel ? (
+            <span className="rounded-full bg-black/5 px-1.5 py-0.5 dark:bg-white/10">
+              {typeLabel}
+            </span>
+          ) : null}
+          {message.timestamp ? <span>{formatMessageTime(message.timestamp)}</span> : null}
         </div>
-        {hasAttachments ? (
-          <div className="grid w-full gap-2">
-            {message.attachments.map((attachment, index) => (
-              <AttachmentCard
-                key={`${message.id}-attachment-${index}-${attachment.url || attachment.name || attachment.type}`}
-                attachment={attachment}
-              />
-            ))}
+      )}
+      avatar={{
+        avatar: (
+          <span
+            className={cn(
+              'flex h-full w-full items-center justify-center text-sm font-semibold',
+              message.isSelf ? 'text-[#2667D8]' : 'text-foreground/70',
+            )}
+          >
+            {getMessageAvatarText(message)}
+          </span>
+        ),
+        backgroundColor: message.isSelf ? 'rgba(38,103,216,0.14)' : 'rgba(15,23,42,0.06)',
+        title: senderLabel,
+      }}
+      belowMessage={belowMessage}
+      className="w-full"
+      message={message.text || (hasAttachments ? '附件消息' : '暂不支持直接解析的消息内容')}
+      placement={message.isSelf ? 'right' : 'left'}
+      renderMessage={() =>
+        hasText ? (
+          <div className="whitespace-pre-wrap break-words text-[14px] leading-6 text-foreground">
+            {message.text}
           </div>
-        ) : null}
-      </div>
-    </div>
+        ) : hasAttachments ? (
+          <div className="text-[13px] text-foreground/55">
+            这条消息包含附件内容。
+          </div>
+        ) : (
+          <div className="space-y-2 text-left">
+            <div className="text-[13px] text-foreground/55">暂不支持直接解析的消息内容</div>
+            <details className="rounded-2xl bg-black/[0.03] p-3 dark:bg-white/[0.04]">
+              <summary className="cursor-pointer select-none text-[12px] text-foreground/60">
+                查看原始消息
+              </summary>
+              <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-[11px] leading-5 text-foreground/70">
+                {rawPreview}
+              </pre>
+            </details>
+          </div>
+        )
+      }
+      showTitle={false}
+      time={message.timestamp}
+      variant="bubble"
+    />
   );
 }
 
@@ -170,6 +206,26 @@ export function XiaojiuChat() {
   const loadingMore = activeSessionId != null && loadingMoreSessionId === activeSessionId;
   const hasMore = activeSessionId ? (hasMoreBySession[activeSessionId] ?? false) : false;
   const lastSyncedAt = activeSessionId ? lastSyncedAtBySession[activeSessionId] : undefined;
+
+  useEffect(() => {
+    console.info('[xiaojiu-trace][page] active session changed', {
+      activeSessionId,
+      sessionName: currentSession?.name ?? null,
+    });
+  }, [activeSessionId, currentSession?.name]);
+
+  useEffect(() => {
+    console.info('[xiaojiu-trace][page] messages snapshot', {
+      activeSessionId,
+      count: messages.length,
+      firstMessageId: messages[0]?.id ?? null,
+      lastMessageId: messages[messages.length - 1]?.id ?? null,
+      loading,
+      loadingMore,
+      hasMore,
+      syncError,
+    });
+  }, [activeSessionId, hasMore, loading, loadingMore, messages, syncError]);
 
   useEffect(() => {
     const node = scrollRef.current;

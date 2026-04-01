@@ -7,6 +7,36 @@ import type {
 } from '../../shared/code-agent';
 import { hostApiFetch } from './host-api';
 
+export const CODE_AGENT_WORKSPACE_ROOT_STORAGE_KEY = 'clawx:code-agent-workspace-root';
+
+export function readStoredCodeAgentWorkspaceRoot(): string {
+  try {
+    return window.localStorage.getItem(CODE_AGENT_WORKSPACE_ROOT_STORAGE_KEY)?.trim() ?? '';
+  } catch {
+    return '';
+  }
+}
+
+export function writeStoredCodeAgentWorkspaceRoot(value: string): void {
+  try {
+    if (value) {
+      window.localStorage.setItem(CODE_AGENT_WORKSPACE_ROOT_STORAGE_KEY, value);
+    } else {
+      window.localStorage.removeItem(CODE_AGENT_WORKSPACE_ROOT_STORAGE_KEY);
+    }
+  } catch {
+    // ignore localStorage write failures
+  }
+}
+
+export function inferCodeAgentWorkspaceRoot(candidate: string | null | undefined): string {
+  if (!candidate) return '';
+  const trimmed = candidate.trim();
+  if (!trimmed) return '';
+  const withoutVendor = trimmed.replace(/[\\/]vendor[\\/]claude-code$/, '');
+  return withoutVendor || trimmed;
+}
+
 export async function fetchCodeAgentStatus(): Promise<CodeAgentStatus> {
   return await hostApiFetch<CodeAgentStatus>('/api/code-agent/status');
 }

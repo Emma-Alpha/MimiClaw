@@ -1054,7 +1054,7 @@ function StickyTracker({
     // No deps — must run every render. Suppression state lives in a ref
     // (not idx/estimate), so a deps-gated effect would never see it tick.
     // Body's own guards short-circuit when nothing changed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   });
 
   // Correction: for click-jumps to unmounted items. Click handler scrolled
