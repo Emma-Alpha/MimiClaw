@@ -29,8 +29,10 @@ type PlaybackNodeRecord = {
 };
 
 const TARGET_SAMPLE_RATE = 24_000;
-const VAD_THRESHOLD = 0.018;
-const VAD_HANGOVER_MS = 850;
+const VAD_THRESHOLD = 0.015;
+const BARGE_IN_THRESHOLD = 0.03;
+const BARGE_IN_CONSECUTIVE_FRAMES = 3;
+const VAD_HANGOVER_MS = 650;
 const SPEECH_MIN_MS = 260;
 const INPUT_BAR_COUNT = 14;
 const CONFIG_LOAD_TIMEOUT_MS = 4_000;
@@ -224,9 +226,14 @@ export function VoiceDialog() {
   const turnActiveRef = useRef(false);
   const preRollChunksRef = useRef<Uint8Array[]>([]);
   const aiSpeakingRef = useRef(false);
+  const assistantResponseActiveRef = useRef(false);
+  const suppressAssistantOutputRef = useRef(false);
+  const consecutiveSpeechFramesRef = useRef(0);
   const unmountedRef = useRef(false);
   const realtimeSessionIdRef = useRef<string | null>(null);
   const historySessionIdRef = useRef<string | null>(null);
+  const assistantLiveTextRef = useRef('');
+  const currentRoundIdRef = useRef<string | null>(null);
 
   const displayAnimation = useMemo(() => {
     if (stage === 'listening') return 'listening';
@@ -275,6 +282,8 @@ export function VoiceDialog() {
 
   const handleError = useCallback(
     (kind: VoiceErrorKind, message: string) => {
+      assistantResponseActiveRef.current = false;
+      suppressAssistantOutputRef.current = false;
       setErrorInfo({ kind, message });
       setStage('error');
       setDialogState('idle');
@@ -303,26 +312,37 @@ export function VoiceDialog() {
   );
 
   const finishTurn = useCallback(async () => {
-    const sessionId = realtimeSessionId;
+    const sessionId = realtimeSessionIdRef.current;
     if (!sessionId || !turnActiveRef.current) return;
     turnActiveRef.current = false;
     speechDetectedAtRef.current = null;
     lastVoiceAtRef.current = null;
     preRollChunksRef.current = [];
+    consecutiveSpeechFramesRef.current = 0;
+    assistantResponseActiveRef.current = true;
+    suppressAssistantOutputRef.current = false;
     setStage('thinking');
     try {
       await invokeIpc('voice:commitTurn', { realtimeSessionId: sessionId });
     } catch (error) {
+      assistantResponseActiveRef.current = false;
       handleError('server', error instanceof Error ? error.message : String(error));
     }
-  }, [handleError, realtimeSessionId]);
+  }, [handleError]);
 
   const interruptAssistant = useCallback(async () => {
-    const sessionId = realtimeSessionId;
-    if (!sessionId || !aiSpeakingRef.current) return;
+    const sessionId = realtimeSessionIdRef.current;
+    const canInterrupt = assistantResponseActiveRef.current
+      || aiSpeakingRef.current;
+    if (!sessionId || !canInterrupt) return;
+    assistantResponseActiveRef.current = false;
+    suppressAssistantOutputRef.current = true;
+    consecutiveSpeechFramesRef.current = 0;
     stopPlayback();
-    if (assistantLiveText.trim() && historySessionId && currentRoundId) {
-      const interruptedText = assistantLiveText.trim();
+    const interruptedText = assistantLiveTextRef.current.trim();
+    const historySessionId = historySessionIdRef.current;
+    const currentRoundId = currentRoundIdRef.current;
+    if (interruptedText && historySessionId && currentRoundId) {
       setAssistantStableText(interruptedText);
       await persistHistoryMessage('assistant', interruptedText, {
         interrupted: true,
@@ -337,11 +357,7 @@ export function VoiceDialog() {
       // ignore cancel failures during interruption
     }
   }, [
-    assistantLiveText,
-    currentRoundId,
-    historySessionId,
     persistHistoryMessage,
-    realtimeSessionId,
     stopPlayback,
   ]);
 
@@ -427,7 +443,7 @@ export function VoiceDialog() {
       const sourceNode = audioContext.createMediaStreamSource(stream);
       const analyserNode = audioContext.createAnalyser();
       analyserNode.fftSize = 256;
-      const processorNode = audioContext.createScriptProcessor(4096, 1, 1);
+      const processorNode = audioContext.createScriptProcessor(2048, 1, 1);
       const outputGain = audioContext.createGain();
       outputGain.gain.value = speakerMuted ? 0 : 1;
       const silenceGain = audioContext.createGain();
@@ -456,6 +472,9 @@ export function VoiceDialog() {
         }
         const averageEnergy = mono.length > 0 ? energy / mono.length : 0;
         const now = Date.now();
+        const assistantActive = assistantResponseActiveRef.current || aiSpeakingRef.current;
+        const speechThreshold = assistantActive ? BARGE_IN_THRESHOLD : VAD_THRESHOLD;
+        const isSpeechFrame = averageEnergy >= speechThreshold;
 
         if (!turnActiveRef.current) {
           preRollChunksRef.current.push(pcmBytes);
@@ -464,9 +483,13 @@ export function VoiceDialog() {
           }
         }
 
-        if (averageEnergy >= VAD_THRESHOLD) {
+        if (isSpeechFrame) {
+          consecutiveSpeechFramesRef.current += 1;
           lastVoiceAtRef.current = now;
-          if (!turnActiveRef.current) {
+          const speechReady = assistantActive
+            ? consecutiveSpeechFramesRef.current >= BARGE_IN_CONSECUTIVE_FRAMES
+            : true;
+          if (!turnActiveRef.current && speechReady) {
             turnActiveRef.current = true;
             speechDetectedAtRef.current = now;
             const nextRoundId = crypto.randomUUID();
@@ -483,6 +506,8 @@ export function VoiceDialog() {
             }
             preRollChunksRef.current = [];
           }
+        } else {
+          consecutiveSpeechFramesRef.current = 0;
         }
 
         if (turnActiveRef.current) {
@@ -522,8 +547,13 @@ export function VoiceDialog() {
       const nextHistorySessionId = historySessionIdRef.current;
       await cleanupSessionHandles(nextRealtimeSessionId, nextHistorySessionId, status);
 
+      assistantResponseActiveRef.current = false;
+      suppressAssistantOutputRef.current = false;
+      consecutiveSpeechFramesRef.current = 0;
       realtimeSessionIdRef.current = null;
       historySessionIdRef.current = null;
+      assistantLiveTextRef.current = '';
+      currentRoundIdRef.current = null;
       setRealtimeSessionId(null);
       setHistorySessionId(null);
       setCurrentRoundId(null);
@@ -538,6 +568,9 @@ export function VoiceDialog() {
 
   const handleStart = useCallback(async () => {
     setErrorInfo(null);
+    assistantResponseActiveRef.current = false;
+    suppressAssistantOutputRef.current = false;
+    consecutiveSpeechFramesRef.current = 0;
     setStage('connecting');
     setDialogState('connecting');
 
@@ -554,6 +587,8 @@ export function VoiceDialog() {
       nextHistorySessionId = result.historySessionId;
       realtimeSessionIdRef.current = result.realtimeSessionId;
       historySessionIdRef.current = result.historySessionId;
+      assistantLiveTextRef.current = '';
+      currentRoundIdRef.current = null;
       setRealtimeSessionId(result.realtimeSessionId);
       setHistorySessionId(result.historySessionId);
       await startAudioPipeline(result.realtimeSessionId);
@@ -563,6 +598,9 @@ export function VoiceDialog() {
       await cleanupSessionHandles(nextRealtimeSessionId, nextHistorySessionId, 'failed');
       realtimeSessionIdRef.current = null;
       historySessionIdRef.current = null;
+      consecutiveSpeechFramesRef.current = 0;
+      assistantLiveTextRef.current = '';
+      currentRoundIdRef.current = null;
       setRealtimeSessionId(null);
       setHistorySessionId(null);
       setCurrentRoundId(null);
@@ -579,28 +617,34 @@ export function VoiceDialog() {
   }, [handleHangup, handleStart]);
 
   useEffect(() => {
+    unmountedRef.current = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingConfig(true);
-    const timeoutPromise = new Promise<VoiceChatConfigState>((_, reject) => {
-      window.setTimeout(() => {
-        reject(new Error('读取语音配置超时，请稍后重试。'));
-      }, CONFIG_LOAD_TIMEOUT_MS);
-    });
+    const timeoutId = window.setTimeout(() => {
+      if (unmountedRef.current) return;
+      toast.error('读取语音配置超时，请稍后重试。');
+      setConfig(null);
+      setLoadingConfig(false);
+    }, CONFIG_LOAD_TIMEOUT_MS);
 
-    void Promise.race([fetchVoiceChatConfig(), timeoutPromise])
+    void fetchVoiceChatConfig()
       .then((nextConfig) => {
         if (unmountedRef.current) return;
+        window.clearTimeout(timeoutId);
         setConfig(nextConfig);
+        setLoadingConfig(false);
       })
       .catch((error) => {
         if (unmountedRef.current) return;
+        window.clearTimeout(timeoutId);
         setConfig(null);
         toast.error(error instanceof Error ? error.message : String(error));
-      })
-      .finally(() => {
-        if (unmountedRef.current) return;
         setLoadingConfig(false);
       });
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, []);
 
   useEffect(() => {
@@ -609,6 +653,14 @@ export function VoiceDialog() {
       void handleHangup('completed');
     };
   }, [handleHangup]);
+
+  useEffect(() => {
+    assistantLiveTextRef.current = assistantLiveText;
+  }, [assistantLiveText]);
+
+  useEffect(() => {
+    currentRoundIdRef.current = currentRoundId;
+  }, [currentRoundId]);
 
   useEffect(() => {
     if (outputGainRef.current) {
@@ -634,24 +686,48 @@ export function VoiceDialog() {
       }
 
       if (event.type === 'voice.interrupt') {
+        assistantResponseActiveRef.current = false;
+        suppressAssistantOutputRef.current = true;
+        consecutiveSpeechFramesRef.current = 0;
+        assistantLiveTextRef.current = '';
         stopPlayback();
+        setAssistantLiveText('');
         setStage('listening');
         return;
       }
 
+      if (event.type === 'voice.turn.end') {
+        setStage('thinking');
+        void finishTurn();
+        return;
+      }
+
       if (event.type === 'response.audio.delta' && typeof event.delta === 'string') {
+        if (suppressAssistantOutputRef.current) return;
+        assistantResponseActiveRef.current = true;
         setStage('speaking');
         scheduleAudioDelta(event.delta);
         return;
       }
 
       if (event.type === 'response.audio_transcript.delta' && typeof event.delta === 'string') {
+        if (suppressAssistantOutputRef.current) return;
+        assistantResponseActiveRef.current = true;
+        assistantLiveTextRef.current = `${assistantLiveTextRef.current}${event.delta}`;
         setAssistantLiveText((previous) => `${previous}${event.delta}`);
         return;
       }
 
       if (event.type === 'response.audio_transcript.done' && typeof event.transcript === 'string') {
+        assistantResponseActiveRef.current = false;
+        if (suppressAssistantOutputRef.current) {
+          suppressAssistantOutputRef.current = false;
+          assistantLiveTextRef.current = '';
+          setAssistantLiveText('');
+          return;
+        }
         const transcript = event.transcript.trim();
+        assistantLiveTextRef.current = '';
         setAssistantLiveText('');
         setAssistantStableText(transcript);
         if (transcript) {
@@ -694,7 +770,7 @@ export function VoiceDialog() {
         unsubscribe();
       }
     };
-  }, [handleError, persistHistoryMessage, realtimeSessionId, scheduleAudioDelta, stopPlayback]);
+  }, [finishTurn, handleError, persistHistoryMessage, realtimeSessionId, scheduleAudioDelta, stopPlayback]);
 
   const canStart = config?.configured && stage !== 'connecting' && !realtimeSessionId;
 
@@ -723,11 +799,11 @@ export function VoiceDialog() {
       </div>
 
       <div className="flex flex-1 flex-col px-4 pb-8 relative">
-        <div className="flex-1 flex flex-col justify-center items-center pb-[120px]">
-          <div className="relative flex flex-col items-center justify-center">
+        <div className="flex flex-1 flex-col items-center min-h-0 px-2 pb-[128px] pt-2">
+          <div className="relative flex flex-col items-center w-full max-w-[340px] min-h-0 flex-1">
             {/* 动态波纹背景 - 说话时显示 */}
             {stage === 'speaking' || stage === 'listening' ? (
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="absolute left-1/2 top-[210px] flex -translate-x-1/2 items-center justify-center">
                 <motion.div
                   className="absolute h-[240px] w-[240px] rounded-full bg-emerald-500/10 dark:bg-emerald-500/20"
                   animate={{
@@ -769,26 +845,30 @@ export function VoiceDialog() {
               />
             </div>
 
-            <div className="mt-8 text-center min-h-[40px]">
+            <div className="mt-8 min-h-[40px] text-center">
               <span className="text-[15px] text-[#111111]/60 dark:text-[#E5E5E5]/60 tracking-wider">
                 {stage === 'connecting' ? '连接中...' : getStageCopy(stage)}
               </span>
             </div>
 
-            <div className="mt-2 text-center w-full max-w-[300px]">
+            <div className="mt-3 w-full flex-1 min-h-0">
+              <div className="mx-auto flex h-full max-h-[220px] w-full max-w-[320px] items-start justify-center overflow-y-auto px-2 text-center">
+                <div className="my-auto w-full break-words">
               {assistantLiveText || assistantStableText ? (
-                <div className="text-[17px] leading-relaxed text-[#111111] dark:text-[#E5E5E5] font-medium">
+                    <div className="text-[17px] font-medium leading-relaxed text-[#111111] dark:text-[#E5E5E5]">
                   {assistantLiveText || assistantStableText}
                 </div>
               ) : userLiveText || userStableText ? (
-                <div className="text-[17px] leading-relaxed text-[#111111]/70 dark:text-[#E5E5E5]/70">
+                    <div className="text-[17px] leading-relaxed text-[#111111]/70 dark:text-[#E5E5E5]/70">
                   {userLiveText || userStableText}
                 </div>
               ) : null}
+                </div>
+              </div>
             </div>
 
             {/* 语音波形图 */}
-            <div className="mt-6 flex h-[40px] items-center justify-center opacity-80">
+            <div className="mt-4 flex h-[40px] shrink-0 items-center justify-center opacity-80">
               <VoiceBars analyser={recordingAnalyser} />
             </div>
           </div>
