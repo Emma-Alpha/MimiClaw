@@ -68,6 +68,7 @@ type VoiceRuntimeEvent =
   | ({ type: 'voice.connection.status'; status: 'connecting' | 'connected' | 'closed' } & Record<string, unknown>)
   | ({ type: 'voice.connection.error'; kind: 'auth' | 'network' | 'server'; message: string } & Record<string, unknown>)
   | ({ type: 'voice.interrupt' } & Record<string, unknown>)
+  | ({ type: 'voice.turn.end' } & Record<string, unknown>)
   | VoiceRealtimeServerEvent;
 
 type ParsedRealtimeMessage = {
@@ -329,6 +330,7 @@ export class VolcengineRealtimeVoiceSession {
 
   async createResponse(): Promise<void> {
     await this.waitUntilReady();
+    await this.sendFrame(buildControlFrame(EVENT_TASK_REQUEST, {}, this.sessionId));
   }
 
   async cancelResponse(): Promise<void> {
@@ -460,7 +462,7 @@ export class VolcengineRealtimeVoiceSession {
         return;
 
       case EVENT_ASR_INFO:
-        this.onEvent({ type: 'voice.interrupt' });
+        this.onEvent({ type: 'voice.turn.end' });
         return;
 
       case EVENT_ASR_RESPONSE:
