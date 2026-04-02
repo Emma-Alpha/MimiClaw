@@ -122,7 +122,8 @@ function App() {
 	const chatStreamingTools = useChatStore((state) => state.streamingTools);
 	const chatPendingFinal = useChatStore((state) => state.pendingFinal);
 	const isPetBubbleRoute = location.pathname.startsWith("/pet-bubble");
-	const isPetRoute = location.pathname === "/pet" || location.pathname.startsWith("/pet/");
+	const isPetRoute =
+		location.pathname === "/pet" || location.pathname.startsWith("/pet/");
 	const isMiniChatRoute = location.pathname.startsWith("/mini-chat");
 	const isVoiceDialogRoute = location.pathname.startsWith("/voice-dialog");
 	const isMainChatRoute = location.pathname === "/";
@@ -148,10 +149,21 @@ function App() {
 
 	// Initialize Gateway connection on mount
 	useEffect(() => {
-		if (!isPetRoute && !isPetBubbleRoute && !isMiniChatRoute && !isVoiceDialogRoute) {
+		if (
+			!isPetRoute &&
+			!isPetBubbleRoute &&
+			!isMiniChatRoute &&
+			!isVoiceDialogRoute
+		) {
 			initGateway();
 		}
-	}, [initGateway, isMiniChatRoute, isPetBubbleRoute, isPetRoute, isVoiceDialogRoute]);
+	}, [
+		initGateway,
+		isMiniChatRoute,
+		isPetBubbleRoute,
+		isPetRoute,
+		isVoiceDialogRoute,
+	]);
 
 	// Gate 1: Must be logged in first in all environments.
 	useEffect(() => {
@@ -165,7 +177,15 @@ function App() {
 		) {
 			navigate("/login", { replace: true });
 		}
-	}, [cloudLoggedIn, isMiniChatRoute, isPetBubbleRoute, isPetRoute, isVoiceDialogRoute, location.pathname, navigate]);
+	}, [
+		cloudLoggedIn,
+		isMiniChatRoute,
+		isPetBubbleRoute,
+		isPetRoute,
+		isVoiceDialogRoute,
+		location.pathname,
+		navigate,
+	]);
 
 	// Gate 2: After login, redirect to setup wizard if onboarding not complete.
 	useEffect(() => {
@@ -182,7 +202,16 @@ function App() {
 		) {
 			navigate("/setup", { replace: true });
 		}
-	}, [cloudLoggedIn, isMiniChatRoute, isPetBubbleRoute, isPetRoute, isVoiceDialogRoute, setupComplete, location.pathname, navigate]);
+	}, [
+		cloudLoggedIn,
+		isMiniChatRoute,
+		isPetBubbleRoute,
+		isPetRoute,
+		isVoiceDialogRoute,
+		setupComplete,
+		location.pathname,
+		navigate,
+	]);
 
 	// Listen for navigation events from main process
 	useEffect(() => {
@@ -238,16 +267,36 @@ function App() {
 	}, []);
 
 	useEffect(() => {
-		if (isPetRoute || isPetBubbleRoute || isMiniChatRoute || isVoiceDialogRoute || isMainChatRoute) return;
-		void invokeIpc("pet:setUiActivity", { activity: petUiActivity })
-			.catch(() => {});
-	}, [isMainChatRoute, isMiniChatRoute, isPetBubbleRoute, isPetRoute, isVoiceDialogRoute, petUiActivity]);
+		if (
+			isPetRoute ||
+			isPetBubbleRoute ||
+			isMiniChatRoute ||
+			isVoiceDialogRoute ||
+			isMainChatRoute
+		)
+			return;
+		void invokeIpc("pet:setUiActivity", { activity: petUiActivity }).catch(
+			() => {},
+		);
+	}, [
+		isMainChatRoute,
+		isMiniChatRoute,
+		isPetBubbleRoute,
+		isPetRoute,
+		isVoiceDialogRoute,
+		petUiActivity,
+	]);
 
 	return (
 		<ErrorBoundary>
 			<ThemeWrapper>
 				<TooltipProvider delayDuration={300}>
-					{!isPetRoute && !isPetBubbleRoute && !isMiniChatRoute && !isVoiceDialogRoute ? <UpdateBootstrap /> : null}
+					{!isPetRoute &&
+					!isPetBubbleRoute &&
+					!isMiniChatRoute &&
+					!isVoiceDialogRoute ? (
+						<UpdateBootstrap />
+					) : null}
 					<Routes>
 						{/* Cloud login gate */}
 						<Route path="/login" element={<Login />} />

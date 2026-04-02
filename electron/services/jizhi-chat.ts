@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { getSetting } from '../utils/store';
 import { logger } from '../utils/logger';
 
@@ -142,6 +143,81 @@ type JizhiMessagesResponse = {
   total?: number;
 };
 
+type JizhiTopicCategory = 'llm' | 'agent';
+
+type JizhiTopicFormConfig = {
+  model?: string[];
+  [key: string]: unknown;
+};
+
+type JizhiTopicFormRow = {
+  id?: number;
+  config?: JizhiTopicFormConfig;
+  [key: string]: unknown;
+};
+
+type JizhiTopicFormResponse = {
+  row?: JizhiTopicFormRow;
+  form?: Record<string, unknown>;
+  formConfig?: unknown[];
+};
+
+type JizhiSendMessageParams = {
+  sessionId: string;
+  prompt: string;
+  category: string;
+  fallbackModel?: string;
+  messageUUID?: string;
+};
+
+type JizhiSendMessageResponse = {
+  messageUUID?: string;
+  [key: string]: unknown;
+};
+
+type JizhiRetryMessageParams = {
+  sessionId: string;
+  messageUUID: string;
+  category: string;
+  model: string;
+};
+
+type JizhiRetryMessageResponse = {
+  messageUUID?: string;
+  [key: string]: unknown;
+};
+
+type JizhiStopMessageResponse = {
+  success?: boolean;
+  [key: string]: unknown;
+};
+
+type JizhiActiveMessageResponse = {
+  success?: boolean;
+  [key: string]: unknown;
+};
+
+type JizhiStreamEventType = 'chunk' | 'result' | 'error' | 'end';
+
+type JizhiStreamChunkData = {
+  blockUUID?: string;
+  parentMessageUUID?: string;
+  contentType?: string;
+  content?: string;
+  [key: string]: unknown;
+};
+
+type JizhiStreamPayload = {
+  data?: JizhiStreamChunkData;
+  [key: string]: unknown;
+};
+
+export type JizhiStreamEvent = {
+  event: JizhiStreamEventType;
+  id?: string;
+  payload?: JizhiStreamPayload | null;
+};
+
 function trace(step: string, payload?: Record<string, unknown>): void {
   logger.info(`[jizhi-trace][service] ${step}`, payload ?? {});
 }
@@ -162,6 +238,11 @@ function normalizeTimestamp(value: string | number | undefined): number | undefi
   if (typeof value !== 'string' || !value.trim()) return undefined;
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function normalizeTopicCategory(value: string | undefined): JizhiTopicCategory | null {
+  if (value === 'llm' || value === 'agent') return value;
+  return null;
 }
 
 function normalizeAuthHeader(token: string): string {
@@ -314,4 +395,335 @@ export async function fetchJizhiMessages(sessionId: string): Promise<JizhiChatMe
     count: rows.length,
   });
   return rows;
+}
+
+async function fetchJizhiTopicForm(
+  sessionId: string,
+  category: JizhiTopicCategory,
+): Promise<JizhiTopicFormResponse> {
+  const search = new URLSearchParams({ id: sessionId.trim() });
+  const data = await fetchJizhiApi<JizhiTopicFormResponse>(
+    `${JIZHI_CHAT_API_PREFIX}/topic/${category}/form?${search.toString()}`,
+  );
+  trace('fetch topic form:success', {
+    sessionId,
+    category,
+    hasConfig: Boolean(data?.row?.config),
+  });
+  return data;
+}
+
+export async function sendJizhiMessage(params: JizhiSendMessageParams): Promise<JizhiSendMessageResponse> {
+  const sessionId = params.sessionId.trim();
+  const prompt = params.prompt.trim();
+  const category = normalizeTopicCategory(params.category);
+  const messageUUID = params.messageUUID?.trim() || `msg_${randomUUID()}`;
+
+  if (!sessionId) {
+    throw new Error('Missing sessionId');
+  }
+  if (!prompt) {
+    throw new Error('Missing prompt');
+  }
+  if (!category) {
+    throw new Error(`Unsupported Jizhi category: ${params.category}`);
+  }
+
+  const chatId = Number(sessionId);
+  if (!Number.isFinite(chatId)) {
+    throw new Error(`Invalid chatId: ${sessionId}`);
+  }
+
+  const topicForm = await fetchJizhiTopicForm(sessionId, category);
+  const config = topicForm.row?.config ?? {};
+  const configuredModels = Array.isArray(config.model)
+    ? config.model.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    : [];
+  const model = configuredModels.length > 0
+    ? configuredModels
+    : (params.fallbackModel?.trim() ? [params.fallbackModel.trim()] : []);
+
+  const payload = {
+    messageUUID,
+    chatId,
+    prompt,
+    model,
+    file: [] as unknown[],
+    config,
+  };
+
+  trace('send message:request', {
+    sessionId,
+    category,
+    modelCount: model.length,
+    hasConfig: Object.keys(config).length > 0,
+  });
+
+  const data = await fetchJizhiApi<JizhiSendMessageResponse>(
+    `${JIZHI_CHAT_API_PREFIX}/chat/message/${category}/send`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+
+  trace('send message:success', {
+    sessionId,
+    category,
+    messageUUID: data?.messageUUID ?? messageUUID,
+  });
+
+  return {
+    ...data,
+    messageUUID: data?.messageUUID ?? messageUUID,
+  };
+}
+
+export async function stopJizhiMessage(messageUUID: string): Promise<JizhiStopMessageResponse> {
+  const normalizedMessageUUID = messageUUID.trim();
+  if (!normalizedMessageUUID) {
+    throw new Error('Missing messageUUID');
+  }
+
+  trace('stop message:request', {
+    messageUUID: normalizedMessageUUID,
+  });
+
+  const data = await fetchJizhiApi<JizhiStopMessageResponse>(
+    `${JIZHI_CHAT_API_PREFIX}/chat/message/stop`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({
+        messageUUID: normalizedMessageUUID,
+      }),
+    },
+  );
+
+  trace('stop message:success', {
+    messageUUID: normalizedMessageUUID,
+  });
+
+  return data;
+}
+
+export async function retryJizhiMessage(params: JizhiRetryMessageParams): Promise<JizhiRetryMessageResponse> {
+  const sessionId = params.sessionId.trim();
+  const targetMessageUUID = params.messageUUID.trim();
+  const category = normalizeTopicCategory(params.category);
+  const model = params.model.trim();
+
+  if (!sessionId) {
+    throw new Error('Missing sessionId');
+  }
+  if (!targetMessageUUID) {
+    throw new Error('Missing messageUUID');
+  }
+  if (!category) {
+    throw new Error(`Unsupported Jizhi category: ${params.category}`);
+  }
+  if (!model) {
+    throw new Error('Missing model');
+  }
+
+  const topicForm = await fetchJizhiTopicForm(sessionId, category);
+  const config = topicForm.row?.config ?? {};
+
+  trace('retry message:request', {
+    sessionId,
+    targetMessageUUID,
+    category,
+    model,
+  });
+
+  const data = await fetchJizhiApi<JizhiRetryMessageResponse>(
+    `${JIZHI_CHAT_API_PREFIX}/chat/message/${category}/retry`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({
+        messageUUID: targetMessageUUID,
+        model,
+        config,
+      }),
+    },
+  );
+
+  trace('retry message:success', {
+    sessionId,
+    targetMessageUUID,
+    retryMessageUUID: data?.messageUUID ?? null,
+  });
+
+  return data;
+}
+
+export async function activeJizhiMessage(messageUUID: string): Promise<JizhiActiveMessageResponse> {
+  const normalizedMessageUUID = messageUUID.trim();
+  if (!normalizedMessageUUID) {
+    throw new Error('Missing messageUUID');
+  }
+
+  trace('active message:request', {
+    messageUUID: normalizedMessageUUID,
+  });
+
+  const data = await fetchJizhiApi<JizhiActiveMessageResponse>(
+    `${JIZHI_CHAT_API_PREFIX}/chat/message/active`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({
+        messageUUID: normalizedMessageUUID,
+      }),
+    },
+  );
+
+  trace('active message:success', {
+    messageUUID: normalizedMessageUUID,
+  });
+
+  return data;
+}
+
+function parseSseEvent(rawEvent: string): JizhiStreamEvent | null {
+  const normalized = rawEvent.trim();
+  if (!normalized) return null;
+
+  let eventName = '';
+  let eventId = '';
+  const dataLines: string[] = [];
+
+  for (const line of normalized.split('\n')) {
+    if (!line || line.startsWith(':')) continue;
+
+    if (line.startsWith('event:')) {
+      eventName = line.slice('event:'.length).trim();
+      continue;
+    }
+
+    if (line.startsWith('id:')) {
+      eventId = line.slice('id:'.length).trim();
+      continue;
+    }
+
+    if (line.startsWith('data:')) {
+      dataLines.push(line.slice('data:'.length).trimStart());
+    }
+  }
+
+  if (eventName !== 'chunk' && eventName !== 'result' && eventName !== 'error' && eventName !== 'end') {
+    return null;
+  }
+
+  const rawPayload = dataLines.join('\n').trim();
+  let payload: JizhiStreamPayload | null = null;
+  if (rawPayload) {
+    try {
+      payload = JSON.parse(rawPayload) as JizhiStreamPayload;
+    } catch {
+      payload = {
+        data: {
+          contentType: 'text',
+          content: JSON.stringify({ content: rawPayload }),
+        },
+      };
+    }
+  }
+
+  return {
+    event: eventName,
+    id: eventId || undefined,
+    payload,
+  };
+}
+
+export async function streamJizhiMessage(params: {
+  messageUUID: string;
+  fromSeq?: number;
+  signal?: AbortSignal;
+  onEvent: (event: JizhiStreamEvent) => void;
+}): Promise<void> {
+  const messageUUID = params.messageUUID.trim();
+  if (!messageUUID) {
+    throw new Error('Missing messageUUID');
+  }
+
+  const creds = await getCloudCredentials();
+  const configuredApiBase = readConfiguredJizhiApiBase();
+  const configuredAppBase = readConfiguredJizhiAppBase();
+  const baseUrl = configuredApiBase ?? configuredAppBase ?? resolveJizhiAppBase(creds.apiUrl);
+  const path = `${JIZHI_CHAT_API_PREFIX}/chat/message/stream`;
+  const url = `${baseUrl}${path}`;
+
+  trace('stream:start', {
+    path,
+    baseUrl,
+    messageUUID,
+    fromSeq: params.fromSeq ?? 0,
+  });
+
+  const response = await fetch(url, {
+    method: 'POST',
+    signal: params.signal,
+    headers: {
+      Accept: 'text/event-stream, application/json, text/plain, */*',
+      Authorization: creds.token,
+      Cookie: `${JIZHI_TOKEN_COOKIE_NAME}=${encodeURIComponent(creds.rawToken)}`,
+      'Content-Type': 'application/json',
+      'X-Client-Source': JIZHI_CLIENT_SOURCE,
+    },
+    body: JSON.stringify({
+      messageUUID,
+      fromSeq: params.fromSeq ?? 0,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || `HTTP ${response.status}`);
+  }
+
+  if (!response.body) {
+    throw new Error('极智流式接口未返回可读数据流');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
+
+    while (true) {
+      const separatorIndex = buffer.indexOf('\n\n');
+      if (separatorIndex === -1) break;
+
+      const rawEvent = buffer.slice(0, separatorIndex);
+      buffer = buffer.slice(separatorIndex + 2);
+
+      const parsedEvent = parseSseEvent(rawEvent);
+      if (!parsedEvent) continue;
+
+      trace('stream:event', {
+        messageUUID,
+        event: parsedEvent.event,
+        id: parsedEvent.id ?? null,
+      });
+      params.onEvent(parsedEvent);
+    }
+  }
+
+  const trailingEvent = parseSseEvent(buffer);
+  if (trailingEvent) {
+    trace('stream:event', {
+      messageUUID,
+      event: trailingEvent.event,
+      id: trailingEvent.id ?? null,
+      trailing: true,
+    });
+    params.onEvent(trailingEvent);
+  }
+
+  trace('stream:complete', { messageUUID });
 }

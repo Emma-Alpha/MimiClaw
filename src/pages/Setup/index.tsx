@@ -35,7 +35,7 @@ import { invokeIpc } from '@/lib/api-client';
 import { hostApiFetch } from '@/lib/host-api';
 import { subscribeHostEvent } from '@/lib/host-events';
 import { resolveCloudOnlyMode } from '@/lib/app-env';
-import { fetchVolcengineSpeechConfig, type VolcengineSpeechConfigState } from '@/lib/volcengine-speech';
+
 interface SetupStep {
   id: string;
   title: string;
@@ -78,7 +78,7 @@ const getSteps = (t: TFunction): SetupStep[] => [
   },
 ];
 
-// Default skills to auto-install (no additional API keys required)
+// Default skills to auto-install
 interface DefaultSkill {
   id: string;
   name: string;
@@ -113,7 +113,6 @@ import {
 } from '@/lib/provider-accounts';
 import clawxIcon from '@/assets/logo.png';
 
-// Use the shared provider registry for setup providers
 const providers = SETUP_PROVIDERS;
 
 function getProtocolBaseUrlPlaceholder(
@@ -125,29 +124,22 @@ function getProtocolBaseUrlPlaceholder(
   return 'https://api.example.com/v1';
 }
 
-// NOTE: Channel types moved to Settings > Channels page
-// NOTE: Skill bundles moved to Settings > Skills page - auto-install essential skills during setup
-
 export function Setup() {
   const { t } = useTranslation(['setup', 'channels']);
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<number>(STEP.WELCOME);
   const isCloudOnlyBuild = resolveCloudOnlyMode();
 
-  // Setup state
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [providerConfigured, setProviderConfigured] = useState(false);
   const [apiKey, setApiKey] = useState('');
-  // Installation state for the Installing step
   const [installedSkills, setInstalledSkills] = useState<string[]>([]);
-  // Runtime check status
   const [runtimeChecksPassed, setRuntimeChecksPassed] = useState(false);
 
   const steps = getSteps(t);
   const safeStepIndex = Number.isInteger(currentStep)
     ? Math.min(Math.max(currentStep, STEP.WELCOME), steps.length - 1)
     : STEP.WELCOME;
-  const step = steps[safeStepIndex] ?? steps[STEP.WELCOME];
   const isFirstStep = safeStepIndex === STEP.WELCOME;
   const isLastStep = safeStepIndex === steps.length - 1;
 
@@ -155,19 +147,16 @@ export function Setup() {
   const remoteGatewayUrl = useSettingsStore((state) => state.remoteGatewayUrl);
   const isRemoteMode = !!remoteGatewayUrl?.trim();
 
-  // Derive canProceed based on current step - computed directly to avoid useEffect
   const canProceed = useMemo(() => {
     switch (safeStepIndex) {
       case STEP.WELCOME:
         return true;
       case STEP.RUNTIME:
-        // Cloud-only / remote mode: local runtime checks not required
         return isCloudOnlyBuild || isRemoteMode || runtimeChecksPassed;
       case STEP.PROVIDER:
-        // Remote mode: provider is managed on remote server, skip local setup
         return isRemoteMode || providerConfigured;
       case STEP.INSTALLING:
-        return false; // Cannot manually proceed, auto-proceeds when done
+        return false; 
       case STEP.COMPLETE:
         return true;
       default:
@@ -177,7 +166,6 @@ export function Setup() {
 
   const handleNext = async () => {
     if (isLastStep) {
-      // Complete setup
       markSetupComplete();
       toast.success(t('complete.title'));
       navigate('/');
@@ -195,141 +183,119 @@ export function Setup() {
     navigate('/');
   };
 
-  // Auto-proceed when installation is complete
   const handleInstallationComplete = useCallback((skills: string[]) => {
     setInstalledSkills(skills);
-    // Auto-proceed to next step after a short delay
     setTimeout(() => {
       setCurrentStep((i) => i + 1);
     }, 1000);
   }, []);
 
-
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground relative">
+      {/* Subtle background decoration */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background pointer-events-none" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
+
       <TitleBar />
-      <div className="flex-1 overflow-auto">
-        {/* Progress Indicator */}
-        <div className="flex justify-center pt-8">
-          <div className="flex items-center gap-2">
-            {steps.map((s, i) => (
-              <div key={s.id} className="flex items-center">
-                <div
-                  className={cn(
-                    'flex h-8 w-8 items-center justify-center rounded-full border-2 transition-colors',
-                    i < safeStepIndex
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : i === safeStepIndex
-                        ? 'border-primary text-primary'
-                        : 'border-slate-600 text-slate-600'
-                  )}
-                >
-                  {i < safeStepIndex ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <span className="text-sm">{i + 1}</span>
-                  )}
-                </div>
-                {i < steps.length - 1 && (
-                  <div
-                    className={cn(
-                      'h-0.5 w-8 transition-colors',
-                      i < safeStepIndex ? 'bg-primary' : 'bg-slate-600'
-                    )}
+      <div className="flex-1 flex flex-col items-center justify-center p-4 z-10">
+        
+        {/* Sleek Progress Indicator */}
+        <div className="mb-8 flex gap-2 items-center">
+          {steps.map((s, i) => (
+            <div 
+              key={s.id} 
+              className={cn(
+                "h-1.5 rounded-full transition-all duration-500",
+                i === safeStepIndex ? "w-8 bg-primary" : i < safeStepIndex ? "w-2 bg-primary/40" : "w-2 bg-border"
+              )}
+            />
+          ))}
+        </div>
+
+        {/* Floating Setup Card */}
+        <div className="w-full max-w-[480px] bg-card/60 backdrop-blur-2xl border border-white/10 dark:border-white/5 rounded-[32px] shadow-2xl shadow-black/5 overflow-hidden">
+          <AnimatePresence mode="wait" custom={currentStep}>
+            <motion.div
+              key={safeStepIndex}
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.98 }}
+              transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+              className="p-8 sm:p-10 flex flex-col min-h-[400px]"
+            >
+              <div className="flex-1 flex flex-col">
+                {safeStepIndex === STEP.WELCOME && <WelcomeContent />}
+                {safeStepIndex === STEP.RUNTIME && (
+                  <RuntimeContent
+                    onStatusChange={setRuntimeChecksPassed}
+                    isRemoteMode={isRemoteMode}
+                    isCloudOnlyBuild={isCloudOnlyBuild}
+                  />
+                )}
+                {safeStepIndex === STEP.PROVIDER && (
+                  <ProviderContent
+                    providers={providers}
+                    selectedProvider={selectedProvider}
+                    onSelectProvider={setSelectedProvider}
+                    apiKey={apiKey}
+                    onApiKeyChange={setApiKey}
+                    onConfiguredChange={setProviderConfigured}
+                    isRemoteMode={isRemoteMode}
+                    isCloudOnlyBuild={isCloudOnlyBuild}
+                  />
+                )}
+                {safeStepIndex === STEP.INSTALLING && (
+                  <InstallingContent
+                    skills={getDefaultSkills(t)}
+                    onComplete={handleInstallationComplete}
+                    onSkip={() => setCurrentStep((i) => i + 1)}
+                    isCloudOnlyBuild={isCloudOnlyBuild}
+                  />
+                )}
+                {safeStepIndex === STEP.COMPLETE && (
+                  <CompleteContent
+                    selectedProvider={selectedProvider}
+                    installedSkills={installedSkills}
+                    isCloudOnlyBuild={isCloudOnlyBuild}
                   />
                 )}
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Step Content */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step.id}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="mx-auto max-w-2xl p-8"
-          >
-            {safeStepIndex !== STEP.RUNTIME && (
-              <div className="text-center mb-8">
-                <h1 className="text-3xl font-bold mb-2">{t(`steps.${step.id}.title`)}</h1>
-                <p className="text-slate-400">{t(`steps.${step.id}.description`)}</p>
-              </div>
-            )}
-
-            {/* Step-specific content */}
-            <div className={cn("rounded-xl bg-card text-card-foreground border shadow-sm p-8 mb-8", safeStepIndex === STEP.RUNTIME && "border-none shadow-none bg-transparent p-0")}>
-              {safeStepIndex === STEP.WELCOME && <WelcomeContent isCloudOnlyBuild={isCloudOnlyBuild} />}
-              {safeStepIndex === STEP.RUNTIME && (
-                <RuntimeContent
-                  onStatusChange={setRuntimeChecksPassed}
-                  isRemoteMode={isRemoteMode}
-                  isCloudOnlyBuild={isCloudOnlyBuild}
-                />
-              )}
-              {safeStepIndex === STEP.PROVIDER && (
-                <ProviderContent
-                  providers={providers}
-                  selectedProvider={selectedProvider}
-                  onSelectProvider={setSelectedProvider}
-                  apiKey={apiKey}
-                  onApiKeyChange={setApiKey}
-                  onConfiguredChange={setProviderConfigured}
-                  isRemoteMode={isRemoteMode}
-                  isCloudOnlyBuild={isCloudOnlyBuild}
-                />
-              )}
-              {safeStepIndex === STEP.INSTALLING && (
-                <InstallingContent
-                  skills={getDefaultSkills(t)}
-                  onComplete={handleInstallationComplete}
-                  onSkip={() => setCurrentStep((i) => i + 1)}
-                  isCloudOnlyBuild={isCloudOnlyBuild}
-                />
-              )}
-              {safeStepIndex === STEP.COMPLETE && (
-                <CompleteContent
-                  selectedProvider={selectedProvider}
-                  installedSkills={installedSkills}
-                  isCloudOnlyBuild={isCloudOnlyBuild}
-                />
-              )}
-            </div>
-
-            {/* Navigation - hidden during installation step */}
-            {safeStepIndex !== STEP.INSTALLING && (
-              <div className="flex justify-between">
-                <div>
-                  {!isFirstStep && (
-                    <Button variant="ghost" onClick={handleBack}>
-                      <ChevronLeft className="h-4 w-4 mr-2" />
-                      {t('nav.back')}
-                    </Button>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  {!isLastStep && safeStepIndex !== STEP.RUNTIME && (
-                    <Button variant="ghost" onClick={handleSkip}>
-                      {t('nav.skipSetup')}
-                    </Button>
-                  )}
-                  <Button onClick={handleNext} disabled={!canProceed}>
-                    {isLastStep ? (
-                      t('nav.getStarted')
-                    ) : (
-                      <>
-                        {t('nav.next')}
-                        <ChevronRight className="h-4 w-4 ml-2" />
-                      </>
+              {/* Navigation Footer */}
+              {safeStepIndex !== STEP.INSTALLING && (
+                <div className="mt-10 flex items-center justify-between pt-4 border-t border-border/40">
+                  <div className="flex gap-2">
+                    {!isFirstStep && (
+                      <Button variant="ghost" onClick={handleBack} className="text-muted-foreground hover:text-foreground">
+                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        {t('nav.back')}
+                      </Button>
                     )}
-                  </Button>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    {!isLastStep && safeStepIndex !== STEP.RUNTIME && (
+                      <button 
+                        onClick={handleSkip}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-2"
+                      >
+                        {t('nav.skipSetup')}
+                      </button>
+                    )}
+                    <Button 
+                      onClick={handleNext} 
+                      disabled={!canProceed}
+                      className="rounded-full px-6 shadow-md"
+                    >
+                      {isLastStep ? t('nav.getStarted') : t('nav.next')}
+                      {!isLastStep && <ChevronRight className="h-4 w-4 ml-1" />}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );
@@ -337,156 +303,46 @@ export function Setup() {
 
 // ==================== Step Content Components ====================
 
-interface WelcomeContentProps {
-  isCloudOnlyBuild?: boolean;
-}
-
-function WelcomeContent({ isCloudOnlyBuild }: WelcomeContentProps) {
-  const { t } = useTranslation(['setup', 'settings']);
+function WelcomeContent() {
+  const { t } = useTranslation('setup');
   const { language, setLanguage } = useSettingsStore();
-  const [speechStatus, setSpeechStatus] = useState<VolcengineSpeechConfigState | null>(null);
-  const [speechStatusLoading, setSpeechStatusLoading] = useState(!isCloudOnlyBuild);
-
-  const loadSpeechStatus = useCallback(async () => {
-    if (isCloudOnlyBuild) {
-      setSpeechStatusLoading(false);
-      setSpeechStatus(null);
-      return;
-    }
-
-    setSpeechStatusLoading(true);
-    try {
-      const status = await fetchVolcengineSpeechConfig();
-      setSpeechStatus(status);
-    } catch (error) {
-      console.error('[setup] Failed to load Volcengine speech status', error);
-      setSpeechStatus(null);
-    } finally {
-      setSpeechStatusLoading(false);
-    }
-  }, [isCloudOnlyBuild]);
-
-  useEffect(() => {
-    void loadSpeechStatus();
-  }, [loadSpeechStatus]);
 
   return (
-    <div className="text-center space-y-4">
-      <div className="mb-4 flex justify-center">
-        <img src={clawxIcon} alt="极智" className="h-16 w-16 rounded-3xl object-cover shadow-sm" />
-      </div>
-      <h2 className="text-xl font-semibold">{t('welcome.title')}</h2>
-      <p className="text-muted-foreground">
-        {t('welcome.description')}
-      </p>
-
-      {/* Language Selector */}
-      <div className="flex justify-center gap-2 py-2">
-        {SUPPORTED_LANGUAGES.map((lang) => (
-          <Button
-            key={lang.code}
-            variant={language === lang.code ? 'secondary' : 'ghost'}
-            size="sm"
-            onClick={() => setLanguage(lang.code)}
-            className="h-7 text-xs"
-          >
-            {lang.label}
-          </Button>
-        ))}
+    <div className="flex flex-col items-center justify-center text-center space-y-8 flex-1 py-4">
+      <div className="relative">
+        <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full" />
+        <img 
+          src={clawxIcon} 
+          alt="Logo" 
+          className="relative h-24 w-24 rounded-[28px] object-cover shadow-2xl ring-1 ring-white/10" 
+        />
       </div>
 
-      <ul className="text-left space-y-2 text-muted-foreground pt-2">
-        <li className="flex items-center gap-2">
-          <CheckCircle2 className="h-5 w-5 text-green-400" />
-          {t('welcome.features.noCommand')}
-        </li>
-        <li className="flex items-center gap-2">
-          <CheckCircle2 className="h-5 w-5 text-green-400" />
-          {t('welcome.features.modernUI')}
-        </li>
-        <li className="flex items-center gap-2">
-          <CheckCircle2 className="h-5 w-5 text-green-400" />
-          {isCloudOnlyBuild ? t('welcome.features.cloudWorkspace') : t('welcome.features.bundles')}
-        </li>
-        <li className="flex items-center gap-2">
-          <CheckCircle2 className="h-5 w-5 text-green-400" />
-          {t('welcome.features.crossPlatform')}
-        </li>
-      </ul>
+      <div className="space-y-3">
+        <h2 className="text-3xl font-semibold tracking-tight">{t('welcome.title')}</h2>
+        <p className="text-muted-foreground text-sm max-w-[280px] mx-auto leading-relaxed">
+          {t('welcome.description')}
+        </p>
+      </div>
 
-      {!isCloudOnlyBuild && (
-        <div className="mt-6 rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 text-left">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <div className={cn(
-                  'h-2.5 w-2.5 rounded-full',
-                  speechStatusLoading
-                    ? 'bg-amber-400'
-                    : speechStatus?.configured
-                      ? 'bg-emerald-500'
-                      : 'bg-orange-400',
-                )} />
-                <p className="text-sm font-semibold text-slate-900">{t('welcome.speech.title')}</p>
-              </div>
-              <p className="text-sm text-slate-600">{t('welcome.speech.description')}</p>
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => { void loadSpeechStatus(); }}
-              disabled={speechStatusLoading}
-              className="shrink-0"
+      <div className="pt-4 w-full max-w-[240px]">
+        <div className="flex bg-muted/50 p-1 rounded-2xl border border-white/5 shadow-inner">
+          {SUPPORTED_LANGUAGES.map((lang) => (
+            <button
+              key={lang.code}
+              onClick={() => setLanguage(lang.code)}
+              className={cn(
+                "flex-1 py-2 text-sm font-medium rounded-xl transition-all duration-300",
+                language === lang.code 
+                  ? "bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/5" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+              )}
             >
-              <RefreshCw className={cn('mr-2 h-4 w-4', speechStatusLoading && 'animate-spin')} />
-              {t('welcome.speech.refresh')}
-            </Button>
-          </div>
-
-          <div className="mt-3 space-y-2 text-sm">
-            {speechStatusLoading ? (
-              <div className="flex items-center gap-2 text-slate-500">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {t('welcome.speech.checking')}
-              </div>
-            ) : speechStatus?.configured ? (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-900">
-                <p className="font-medium">{t('welcome.speech.ready')}</p>
-                <p className="mt-1 text-xs text-emerald-700">
-                  {t('welcome.speech.readyDesc', { endpoint: speechStatus.endpoint, cluster: speechStatus.cluster })}
-                </p>
-              </div>
-            ) : (
-              <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-orange-900">
-                <p className="font-medium">{t('welcome.speech.missing')}</p>
-                <p className="mt-1 text-xs text-orange-700">{t('welcome.speech.missingDesc')}</p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 gap-2 text-xs text-slate-500 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                {t('welcome.speech.appId')}: {speechStatus?.appId || t('welcome.speech.notConfigured')}
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                {t('welcome.speech.cluster')}: {speechStatus?.cluster || t('welcome.speech.notConfigured')}
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                {t('welcome.speech.language')}: {speechStatus?.language || 'zh-CN'}
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                {t('welcome.speech.token')}: {speechStatus?.tokenMasked || t('welcome.speech.notConfigured')}
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-500">
-              {speechStatus?.configured
-                ? t('welcome.speech.firstRunReady')
-                : t('welcome.speech.firstRunHint')}
-            </p>
-          </div>
+              {lang.label}
+            </button>
+          ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -505,7 +361,6 @@ function RuntimeContent({ onStatusChange, isRemoteMode, isCloudOnlyBuild }: Runt
   const cloudLoggedIn = useSettingsStore((state) => state.cloudLoggedIn);
   const cloudWorkspaceId = useSettingsStore((state) => state.cloudWorkspaceId);
 
-  // In remote/cloud-only mode, local runtime is not required.
   useEffect(() => {
     if (isRemoteMode || isCloudOnlyBuild) {
       onStatusChange(true);
@@ -522,20 +377,17 @@ function RuntimeContent({ onStatusChange, isRemoteMode, isCloudOnlyBuild }: Runt
   const gatewayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const runChecks = useCallback(async () => {
-    // Reset checks
     setChecks({
       nodejs: { status: 'checking', message: '' },
       openclaw: { status: 'checking', message: '' },
       gateway: { status: 'checking', message: '' },
     });
 
-    // Check Node.js — always available in Electron
     setChecks((prev) => ({
       ...prev,
       nodejs: { status: 'success', message: t('runtime.status.success') },
     }));
 
-    // Check OpenClaw package status
     try {
       const openclawStatus = await invokeIpc('openclaw:status') as {
         packageExists: boolean;
@@ -544,62 +396,29 @@ function RuntimeContent({ onStatusChange, isRemoteMode, isCloudOnlyBuild }: Runt
         version?: string;
       };
 
-      if (!openclawStatus.packageExists) {
+      if (!openclawStatus.packageExists || !openclawStatus.isBuilt) {
         setChecks((prev) => ({
           ...prev,
-          openclaw: {
-            status: 'error',
-            message: `OpenClaw package not found at: ${openclawStatus.dir}`
-          },
-        }));
-      } else if (!openclawStatus.isBuilt) {
-        setChecks((prev) => ({
-          ...prev,
-          openclaw: {
-            status: 'error',
-            message: 'OpenClaw package found but dist is missing'
-          },
+          openclaw: { status: 'error', message: 'OpenClaw unavailable' },
         }));
       } else {
-        const versionLabel = openclawStatus.version ? ` v${openclawStatus.version}` : '';
         setChecks((prev) => ({
           ...prev,
-          openclaw: {
-            status: 'success',
-            message: `OpenClaw package ready${versionLabel}`
-          },
+          openclaw: { status: 'success', message: `Ready` },
         }));
       }
     } catch (error) {
       setChecks((prev) => ({
         ...prev,
-        openclaw: { status: 'error', message: `Check failed: ${error}` },
+        openclaw: { status: 'error', message: `Check failed` },
       }));
     }
 
-    // Check Gateway — read directly from store to avoid stale closure
-    // Don't immediately report error; gateway may still be initializing
     const currentGateway = useGatewayStore.getState().status;
     if (currentGateway.state === 'running') {
-      setChecks((prev) => ({
-        ...prev,
-        gateway: { status: 'success', message: `Running on port ${currentGateway.port}` },
-      }));
+      setChecks((prev) => ({ ...prev, gateway: { status: 'success', message: 'Running' } }));
     } else if (currentGateway.state === 'error') {
-      setChecks((prev) => ({
-        ...prev,
-        gateway: { status: 'error', message: currentGateway.error || t('runtime.status.error') },
-      }));
-    } else {
-      // Gateway is 'stopped', 'starting', or 'reconnecting'
-      // Keep as 'checking' — the dedicated useEffect will update when status changes
-      setChecks((prev) => ({
-        ...prev,
-        gateway: {
-          status: 'checking',
-          message: currentGateway.state === 'starting' ? t('runtime.status.checking') : 'Waiting for gateway...'
-        },
-      }));
+      setChecks((prev) => ({ ...prev, gateway: { status: 'error', message: 'Error' } }));
     }
   }, [t]);
 
@@ -607,7 +426,6 @@ function RuntimeContent({ onStatusChange, isRemoteMode, isCloudOnlyBuild }: Runt
     runChecks();
   }, [runChecks]);
 
-  // Update canProceed when gateway status changes
   useEffect(() => {
     const allPassed = checks.nodejs.status === 'success'
       && checks.openclaw.status === 'success'
@@ -615,65 +433,35 @@ function RuntimeContent({ onStatusChange, isRemoteMode, isCloudOnlyBuild }: Runt
     onStatusChange(allPassed);
   }, [checks, gatewayStatus, onStatusChange]);
 
-  // Update gateway check when gateway status changes
   useEffect(() => {
     if (gatewayStatus.state === 'running') {
-      setChecks((prev) => ({
-        ...prev,
-        gateway: { status: 'success', message: t('runtime.status.gatewayRunning', { port: gatewayStatus.port }) },
-      }));
+      setChecks((prev) => ({ ...prev, gateway: { status: 'success', message: 'Running' } }));
     } else if (gatewayStatus.state === 'error') {
-      setChecks((prev) => ({
-        ...prev,
-        gateway: { status: 'error', message: gatewayStatus.error || 'Failed to start' },
-      }));
+      setChecks((prev) => ({ ...prev, gateway: { status: 'error', message: 'Error' } }));
     } else if (gatewayStatus.state === 'starting' || gatewayStatus.state === 'reconnecting') {
-      setChecks((prev) => ({
-        ...prev,
-        gateway: { status: 'checking', message: 'Starting...' },
-      }));
+      setChecks((prev) => ({ ...prev, gateway: { status: 'checking', message: 'Starting...' } }));
     }
-    // 'stopped' state: keep current check status (likely 'checking') to allow startup time
-  }, [gatewayStatus, t]);
+  }, [gatewayStatus]);
 
-  // Gateway startup timeout — show error only after giving enough time to initialize
   useEffect(() => {
     if (gatewayTimeoutRef.current) {
       clearTimeout(gatewayTimeoutRef.current);
       gatewayTimeoutRef.current = null;
     }
-
-    // If gateway is already in a terminal state, no timeout needed
-    if (gatewayStatus.state === 'running' || gatewayStatus.state === 'error') {
-      return;
-    }
-
-    // Set timeout for non-terminal states (stopped, starting, reconnecting)
+    if (gatewayStatus.state === 'running' || gatewayStatus.state === 'error') return;
     gatewayTimeoutRef.current = setTimeout(() => {
       setChecks((prev) => {
-        if (prev.gateway.status === 'checking') {
-          return {
-            ...prev,
-            gateway: { status: 'error', message: 'Gateway startup timed out' },
-          };
-        }
+        if (prev.gateway.status === 'checking') return { ...prev, gateway: { status: 'error', message: 'Timeout' } };
         return prev;
       });
-    }, 600 * 1000); // 600 seconds — enough for gateway to fully initialize
-
+    }, 600 * 1000);
     return () => {
-      if (gatewayTimeoutRef.current) {
-        clearTimeout(gatewayTimeoutRef.current);
-        gatewayTimeoutRef.current = null;
-      }
+      if (gatewayTimeoutRef.current) clearTimeout(gatewayTimeoutRef.current);
     };
   }, [gatewayStatus.state]);
 
   const handleStartGateway = async () => {
-    setChecks((prev) => ({
-      ...prev,
-      gateway: { status: 'checking', message: 'Starting...' },
-    }));
+    setChecks((prev) => ({ ...prev, gateway: { status: 'checking', message: 'Starting...' } }));
     await startGateway();
   };
 
@@ -688,246 +476,83 @@ function RuntimeContent({ onStatusChange, isRemoteMode, isCloudOnlyBuild }: Runt
     }
   };
 
-  const handleOpenLogDir = async () => {
-    try {
-      const { dir: logDir } = await hostApiFetch<{ dir: string | null }>('/api/logs/dir');
-      if (logDir) {
-        await invokeIpc('shell:showItemInFolder', logDir);
-      }
-    } catch {
-      // ignore
-    }
-  };
+  const isAllSuccess = checks.nodejs.status === 'success' && checks.openclaw.status === 'success' && checks.gateway.status === 'success';
+  const isAnyError = checks.nodejs.status === 'error' || checks.openclaw.status === 'error' || checks.gateway.status === 'error';
 
-  if (isRemoteMode) {
-    return (
-      <div className="space-y-4">
-        <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 text-blue-300 text-sm">
-          <p className="font-semibold mb-1">🌐 {t('runtime.remoteModeTitle', '已配置远程网关')}</p>
-          <p className="text-blue-400/80 break-all">{remoteGatewayUrl}</p>
-          <p className="mt-2 text-blue-400/70">{t('runtime.remoteModeDesc', '将使用远程 OpenClaw 运行时，本地运行时检查已跳过。')}</p>
-        </div>
+  return (
+    <div className="flex flex-col h-full space-y-6 flex-1 justify-center">
+      <div className="text-center space-y-2 mb-4">
+        <h2 className="text-2xl font-semibold tracking-tight">{t('runtime.title')}</h2>
+        <p className="text-muted-foreground text-sm">{t('steps.runtime.description')}</p>
       </div>
-    );
-  }
 
-  if (isCloudOnlyBuild) {
-    return (
-      <div className="space-y-4">
-        <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 text-sm text-blue-200">
-          <p className="font-semibold mb-1">{t('runtime.cloudOnlyTitle')}</p>
-          <p className="text-blue-400/80">{t('runtime.cloudOnlyDesc')}</p>
+      {(isRemoteMode || isCloudOnlyBuild) ? (
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6 text-center space-y-3">
+          <div className="w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-2">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+          <p className="font-medium">
+            {isRemoteMode ? t('runtime.remoteModeTitle', '已配置远程网关') : t('runtime.cloudOnlyTitle')}
+          </p>
+          <p className="text-sm text-muted-foreground break-all">
+            {isRemoteMode ? remoteGatewayUrl : (cloudWorkspaceId || 'Ready to connect')}
+          </p>
         </div>
-        <div className="space-y-3">
-          <div className="grid grid-cols-[1fr_auto] items-center gap-4 p-3 rounded-lg bg-muted/50">
-            <span className="text-left">{t('runtime.cloudLogin')}</span>
-            <span className={cloudLoggedIn ? 'text-green-400' : 'text-yellow-400'}>
-              {cloudLoggedIn ? t('complete.connected') : t('runtime.status.checking')}
-            </span>
+      ) : (
+        <div className="space-y-4 w-full">
+          <CheckItem 
+            title="Node.js Environment" 
+            status={checks.nodejs.status} 
+          />
+          <CheckItem 
+            title="OpenClaw Runtime" 
+            status={checks.openclaw.status} 
+          />
+          <CheckItem 
+            title="Gateway Service" 
+            status={checks.gateway.status} 
+            action={checks.gateway.status === 'error' ? <Button variant="outline" size="sm" onClick={handleStartGateway}>Retry</Button> : null}
+          />
+
+          <div className="flex justify-center pt-4">
+            <Button variant="ghost" size="sm" onClick={handleShowLogs} className="text-xs text-muted-foreground">
+              {t('runtime.viewLogs')}
+            </Button>
           </div>
-          <div className="grid grid-cols-[1fr_auto] items-center gap-4 p-3 rounded-lg bg-muted/50">
-            <span className="text-left">{t('runtime.cloudWorkspace')}</span>
-            <span className="text-green-400 font-mono text-right break-all max-w-[18rem]">
-              {cloudWorkspaceId || '—'}
-            </span>
-          </div>
-          <div className="grid grid-cols-[1fr_auto] items-center gap-4 p-3 rounded-lg bg-muted/50">
-            <span className="text-left">{t('runtime.localRuntimeSkipped')}</span>
-            <span className="text-green-400">{t('complete.connected')}</span>
-          </div>
-          {remoteGatewayUrl?.trim() && (
-            <div className="grid grid-cols-[1fr_auto] items-center gap-4 p-3 rounded-lg bg-muted/50">
-              <span className="text-left">{t('runtime.remoteGateway')}</span>
-              <span className="text-green-400 text-right break-all max-w-[18rem]">
-                {remoteGatewayUrl}
-              </span>
+
+          {showLogs && (
+            <div className="mt-4 p-4 rounded-xl bg-black/50 border border-border/50 text-left overflow-hidden">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-medium text-muted-foreground">Logs</span>
+                <button
+                type="button"
+                onClick={() => setShowLogs(false)} 
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Close
+              </button>
+              </div>
+              <pre className="text-[10px] text-slate-300 font-mono h-32 overflow-auto break-all whitespace-pre-wrap">
+                {logContent || 'No logs available.'}
+              </pre>
             </div>
           )}
         </div>
-      </div>
-    );
-  }
-
-  const renderStepIcon = (status: 'pending' | 'checking' | 'success' | 'error') => {
-    if (status === 'success') {
-      return <CheckCircle2 className="h-5 w-5 text-green-500" />;
-    }
-    if (status === 'checking') {
-      return <Loader2 className="h-5 w-5 text-foreground animate-spin" />;
-    }
-    if (status === 'error') {
-      return <XCircle className="h-5 w-5 text-red-500" />;
-    }
-    return <div className="h-2 w-2 rounded-full bg-muted-foreground/30 m-1.5" />;
-  };
-
-  // Determine overall status for the top header
-  const isAllSuccess = checks.nodejs.status === 'success' && checks.openclaw.status === 'success' && checks.gateway.status === 'success';
-  const isAnyError = checks.nodejs.status === 'error' || checks.openclaw.status === 'error' || checks.gateway.status === 'error';
-  const currentActiveStep = checks.nodejs.status === 'checking' || checks.openclaw.status === 'checking' 
-    ? '检查环境' 
-    : checks.gateway.status === 'checking' 
-      ? '启动 Gateway' 
-      : isAllSuccess 
-        ? '连接服务' 
-        : '出错了';
-
-  const currentActiveDesc = checks.nodejs.status === 'checking' || checks.openclaw.status === 'checking'
-    ? '正在检查本地环境...'
-    : checks.gateway.status === 'checking'
-      ? '等待 Gateway 启动...'
-      : isAllSuccess
-        ? '服务已连接'
-        : '启动失败，请查看日志';
-
-  // Calculate progress percentage
-  const progressPercent = isAllSuccess 
-    ? 100 
-    : checks.gateway.status === 'checking' 
-      ? 60 
-      : (checks.nodejs.status === 'success' && checks.openclaw.status === 'success') 
-        ? 30 
-        : 10;
-
-  return (
-    <div className="flex flex-col items-center justify-center py-8 space-y-10">
-      {/* Top Icon & Title */}
-      <div className="flex flex-col items-center text-center space-y-6">
-        <div className="relative flex items-center justify-center w-24 h-24">
-          <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
-            <circle
-              cx="50"
-              cy="50"
-              r="46"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="text-muted/30"
-            />
-            <motion.circle
-              cx="50"
-              cy="50"
-              r="46"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className={isAnyError ? "text-red-500" : isAllSuccess ? "text-green-500" : "text-foreground"}
-              strokeDasharray="289"
-              strokeDashoffset={289 - (289 * progressPercent) / 100}
-              strokeLinecap="round"
-              initial={{ strokeDashoffset: 289 }}
-              animate={{ strokeDashoffset: 289 - (289 * progressPercent) / 100 }}
-              transition={{ duration: 0.5, ease: "easeInOut" }}
-            />
-          </svg>
-          <div className="w-14 h-14 bg-foreground text-background rounded-2xl flex items-center justify-center shadow-lg">
-            <img src={clawxIcon} alt="Logo" className="w-10 h-10 object-contain invert dark:invert-0" />
-          </div>
-        </div>
-        
-        <div className="space-y-2">
-          <h2 className="text-2xl font-bold">{currentActiveStep}</h2>
-          <p className="text-muted-foreground">{currentActiveDesc}</p>
-        </div>
-      </div>
-
-      {/* Step List */}
-      <div className="w-full max-w-sm space-y-6 relative">
-        {/* Environment Check */}
-        <div className="flex items-start gap-4 relative">
-          <div className="relative z-10 bg-card flex items-center justify-center h-6 w-6 mt-0.5">
-            {renderStepIcon(checks.nodejs.status === 'success' && checks.openclaw.status === 'success' ? 'success' : checks.nodejs.status === 'error' || checks.openclaw.status === 'error' ? 'error' : 'checking')}
-          </div>
-          <div className="flex-1">
-            <p className={cn("font-medium", (checks.nodejs.status === 'success' && checks.openclaw.status === 'success') ? "text-muted-foreground" : "text-foreground")}>
-              检查环境
-            </p>
-          </div>
-        </div>
-
-        {/* Start Gateway */}
-        <div className="flex items-start gap-4 relative">
-          <div className="absolute left-[11px] top-[-32px] bottom-[24px] w-[2px] bg-border -z-0" />
-          <div className="relative z-10 bg-card flex items-center justify-center h-6 w-6 mt-0.5">
-            {renderStepIcon(checks.gateway.status === 'success' ? 'success' : (checks.nodejs.status === 'success' && checks.openclaw.status === 'success' ? checks.gateway.status : 'pending'))}
-          </div>
-          <div className="flex-1 flex justify-between items-center">
-            <div className="space-y-1">
-              <p className={cn("font-medium", checks.gateway.status === 'success' ? "text-muted-foreground" : checks.gateway.status === 'checking' ? "text-foreground" : "text-muted-foreground/50")}>
-                启动 Gateway
-              </p>
-              {checks.gateway.status === 'checking' && (
-                <p className="text-sm text-muted-foreground">等待 Gateway 启动...</p>
-              )}
-            </div>
-            {checks.gateway.status === 'error' && (
-              <Button variant="outline" size="sm" onClick={handleStartGateway}>
-                重试
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Connect Service */}
-        <div className="flex items-start gap-4 relative">
-          <div className="absolute left-[11px] top-[-32px] bottom-[24px] w-[2px] bg-border -z-0" />
-          <div className="relative z-10 bg-card flex items-center justify-center h-6 w-6 mt-0.5">
-            {renderStepIcon(checks.gateway.status === 'success' ? 'success' : 'pending')}
-          </div>
-          <div className="flex-1 flex justify-between items-center">
-            <p className={cn("font-medium", checks.gateway.status === 'success' ? "text-foreground" : "text-muted-foreground/50")}>
-              连接服务
-            </p>
-            {checks.gateway.status === 'success' && (
-              <span className="text-sm text-muted-foreground">已连接</span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Progress Bar */}
-      <div className="w-full max-w-sm pt-4">
-        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-          <motion.div 
-            className={cn("h-full", isAnyError ? "bg-red-500" : "bg-green-500")}
-            initial={{ width: 0 }}
-            animate={{ width: `${progressPercent}%` }}
-            transition={{ duration: 0.5 }}
-          />
-        </div>
-      </div>
-
-      {/* Error / Logs Actions */}
-      <div className="flex gap-4 pt-2">
-        <Button variant="ghost" size="sm" onClick={handleShowLogs} className="text-muted-foreground">
-          查看日志
-        </Button>
-        <Button variant="ghost" size="sm" onClick={runChecks} className="text-muted-foreground">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          重新检查
-        </Button>
-      </div>
-
-      {/* Log viewer panel */}
-      {showLogs && (
-        <div className="w-full mt-4 p-4 rounded-lg bg-black/40 border border-border text-left">
-          <div className="flex items-center justify-between mb-2">
-            <p className="font-medium text-foreground text-sm">{t('runtime.logs.title')}</p>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleOpenLogDir}>
-                <ExternalLink className="h-3 w-3 mr-1" />
-                {t('runtime.logs.openFolder')}
-              </Button>
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowLogs(false)}>
-                {t('runtime.logs.close')}
-              </Button>
-            </div>
-          </div>
-          <pre className="text-xs text-slate-300 bg-black/50 p-3 rounded max-h-60 overflow-auto whitespace-pre-wrap font-mono">
-            {logContent || t('runtime.logs.noLogs')}
-          </pre>
-        </div>
       )}
+    </div>
+  );
+}
+
+function CheckItem({ title, status, action }: { title: string, status: string, action?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border border-border/50">
+      <div className="flex items-center gap-3">
+        {status === 'success' && <CheckCircle2 className="w-5 h-5 text-green-500" />}
+        {status === 'checking' && <Loader2 className="w-5 h-5 text-primary animate-spin" />}
+        {status === 'error' && <XCircle className="w-5 h-5 text-red-500" />}
+        <span className="font-medium text-sm">{title}</span>
+      </div>
+      {action}
     </div>
   );
 }
@@ -955,7 +580,6 @@ function ProviderContent({
 }: ProviderContentProps) {
   const { t, i18n } = useTranslation(['setup', 'settings']);
   const devModeUnlocked = useSettingsStore((state) => state.devModeUnlocked);
-  const remoteGatewayUrl = useSettingsStore((state) => state.remoteGatewayUrl);
   const [showKey, setShowKey] = useState(false);
   const [validating, setValidating] = useState(false);
   const [keyValid, setKeyValid] = useState<boolean | null>(null);
@@ -966,156 +590,6 @@ function ProviderContent({
   const [providerMenuOpen, setProviderMenuOpen] = useState(false);
   const providerMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const [authMode, setAuthMode] = useState<'oauth' | 'apikey'>('oauth');
-  const [arkMode, setArkMode] = useState<'apikey' | 'codeplan'>('apikey');
-
-  // OAuth Flow State
-  const [oauthFlowing, setOauthFlowing] = useState(false);
-  const [oauthData, setOauthData] = useState<{
-    mode: 'device';
-    verificationUri: string;
-    userCode: string;
-    expiresIn: number;
-  } | {
-    mode: 'manual';
-    authorizationUrl: string;
-    message?: string;
-  } | null>(null);
-  const [manualCodeInput, setManualCodeInput] = useState('');
-  const [oauthError, setOauthError] = useState<string | null>(null);
-  const pendingOAuthRef = useRef<{ accountId: string; label: string } | null>(null);
-
-  // Manage OAuth events
-  useEffect(() => {
-    const handleCode = (data: unknown) => {
-      const payload = data as Record<string, unknown>;
-      if (payload?.mode === 'manual') {
-        setOauthData({
-          mode: 'manual',
-          authorizationUrl: String(payload.authorizationUrl || ''),
-          message: typeof payload.message === 'string' ? payload.message : undefined,
-        });
-      } else {
-        setOauthData({
-          mode: 'device',
-          verificationUri: String(payload.verificationUri || ''),
-          userCode: String(payload.userCode || ''),
-          expiresIn: Number(payload.expiresIn || 300),
-        });
-      }
-      setOauthError(null);
-    };
-
-    const handleSuccess = async (data: unknown) => {
-      setOauthFlowing(false);
-      setOauthData(null);
-      setManualCodeInput('');
-      setKeyValid(true);
-
-      const payload = (data as { accountId?: string } | undefined) || undefined;
-      const accountId = payload?.accountId || pendingOAuthRef.current?.accountId;
-
-      if (accountId) {
-        try {
-          await hostApiFetch('/api/provider-accounts/default', {
-            method: 'PUT',
-            body: JSON.stringify({ accountId }),
-          });
-          setSelectedAccountId(accountId);
-        } catch (error) {
-          console.error('Failed to set default provider account:', error);
-        }
-      }
-
-      pendingOAuthRef.current = null;
-      onConfiguredChange(true);
-      toast.success(t('provider.valid'));
-    };
-
-    const handleError = (data: unknown) => {
-      setOauthError((data as { message: string }).message);
-      setOauthData(null);
-      pendingOAuthRef.current = null;
-    };
-
-    const offCode = subscribeHostEvent('oauth:code', handleCode);
-    const offSuccess = subscribeHostEvent('oauth:success', handleSuccess);
-    const offError = subscribeHostEvent('oauth:error', handleError);
-
-    return () => {
-      offCode();
-      offSuccess();
-      offError();
-    };
-  }, [onConfiguredChange, t]);
-
-  const handleStartOAuth = async () => {
-    if (!selectedProvider) return;
-
-    try {
-      const snapshot = await fetchProviderSnapshot();
-      const existingVendorIds = new Set(snapshot.accounts.map((account) => account.vendorId));
-      if (selectedProvider === 'minimax-portal' && existingVendorIds.has('minimax-portal-cn')) {
-        toast.error(t('settings:aiProviders.toast.minimaxConflict'));
-        return;
-      }
-      if (selectedProvider === 'minimax-portal-cn' && existingVendorIds.has('minimax-portal')) {
-        toast.error(t('settings:aiProviders.toast.minimaxConflict'));
-        return;
-      }
-    } catch {
-      // ignore check failure
-    }
-
-    setOauthFlowing(true);
-    setOauthData(null);
-    setManualCodeInput('');
-    setOauthError(null);
-
-    try {
-      const snapshot = await fetchProviderSnapshot();
-      const accountId = buildProviderAccountId(
-        selectedProvider as ProviderType,
-        selectedAccountId,
-        snapshot.vendors,
-      );
-      const label = selectedProviderData?.name || selectedProvider;
-      pendingOAuthRef.current = { accountId, label };
-      await hostApiFetch('/api/providers/oauth/start', {
-        method: 'POST',
-        body: JSON.stringify({ provider: selectedProvider, accountId, label }),
-      });
-    } catch (e) {
-      setOauthError(String(e));
-      setOauthFlowing(false);
-      pendingOAuthRef.current = null;
-    }
-  };
-
-  const handleCancelOAuth = async () => {
-    setOauthFlowing(false);
-    setOauthData(null);
-    setManualCodeInput('');
-    setOauthError(null);
-    pendingOAuthRef.current = null;
-    await hostApiFetch('/api/providers/oauth/cancel', { method: 'POST' });
-  };
-
-  const handleSubmitManualOAuthCode = async () => {
-    const value = manualCodeInput.trim();
-    if (!value) return;
-    try {
-      await hostApiFetch('/api/providers/oauth/submit', {
-        method: 'POST',
-        body: JSON.stringify({ code: value }),
-      });
-      setOauthError(null);
-    } catch (error) {
-      setOauthError(String(error));
-    }
-  };
-
-  // On mount, try to restore previously configured provider
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -1139,156 +613,61 @@ function ProviderContent({
             `/api/providers/${encodeURIComponent(preferred.id)}/api-key`,
           )).apiKey;
           onApiKeyChange(storedKey || '');
-        } else if (!cancelled) {
-          onConfiguredChange(false);
-          onApiKeyChange('');
         }
       } catch (error) {
-        if (!cancelled) {
-          console.error('Failed to load provider list:', error);
-        }
+        // ignore
       }
     })();
     return () => { cancelled = true; };
-  }, [onApiKeyChange, onConfiguredChange, onSelectProvider, providers]);
+  }, []);
 
-  // When provider changes, load stored key + reset base URL
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!selectedProvider) return;
-      setApiProtocol('openai-completions');
       try {
         const snapshot = await fetchProviderSnapshot();
         const statusMap = new Map(snapshot.statuses.map((status) => [status.id, status]));
-        const preferredAccount = pickPreferredAccount(
-          snapshot.accounts,
-          snapshot.defaultAccountId,
-          selectedProvider,
-          statusMap,
-        );
+        const preferredAccount = pickPreferredAccount(snapshot.accounts, snapshot.defaultAccountId, selectedProvider, statusMap);
         const accountIdForLoad = preferredAccount?.id || selectedProvider;
         setSelectedAccountId(preferredAccount?.id || null);
 
-        const savedProvider = await hostApiFetch<{ baseUrl?: string; model?: string; apiProtocol?: ProviderAccount['apiProtocol'] } | null>(
-          `/api/providers/${encodeURIComponent(accountIdForLoad)}`,
-        );
-        const storedKey = (await hostApiFetch<{ apiKey: string | null }>(
-          `/api/providers/${encodeURIComponent(accountIdForLoad)}/api-key`,
-        )).apiKey;
+        const savedProvider = await hostApiFetch<any>(`/api/providers/${encodeURIComponent(accountIdForLoad)}`);
+        const storedKey = (await hostApiFetch<any>(`/api/providers/${encodeURIComponent(accountIdForLoad)}/api-key`)).apiKey;
         if (!cancelled) {
           onApiKeyChange(storedKey || '');
-
           const info = providers.find((p) => p.id === selectedProvider);
-          const nextBaseUrl = savedProvider?.baseUrl || info?.defaultBaseUrl || '';
-          const nextModelId = savedProvider?.model || info?.defaultModelId || '';
-          setBaseUrl(nextBaseUrl);
-          setModelId(nextModelId);
+          setBaseUrl(savedProvider?.baseUrl || info?.defaultBaseUrl || '');
+          setModelId(savedProvider?.model || info?.defaultModelId || '');
           setApiProtocol(savedProvider?.apiProtocol || 'openai-completions');
-          if (
-            selectedProvider === 'ark'
-            && info?.codePlanPresetBaseUrl
-            && info?.codePlanPresetModelId
-            && nextBaseUrl.trim() === info.codePlanPresetBaseUrl
-            && nextModelId.trim() === info.codePlanPresetModelId
-          ) {
-            setArkMode('codeplan');
-          } else {
-            setArkMode('apikey');
-          }
         }
-      } catch (error) {
-        if (!cancelled) {
-          console.error('Failed to load provider key:', error);
-        }
-      }
+      } catch (error) {}
     })();
     return () => { cancelled = true; };
-  }, [onApiKeyChange, selectedProvider, providers]);
-
-  useEffect(() => {
-    if (!providerMenuOpen) return;
-
-    const handlePointerDown = (event: MouseEvent) => {
-      if (providerMenuRef.current && !providerMenuRef.current.contains(event.target as Node)) {
-        setProviderMenuOpen(false);
-      }
-    };
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setProviderMenuOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [providerMenuOpen]);
+  }, [selectedProvider]);
 
   const selectedProviderData = providers.find((p) => p.id === selectedProvider);
-  const providerDocsUrl = getProviderDocsUrl(selectedProviderData, i18n.language);
-  const effectiveProviderDocsUrl = selectedProvider === 'ark' && arkMode === 'codeplan'
-    ? (selectedProviderData?.codePlanDocsUrl || providerDocsUrl)
-    : providerDocsUrl;
-  const selectedProviderIconUrl = selectedProviderData
-    ? getProviderIconUrl(selectedProviderData.id)
-    : undefined;
   const showBaseUrlField = selectedProviderData?.showBaseUrl ?? false;
   const showModelIdField = shouldShowProviderModelId(selectedProviderData, devModeUnlocked);
-  const codePlanPreset = selectedProviderData?.codePlanPresetBaseUrl && selectedProviderData?.codePlanPresetModelId
-    ? {
-      baseUrl: selectedProviderData.codePlanPresetBaseUrl,
-      modelId: selectedProviderData.codePlanPresetModelId,
-    }
-    : null;
   const requiresKey = selectedProviderData?.requiresApiKey ?? false;
   const isOAuth = selectedProviderData?.isOAuth ?? false;
   const supportsApiKey = selectedProviderData?.supportsApiKey ?? false;
-  const useOAuthFlow = isOAuth && (!supportsApiKey || authMode === 'oauth');
+  const useOAuthFlow = isOAuth && !supportsApiKey;
+
+  const canSubmit = selectedProvider && (requiresKey ? apiKey.length > 0 : true) && (showModelIdField ? modelId.trim().length > 0 : true) && !useOAuthFlow;
 
   const handleValidateAndSave = async () => {
     if (!selectedProvider) return;
-
-    try {
-      const snapshot = await fetchProviderSnapshot();
-      const existingVendorIds = new Set(snapshot.accounts.map((account) => account.vendorId));
-      if (selectedProvider === 'minimax-portal' && existingVendorIds.has('minimax-portal-cn')) {
-        toast.error(t('settings:aiProviders.toast.minimaxConflict'));
-        return;
-      }
-      if (selectedProvider === 'minimax-portal-cn' && existingVendorIds.has('minimax-portal')) {
-        toast.error(t('settings:aiProviders.toast.minimaxConflict'));
-        return;
-      }
-    } catch {
-      // ignore check failure
-    }
-
     setValidating(true);
     setKeyValid(null);
 
     try {
-      // Validate key if the provider requires one and a key was entered
-      const isApiKeyRequired = requiresKey || (supportsApiKey && authMode === 'apikey');
-      if (isApiKeyRequired && apiKey) {
-        const result = await invokeIpc(
-          'provider:validateKey',
-          selectedAccountId || selectedProvider,
-          apiKey,
-          {
-            baseUrl: baseUrl.trim() || undefined,
-            apiProtocol: (selectedProvider === 'custom' || selectedProvider === 'ollama')
-              ? apiProtocol
-              : undefined,
-          }
-        ) as { valid: boolean; error?: string };
-
+      if (requiresKey && apiKey) {
+        const result = await invokeIpc('provider:validateKey', selectedAccountId || selectedProvider, apiKey, {
+          baseUrl: baseUrl.trim() || undefined,
+          apiProtocol: (selectedProvider === 'custom' || selectedProvider === 'ollama') ? apiProtocol : undefined,
+        }) as any;
         setKeyValid(result.valid);
-
         if (!result.valid) {
           toast.error(result.error || t('provider.invalid'));
           setValidating(false);
@@ -1298,32 +677,18 @@ function ProviderContent({
         setKeyValid(true);
       }
 
-      const effectiveModelId = resolveProviderModelForSave(
-        selectedProviderData,
-        modelId,
-        devModeUnlocked
-      );
+      const effectiveModelId = resolveProviderModelForSave(selectedProviderData, modelId, devModeUnlocked);
       const snapshot = await fetchProviderSnapshot();
-      const accountIdForSave = buildProviderAccountId(
-        selectedProvider as ProviderType,
-        selectedAccountId,
-        snapshot.vendors,
-      );
-
+      const accountIdForSave = buildProviderAccountId(selectedProvider as ProviderType, selectedAccountId, snapshot.vendors);
       const effectiveApiKey = resolveProviderApiKeyForSave(selectedProvider, apiKey);
+      
       const accountPayload: ProviderAccount = {
         id: accountIdForSave,
         vendorId: selectedProvider as ProviderType,
-        label: selectedProvider === 'custom'
-          ? t('settings:aiProviders.custom')
-          : (selectedProviderData?.name || selectedProvider),
-        authMode: selectedProvider === 'ollama'
-          ? 'local'
-          : 'api_key',
+        label: selectedProvider === 'custom' ? t('settings:aiProviders.custom') : (selectedProviderData?.name || selectedProvider),
+        authMode: selectedProvider === 'ollama' ? 'local' : 'api_key',
         baseUrl: baseUrl.trim() || undefined,
-        apiProtocol: (selectedProvider === 'custom' || selectedProvider === 'ollama')
-          ? apiProtocol
-          : undefined,
+        apiProtocol: (selectedProvider === 'custom' || selectedProvider === 'ollama') ? apiProtocol : undefined,
         model: effectiveModelId,
         enabled: true,
         isDefault: false,
@@ -1332,573 +697,157 @@ function ProviderContent({
       };
 
       const saveResult = selectedAccountId
-        ? await hostApiFetch<{ success: boolean; error?: string }>(
-          `/api/provider-accounts/${encodeURIComponent(accountIdForSave)}`,
-          {
+        ? await hostApiFetch<any>(`/api/provider-accounts/${encodeURIComponent(accountIdForSave)}`, {
             method: 'PUT',
             body: JSON.stringify({
-              updates: {
-                label: accountPayload.label,
-                authMode: accountPayload.authMode,
-                baseUrl: accountPayload.baseUrl,
-                apiProtocol: accountPayload.apiProtocol,
-                model: accountPayload.model,
-                enabled: accountPayload.enabled,
-              },
+              updates: { label: accountPayload.label, authMode: accountPayload.authMode, baseUrl: accountPayload.baseUrl, apiProtocol: accountPayload.apiProtocol, model: accountPayload.model, enabled: accountPayload.enabled },
               apiKey: effectiveApiKey,
             }),
-          },
-        )
-        : await hostApiFetch<{ success: boolean; error?: string }>('/api/provider-accounts', {
-          method: 'POST',
-          body: JSON.stringify({ account: accountPayload, apiKey: effectiveApiKey }),
-        });
+          })
+        : await hostApiFetch<any>('/api/provider-accounts', {
+            method: 'POST',
+            body: JSON.stringify({ account: accountPayload, apiKey: effectiveApiKey }),
+          });
 
-      if (!saveResult.success) {
-        throw new Error(saveResult.error || 'Failed to save provider config');
-      }
+      if (!saveResult.success) throw new Error(saveResult.error);
 
-      const defaultResult = await hostApiFetch<{ success: boolean; error?: string }>(
-        '/api/provider-accounts/default',
-        {
-          method: 'PUT',
-          body: JSON.stringify({ accountId: accountIdForSave }),
-        },
-      );
-
-      if (!defaultResult.success) {
-        throw new Error(defaultResult.error || 'Failed to set default provider');
-      }
+      await hostApiFetch<any>('/api/provider-accounts/default', {
+        method: 'PUT',
+        body: JSON.stringify({ accountId: accountIdForSave }),
+      });
 
       setSelectedAccountId(accountIdForSave);
       onConfiguredChange(true);
       toast.success(t('provider.valid'));
     } catch (error) {
-      // Save failed — don't change keyValid (validation may have passed)
       onConfiguredChange(false);
-      toast.error(t('provider.saveFailed', '保存失败') + ': ' + String(error));
+      toast.error(t('provider.saveFailed') + ': ' + String(error));
     } finally {
       setValidating(false);
     }
   };
 
-  // Can the user submit?
-  const isApiKeyRequired = requiresKey || (supportsApiKey && authMode === 'apikey');
-  const canSubmit =
-    selectedProvider
-    && (isApiKeyRequired ? apiKey.length > 0 : true)
-    && (showModelIdField ? modelId.trim().length > 0 : true)
-    && !useOAuthFlow;
-
-  const handleSelectProvider = (providerId: string) => {
-    onSelectProvider(providerId);
-    setSelectedAccountId(null);
-    onConfiguredChange(false);
-    onApiKeyChange('');
-    setKeyValid(null);
-    setProviderMenuOpen(false);
-    setAuthMode('oauth');
-    setArkMode('apikey');
-  };
+  if (isRemoteMode) {
+    return (
+      <div className="flex flex-col h-full justify-center space-y-6">
+        <div className="text-center space-y-2 mb-4">
+          <h2 className="text-2xl font-semibold tracking-tight">{t('provider.title')}</h2>
+        </div>
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6 text-center space-y-3">
+          <CheckCircle2 className="w-8 h-8 text-primary mx-auto mb-2" />
+          <p className="font-medium">{t('provider.remoteModeTitle')}</p>
+          <p className="text-sm text-muted-foreground">{t('provider.remoteModeDesc')}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Remote mode notice — provider setup is optional */}
-      {isRemoteMode && (
-        <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 text-sm text-blue-300">
-          <p className="font-semibold mb-1">🌐 {t('provider.remoteModeTitle', '远程网关模式')}</p>
-          <p className="text-blue-400/80 break-all">{remoteGatewayUrl}</p>
-          <p className="mt-2 text-blue-400/70">
-            {t('provider.remoteModeDesc', 'LLM 提供商已在远程 OpenClaw 中配置，无需在此处设置。点击"下一步"直接跳过。')}
-          </p>
-        </div>
-      )}
-      {!isRemoteMode && isCloudOnlyBuild && (
-        <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 text-sm text-blue-300">
-          <p className="font-semibold mb-1">{t('provider.cloudOnlyTitle')}</p>
-          <p className="text-blue-400/80">
-            {t('provider.cloudOnlyDesc')}
-          </p>
-        </div>
-      )}
+    <div className="flex flex-col h-full flex-1">
+      <div className="text-center space-y-2 mb-6">
+        <h2 className="text-2xl font-semibold tracking-tight">{t('provider.title')}</h2>
+        <p className="text-muted-foreground text-sm">{t('provider.description')}</p>
+      </div>
 
-      {/* Provider selector — dropdown */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-3">
-          <Label>{t('provider.label')}</Label>
-          {selectedProvider && effectiveProviderDocsUrl && (
-            <a
-              href={effectiveProviderDocsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[13px] text-blue-500 hover:text-blue-600 font-medium inline-flex items-center gap-1"
-            >
-              {t('settings:aiProviders.dialog.customDoc')}
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          )}
-        </div>
-        <div className="relative" ref={providerMenuRef}>
+      <div className="space-y-5 flex-1">
+        <div className="space-y-2 relative" ref={providerMenuRef}>
+          <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">{t('provider.label')}</Label>
           <button
             type="button"
-            aria-haspopup="listbox"
-            aria-expanded={providerMenuOpen}
-            onClick={() => setProviderMenuOpen((open) => !open)}
-            className={cn(
-              'w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
-              'flex items-center justify-between gap-2',
-              'focus:outline-none focus:ring-2 focus:ring-ring'
-            )}
+            onClick={() => setProviderMenuOpen(!providerMenuOpen)}
+            className="w-full h-12 px-4 rounded-xl border border-input bg-background/50 hover:bg-accent/50 transition-colors flex items-center justify-between"
           >
-            <div className="flex items-center gap-2 min-w-0">
-              {selectedProvider && selectedProviderData ? (
-                selectedProviderIconUrl ? (
-                  <img
-                    src={selectedProviderIconUrl}
-                    alt={selectedProviderData.name}
-                    className={cn('h-4 w-4 shrink-0', shouldInvertInDark(selectedProviderData.id) && 'dark:invert')}
-                  />
-                ) : (
-                  <span className="text-sm leading-none shrink-0">{selectedProviderData.icon}</span>
-                )
-              ) : (
-                <span className="text-xs text-muted-foreground shrink-0">—</span>
-              )}
-              <span className={cn('truncate text-left', !selectedProvider && 'text-muted-foreground')}>
-                {selectedProviderData
-                  ? `${selectedProviderData.id === 'custom' ? t('settings:aiProviders.custom') : selectedProviderData.name}${selectedProviderData.model ? ` — ${selectedProviderData.model}` : ''}`
-                  : t('provider.selectPlaceholder')}
-              </span>
+            <div className="flex items-center gap-3">
+              {selectedProviderData ? (
+                <>
+                  {getProviderIconUrl(selectedProviderData.id) ? (
+                    <img src={getProviderIconUrl(selectedProviderData.id)} alt="" className={cn("w-5 h-5", shouldInvertInDark(selectedProviderData.id) && "dark:invert")} />
+                  ) : <span>{selectedProviderData.icon}</span>}
+                  <span className="font-medium">{selectedProviderData.name}</span>
+                </>
+              ) : <span className="text-muted-foreground">Select provider...</span>}
             </div>
-            <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform', providerMenuOpen && 'rotate-180')} />
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
           </button>
 
           {providerMenuOpen && (
-            <div
-              role="listbox"
-              className="absolute z-20 mt-1 w-full rounded-md border border-border bg-popover shadow-md max-h-64 overflow-auto"
-            >
-              {providers.map((p) => {
-                const iconUrl = getProviderIconUrl(p.id);
-                const isSelected = selectedProvider === p.id;
-
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    role="option"
-                    aria-selected={isSelected}
-                    onClick={() => handleSelectProvider(p.id)}
-                    className={cn(
-                      'w-full px-3 py-2 text-left text-sm flex items-center justify-between gap-2',
-                      'hover:bg-accent transition-colors',
-                      isSelected && 'bg-accent/60'
-                    )}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      {iconUrl ? (
-                        <img
-                          src={iconUrl}
-                          alt={p.name}
-                          className={cn('h-4 w-4 shrink-0', shouldInvertInDark(p.id) && 'dark:invert')}
-                        />
-                      ) : (
-                        <span className="text-sm leading-none shrink-0">{p.icon}</span>
-                      )}
-                      <span className="truncate">{p.id === 'custom' ? t('settings:aiProviders.custom') : p.name}{p.model ? ` — ${p.model}` : ''}</span>
-                    </div>
-                    {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
-                  </button>
-                );
-              })}
+            <div className="absolute z-50 top-full left-0 right-0 mt-2 p-2 rounded-xl border border-border bg-popover shadow-xl max-h-56 overflow-auto">
+              {providers.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    onSelectProvider(p.id);
+                    setProviderMenuOpen(false);
+                    setKeyValid(null);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
+                    selectedProvider === p.id ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted"
+                  )}
+                >
+                  {getProviderIconUrl(p.id) ? (
+                    <img src={getProviderIconUrl(p.id)} alt="" className={cn("w-4 h-4", shouldInvertInDark(p.id) && "dark:invert")} />
+                  ) : <span>{p.icon}</span>}
+                  {p.name}
+                </button>
+              ))}
             </div>
           )}
         </div>
-      </div>
 
-      {/* Dynamic config fields based on selected provider */}
-      {selectedProvider && (
-        <motion.div
-          key={selectedProvider}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-4"
-        >
-          {codePlanPreset && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <Label>{t('provider.codePlanPreset')}</Label>
-                {selectedProviderData?.codePlanDocsUrl && (
-                  <a
-                    href={selectedProviderData.codePlanDocsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[13px] text-blue-500 hover:text-blue-600 font-medium inline-flex items-center gap-1"
-                  >
-                    {t('provider.codePlanDoc')}
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                )}
+        {selectedProvider && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+            {showBaseUrlField && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">{t('provider.baseUrl')}</Label>
+                <Input value={baseUrl} onChange={e => setBaseUrl(e.target.value)} className="h-11 rounded-xl bg-background/50" />
               </div>
-              <div className="flex gap-2 text-sm">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setArkMode('apikey');
-                    setBaseUrl(selectedProviderData?.defaultBaseUrl || '');
-                    if (modelId.trim() === codePlanPreset.modelId) {
-                      setModelId(selectedProviderData?.defaultModelId || '');
-                    }
-                    onConfiguredChange(false);
-                  }}
-                  className={cn(
-                    'flex-1 py-2 px-3 rounded-lg border transition-colors',
-                    arkMode === 'apikey'
-                      ? 'bg-primary/10 border-primary/30 font-medium'
-                      : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted'
-                  )}
-                >
-                  {t('settings:aiProviders.authModes.apiKey')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setArkMode('codeplan');
-                    setBaseUrl(codePlanPreset.baseUrl);
-                    setModelId(codePlanPreset.modelId);
-                    onConfiguredChange(false);
-                  }}
-                  className={cn(
-                    'flex-1 py-2 px-3 rounded-lg border transition-colors',
-                    arkMode === 'codeplan'
-                      ? 'bg-primary/10 border-primary/30 font-medium'
-                      : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted'
-                  )}
-                >
-                  {t('provider.codePlanMode')}
-                </button>
+            )}
+            {showModelIdField && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">{t('provider.modelId')}</Label>
+                <Input value={modelId} onChange={e => setModelId(e.target.value)} className="h-11 rounded-xl bg-background/50" />
               </div>
-              {arkMode === 'codeplan' && (
-                <p className="text-xs text-muted-foreground">
-                  {t('provider.codePlanPresetDesc')}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Base URL field (for siliconflow, ollama, custom) */}
-          {showBaseUrlField && (
-            <div className="space-y-2">
-              <Label htmlFor="baseUrl">{t('provider.baseUrl')}</Label>
-              <Input
-                id="baseUrl"
-                type="text"
-                placeholder={getProtocolBaseUrlPlaceholder(apiProtocol)}
-                value={baseUrl}
-                onChange={(e) => {
-                  setBaseUrl(e.target.value);
-                  onConfiguredChange(false);
-                }}
-                autoComplete="off"
-                className="bg-background border-input"
-              />
-            </div>
-          )}
-
-          {/* Model ID field (for siliconflow etc.) */}
-          {showModelIdField && (
-            <div className="space-y-2">
-              <Label htmlFor="modelId">{t('provider.modelId')}</Label>
-              <Input
-                id="modelId"
-                type="text"
-                placeholder={selectedProviderData?.modelIdPlaceholder || 'e.g. deepseek-ai/DeepSeek-V3'}
-                value={modelId}
-                onChange={(e) => {
-                  setModelId(e.target.value);
-                  onConfiguredChange(false);
-                }}
-                autoComplete="off"
-                className="bg-background border-input"
-              />
-              <p className="text-xs text-muted-foreground">
-                {t('provider.modelIdDesc')}
-              </p>
-            </div>
-          )}
-
-          {selectedProvider === 'custom' && (
-            <div className="space-y-2">
-              <Label>{t('provider.protocol')}</Label>
-              <div className="flex gap-2 text-sm">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setApiProtocol('openai-completions');
-                    onConfiguredChange(false);
-                  }}
-                  className={cn(
-                    'flex-1 py-2 px-3 rounded-lg border transition-colors',
-                    apiProtocol === 'openai-completions'
-                      ? 'bg-primary/10 border-primary/30 font-medium'
-                      : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted'
-                  )}
-                >
-                  {t('provider.protocols.openaiCompletions')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setApiProtocol('openai-responses');
-                    onConfiguredChange(false);
-                  }}
-                  className={cn(
-                    'flex-1 py-2 px-3 rounded-lg border transition-colors',
-                    apiProtocol === 'openai-responses'
-                      ? 'bg-primary/10 border-primary/30 font-medium'
-                      : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted'
-                  )}
-                >
-                  {t('provider.protocols.openaiResponses')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setApiProtocol('anthropic-messages');
-                    onConfiguredChange(false);
-                  }}
-                  className={cn(
-                    'flex-1 py-2 px-3 rounded-lg border transition-colors',
-                    apiProtocol === 'anthropic-messages'
-                      ? 'bg-primary/10 border-primary/30 font-medium'
-                      : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted'
-                  )}
-                >
-                  {t('provider.protocols.anthropic')}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Auth mode toggle for providers supporting both */}
-          {isOAuth && supportsApiKey && (
-            <div className="flex rounded-lg border overflow-hidden text-sm">
-              <button
-                onClick={() => setAuthMode('oauth')}
-                className={cn(
-                  'flex-1 py-2 px-3 transition-colors',
-                  authMode === 'oauth' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'
-                )}
-              >
-                {t('settings:aiProviders.oauth.loginMode')}
-              </button>
-              <button
-                onClick={() => setAuthMode('apikey')}
-                className={cn(
-                  'flex-1 py-2 px-3 transition-colors',
-                  authMode === 'apikey' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'
-                )}
-              >
-                {t('settings:aiProviders.oauth.apikeyMode')}
-              </button>
-            </div>
-          )}
-
-          {/* API Key field (hidden for ollama) */}
-          {(!isOAuth || (supportsApiKey && authMode === 'apikey')) && (
-            <div className="space-y-2">
-              <Label htmlFor="apiKey">{t('provider.apiKey')}</Label>
-              <div className="relative">
-                <Input
-                  id="apiKey"
-                  type={showKey ? 'text' : 'password'}
-                  placeholder={selectedProviderData?.placeholder}
-                  value={apiKey}
-                  onChange={(e) => {
-                    onApiKeyChange(e.target.value);
-                    onConfiguredChange(false);
-                    setKeyValid(null);
-                  }}
-                  autoComplete="off"
-                  className="pr-10 bg-background border-input"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowKey(!showKey)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Device OAuth Trigger */}
-          {useOAuthFlow && (
-            <div className="space-y-4 pt-2">
-              <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-4 text-center">
-                <p className="text-sm text-blue-200 mb-3 block">
-                  This provider requires signing in via your browser.
-                </p>
-                <Button
-                  onClick={handleStartOAuth}
-                  disabled={oauthFlowing}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  {oauthFlowing ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Waiting...</>
-                  ) : (
-                    'Login with Browser'
-                  )}
-                </Button>
-              </div>
-
-              {/* OAuth Active State Modal / Inline View */}
-              {oauthFlowing && (
-                <div className="mt-4 p-4 border rounded-xl bg-card relative overflow-hidden">
-                  {/* Background pulse effect */}
-                  <div className="absolute inset-0 bg-primary/5 animate-pulse" />
-
-                  <div className="relative z-10 flex flex-col items-center justify-center text-center space-y-4">
-                    {oauthError ? (
-                      <div className="text-red-400 space-y-2">
-                        <XCircle className="h-8 w-8 mx-auto" />
-                        <p className="font-medium">Authentication Failed</p>
-                        <p className="text-sm opacity-80">{oauthError}</p>
-                        <Button variant="outline" size="sm" onClick={handleCancelOAuth} className="mt-2">
-                          Try Again
-                        </Button>
-                      </div>
-                    ) : !oauthData ? (
-                      <div className="space-y-3 py-4">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-                        <p className="text-sm text-muted-foreground animate-pulse">Requesting secure login code...</p>
-                      </div>
-                    ) : oauthData.mode === 'manual' ? (
-                      <div className="space-y-4 w-full">
-                        <div className="space-y-1">
-                          <h3 className="font-medium text-lg">Complete OpenAI Login</h3>
-                          <p className="text-sm text-muted-foreground text-left mt-2">
-                            {oauthData.message || 'Open the authorization page, complete login, then paste the callback URL or code below.'}
-                          </p>
-                        </div>
-
-                        <Button
-                          variant="secondary"
-                          className="w-full"
-                          onClick={() => invokeIpc('shell:openExternal', oauthData.authorizationUrl)}
-                        >
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Open Authorization Page
-                        </Button>
-
-                        <Input
-                          placeholder="Paste callback URL or code"
-                          value={manualCodeInput}
-                          onChange={(e) => setManualCodeInput(e.target.value)}
-                        />
-
-                        <Button
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                          onClick={handleSubmitManualOAuthCode}
-                          disabled={!manualCodeInput.trim()}
-                        >
-                          Submit Code
-                        </Button>
-
-                        <Button variant="ghost" size="sm" className="w-full mt-2" onClick={handleCancelOAuth}>
-                          Cancel
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-4 w-full">
-                        <div className="space-y-1">
-                          <h3 className="font-medium text-lg">Approve Login</h3>
-                          <div className="text-sm text-muted-foreground text-left mt-2 space-y-1">
-                            <p>1. Copy the authorization code below.</p>
-                            <p>2. Open the login page in your browser.</p>
-                            <p>3. Paste the code to approve access.</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-center gap-2 p-3 bg-background border rounded-lg">
-                          <code className="text-2xl font-mono tracking-widest font-bold text-primary">
-                            {oauthData.userCode}
-                          </code>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              navigator.clipboard.writeText(oauthData.userCode);
-                              toast.success('Code copied to clipboard');
-                            }}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        </div>
-
-                        <Button
-                          variant="secondary"
-                          className="w-full"
-                          onClick={() => invokeIpc('shell:openExternal', oauthData.verificationUri)}
-                        >
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Open Login Page
-                        </Button>
-
-                        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground pt-2">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          <span>Waiting for approval in browser...</span>
-                        </div>
-
-                        <Button variant="ghost" size="sm" className="w-full mt-2" onClick={handleCancelOAuth}>
-                          Cancel
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+            )}
+            {!useOAuthFlow && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">{t('provider.apiKey')}</Label>
+                <div className="relative">
+                  <Input 
+                    type={showKey ? 'text' : 'password'} 
+                    value={apiKey} 
+                    onChange={e => { onApiKeyChange(e.target.value); setKeyValid(null); }} 
+                    className="h-11 rounded-xl bg-background/50 pr-10" 
+                    placeholder="••••••••••••••••"
+                  />
+                  <button type="button" onClick={() => setShowKey(!showKey)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
-          {/* Validate & Save */}
-          <Button
-            onClick={handleValidateAndSave}
-            disabled={!canSubmit || validating}
-            className={cn("w-full", useOAuthFlow && "hidden")}
-          >
-            {validating ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : null}
-            {requiresKey ? t('provider.validateSave') : t('provider.save')}
-          </Button>
+            {!useOAuthFlow && (
+              <Button 
+                onClick={handleValidateAndSave} 
+                disabled={!canSubmit || validating} 
+                className="w-full h-11 rounded-xl mt-4"
+              >
+                {validating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                {t('provider.validateSave')}
+              </Button>
+            )}
 
-          {keyValid !== null && (
-            <p className={cn('text-sm text-center', keyValid ? 'text-green-400' : 'text-red-400')}>
-              {keyValid ? `✓ ${t('provider.valid')}` : `✗ ${t('provider.invalid')}`}
-            </p>
-          )}
-
-          <p className="text-sm text-muted-foreground text-center">
-            {isCloudOnlyBuild ? t('provider.syncedToCloud') : t('provider.storedLocally')}
-          </p>
-        </motion.div>
-      )}
+            {keyValid !== null && (
+              <p className={cn("text-xs text-center font-medium", keyValid ? "text-green-500" : "text-red-500")}>
+                {keyValid ? `✓ ${t('provider.valid')}` : `✗ ${t('provider.invalid')}`}
+              </p>
+            )}
+          </motion.div>
+        )}
+      </div>
     </div>
   );
-}
-
-// NOTE: SkillsContent component removed - auto-install essential skills
-
-// Installation status for each skill
-type InstallStatus = 'pending' | 'installing' | 'completed' | 'failed';
-
-interface SkillInstallState {
-  id: string;
-  name: string;
-  description: string;
-  status: InstallStatus;
 }
 
 interface InstallingContentProps {
@@ -1910,14 +859,9 @@ interface InstallingContentProps {
 
 function InstallingContent({ skills, onComplete, onSkip, isCloudOnlyBuild }: InstallingContentProps) {
   const { t } = useTranslation('setup');
-  const [skillStates, setSkillStates] = useState<SkillInstallState[]>(
-    skills.map((s) => ({ ...s, status: 'pending' as InstallStatus }))
-  );
   const [overallProgress, setOverallProgress] = useState(0);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const installStarted = useRef(false);
 
-  // Real installation process
   useEffect(() => {
     if (installStarted.current) return;
     installStarted.current = true;
@@ -1932,252 +876,78 @@ function InstallingContent({ skills, onComplete, onSkip, isCloudOnlyBuild }: Ins
 
     const runRealInstall = async () => {
       try {
-        // Step 1: Initialize all skills to 'installing' state for UI
-        setSkillStates(prev => prev.map(s => ({ ...s, status: 'installing' })));
         setOverallProgress(10);
-
-        // Step 2: Call the backend to install uv and setup Python
-        const result = await invokeIpc('uv:install-all') as {
-          success: boolean;
-          error?: string
-        };
-
+        const result = await invokeIpc('uv:install-all') as any;
         if (result.success) {
-          setSkillStates(prev => prev.map(s => ({ ...s, status: 'completed' })));
           setOverallProgress(100);
-
-          await new Promise((resolve) => setTimeout(resolve, 800));
+          await new Promise(r => setTimeout(r, 800));
           onComplete(skills.map(s => s.id));
         } else {
-          setSkillStates(prev => prev.map(s => ({ ...s, status: 'failed' })));
-          setErrorMessage(result.error || 'Unknown error during installation');
-          toast.error('Environment setup failed');
+          toast.error('Setup failed');
         }
       } catch (err) {
-        setSkillStates(prev => prev.map(s => ({ ...s, status: 'failed' })));
-        setErrorMessage(String(err));
-        toast.error('Installation error');
+        toast.error('Error');
       }
     };
-
     runRealInstall();
   }, [isCloudOnlyBuild, skills, onComplete]);
 
-  const getStatusIcon = (status: InstallStatus) => {
-    switch (status) {
-      case 'pending':
-        return <div className="h-5 w-5 rounded-full border-2 border-slate-500" />;
-      case 'installing':
-        return <Loader2 className="h-5 w-5 text-primary animate-spin" />;
-      case 'completed':
-        return <CheckCircle2 className="h-5 w-5 text-green-400" />;
-      case 'failed':
-        return <XCircle className="h-5 w-5 text-red-400" />;
-    }
-  };
-
-  const getStatusText = (skill: SkillInstallState) => {
-    switch (skill.status) {
-      case 'pending':
-        return <span className="text-muted-foreground">{t('installing.status.pending')}</span>;
-      case 'installing':
-        return <span className="text-primary">{t('installing.status.installing')}</span>;
-      case 'completed':
-        return <span className="text-green-400">{t('installing.status.installed')}</span>;
-      case 'failed':
-        return <span className="text-red-400">{t('installing.status.failed')}</span>;
-    }
-  };
-
-  if (isCloudOnlyBuild) {
-    return (
-      <div className="space-y-6">
-        <div className="text-center">
-          <div className="text-4xl mb-4">☁️</div>
-          <h2 className="text-xl font-semibold mb-2">{t('installing.cloudOnlyTitle')}</h2>
-          <p className="text-muted-foreground">
-            {t('installing.cloudOnlySubtitle')}
-          </p>
-        </div>
-
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-            <span>{t('installing.cloudOnlyItems.runtime')}</span>
-            <CheckCircle2 className="h-5 w-5 text-green-400" />
-          </div>
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-            <span>{t('installing.cloudOnlyItems.gateway')}</span>
-            <CheckCircle2 className="h-5 w-5 text-green-400" />
-          </div>
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-            <span>{t('installing.cloudOnlyItems.providers')}</span>
-            <CheckCircle2 className="h-5 w-5 text-green-400" />
-          </div>
-        </div>
-
-        <p className="text-sm text-slate-400 text-center">
-          {t('installing.cloudOnlyWait')}
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <div className="text-4xl mb-4">⚙️</div>
-        <h2 className="text-xl font-semibold mb-2">{t('installing.title')}</h2>
-        <p className="text-muted-foreground">
-          {t('installing.subtitle')}
-        </p>
+    <div className="flex flex-col h-full justify-center items-center text-center space-y-8">
+      <div className="relative">
+        <Loader2 className="w-16 h-16 animate-spin text-primary opacity-20" />
+        <div className="absolute inset-0 flex items-center justify-center text-primary font-medium text-sm">
+          {overallProgress}%
+        </div>
       </div>
-
-      {/* Progress bar */}
       <div className="space-y-2">
-        <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">{t('installing.progress')}</span>
-          <span className="text-primary">{overallProgress}%</span>
-        </div>
-        <div className="h-2 bg-secondary rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-primary"
-            initial={{ width: 0 }}
-            animate={{ width: `${overallProgress}%` }}
-            transition={{ duration: 0.3 }}
-          />
-        </div>
-      </div>
-
-      {/* Skill list */}
-      <div className="space-y-2 max-h-48 overflow-y-auto">
-        {skillStates.map((skill) => (
-          <motion.div
-            key={skill.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={cn(
-              'flex items-center justify-between p-3 rounded-lg',
-              skill.status === 'installing' ? 'bg-muted' : 'bg-muted/50'
-            )}
-          >
-            <div className="flex items-center gap-3">
-              {getStatusIcon(skill.status)}
-              <div>
-                <p className="font-medium">{skill.name}</p>
-                <p className="text-xs text-muted-foreground">{skill.description}</p>
-              </div>
-            </div>
-            {getStatusText(skill)}
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Error Message Display */}
-      {errorMessage && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="p-4 rounded-lg bg-red-900/30 border border-red-500/50 text-red-200 text-sm"
-        >
-          <div className="flex items-start gap-2">
-            <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-semibold">{t('installing.error')}</p>
-              <pre className="text-xs bg-black/30 p-2 rounded overflow-x-auto whitespace-pre-wrap font-monospace">
-                {errorMessage}
-              </pre>
-              <Button
-                variant="link"
-                className="text-red-400 p-0 h-auto text-xs underline"
-                onClick={() => window.location.reload()}
-              >
-                {t('installing.restart')}
-              </Button>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      {!errorMessage && (
-        <p className="text-sm text-slate-400 text-center">
-          {t('installing.wait')}
-        </p>
-      )}
-      <div className="flex justify-end">
-        <Button
-          variant="ghost"
-          className="text-muted-foreground"
-          onClick={onSkip}
-        >
-          {t('installing.skip')}
-        </Button>
+        <h2 className="text-xl font-semibold">{t('installing.title')}</h2>
+        <p className="text-muted-foreground text-sm">{t('installing.subtitle')}</p>
       </div>
     </div>
   );
 }
+
 interface CompleteContentProps {
   selectedProvider: string | null;
   installedSkills: string[];
   isCloudOnlyBuild?: boolean;
 }
 
-function CompleteContent({ selectedProvider, installedSkills, isCloudOnlyBuild }: CompleteContentProps) {
-  const { t } = useTranslation(['setup', 'settings']);
-  const gatewayStatus = useGatewayStore((state) => state.status);
-  const remoteGatewayUrl = useSettingsStore((state) => state.remoteGatewayUrl);
-  const cloudWorkspaceId = useSettingsStore((state) => state.cloudWorkspaceId);
-  const isRemoteMode = !!remoteGatewayUrl?.trim();
-
+function CompleteContent({ selectedProvider, isCloudOnlyBuild }: CompleteContentProps) {
+  const { t } = useTranslation('setup');
   const providerData = providers.find((p) => p.id === selectedProvider);
-  const installedSkillNames = getDefaultSkills(t)
-    .filter((s: DefaultSkill) => installedSkills.includes(s.id))
-    .map((s: DefaultSkill) => s.name)
-    .join(', ');
 
   return (
-    <div className="text-center space-y-6">
-      <div className="text-6xl mb-4">🎉</div>
-      <h2 className="text-xl font-semibold">{t('complete.title')}</h2>
-      <p className="text-muted-foreground">
-        {t('complete.subtitle')}
-      </p>
-
-      <div className="space-y-3 text-left max-w-md mx-auto">
-        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-          <span>{t('complete.provider')}</span>
-          <span className="text-green-400">
-            {providerData ? <span className="flex items-center gap-1.5">{getProviderIconUrl(providerData.id) ? <img src={getProviderIconUrl(providerData.id)} alt={providerData.name} className={`h-4 w-4 inline-block ${shouldInvertInDark(providerData.id) ? 'dark:invert' : ''}`} /> : providerData.icon} {providerData.id === 'custom' ? t('settings:aiProviders.custom') : providerData.name}</span> : '—'}
+    <div className="flex flex-col h-full justify-center items-center text-center space-y-6">
+      <motion.div 
+        initial={{ scale: 0.5, opacity: 0 }} 
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", damping: 15 }}
+        className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 mb-2"
+      >
+        <CheckCircle2 className="w-10 h-10" />
+      </motion.div>
+      <div className="space-y-2">
+        <h2 className="text-3xl font-semibold tracking-tight">{t('complete.title')}</h2>
+        <p className="text-muted-foreground">{t('complete.subtitle')}</p>
+      </div>
+      
+      <div className="p-6 rounded-2xl bg-muted/30 border border-border/50 w-full text-left space-y-4">
+        <div className="flex justify-between items-center text-sm">
+          <span className="text-muted-foreground">{t('complete.provider')}</span>
+          <span className="font-medium flex items-center gap-2">
+            {providerData && getProviderIconUrl(providerData.id) && (
+              <img src={getProviderIconUrl(providerData.id)} className={cn("w-4 h-4", shouldInvertInDark(providerData.id) && "dark:invert")} alt="" />
+            )}
+            {providerData?.name || '—'}
           </span>
         </div>
-        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-          <span>{isCloudOnlyBuild ? t('complete.runtime') : t('complete.components')}</span>
-          <span className="text-green-400 text-right break-all max-w-[16rem]">
-            {isCloudOnlyBuild
-              ? t('complete.cloudOnlyMode')
-              : (installedSkillNames || `${installedSkills.length} ${t('installing.status.installed')}`)}
-          </span>
-        </div>
-        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-          <span>{isCloudOnlyBuild ? t('complete.workspace') : t('complete.gateway')}</span>
-          {isCloudOnlyBuild ? (
-            <span className="text-green-400 text-right break-all max-w-[16rem]">
-              {cloudWorkspaceId || remoteGatewayUrl || t('complete.connected')}
-            </span>
-          ) : isRemoteMode ? (
-            <span className="text-green-400 text-right break-all max-w-[16rem]">
-              {remoteGatewayUrl || t('complete.remoteConnected')}
-            </span>
-          ) : (
-            <span className={gatewayStatus.state === 'running' ? 'text-green-400' : 'text-yellow-400'}>
-              {gatewayStatus.state === 'running' ? `✓ ${t('complete.running')}` : gatewayStatus.state}
-            </span>
-          )}
+        <div className="flex justify-between items-center text-sm">
+          <span className="text-muted-foreground">Status</span>
+          <span className="text-green-500 font-medium">Ready</span>
         </div>
       </div>
-
-      <p className="text-sm text-muted-foreground">
-        {isCloudOnlyBuild ? t('complete.cloudOnlyFooter') : t('complete.footer')}
-      </p>
     </div>
   );
 }

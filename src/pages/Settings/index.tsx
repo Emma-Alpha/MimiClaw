@@ -81,7 +81,10 @@ import type {
   CodeAgentRuntimeConfig,
   CodeAgentStatus,
 } from '../../../shared/code-agent';
-import type { VoiceChatConfigState } from '../../../shared/voice-chat';
+import {
+  DEFAULT_VOICE_CHAT_ENDPOINT,
+  type VoiceChatConfigState,
+} from '../../../shared/voice-chat';
 
 const CODE_AGENT_WORKSPACE_ROOT_STORAGE_KEY = 'clawx:code-agent-workspace-root';
 
@@ -201,6 +204,7 @@ export function Settings() {
   const [voiceChatSaving, setVoiceChatSaving] = useState(false);
   const [voiceChatAppIdDraft, setVoiceChatAppIdDraft] = useState('');
   const [voiceChatAccessKeyDraft, setVoiceChatAccessKeyDraft] = useState('');
+  const [voiceChatEndpointDraft, setVoiceChatEndpointDraft] = useState(DEFAULT_VOICE_CHAT_ENDPOINT);
   const [showVoiceChatAccessKey, setShowVoiceChatAccessKey] = useState(false);
 
   const isWindows = window.electron.platform === 'win32';
@@ -265,6 +269,7 @@ export function Settings() {
       setVoiceChatConfig(config);
       setVoiceChatAppIdDraft(config.appId);
       setVoiceChatAccessKeyDraft('');
+      setVoiceChatEndpointDraft(config.endpoint);
     } catch (error) {
       toast.error(`${t('voiceChat.loadFailed')}: ${String(error)}`);
     } finally {
@@ -871,6 +876,7 @@ export function Settings() {
       const next = await saveVoiceChatConfig({
         appId: voiceChatAppIdDraft,
         accessKey: voiceChatAccessKeyDraft,
+        endpoint: voiceChatEndpointDraft,
       });
       setVoiceChatConfig(next);
       setVoiceChatAccessKeyDraft('');
@@ -884,15 +890,15 @@ export function Settings() {
 
   return (
     <div className="flex flex-col -m-6 dark:bg-background h-[calc(100vh-2.5rem)] overflow-hidden">
-      <div className="w-full max-w-5xl mx-auto flex flex-col h-full p-10 pt-16">
+      <div className="w-full max-w-4xl mx-auto flex flex-col h-full p-8 pt-12">
 
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-start justify-between mb-12 shrink-0 gap-4">
           <div>
-            <h1 className="text-5xl md:text-6xl font-serif text-foreground mb-3 font-normal tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
+            <h1 className="text-4xl md:text-5xl font-semibold text-foreground mb-2 tracking-tight">
               {t('title')}
             </h1>
-            <p className="text-[17px] text-foreground/70 font-medium">
+            <p className="text-[15px] text-muted-foreground font-medium">
               {t('subtitle')}
             </p>
           </div>
@@ -903,51 +909,67 @@ export function Settings() {
 
           {/* Appearance */}
           <div>
-            <h2 className="text-3xl font-serif text-foreground mb-6 font-normal tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
+            <h2 className="text-2xl font-semibold text-foreground mb-6 tracking-tight">
               {t('appearance.title')}
             </h2>
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div className="space-y-3">
-                <Label className="text-[15px] font-medium text-foreground/80">{t('appearance.theme')}</Label>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant={theme === 'light' ? 'secondary' : 'outline'}
-                    className={cn("rounded-full px-5 h-10 border-black/10 dark:border-white/10", theme === 'light' ? "bg-black/5 dark:bg-white/10 text-foreground" : "bg-transparent text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5")}
+                <Label className="text-[14px] font-medium text-foreground/80">{t('appearance.theme')}</Label>
+                <div className="inline-flex bg-muted/50 p-1 rounded-2xl border border-white/5 shadow-inner">
+                  <button
                     onClick={() => setTheme('light')}
+                    className={cn(
+                      "flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium rounded-xl transition-all duration-300",
+                      theme === 'light'
+                        ? "bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/5"
+                        : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+                    )}
                   >
-                    <Sun className="h-4 w-4 mr-2" />
+                    <Sun className="h-4 w-4" />
                     {t('appearance.light')}
-                  </Button>
-                  <Button
-                    variant={theme === 'dark' ? 'secondary' : 'outline'}
-                    className={cn("rounded-full px-5 h-10 border-black/10 dark:border-white/10", theme === 'dark' ? "bg-black/5 dark:bg-white/10 text-foreground" : "bg-transparent text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5")}
+                  </button>
+                  <button
                     onClick={() => setTheme('dark')}
+                    className={cn(
+                      "flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium rounded-xl transition-all duration-300",
+                      theme === 'dark'
+                        ? "bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/5"
+                        : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+                    )}
                   >
-                    <Moon className="h-4 w-4 mr-2" />
+                    <Moon className="h-4 w-4" />
                     {t('appearance.dark')}
-                  </Button>
-                  <Button
-                    variant={theme === 'system' ? 'secondary' : 'outline'}
-                    className={cn("rounded-full px-5 h-10 border-black/10 dark:border-white/10", theme === 'system' ? "bg-black/5 dark:bg-white/10 text-foreground" : "bg-transparent text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5")}
+                  </button>
+                  <button
                     onClick={() => setTheme('system')}
+                    className={cn(
+                      "flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium rounded-xl transition-all duration-300",
+                      theme === 'system'
+                        ? "bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/5"
+                        : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+                    )}
                   >
-                    <Monitor className="h-4 w-4 mr-2" />
+                    <Monitor className="h-4 w-4" />
                     {t('appearance.system')}
-                  </Button>
+                  </button>
                 </div>
               </div>
               <div className="space-y-3">
-                <Label className="text-[15px] font-medium text-foreground/80">{t('appearance.language')}</Label>
-                <div className="flex flex-wrap gap-2">
+                <Label className="text-[14px] font-medium text-foreground/80">{t('appearance.language')}</Label>
+                <div className="inline-flex bg-muted/50 p-1 rounded-2xl border border-white/5 shadow-inner">
                   {SUPPORTED_LANGUAGES.map((lang) => (
-                    <Button
+                    <button
                       key={lang.code}
-                      variant={language === lang.code ? 'secondary' : 'outline'}
-                      className={cn("rounded-full px-5 h-10 border-black/10 dark:border-white/10", language === lang.code ? "bg-black/5 dark:bg-white/10 text-foreground" : "bg-transparent text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5")}
                       onClick={() => setLanguage(lang.code)}
+                      className={cn(
+                        "flex items-center justify-center px-6 py-2 text-sm font-medium rounded-xl transition-all duration-300",
+                        language === lang.code
+                          ? "bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/5"
+                          : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+                      )}
                     >
                       {lang.label}
-                    </Button>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -964,11 +986,11 @@ export function Settings() {
                 />
               </div>
 
-              <div className="rounded-3xl border border-black/5 bg-black/[0.03] p-5 dark:border-white/10 dark:bg-white/[0.03]">
-                <div className="flex flex-col gap-5">
+              <div className="rounded-3xl bg-muted/40 p-6 border-none">
+                <div className="flex flex-col gap-6">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <Label className="text-[15px] font-medium text-foreground/80">{t('pet.title')}</Label>
+                      <Label className="text-[15px] font-semibold text-foreground">{t('pet.title')}</Label>
                       <p className="text-[13px] text-muted-foreground mt-1">
                         {t('pet.description')}
                       </p>
@@ -980,7 +1002,7 @@ export function Settings() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="pet-animation" className="text-[14px] font-medium text-foreground/80">
+                    <Label htmlFor="pet-animation" className="text-[13px] font-medium text-foreground/80">
                       {t('pet.animation')}
                     </Label>
                     <Select
@@ -988,7 +1010,7 @@ export function Settings() {
                       value={petAnimation}
                       onChange={(event) => setPetAnimation(event.target.value as PetAnimation)}
                       disabled={!petEnabled}
-                      className="h-11 rounded-2xl border-black/10 bg-white/80 text-[14px] dark:border-white/10 dark:bg-white/5"
+                      className="h-10 rounded-xl bg-background border-none shadow-sm text-[13px]"
                     >
                       {PET_IDLE_ANIMATIONS.map((animation) => (
                         <option key={animation} value={animation}>
@@ -1003,11 +1025,11 @@ export function Settings() {
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-black/5 bg-black/[0.03] p-5 dark:border-white/10 dark:bg-white/[0.03]">
-                <div className="flex flex-col gap-5">
+              <div className="rounded-3xl bg-muted/40 p-6 border-none">
+                <div className="flex flex-col gap-6">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <Label className="text-[15px] font-medium text-foreground/80">{t('speech.title')}</Label>
+                      <Label className="text-[15px] font-semibold text-foreground">{t('speech.title')}</Label>
                       <p className="text-[13px] text-muted-foreground mt-1">
                         {t('speech.description')}
                       </p>
@@ -1015,10 +1037,10 @@ export function Settings() {
                     <Badge
                       variant="outline"
                       className={cn(
-                        'rounded-full border px-3 py-1 text-[12px]',
+                        'rounded-full border-none px-3 py-1 text-[12px]',
                         speechConfig?.configured
-                          ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                          : 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
                       )}
                     >
                       {speechLoading
@@ -1029,54 +1051,53 @@ export function Settings() {
                     </Badge>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="speech-appid" className="text-[13px] text-foreground/80">{t('speech.appId')}</Label>
+                      <Label htmlFor="speech-appid" className="text-[13px] font-medium text-foreground/80">{t('speech.appId')}</Label>
                       <Input
                         id="speech-appid"
                         value={speechAppIdDraft}
                         onChange={(event) => setSpeechAppIdDraft(event.target.value)}
                         placeholder={t('speech.appIdPlaceholder')}
-                        className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent font-mono text-[13px]"
+                        className="h-10 rounded-xl bg-background border-none shadow-sm font-mono text-[13px]"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="speech-cluster" className="text-[13px] text-foreground/80">{t('speech.cluster')}</Label>
+                      <Label htmlFor="speech-cluster" className="text-[13px] font-medium text-foreground/80">{t('speech.cluster')}</Label>
                       <Input
                         id="speech-cluster"
                         value={speechClusterDraft}
                         onChange={(event) => setSpeechClusterDraft(event.target.value)}
                         placeholder={t('speech.clusterPlaceholder')}
-                        className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent font-mono text-[13px]"
+                        className="h-10 rounded-xl bg-background border-none shadow-sm font-mono text-[13px]"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="speech-language" className="text-[13px] text-foreground/80">{t('speech.language')}</Label>
+                      <Label htmlFor="speech-language" className="text-[13px] font-medium text-foreground/80">{t('speech.language')}</Label>
                       <Select
                         id="speech-language"
                         value={speechLanguageDraft}
                         onChange={(event) => setSpeechLanguageDraft(event.target.value as VolcengineSpeechLanguage)}
-                        className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent text-[13px]"
+                        className="h-10 rounded-xl bg-background border-none shadow-sm text-[13px]"
                       >
                         <option value="zh-CN">{t('speech.languages.zhCN')}</option>
                         <option value="en-US">{t('speech.languages.enUS')}</option>
-                        <option value="ja-JP">{t('speech.languages.jaJP')}</option>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="speech-endpoint" className="text-[13px] text-foreground/80">{t('speech.endpoint')}</Label>
+                      <Label htmlFor="speech-endpoint" className="text-[13px] font-medium text-foreground/80">{t('speech.endpoint')}</Label>
                       <Input
                         id="speech-endpoint"
                         value={speechEndpointDraft}
                         onChange={(event) => setSpeechEndpointDraft(event.target.value)}
                         placeholder="wss://openspeech.bytedance.com/api/v2/asr"
-                        className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent font-mono text-[13px]"
+                        className="h-10 rounded-xl bg-background border-none shadow-sm font-mono text-[13px]"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="speech-token" className="text-[13px] text-foreground/80">{t('speech.token')}</Label>
+                    <Label htmlFor="speech-token" className="text-[13px] font-medium text-foreground/80">{t('speech.token')}</Label>
                     <div className="relative">
                       <Input
                         id="speech-token"
@@ -1084,7 +1105,7 @@ export function Settings() {
                         value={speechTokenDraft}
                         onChange={(event) => setSpeechTokenDraft(event.target.value)}
                         placeholder={speechConfig?.hasToken ? (speechConfig.tokenMasked ?? t('speech.tokenConfigured')) : t('speech.tokenPlaceholder')}
-                        className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent pr-10 font-mono text-[13px]"
+                        className="h-10 rounded-xl bg-background border-none shadow-sm pr-10 font-mono text-[13px]"
                       />
                       <button
                         type="button"
@@ -1101,12 +1122,12 @@ export function Settings() {
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3 mt-2">
                     <Button
                       type="button"
                       onClick={() => void handleSaveSpeechConfig()}
                       disabled={speechSaving}
-                      className="rounded-full px-5"
+                      className="rounded-full px-6 shadow-sm"
                     >
                       {speechSaving ? t('speech.saving') : t('speech.save')}
                     </Button>
@@ -1115,18 +1136,18 @@ export function Settings() {
                       variant="outline"
                       onClick={() => { void loadSpeechConfig(); }}
                       disabled={speechLoading || speechSaving}
-                      className="rounded-full px-5"
+                      className="rounded-full px-6 border-none shadow-sm bg-background hover:bg-background/80"
                     >
                       {t('common:actions.refresh')}
                     </Button>
-                    <p className="text-[12px] text-muted-foreground">
+                    <p className="text-[12px] text-muted-foreground ml-2">
                       {t('speech.tip')}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-black/5 bg-black/[0.03] p-5 dark:border-white/10 dark:bg-white/[0.03]">
+              <div className="rounded-3xl bg-muted/40 p-6 border-none">
                 <div className="flex flex-col gap-5">
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -1185,6 +1206,20 @@ export function Settings() {
                     </div>
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="voice-chat-endpoint" className="text-[13px] text-foreground/80">{t('voiceChat.endpoint')}</Label>
+                    <Input
+                      id="voice-chat-endpoint"
+                      value={voiceChatEndpointDraft}
+                      onChange={(event) => setVoiceChatEndpointDraft(event.target.value)}
+                      placeholder={t('voiceChat.endpointPlaceholder')}
+                      className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent font-mono text-[13px]"
+                    />
+                    <p className="text-[12px] text-muted-foreground">
+                      {t('voiceChat.endpointHelp', { endpoint: DEFAULT_VOICE_CHAT_ENDPOINT })}
+                    </p>
+                  </div>
+
                   <p className="text-[12px] text-muted-foreground">
                     {voiceChatConfig?.hasAccessKey
                       ? voiceChatConfig.accessKeySource === 'speech-asr'
@@ -1224,7 +1259,7 @@ export function Settings() {
 
           {/* Gateway */}
           <div>
-            <h2 className="text-3xl font-serif text-foreground mb-6 font-normal tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
+            <h2 className="text-2xl font-semibold text-foreground mb-6 tracking-tight">
               {t('gateway.title')}
             </h2>
             <div className="space-y-6">
@@ -1293,7 +1328,7 @@ export function Settings() {
               </div>
 
               {/* Remote Gateway */}
-              <div className="space-y-3 rounded-2xl border border-black/8 dark:border-white/8 p-4 bg-black/[0.02] dark:bg-white/[0.02]">
+              <div className="space-y-3 rounded-3xl bg-muted/40 p-6 border-none">
                 <div className="flex items-center gap-2 mb-1">
                   <Globe className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-[14px] font-medium text-foreground">{t('gateway.remoteTitle')}</Label>
@@ -1351,7 +1386,7 @@ export function Settings() {
 
               {/* Cloud Workspace */}
               {cloudGateway?.cloudMode && (
-                <div className="space-y-3 rounded-2xl border border-black/8 dark:border-white/8 p-4 bg-black/[0.02] dark:bg-white/[0.02]">
+                <div className="space-y-3 rounded-3xl bg-muted/40 p-6 border-none">
                   <div className="flex items-center gap-2 mb-1">
                     <Globe className="h-4 w-4 text-muted-foreground" />
                     <Label className="text-[14px] font-medium text-foreground">{t('gateway.cloudTitle')}</Label>
@@ -1442,7 +1477,7 @@ export function Settings() {
             <>
               <Separator className="bg-black/5 dark:bg-white/5" />
               <div>
-                <h2 className="text-3xl font-serif text-foreground mb-6 font-normal tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
+                <h2 className="text-2xl font-semibold text-foreground mb-6 tracking-tight">
                   {t('developer.title')}
                 </h2>
                 <div className="space-y-8">
@@ -2231,7 +2266,7 @@ export function Settings() {
 
           {/* Updates */}
           <div>
-            <h2 className="text-3xl font-serif text-foreground mb-6 font-normal tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
+            <h2 className="text-2xl font-semibold text-foreground mb-6 tracking-tight">
               {t('updates.title')}
             </h2>
             <div className="space-y-6">
@@ -2272,7 +2307,7 @@ export function Settings() {
 
           {/* About */}
           <div>
-            <h2 className="text-3xl font-serif text-foreground mb-6 font-normal tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
+            <h2 className="text-2xl font-semibold text-foreground mb-6 tracking-tight">
               {t('about.title')}
             </h2>
             <div className="space-y-3 text-[14px] text-muted-foreground">

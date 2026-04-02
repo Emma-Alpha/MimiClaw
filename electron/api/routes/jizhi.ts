@@ -1,8 +1,17 @@
 import type { IncomingMessage, ServerResponse } from 'http';
+import { randomUUID } from 'node:crypto';
 import { shell } from 'electron';
 import type { HostApiContext } from '../context';
 import { parseJsonBody, sendJson } from '../route-utils';
-import { fetchJizhiMessages, fetchJizhiSessions } from '../../services/jizhi-chat';
+import {
+  activeJizhiMessage,
+  fetchJizhiMessages,
+  fetchJizhiSessions,
+  retryJizhiMessage,
+  sendJizhiMessage,
+  stopJizhiMessage,
+  streamJizhiMessage,
+} from '../../services/jizhi-chat';
 import { getSetting, setSetting } from '../../utils/store';
 import { logger } from '../../utils/logger';
 
@@ -12,6 +21,26 @@ function readJizhiAppBaseUrl(): string {
   }).env;
   const configured = (viteEnv?.VITE_JIZHI_APP_BASE_URL ?? process.env.VITE_JIZHI_APP_BASE_URL ?? '').trim();
   return configured.replace(/\/$/, '') || 'https://jizhi.gz4399.com';
+}
+
+type JizhiHostStreamEvent = {
+  sessionId: string;
+  messageUUID: string;
+  event: 'open' | 'chunk' | 'result' | 'error' | 'end' | 'stopped';
+  seq?: string;
+  data?: Record<string, unknown> | null;
+  errorMessage?: string | null;
+};
+
+const jizhiStreamControllers = new Map<string, AbortController>();
+
+function emitJizhiStreamEvent(ctx: HostApiContext, payload: JizhiHostStreamEvent): void {
+  ctx.eventBus.emit('jizhi:stream', payload);
+
+  const window = ctx.mainWindow;
+  if (window && !window.isDestroyed()) {
+    window.webContents.send('jizhi:stream', payload);
+  }
 }
 
 export async function handleJizhiRoutes(
@@ -107,6 +136,290 @@ export async function handleJizhiRoutes(
       sendJson(res, 200, { messages });
     } catch (error) {
       logger.error('[jizhi-trace][route] POST /api/jizhi/messages error', error);
+      sendJson(res, 500, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    return true;
+  }
+
+  if (url.pathname === '/api/jizhi/send' && req.method === 'POST') {
+    try {
+      const body = await parseJsonBody<{
+        sessionId?: string;
+        prompt?: string;
+        category?: string;
+        model?: string;
+        messageUUID?: string;
+      }>(req);
+
+      if (!body.sessionId) {
+        sendJson(res, 400, { error: 'Missing sessionId' });
+        return true;
+      }
+
+      if (!body.prompt?.trim()) {
+        sendJson(res, 400, { error: 'Missing prompt' });
+        return true;
+      }
+
+      logger.info('[jizhi-trace][route] POST /api/jizhi/send start', {
+        sessionId: body.sessionId,
+        category: body.category ?? null,
+      });
+
+      const requestMessageUUID = body.messageUUID?.trim() || `msg_${randomUUID()}`;
+      const result = await sendJizhiMessage({
+        sessionId: body.sessionId,
+        prompt: body.prompt,
+        category: body.category ?? '',
+        fallbackModel: body.model,
+        messageUUID: requestMessageUUID,
+      });
+
+      const messageUUID = result.messageUUID ?? requestMessageUUID;
+      const controller = new AbortController();
+      jizhiStreamControllers.set(messageUUID, controller);
+      emitJizhiStreamEvent(ctx, {
+        sessionId: body.sessionId,
+        messageUUID,
+        event: 'open',
+      });
+
+      void streamJizhiMessage({
+        messageUUID,
+        signal: controller.signal,
+        onEvent: (event) => {
+          const data = event.payload?.data && typeof event.payload.data === 'object'
+            ? event.payload.data
+            : null;
+
+          const streamErrorMessage = typeof data?.errorMessage === 'string'
+            ? data.errorMessage.trim()
+            : '';
+          const payloadErrorMessage = typeof event.payload?.message === 'string'
+            ? event.payload.message.trim()
+            : '';
+          const errorMessage = event.event === 'error'
+            ? (streamErrorMessage || payloadErrorMessage || '极智流式响应失败')
+            : null;
+
+          emitJizhiStreamEvent(ctx, {
+            sessionId: body.sessionId!,
+            messageUUID,
+            event: event.event,
+            seq: event.id,
+            data,
+            errorMessage,
+          });
+        },
+      }).catch((error) => {
+        if (controller.signal.aborted) {
+          logger.info('[jizhi-trace][route] POST /api/jizhi/send stream aborted', {
+            sessionId: body.sessionId,
+            messageUUID,
+          });
+          return;
+        }
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error('[jizhi-trace][route] POST /api/jizhi/send stream error', {
+          sessionId: body.sessionId,
+          messageUUID,
+          error: message,
+        });
+        emitJizhiStreamEvent(ctx, {
+          sessionId: body.sessionId!,
+          messageUUID,
+          event: 'error',
+          errorMessage: message,
+        });
+      }).finally(() => {
+        jizhiStreamControllers.delete(messageUUID);
+      });
+
+      sendJson(res, 200, { result });
+    } catch (error) {
+      logger.error('[jizhi-trace][route] POST /api/jizhi/send error', error);
+      sendJson(res, 500, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    return true;
+  }
+
+  if (url.pathname === '/api/jizhi/stop' && req.method === 'POST') {
+    try {
+      const body = await parseJsonBody<{
+        sessionId?: string;
+        messageUUID?: string;
+      }>(req);
+
+      if (!body.sessionId) {
+        sendJson(res, 400, { error: 'Missing sessionId' });
+        return true;
+      }
+
+      if (!body.messageUUID?.trim()) {
+        sendJson(res, 400, { error: 'Missing messageUUID' });
+        return true;
+      }
+
+      const messageUUID = body.messageUUID.trim();
+      logger.info('[jizhi-trace][route] POST /api/jizhi/stop start', {
+        sessionId: body.sessionId,
+        messageUUID,
+      });
+
+      const controller = jizhiStreamControllers.get(messageUUID);
+      if (controller) {
+        controller.abort();
+        jizhiStreamControllers.delete(messageUUID);
+      }
+
+      const result = await stopJizhiMessage(messageUUID);
+      emitJizhiStreamEvent(ctx, {
+        sessionId: body.sessionId,
+        messageUUID,
+        event: 'stopped',
+      });
+
+      sendJson(res, 200, { result });
+    } catch (error) {
+      logger.error('[jizhi-trace][route] POST /api/jizhi/stop error', error);
+      sendJson(res, 500, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    return true;
+  }
+
+  if (url.pathname === '/api/jizhi/retry' && req.method === 'POST') {
+    try {
+      const body = await parseJsonBody<{
+        sessionId?: string;
+        messageUUID?: string;
+        category?: string;
+        model?: string;
+      }>(req);
+
+      if (!body.sessionId) {
+        sendJson(res, 400, { error: 'Missing sessionId' });
+        return true;
+      }
+      if (!body.messageUUID?.trim()) {
+        sendJson(res, 400, { error: 'Missing messageUUID' });
+        return true;
+      }
+      if (!body.category?.trim()) {
+        sendJson(res, 400, { error: 'Missing category' });
+        return true;
+      }
+      if (!body.model?.trim()) {
+        sendJson(res, 400, { error: 'Missing model' });
+        return true;
+      }
+
+      logger.info('[jizhi-trace][route] POST /api/jizhi/retry start', {
+        sessionId: body.sessionId,
+        messageUUID: body.messageUUID,
+        category: body.category,
+        model: body.model,
+      });
+
+      const result = await retryJizhiMessage({
+        sessionId: body.sessionId,
+        messageUUID: body.messageUUID,
+        category: body.category,
+        model: body.model,
+      });
+
+      const retryMessageUUID = result.messageUUID?.trim();
+      if (retryMessageUUID) {
+        const controller = new AbortController();
+        jizhiStreamControllers.set(retryMessageUUID, controller);
+
+        emitJizhiStreamEvent(ctx, {
+          sessionId: body.sessionId,
+          messageUUID: retryMessageUUID,
+          event: 'open',
+        });
+
+        void streamJizhiMessage({
+          messageUUID: retryMessageUUID,
+          signal: controller.signal,
+          onEvent: (event) => {
+            const data = event.payload?.data && typeof event.payload.data === 'object'
+              ? event.payload.data
+              : null;
+
+            const streamErrorMessage = typeof data?.errorMessage === 'string'
+              ? data.errorMessage.trim()
+              : '';
+            const payloadErrorMessage = typeof event.payload?.message === 'string'
+              ? event.payload.message.trim()
+              : '';
+            const errorMessage = event.event === 'error'
+              ? (streamErrorMessage || payloadErrorMessage || '极智重试响应失败')
+              : null;
+
+            emitJizhiStreamEvent(ctx, {
+              sessionId: body.sessionId!,
+              messageUUID: retryMessageUUID,
+              event: event.event,
+              seq: event.id,
+              data,
+              errorMessage,
+            });
+          },
+        }).catch((error) => {
+          if (controller.signal.aborted) {
+            logger.info('[jizhi-trace][route] POST /api/jizhi/retry stream aborted', {
+              sessionId: body.sessionId,
+              messageUUID: retryMessageUUID,
+            });
+            return;
+          }
+
+          const message = error instanceof Error ? error.message : String(error);
+          logger.error('[jizhi-trace][route] POST /api/jizhi/retry stream error', {
+            sessionId: body.sessionId,
+            messageUUID: retryMessageUUID,
+            error: message,
+          });
+          emitJizhiStreamEvent(ctx, {
+            sessionId: body.sessionId!,
+            messageUUID: retryMessageUUID,
+            event: 'error',
+            errorMessage: message,
+          });
+        }).finally(() => {
+          jizhiStreamControllers.delete(retryMessageUUID);
+        });
+      }
+
+      sendJson(res, 200, { result });
+    } catch (error) {
+      logger.error('[jizhi-trace][route] POST /api/jizhi/retry error', error);
+      sendJson(res, 500, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    return true;
+  }
+
+  if (url.pathname === '/api/jizhi/active' && req.method === 'POST') {
+    try {
+      const body = await parseJsonBody<{ messageUUID?: string }>(req);
+
+      if (!body.messageUUID?.trim()) {
+        sendJson(res, 400, { error: 'Missing messageUUID' });
+        return true;
+      }
+
+      const result = await activeJizhiMessage(body.messageUUID);
+      sendJson(res, 200, { result });
+    } catch (error) {
+      logger.error('[jizhi-trace][route] POST /api/jizhi/active error', error);
       sendJson(res, 500, {
         error: error instanceof Error ? error.message : String(error),
       });
