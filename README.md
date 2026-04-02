@@ -177,12 +177,13 @@ Environment file conventions:
 
 When you launch 极智 for the first time, the **Setup Wizard** will guide you through:
 
-1. **Language & Region** – Configure your preferred locale
-2. **AI Provider** – Add providers with API keys or OAuth (for providers that support browser/device login)
-3. **Skill Bundles** – Select pre-configured skills for common use cases
-4. **Verification** – Test your configuration before entering the main interface
+1. **Welcome** – Pick your preferred language and preview the shortest path to your first chat
+2. **Runtime** – Confirm the local runtime or cloud workspace is ready
+3. **AI Provider** – Add one default provider with an API key or OAuth (for providers that support browser/device login)
+4. **Background Setup** – Let 极智 finish the remaining bootstrap work automatically
 
 The wizard preselects your system language when it is supported, and falls back to English otherwise.
+Optional features such as Volcengine ASR, Voice Chat, messaging channels, and advanced developer settings can be configured later from **Settings** after you enter the app.
 
 > Note for Moonshot (Kimi): 极智 keeps Kimi web search enabled by default.  
 > When Moonshot is configured, 极智 also syncs Kimi web search to the China endpoint (`https://api.moonshot.cn/v1`) in OpenClaw config.

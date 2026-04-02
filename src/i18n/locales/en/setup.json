@@ -2,7 +2,7 @@
     "steps": {
         "welcome": {
             "title": "Welcome to 极智",
-            "description": "Your AI assistant is ready to be configured"
+            "description": "Finish the essentials first and start your first chat right away"
         },
         "runtime": {
             "title": "Environment Check",
@@ -10,7 +10,7 @@
         },
         "provider": {
             "title": "AI Provider",
-            "description": "Configure your AI service"
+            "description": "Connect one default model and start chatting"
         },
         "channel": {
             "title": "Connect a Channel",
@@ -27,30 +27,37 @@
     },
     "welcome": {
         "title": "Welcome to 极智",
-        "description": "极智 is a graphical interface for OpenClaw, making it easy to use AI assistants across your favorite messaging platforms.",
-        "speech": {
-            "title": "Volcengine Realtime ASR",
-            "description": "The floating pet now streams audio to Volcengine realtime ASR and outputs text directly.",
-            "checking": "Checking Volcengine ASR config...",
-            "refresh": "Refresh",
-            "ready": "Volcengine ASR is configured",
-            "readyDesc": "The pet will connect to {{endpoint}} and use cluster {{cluster}} for realtime recognition.",
-            "missing": "Volcengine ASR is not configured yet",
-            "missingDesc": "Open Settings and fill in the App ID, Cluster, and Access Token before using floating pet voice input.",
-            "appId": "App ID",
-            "cluster": "Cluster",
-            "language": "Recognition Language",
-            "token": "Access Token",
-            "notConfigured": "Not configured",
-            "firstRunHint": "Configure Volcengine ASR in Settings first. After saving, press F2 to start realtime speech-to-text.",
-            "firstRunReady": "Volcengine ASR is ready, so future floating pet recordings will transcribe in realtime."
+        "eyebrow": "Ready in about 3 minutes",
+        "description": "极智 helps you finish only the essentials first so you can start chatting quickly. Voice, channels, and advanced options can wait until later.",
+        "valueTitle": "Start using it before you fine-tune it",
+        "valueDescription": "The first run now focuses on language, runtime readiness, and one default model provider instead of surfacing every option up front.",
+        "journeyTitle": "What we'll do in this setup",
+        "journey": {
+            "language": {
+                "title": "Choose your language",
+                "description": "Switch the interface to the language you want before continuing with the rest of setup."
+            },
+            "runtime": {
+                "title": "Prepare the local runtime",
+                "description": "We automatically check OpenClaw and Gateway so you do not need to handle command-line setup."
+            },
+            "workspace": {
+                "title": "Connect your cloud workspace",
+                "description": "Once your hosted workspace is confirmed, you can move straight into model setup."
+            },
+            "provider": {
+                "title": "Connect one default model",
+                "description": "Configure a single everyday provider first, then start your first conversation."
+            }
         },
+        "optionalTitle": "Optional features won't block your first run",
+        "optionalDescription": "Volcengine ASR, voice chat, messaging channels, and advanced developer settings can all be configured later from Settings.",
         "features": {
             "noCommand": "Zero command-line required",
-            "modernUI": "Modern, beautiful interface",
-            "bundles": "Pre-installed skill bundles",
+            "providerReady": "Unified provider access",
+            "localRuntime": "Automatic local runtime preparation",
             "cloudWorkspace": "Cloud workspace ready out of the box",
-            "crossPlatform": "Cross-platform support"
+            "laterConfig": "Advanced capabilities can wait until later"
         }
     },
     "runtime": {

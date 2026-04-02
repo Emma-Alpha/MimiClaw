@@ -366,6 +366,12 @@ export class VolcengineRealtimeVoiceSession {
   private async initialize(): Promise<void> {
     try {
       const credentials = await getVoiceChatRealtimeCredentials();
+      logger.info('[voice-chat] starting realtime session', {
+        endpoint: normalizeEndpoint(credentials.endpoint),
+        appId: credentials.appId,
+        resourceId: credentials.resourceId,
+        accessKeySource: credentials.accessKeySource,
+      });
       const ws = new WebSocket(normalizeEndpoint(credentials.endpoint), {
         headers: {
           'X-Api-App-ID': credentials.appId,
@@ -380,8 +386,39 @@ export class VolcengineRealtimeVoiceSession {
       ws.once('unexpected-response', (_request, response) => {
         const statusCode = response.statusCode ?? 0;
         const kind = statusCode === 401 || statusCode === 403 ? 'auth' : 'server';
-        const message = `Voice Chat connection failed (${statusCode || 'unknown'})`;
-        this.fail(kind, message);
+        const responseChunks: Buffer[] = [];
+        let settled = false;
+
+        const finalizeUnexpectedResponse = () => {
+          if (settled) return;
+          settled = true;
+          const responseBody = Buffer.concat(responseChunks).toString('utf8').trim();
+          const responseDetail = responseBody ? ` Response: ${responseBody.slice(0, 500)}` : '';
+          const message = statusCode === 401 || statusCode === 403
+            ? `Voice Chat connection failed (${statusCode}). Check Settings > Speech > Voice Chat APP ID and Access Key. Current key source: ${credentials.accessKeySource}.${responseDetail}`
+            : `Voice Chat connection failed (${statusCode || 'unknown'}).${responseDetail}`;
+          logger.warn('[voice-chat] realtime unexpected response', {
+            statusCode,
+            endpoint: normalizeEndpoint(credentials.endpoint),
+            appId: credentials.appId,
+            resourceId: credentials.resourceId,
+            accessKeySource: credentials.accessKeySource,
+            headers: response.headers,
+            responseBody: responseBody || null,
+          });
+          this.fail(kind, message);
+        };
+
+        response.on('data', (chunk) => {
+          if (typeof chunk === 'string') {
+            responseChunks.push(Buffer.from(chunk));
+            return;
+          }
+          responseChunks.push(chunk);
+        });
+        response.once('end', finalizeUnexpectedResponse);
+        response.once('close', finalizeUnexpectedResponse);
+        response.once('error', finalizeUnexpectedResponse);
       });
 
       ws.once('open', () => {

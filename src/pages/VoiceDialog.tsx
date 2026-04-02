@@ -799,13 +799,13 @@ export function VoiceDialog() {
       </div>
 
       <div className="flex flex-1 flex-col px-4 pb-8 relative">
-        <div className="flex flex-1 flex-col items-center min-h-0 px-2 pb-[128px] pt-2">
+        <div className="flex flex-1 flex-col items-center min-h-0 px-2 pb-[100px] pt-2">
           <div className="relative flex flex-col items-center w-full max-w-[340px] min-h-0 flex-1">
             {/* 动态波纹背景 - 说话时显示 */}
             {stage === 'speaking' || stage === 'listening' ? (
-              <div className="absolute left-1/2 top-[210px] flex -translate-x-1/2 items-center justify-center">
+              <div className="absolute left-1/2 top-[60px] flex -translate-x-1/2 items-center justify-center">
                 <motion.div
-                  className="absolute h-[240px] w-[240px] rounded-full bg-emerald-500/10 dark:bg-emerald-500/20"
+                  className="absolute h-[180px] w-[180px] rounded-full bg-emerald-500/10 dark:bg-emerald-500/20"
                   animate={{
                     scale: [1, 1.2, 1],
                     opacity: [0.5, 0.2, 0.5],
@@ -817,7 +817,7 @@ export function VoiceDialog() {
                   }}
                 />
                 <motion.div
-                  className="absolute h-[280px] w-[280px] rounded-full bg-emerald-500/5 dark:bg-emerald-500/10"
+                  className="absolute h-[220px] w-[220px] rounded-full bg-emerald-500/5 dark:bg-emerald-500/10"
                   animate={{
                     scale: [1, 1.3, 1],
                     opacity: [0.3, 0.1, 0.3],
@@ -833,10 +833,10 @@ export function VoiceDialog() {
             ) : null}
 
             {/* 头像区域 */}
-            <div className="relative z-10 flex h-[160px] w-[160px] items-center justify-center rounded-full bg-white dark:bg-[#1C1C1E] shadow-lg overflow-hidden border-2 border-emerald-500/20">
+            <div className="relative z-10 flex h-[120px] w-[120px] items-center justify-center rounded-full bg-white dark:bg-[#1C1C1E] shadow-lg overflow-hidden border-2 border-emerald-500/20">
               <video
                 key={displayAnimation}
-                className="h-[140px] w-[140px] object-contain"
+                className="h-[100px] w-[100px] object-contain"
                 src={PET_ANIMATION_SOURCES[displayAnimation]}
                 autoPlay
                 loop
@@ -845,21 +845,21 @@ export function VoiceDialog() {
               />
             </div>
 
-            <div className="mt-8 min-h-[40px] text-center">
-              <span className="text-[15px] text-[#111111]/60 dark:text-[#E5E5E5]/60 tracking-wider">
+            <div className="mt-6 min-h-[30px] text-center">
+              <span className="text-[14px] text-[#111111]/60 dark:text-[#E5E5E5]/60 tracking-wider">
                 {stage === 'connecting' ? '连接中...' : getStageCopy(stage)}
               </span>
             </div>
 
             <div className="mt-3 w-full flex-1 min-h-0">
-              <div className="mx-auto flex h-full max-h-[220px] w-full max-w-[320px] items-start justify-center overflow-y-auto px-2 text-center">
+              <div className="mx-auto flex h-full max-h-[160px] w-full max-w-[280px] items-start justify-center overflow-y-auto px-2 text-center">
                 <div className="my-auto w-full break-words">
               {assistantLiveText || assistantStableText ? (
-                    <div className="text-[17px] font-medium leading-relaxed text-[#111111] dark:text-[#E5E5E5]">
+                    <div className="text-[15px] font-medium leading-relaxed text-[#111111] dark:text-[#E5E5E5]">
                   {assistantLiveText || assistantStableText}
                 </div>
               ) : userLiveText || userStableText ? (
-                    <div className="text-[17px] leading-relaxed text-[#111111]/70 dark:text-[#E5E5E5]/70">
+                    <div className="text-[15px] leading-relaxed text-[#111111]/70 dark:text-[#E5E5E5]/70">
                   {userLiveText || userStableText}
                 </div>
               ) : null}
@@ -910,19 +910,19 @@ export function VoiceDialog() {
         ) : null}
 
         {/* 底部控制栏 */}
-        <div className="absolute bottom-10 left-0 right-0 flex items-center justify-center gap-10 px-8">
+        <div className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-6 px-4">
           <div className="flex flex-col items-center gap-2">
             <button
               type="button"
               className={cn(
-                'flex h-[64px] w-[64px] items-center justify-center rounded-full transition-all duration-300',
+                'flex h-[56px] w-[56px] items-center justify-center rounded-full transition-all duration-300',
                 micMuted
                   ? 'bg-white dark:bg-[#2C2C2E] text-[#111111] dark:text-[#E5E5E5] shadow-sm'
                   : 'bg-[#07C160] bg-opacity-10 text-[#07C160] hover:bg-opacity-20'
               )}
               onClick={() => setMicMuted((value) => !value)}
             >
-              {micMuted ? <MicOff className="h-7 w-7 opacity-80" /> : <Mic className="h-7 w-7" />}
+              {micMuted ? <MicOff className="h-6 w-6 opacity-80" /> : <Mic className="h-6 w-6" />}
             </button>
             <span className="text-[12px] text-[#111111]/50 dark:text-[#E5E5E5]/50">
               {micMuted ? '麦克风已关' : '静音'}
@@ -935,20 +935,20 @@ export function VoiceDialog() {
                 type="button"
                 disabled={!canStart || loadingConfig}
                 className={cn(
-                  'flex h-[72px] w-[72px] items-center justify-center rounded-full text-white shadow-md transition-transform hover:scale-105 active:scale-95',
+                  'flex h-[64px] w-[64px] items-center justify-center rounded-full text-white shadow-md transition-transform hover:scale-105 active:scale-95',
                   loadingConfig || !config?.configured ? 'bg-[#07C160]/50' : 'bg-[#07C160]'
                 )}
                 onClick={() => void handleStart()}
               >
-                <Phone className="h-8 w-8 fill-current" />
+                <Phone className="h-7 w-7 fill-current" />
               </button>
             ) : (
               <button
                 type="button"
-                className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-[#FA5151] text-white shadow-md transition-transform hover:scale-105 active:scale-95"
+                className="flex h-[64px] w-[64px] items-center justify-center rounded-full bg-[#FA5151] text-white shadow-md transition-transform hover:scale-105 active:scale-95"
                 onClick={() => void handleHangup('completed')}
               >
-                <Phone className="h-8 w-8 fill-current rotate-[135deg]" />
+                <Phone className="h-7 w-7 fill-current rotate-[135deg]" />
               </button>
             )}
             <span className="text-[12px] text-[#111111]/50 dark:text-[#E5E5E5]/50">
@@ -966,7 +966,7 @@ export function VoiceDialog() {
             <button
               type="button"
               className={cn(
-                'flex h-[64px] w-[64px] items-center justify-center rounded-full transition-all duration-300',
+                'flex h-[56px] w-[56px] items-center justify-center rounded-full transition-all duration-300',
                 speakerMuted
                   ? 'bg-white dark:bg-[#2C2C2E] text-[#111111] dark:text-[#E5E5E5] shadow-sm'
                   : 'bg-[#07C160] bg-opacity-10 text-[#07C160] hover:bg-opacity-20'
@@ -974,9 +974,9 @@ export function VoiceDialog() {
               onClick={() => setSpeakerMuted((value) => !value)}
             >
               {speakerMuted ? (
-                <VolumeX className="h-7 w-7 opacity-80" />
+                <VolumeX className="h-6 w-6 opacity-80" />
               ) : (
-                <Volume2 className="h-7 w-7" />
+                <Volume2 className="h-6 w-6" />
               )}
             </button>
             <span className="text-[12px] text-[#111111]/50 dark:text-[#E5E5E5]/50">

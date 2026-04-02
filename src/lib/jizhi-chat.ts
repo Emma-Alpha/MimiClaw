@@ -76,6 +76,30 @@ export interface HostJizhiChatMessage {
   index: string;
 }
 
+export interface HostJizhiSendMessageResult {
+  messageUUID?: string;
+}
+
+export type HostJizhiStreamEventType = 'open' | 'chunk' | 'result' | 'error' | 'end' | 'stopped';
+
+export interface HostJizhiStreamData {
+  blockUUID?: string;
+  parentMessageUUID?: string;
+  contentType?: string;
+  content?: string;
+  errorMessage?: string;
+  [key: string]: unknown;
+}
+
+export interface HostJizhiStreamEvent {
+  sessionId: string;
+  messageUUID: string;
+  event: HostJizhiStreamEventType;
+  seq?: string;
+  data?: HostJizhiStreamData | null;
+  errorMessage?: string | null;
+}
+
 function trace(step: string, payload?: Record<string, unknown>): void {
   console.info('[jizhi-trace][renderer]', step, payload ?? {});
 }
@@ -100,4 +124,70 @@ export async function fetchHostJizhiMessages(sessionId: string): Promise<HostJiz
     count: messages.length,
   });
   return messages;
+}
+
+export async function sendHostJizhiMessage(params: {
+  sessionId: string;
+  prompt: string;
+  category?: string;
+  model?: string;
+  messageUUID?: string;
+}): Promise<HostJizhiSendMessageResult> {
+  trace('send message:start', {
+    sessionId: params.sessionId,
+    category: params.category ?? null,
+  });
+  const response = await hostApiFetch<{ result: HostJizhiSendMessageResult }>('/api/jizhi/send', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  const result = response.result ?? {};
+  trace('send message:success', {
+    sessionId: params.sessionId,
+    messageUUID: result.messageUUID ?? null,
+  });
+  return result;
+}
+
+export async function stopHostJizhiMessage(params: {
+  sessionId: string;
+  messageUUID: string;
+}): Promise<{ success?: boolean }> {
+  trace('stop message:start', params);
+  const response = await hostApiFetch<{ result?: { success?: boolean } }>('/api/jizhi/stop', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  trace('stop message:success', params);
+  return response.result ?? {};
+}
+
+export async function retryHostJizhiMessage(params: {
+  sessionId: string;
+  messageUUID: string;
+  category: string;
+  model: string;
+}): Promise<HostJizhiSendMessageResult> {
+  trace('retry message:start', params);
+  const response = await hostApiFetch<{ result?: HostJizhiSendMessageResult }>('/api/jizhi/retry', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  trace('retry message:success', {
+    ...params,
+    retryMessageUUID: response.result?.messageUUID ?? null,
+  });
+  return response.result ?? {};
+}
+
+export async function activeHostJizhiMessage(params: {
+  messageUUID: string;
+}): Promise<{ success?: boolean }> {
+  trace('active message:start', params);
+  const response = await hostApiFetch<{ result?: { success?: boolean } }>('/api/jizhi/active', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  trace('active message:success', params);
+  return response.result ?? {};
 }

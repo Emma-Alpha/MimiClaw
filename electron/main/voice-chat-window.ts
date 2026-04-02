@@ -15,8 +15,8 @@ let voiceChatWindow: BrowserWindow | null = null;
 let voiceDialogState: VoiceDialogWindowState = 'idle';
 let isCreatingVoiceChatWindow = false;
 
-const VOICE_CHAT_WINDOW_WIDTH = 420;
-const VOICE_CHAT_WINDOW_HEIGHT = 680;
+const VOICE_CHAT_WINDOW_WIDTH = 300;
+const VOICE_CHAT_WINDOW_HEIGHT = 540;
 
 function getVoiceChatWindowUrl():
   | { type: 'url'; value: string }
@@ -38,7 +38,11 @@ function getVoiceChatWindowUrl():
 async function computeVoiceChatPosition(): Promise<VoiceChatWindowBounds> {
   const savedBounds = await getVoiceChatWindowBounds();
   if (savedBounds) {
-    return savedBounds;
+    return {
+      ...savedBounds,
+      width: VOICE_CHAT_WINDOW_WIDTH,
+      height: VOICE_CHAT_WINDOW_HEIGHT,
+    };
   }
 
   const petWindow = getPetWindow();

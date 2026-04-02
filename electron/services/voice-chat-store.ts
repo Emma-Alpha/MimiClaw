@@ -38,6 +38,7 @@ export interface VoiceChatRealtimeCredentials {
   endpoint: string;
   resourceId: string;
   appKey: string;
+  accessKeySource: 'voice-chat' | 'speech-asr';
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -77,7 +78,19 @@ function maskSecret(secret: string): string | null {
 
 function normalizeEndpoint(value: string): string {
   const trimmed = value.trim();
-  return trimmed || DEFAULT_VOICE_CHAT_ENDPOINT;
+  if (!trimmed) {
+    return DEFAULT_VOICE_CHAT_ENDPOINT;
+  }
+
+  const normalized = trimmed.toLowerCase();
+  if (
+    normalized === 'wss://ai-gateway.vei.volces.com/v1/realtime'
+    || normalized === 'https://ai-gateway.vei.volces.com/v1/realtime'
+  ) {
+    return DEFAULT_VOICE_CHAT_ENDPOINT;
+  }
+
+  return trimmed;
 }
 
 function formatVoiceChatTitle(timestampMs: number): string {
@@ -158,6 +171,7 @@ export async function getVoiceChatRealtimeCredentials(): Promise<VoiceChatRealti
   const dedicatedAccessKey = (value.accessKey ?? value.apiKey ?? '').trim();
   const fallbackSpeechAccessKey = dedicatedAccessKey ? '' : await getVolcengineSpeechAccessToken().catch(() => '');
   const accessKey = dedicatedAccessKey || fallbackSpeechAccessKey;
+  const accessKeySource: 'voice-chat' | 'speech-asr' = dedicatedAccessKey ? 'voice-chat' : 'speech-asr';
   const appId = (value.appId ?? value.botId ?? '').trim();
   const endpoint = normalizeEndpoint(value.endpoint);
 
@@ -171,6 +185,7 @@ export async function getVoiceChatRealtimeCredentials(): Promise<VoiceChatRealti
     endpoint,
     resourceId: DEFAULT_VOICE_CHAT_RESOURCE_ID,
     appKey: DEFAULT_VOICE_CHAT_APP_KEY,
+    accessKeySource,
   };
 }
 

@@ -2,7 +2,7 @@
     "steps": {
         "welcome": {
             "title": "极智へようこそ",
-            "description": "AIアシスタントの設定準備が整いました"
+            "description": "まず必要最小限だけ設定して、すぐに最初の会話を始められます"
         },
         "runtime": {
             "title": "環境チェック",
@@ -10,7 +10,7 @@
         },
         "provider": {
             "title": "AIプロバイダー",
-            "description": "AIサービスを構成"
+            "description": "デフォルトのモデルを1つ接続すれば使い始められます"
         },
         "channel": {
             "title": "チャンネル接続",
@@ -27,30 +27,37 @@
     },
     "welcome": {
         "title": "极智へようこそ",
-        "description": "极智はOpenClawのグラフィカルインターフェースで、お気に入りのメッセージングプラットフォームでAIアシスタントを簡単に使用できます。",
-        "speech": {
-            "title": "Volcengine リアルタイム ASR",
-            "description": "フローティングペットは録音を Volcengine のリアルタイム ASR に送信し、直接テキスト化します。",
-            "checking": "Volcengine ASR 設定を確認中...",
-            "refresh": "再確認",
-            "ready": "Volcengine ASR の設定が完了しています",
-            "readyDesc": "現在は {{endpoint}} に接続し、cluster {{cluster}} でリアルタイム認識を行います。",
-            "missing": "Volcengine ASR がまだ設定されていません",
-            "missingDesc": "フローティングペットの音声入力を使う前に、設定ページで App ID、Cluster、Access Token を入力してください。",
-            "appId": "App ID",
-            "cluster": "Cluster",
-            "language": "認識言語",
-            "token": "Access Token",
-            "notConfigured": "未設定",
-            "firstRunHint": "先に設定画面で Volcengine ASR を構成してください。保存後、F2 を押すとリアルタイム音声入力を開始できます。",
-            "firstRunReady": "Volcengine ASR の準備が完了しているため、今後のフローティングペット録音はリアルタイムで文字起こしされます。"
+        "eyebrow": "約3分で使い始められます",
+        "description": "极智はまず必要な設定だけを済ませ、すぐにチャットを始められるようにします。音声やチャンネル、高度な項目は後からでも大丈夫です。",
+        "valueTitle": "細かな調整より先に、まず使い始める",
+        "valueDescription": "初回起動では、言語、実行環境、デフォルトのモデルという本当に必要な項目に絞り、最初の画面で設定を詰め込みません。",
+        "journeyTitle": "今回のセットアップで行うこと",
+        "journey": {
+            "language": {
+                "title": "言語を選ぶ",
+                "description": "最初に使いやすい表示言語へ切り替えて、そのまま後続の設定へ進みます。"
+            },
+            "runtime": {
+                "title": "ローカル実行環境を準備",
+                "description": "OpenClaw と Gateway の準備状況を自動確認するため、コマンド操作は不要です。"
+            },
+            "workspace": {
+                "title": "クラウドワークスペースを接続",
+                "description": "ホストされたワークスペースが確認できれば、そのままモデル設定に進めます。"
+            },
+            "provider": {
+                "title": "デフォルトのモデルを1つ接続",
+                "description": "まずは普段使いのプロバイダーを1つ設定すれば、最初の会話を始められます。"
+            }
         },
+        "optionalTitle": "任意機能は初回利用を妨げません",
+        "optionalDescription": "Volcengine ASR、音声会話、メッセージングチャンネル、開発者向けの高度な設定は、メイン画面に入ってから設定できます。",
         "features": {
             "noCommand": "コマンドライン不要",
-            "modernUI": "モダンで美しいインターフェース",
-            "bundles": "プリインストールされたスキルバンドル",
+            "providerReady": "プロバイダーをまとめて管理",
+            "localRuntime": "ローカル実行環境を自動準備",
             "cloudWorkspace": "クラウドワークスペースをすぐ利用可能",
-            "crossPlatform": "クロスプラットフォーム対応"
+            "laterConfig": "高度な機能は後から設定可能"
         }
     },
     "runtime": {
