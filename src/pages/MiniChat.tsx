@@ -24,6 +24,7 @@ import { invokeIpc, toUserMessage } from "@/lib/api-client";
 import { subscribeHostEvent } from "@/lib/host-events";
 import { hostApiFetch } from "@/lib/host-api";
 import i18n from "@/i18n";
+import { toast } from "sonner";
 import { useChatStore, type RawMessage } from "@/stores/chat";
 import { useGatewayStore } from "@/stores/gateway";
 import { useSettingsStore } from "@/stores/settings";

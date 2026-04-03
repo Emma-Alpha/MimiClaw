@@ -6,19 +6,14 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Loader2,
-  AlertCircle,
   Eye,
   EyeOff,
-  RefreshCw,
   CheckCircle2,
   XCircle,
-  ExternalLink,
-  Copy,
 } from 'lucide-react';
 import { TitleBar } from '@/components/layout/TitleBar';
 import { Button } from '@/components/ui/button';
@@ -33,7 +28,6 @@ import { SUPPORTED_LANGUAGES } from '@/i18n';
 import { toast } from 'sonner';
 import { invokeIpc } from '@/lib/api-client';
 import { hostApiFetch } from '@/lib/host-api';
-import { subscribeHostEvent } from '@/lib/host-events';
 import { resolveCloudOnlyMode } from '@/lib/app-env';
 
 interface SetupStep {
@@ -98,7 +92,6 @@ import {
   type ProviderAccount,
   type ProviderType,
   type ProviderTypeInfo,
-  getProviderDocsUrl,
   getProviderIconUrl,
   resolveProviderApiKeyForSave,
   resolveProviderModelForSave,
@@ -114,15 +107,6 @@ import {
 import clawxIcon from '@/assets/logo.png';
 
 const providers = SETUP_PROVIDERS;
-
-function getProtocolBaseUrlPlaceholder(
-  apiProtocol: ProviderAccount['apiProtocol'],
-): string {
-  if (apiProtocol === 'anthropic-messages') {
-    return 'https://api.example.com/anthropic';
-  }
-  return 'https://api.example.com/v1';
-}
 
 export function Setup() {
   const { t } = useTranslation(['setup', 'channels']);
@@ -358,7 +342,6 @@ function RuntimeContent({ onStatusChange, isRemoteMode, isCloudOnlyBuild }: Runt
   const gatewayStatus = useGatewayStore((state) => state.status);
   const startGateway = useGatewayStore((state) => state.start);
   const remoteGatewayUrl = useSettingsStore((state) => state.remoteGatewayUrl);
-  const cloudLoggedIn = useSettingsStore((state) => state.cloudLoggedIn);
   const cloudWorkspaceId = useSettingsStore((state) => state.cloudWorkspaceId);
 
   useEffect(() => {
@@ -476,9 +459,6 @@ function RuntimeContent({ onStatusChange, isRemoteMode, isCloudOnlyBuild }: Runt
     }
   };
 
-  const isAllSuccess = checks.nodejs.status === 'success' && checks.openclaw.status === 'success' && checks.gateway.status === 'success';
-  const isAnyError = checks.nodejs.status === 'error' || checks.openclaw.status === 'error' || checks.gateway.status === 'error';
-
   return (
     <div className="flex flex-col h-full space-y-6 flex-1 justify-center">
       <div className="text-center space-y-2 mb-4">
@@ -576,9 +556,8 @@ function ProviderContent({
   onApiKeyChange,
   onConfiguredChange,
   isRemoteMode,
-  isCloudOnlyBuild,
 }: ProviderContentProps) {
-  const { t, i18n } = useTranslation(['setup', 'settings']);
+  const { t } = useTranslation(['setup', 'settings']);
   const devModeUnlocked = useSettingsStore((state) => state.devModeUnlocked);
   const [showKey, setShowKey] = useState(false);
   const [validating, setValidating] = useState(false);
@@ -857,7 +836,7 @@ interface InstallingContentProps {
   isCloudOnlyBuild?: boolean;
 }
 
-function InstallingContent({ skills, onComplete, onSkip, isCloudOnlyBuild }: InstallingContentProps) {
+function InstallingContent({ skills, onComplete, isCloudOnlyBuild }: InstallingContentProps) {
   const { t } = useTranslation('setup');
   const [overallProgress, setOverallProgress] = useState(0);
   const installStarted = useRef(false);
@@ -914,7 +893,7 @@ interface CompleteContentProps {
   isCloudOnlyBuild?: boolean;
 }
 
-function CompleteContent({ selectedProvider, isCloudOnlyBuild }: CompleteContentProps) {
+function CompleteContent({ selectedProvider, installedSkills, isCloudOnlyBuild }: CompleteContentProps) {
   const { t } = useTranslation('setup');
   const providerData = providers.find((p) => p.id === selectedProvider);
 
@@ -947,6 +926,13 @@ function CompleteContent({ selectedProvider, isCloudOnlyBuild }: CompleteContent
           <span className="text-muted-foreground">Status</span>
           <span className="text-green-500 font-medium">Ready</span>
         </div>
+        <div className="flex justify-between items-center text-sm">
+          <span className="text-muted-foreground">{t('complete.skills', 'Skills')}</span>
+          <span className="font-medium">{installedSkills.length}</span>
+        </div>
+        {isCloudOnlyBuild ? (
+          <p className="text-xs text-muted-foreground">{t('complete.cloudLayout', 'Cloud build — runtime is managed for you.')}</p>
+        ) : null}
       </div>
     </div>
   );
