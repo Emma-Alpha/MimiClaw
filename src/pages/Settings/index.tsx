@@ -167,6 +167,10 @@ export function Settings() {
     setPetEnabled,
     petAnimation,
     setPetAnimation,
+    xiaojiuEnabled,
+    setXiaojiuEnabled,
+    jizhiEnabled,
+    setJizhiEnabled,
   } = useSettingsStore();
 
   const { status: gatewayStatus, restart: restartGateway } = useGatewayStore();
@@ -913,10 +917,11 @@ export function Settings() {
               {t('appearance.title')}
             </h2>
             <div className="space-y-8">
-              <div className="space-y-3">
-                <Label className="text-[14px] font-medium text-foreground/80">{t('appearance.theme')}</Label>
-                <div className="inline-flex bg-muted/50 p-1 rounded-2xl border border-white/5 shadow-inner">
+              <div className="flex items-center gap-8">
+                <Label className="text-[15px] font-medium text-foreground/80 min-w-[60px]">{t('appearance.theme')}</Label>
+                <div className="inline-flex gap-1 bg-muted/50 p-1 rounded-2xl border border-white/5 shadow-inner">
                   <button
+                    type="button"
                     onClick={() => setTheme('light')}
                     className={cn(
                       "flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium rounded-xl transition-all duration-300",
@@ -929,6 +934,7 @@ export function Settings() {
                     {t('appearance.light')}
                   </button>
                   <button
+                    type="button"
                     onClick={() => setTheme('dark')}
                     className={cn(
                       "flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium rounded-xl transition-all duration-300",
@@ -941,6 +947,7 @@ export function Settings() {
                     {t('appearance.dark')}
                   </button>
                   <button
+                    type="button"
                     onClick={() => setTheme('system')}
                     className={cn(
                       "flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium rounded-xl transition-all duration-300",
@@ -954,11 +961,12 @@ export function Settings() {
                   </button>
                 </div>
               </div>
-              <div className="space-y-3">
-                <Label className="text-[14px] font-medium text-foreground/80">{t('appearance.language')}</Label>
-                <div className="inline-flex bg-muted/50 p-1 rounded-2xl border border-white/5 shadow-inner">
+              <div className="flex items-center gap-8">
+                <Label className="text-[15px] font-medium text-foreground/80 min-w-[60px]">{t('appearance.language')}</Label>
+                <div className="inline-flex gap-1 bg-muted/50 p-1 rounded-2xl border border-white/5 shadow-inner">
                   {SUPPORTED_LANGUAGES.map((lang) => (
                     <button
+                      type="button"
                       key={lang.code}
                       onClick={() => setLanguage(lang.code)}
                       className={cn(
@@ -1021,6 +1029,34 @@ export function Settings() {
                     <p className="text-[12px] text-muted-foreground">
                       {t('pet.tip')}
                     </p>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4 mt-2 pt-4 border-t border-border/40">
+                    <div>
+                      <Label className="text-[13px] font-medium text-foreground/80">接入小九</Label>
+                      <p className="text-[12px] text-muted-foreground mt-1">
+                        启用后可快速调用小九相关功能。
+                      </p>
+                    </div>
+                    <Switch
+                      checked={xiaojiuEnabled}
+                      onCheckedChange={setXiaojiuEnabled}
+                      disabled={!petEnabled}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4 mt-0 pt-4 border-t border-border/40">
+                    <div>
+                      <Label className="text-[13px] font-medium text-foreground/80">接入极智</Label>
+                      <p className="text-[12px] text-muted-foreground mt-1">
+                        启用后可快速调用极智相关功能。
+                      </p>
+                    </div>
+                    <Switch
+                      checked={jizhiEnabled}
+                      onCheckedChange={setJizhiEnabled}
+                      disabled={!petEnabled}
+                    />
                   </div>
                 </div>
               </div>

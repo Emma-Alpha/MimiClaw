@@ -64,6 +64,31 @@ type RuntimeConfigResolution = {
   inheritedApiKey: boolean;
 };
 
+type CodeAgentTracePayload = {
+  step?: string;
+  text?: string;
+  prompt?: string;
+  output?: string;
+  timestamp?: string;
+  [key: string]: unknown;
+};
+
+function stringifyTracePayload(payload: Record<string, unknown>): string {
+  try {
+    return JSON.stringify(payload, null, 2);
+  } catch {
+    return String(payload);
+  }
+}
+
+function previewText(text: string, maxLength = 240): string {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+  return normalized.length > maxLength
+    ? `${normalized.slice(0, maxLength - 3)}...`
+    : normalized;
+}
+
 export class CodeAgentManager extends EventEmitter {
   private process: ChildProcessWithoutNullStreams | null = null;
   private stdoutBuffer = '';
@@ -190,6 +215,15 @@ export class CodeAgentManager extends EventEmitter {
         configOverride: input.configOverride,
       },
     };
+    logger.info('[code-agent] Run requested', {
+      workspaceRoot: input.workspaceRoot,
+      sessionId: input.sessionId || null,
+      timeoutMs,
+      permissionMode: this.runtimeConfig.permissionMode,
+      executionMode: this.runtimeConfig.executionMode,
+      allowedTools: input.allowedTools ?? [],
+      promptPreview: previewText(input.prompt),
+    });
     this.emit('run:started', this.getLastRun());
 
     try {
@@ -202,6 +236,13 @@ export class CodeAgentManager extends EventEmitter {
         completedAt: Date.now(),
         result,
       };
+      logger.info('[code-agent] Run completed', {
+        runId: result.runId,
+        status: result.status,
+        durationMs: Date.now() - startedAt,
+        summary: result.summary || null,
+        outputPreview: previewText(result.output),
+      });
       this.emit('run:completed', this.getLastRun());
       return result;
     } catch (error) {
@@ -210,6 +251,11 @@ export class CodeAgentManager extends EventEmitter {
         completedAt: Date.now(),
         error: error instanceof Error ? error.message : String(error),
       };
+      logger.error('[code-agent] Run failed', {
+        durationMs: Date.now() - startedAt,
+        error: error instanceof Error ? error.message : String(error),
+        promptPreview: previewText(input.prompt),
+      });
       this.emit('run:failed', this.getLastRun());
       throw error;
     }
@@ -353,6 +399,9 @@ export class CodeAgentManager extends EventEmitter {
       nextRuntimeConfig.permissionMode = claudeUserSettings.permissionMode;
       inheritedFromClaudeUserSettings = true;
     }
+    if (nextRuntimeConfig.permissionMode === 'default') {
+      nextRuntimeConfig.permissionMode = DEFAULT_CODE_AGENT_RUNTIME_CONFIG.permissionMode;
+    }
 
     if (inheritedFromClaudeUserSettings) {
       this.runtimeConfigResolution.configSource = 'claude_settings';
@@ -470,6 +519,15 @@ export class CodeAgentManager extends EventEmitter {
     }
 
     if (message.type === 'event') {
+      if (message.event === 'code-agent:trace') {
+        this.logTraceEvent(message.payload);
+      }
+      if (message.event === 'code-agent:token') {
+        this.emit('run:token', message.payload);
+      }
+      if (message.event === 'code-agent:activity') {
+        this.emit('run:activity', message.payload);
+      }
       this.emit(message.event, message.payload);
       return;
     }
@@ -544,5 +602,44 @@ export class CodeAgentManager extends EventEmitter {
       timeoutMs: input.timeoutMs,
       configOverride: input.configOverride,
     };
+  }
+
+  private logTraceEvent(payload: unknown): void {
+    if (!payload || typeof payload !== 'object') {
+      logger.info(`[code-agent trace][unknown] ${String(payload)}`);
+      return;
+    }
+
+    const trace = payload as CodeAgentTracePayload;
+    const step = typeof trace.step === 'string' ? trace.step : 'unknown';
+
+    if (step === 'stdout:chunk' || step === 'stderr:chunk') {
+      const text = typeof trace.text === 'string' ? trace.text : '';
+      if (!text.trim()) return;
+      const log = step === 'stderr:chunk' ? logger.warn : logger.info;
+      const channel = step === 'stderr:chunk' ? 'stderr' : 'stdout';
+      log(`[code-agent trace][${channel}] ${text}`);
+      return;
+    }
+
+    if (step === 'request:start') {
+      const { prompt, ...rest } = trace;
+      logger.info(`[code-agent trace][request:start] ${stringifyTracePayload(rest)}`);
+      if (typeof prompt === 'string' && prompt.trim()) {
+        logger.info(`[code-agent trace][prompt]\n${prompt}`);
+      }
+      return;
+    }
+
+    if (step === 'result:final') {
+      const { output, ...rest } = trace;
+      logger.info(`[code-agent trace][result:final] ${stringifyTracePayload(rest as Record<string, unknown>)}`);
+      if (typeof output === 'string' && output.trim()) {
+        logger.info(`[code-agent trace][final-output]\n${output}`);
+      }
+      return;
+    }
+
+    logger.info(`[code-agent trace][${step}] ${stringifyTracePayload(trace as Record<string, unknown>)}`);
   }
 }

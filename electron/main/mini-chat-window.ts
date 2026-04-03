@@ -1,5 +1,6 @@
 import { app, BrowserWindow, screen } from "electron";
-import { join } from "node:path";
+import { join, basename } from "node:path";
+import { stat } from "node:fs/promises";
 import type { PetMiniChatSeed } from "../../shared/pet";
 import {
 	DEFAULT_PET_WINDOW_BOUNDS,
@@ -81,6 +82,8 @@ function normalizeMiniChatSeed(seed: string | PetMiniChatSeed): PetMiniChatSeed 
 		text: seed.text || "",
 		attachments: seed.attachments ?? [],
 		autoSend: seed.autoSend ?? true,
+		target: seed.target === "code" ? "code" : seed.target === "chat" ? "chat" : undefined,
+		persistTarget: seed.persistTarget === true,
 	};
 }
 
@@ -111,10 +114,11 @@ async function createMiniChatWindow(): Promise<BrowserWindow> {
 		},
 	});
 
-	win.setAlwaysOnTop(
-		true,
-		process.platform === "darwin" ? "screen-saver" : "floating",
-	);
+	// Use "floating" level on macOS (not "screen-saver") so the window
+	// participates in macOS's NSDraggingSession and can receive file/folder
+	// drag-and-drop from Finder. "screen-saver" level is too high and the OS
+	// will not route cross-app drags to windows above the application layer.
+	win.setAlwaysOnTop(true, "floating");
 	win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
 	win.once("ready-to-show", () => {
@@ -130,7 +134,98 @@ async function createMiniChatWindow(): Promise<BrowserWindow> {
 		}
 	});
 
+	// ── File / folder drag-and-drop interception ─────────────────────────────
+	// When a file/folder is dropped, Chromium's renderer navigates to
+	// file:///absolute/path.
+	// We intercept this at the network level to extract the path and CANCEL the navigation,
+	// so the React app doesn't unmount and we don't get an ugly ERR_FILE_NOT_FOUND log.
+
 	const route = getMiniChatWindowUrl();
+
+	/** Returns true when the URL is our own app URL (not a dropped path). */
+	const isAppUrl = (url: string): boolean => {
+		if (route.type === "url") {
+			// Dev: app is on http://localhost:…, any file:// is a drop
+			return !url.startsWith("file://");
+		}
+		// Prod: app is on file://…/index.html — check for index.html marker
+		return url.includes("index.html");
+	};
+
+	const handleDroppedFileUrl = (url: string): void => {
+		if (!url.startsWith("file://")) return;
+		if (isAppUrl(url)) return;
+
+		let absPath: string;
+		try {
+			absPath = decodeURIComponent(new URL(url).pathname);
+		} catch {
+			return;
+		}
+
+		console.log("[drop-debug main] file drop url:", url, "→ path:", absPath);
+
+		void stat(absPath)
+			.catch(() => null)
+			.then((info) => {
+				if (win.isDestroyed()) return;
+				const payload = [
+					{
+						absolutePath: absPath,
+						name: basename(absPath),
+						isDirectory: info?.isDirectory() ?? false,
+					},
+				];
+				console.log("[drop-debug main] sending mini-chat:paths-dropped", payload);
+
+				setTimeout(() => {
+					if (!win.isDestroyed()) {
+						win.webContents.send("mini-chat:paths-dropped", payload);
+					}
+				}, 100);
+			});
+	};
+
+	// 1. Intercept the navigation before it even starts using webRequest.
+	// This is the ONLY reliable way to catch file:// drops on app-region: drag areas on macOS.
+	win.webContents.session.webRequest.onBeforeRequest({ urls: ['file:///*'] }, (details, callback) => {
+		const url = details.url;
+		if (!isAppUrl(url)) {
+			console.log("[drop-debug main] webRequest intercepted:", url);
+			handleDroppedFileUrl(url);
+
+			// UI Recovery: Canceling a main-frame navigation via webRequest replaces the page
+			// with an ERR_BLOCKED_BY_CLIENT error page. We immediately tell the webContents
+			// to go back or reload to hide the white screen.
+			// We MUST use setTimeout to wait for the error page navigation to finish
+			// before we can successfully go back or reload.
+			setTimeout(() => {
+				if (!win.isDestroyed()) {
+					if (win.webContents.canGoBack()) {
+						win.webContents.goBack();
+					} else {
+						void (route.type === "url"
+							? win.loadURL(route.value)
+							: win.loadFile(route.value, { hash: route.hash }));
+					}
+				}
+			}, 100);
+
+			callback({ cancel: true });
+			return;
+		}
+		callback({ cancel: false });
+	});
+
+	// 2. Handle file drops if the renderer navigation wasn't already stopped by preload.
+	win.webContents.on('will-navigate', (event, url) => {
+		if (url.startsWith('file://') && !isAppUrl(url)) {
+			event.preventDefault();
+			console.log("[drop-debug main] will-navigate intercepted:", url);
+			handleDroppedFileUrl(url);
+		}
+	});
+
 	if (route.type === "url") {
 		await win.loadURL(route.value);
 	} else {

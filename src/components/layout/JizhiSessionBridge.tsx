@@ -4,6 +4,7 @@ import { fetchHostJizhiMessages, fetchHostJizhiSessions } from '@/lib/jizhi-chat
 import { subscribeHostEvent } from '@/lib/host-events';
 import { useJizhiChatStore } from '@/stores/jizhi-chat';
 import { useJizhiSessionsStore } from '@/stores/jizhi-sessions';
+import { useSettingsStore } from '@/stores/settings';
 
 const JIZHI_SESSION_SYNC_INTERVAL_MS = 30_000;
 const JIZHI_MESSAGE_SYNC_INTERVAL_MS = 15_000;
@@ -14,6 +15,7 @@ function trace(step: string, payload?: Record<string, unknown>): void {
 }
 
 export function JizhiSessionBridge() {
+  const jizhiEnabled = useSettingsStore((state) => state.jizhiEnabled);
   const setLoading = useJizhiSessionsStore((state) => state.setLoading);
   const setSessions = useJizhiSessionsStore((state) => state.setSessions);
   const setSyncError = useJizhiSessionsStore((state) => state.setSyncError);
@@ -30,6 +32,12 @@ export function JizhiSessionBridge() {
   const requestRefresh = useJizhiChatStore((state) => state.requestRefresh);
 
   useEffect(() => {
+    if (!jizhiEnabled) {
+      setLoading(false);
+      setSyncError(null);
+      return;
+    }
+
     let disposed = false;
 
     const syncSessions = async () => {
@@ -60,9 +68,13 @@ export function JizhiSessionBridge() {
       disposed = true;
       window.clearInterval(intervalId);
     };
-  }, [setLoading, setSessions, setSyncError]);
+  }, [jizhiEnabled, setLoading, setSessions, setSyncError]);
 
   useEffect(() => {
+    if (!jizhiEnabled) {
+      return;
+    }
+
     return subscribeHostEvent<HostJizhiStreamEvent>('jizhi:stream', (payload) => {
       applyStreamEvent(payload);
       trace('stream:event', {
@@ -83,10 +95,10 @@ export function JizhiSessionBridge() {
         }, 120);
       }
     });
-  }, [applyStreamEvent, requestRefresh]);
+  }, [applyStreamEvent, jizhiEnabled, requestRefresh]);
 
   useEffect(() => {
-    if (!activeSessionId) return;
+    if (!jizhiEnabled || !activeSessionId) return;
 
     let disposed = false;
     let timeoutId: number | null = null;
@@ -138,6 +150,7 @@ export function JizhiSessionBridge() {
   }, [
     activeSessionId,
     activePendingMessageCount,
+    jizhiEnabled,
     refreshNonce,
     setChatSyncError,
     setLoadingSession,

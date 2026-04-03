@@ -80,7 +80,7 @@ async function handleRequest(method, params) {
     }
 
     const descriptor = buildDescriptor(params?.config);
-    const analysis = runSnapshotAnalysis({
+    const analysis = await runSnapshotAnalysis({
       vendorPath: descriptor.vendorPath,
       workspaceRoot,
       prompt,
@@ -89,6 +89,34 @@ async function handleRequest(method, params) {
       sessionId: typeof params?.sessionId === 'string' ? params.sessionId : '',
       allowedTools: Array.isArray(params?.allowedTools) ? params.allowedTools : [],
       timeoutMs: typeof params?.timeoutMs === 'number' ? params.timeoutMs : 120_000,
+      onEvent: (payload) => {
+        send({
+          type: 'event',
+          event: 'code-agent:trace',
+          payload,
+        });
+        // Forward text deltas as a dedicated streaming token event so the renderer
+        // can display incremental output without waiting for the full result.
+        if (payload && payload.step === 'run:text-delta' && typeof payload.text === 'string' && payload.text) {
+          send({
+            type: 'event',
+            event: 'code-agent:token',
+            payload: { text: payload.text },
+          });
+        }
+        // Forward tool-use activity events so the renderer can render a Claude Code-style feed.
+        if (payload && payload.step === 'run:tool-activity' && typeof payload.toolName === 'string') {
+          send({
+            type: 'event',
+            event: 'code-agent:activity',
+            payload: {
+              toolId: payload.toolId || '',
+              toolName: payload.toolName,
+              inputSummary: typeof payload.inputSummary === 'string' ? payload.inputSummary : '',
+            },
+          });
+        }
+      },
     });
 
     return {

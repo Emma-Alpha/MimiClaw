@@ -21,6 +21,8 @@ const HOST_EVENT_TO_IPC_CHANNEL: Record<string, string> = {
   'code-agent:run-started': 'code-agent:run-started',
   'code-agent:run-completed': 'code-agent:run-completed',
   'code-agent:run-failed': 'code-agent:run-failed',
+  'code-agent:token': 'code-agent:token',
+  'code-agent:activity': 'code-agent:activity',
   'channel:whatsapp-qr': 'channel:whatsapp-qr',
   'channel:whatsapp-success': 'channel:whatsapp-success',
   'channel:whatsapp-error': 'channel:whatsapp-error',
@@ -54,7 +56,14 @@ export function subscribeHostEvent<T = unknown>(
     const listener = (payload: unknown) => {
       handler(payload as T);
     };
-    ipc.on(ipcChannel, listener);
+    // The preload wraps `listener` into an internal subscription and returns
+    // a cleanup that removes the wrapper. We must use that cleanup — calling
+    // ipc.off(channel, listener) would try to remove the original (unwrapped)
+    // function which was never registered, so the listener would leak.
+    const cleanup = ipc.on(ipcChannel, listener) as (() => void) | undefined;
+    if (typeof cleanup === 'function') {
+      return cleanup;
+    }
     return () => {
       ipc.off(ipcChannel, listener);
     };

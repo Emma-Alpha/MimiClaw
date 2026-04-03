@@ -216,6 +216,8 @@ const electronAPI = {
         'code-agent:run-started',
         'code-agent:run-completed',
         'code-agent:run-failed',
+        'code-agent:token',
+        'code-agent:activity',
         'openclaw:cli-installed',
         'pet:settings-updated',
         'pet:runtime-state',
@@ -224,6 +226,7 @@ const electronAPI = {
         'pet:clipboard-changed',
         'voice:realtime-event',
         'mini-chat:initial-message',
+        'mini-chat:paths-dropped',
         'screenshot:capture',
       ];
 
@@ -282,6 +285,8 @@ const electronAPI = {
         'code-agent:run-started',
         'code-agent:run-completed',
         'code-agent:run-failed',
+        'code-agent:token',
+        'code-agent:activity',
         'pet:settings-updated',
         'pet:runtime-state',
         'pet:asr-event',

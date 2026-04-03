@@ -222,6 +222,39 @@ function trace(step: string, payload?: Record<string, unknown>): void {
   logger.info(`[jizhi-trace][service] ${step}`, payload ?? {});
 }
 
+/**
+ * Produce a terminal-friendly summary of an API response payload.
+ * Strings longer than MAX_STR chars are replaced with a `[N chars]` stub,
+ * arrays are capped at MAX_ARR items, and nesting is capped at MAX_DEPTH.
+ * The full payload is still written to the log file via `trace`; this is
+ * only used for the noisy request:payload terminal line.
+ */
+const MAX_STR   = 120;
+const MAX_ARR   = 4;
+const MAX_DEPTH = 3;
+
+function sanitizeForLog(value: unknown, depth = 0): unknown {
+  if (depth > MAX_DEPTH) return '[…]';
+  if (typeof value === 'string') {
+    return value.length > MAX_STR
+      ? `${value.slice(0, MAX_STR)}… [+${value.length - MAX_STR} chars]`
+      : value;
+  }
+  if (Array.isArray(value)) {
+    const preview = value.slice(0, MAX_ARR).map(v => sanitizeForLog(v, depth + 1));
+    if (value.length > MAX_ARR) preview.push(`… +${value.length - MAX_ARR} more` as unknown);
+    return preview;
+  }
+  if (value !== null && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = sanitizeForLog(v, depth + 1);
+    }
+    return out;
+  }
+  return value;
+}
+
 function parseJsonPayload<T>(rawText: string): JizhiApiEnvelope<T> | null {
   const normalized = rawText.trim();
   if (!normalized) return null;
@@ -330,10 +363,10 @@ async function fetchJizhiApi<T>(
     code: payload?.code ?? null,
     message: payload?.message ?? payload?.msg ?? null,
   });
-  trace('request:payload', {
+  trace('request:payload', sanitizeForLog({
     path,
     payload: payload ?? (rawText || null),
-  });
+  }) as Record<string, unknown>);
 
   if (contentType.includes('text/html') || (!payload && rawText.trim().startsWith('<!doctype html'))) {
     throw new Error(`极智接口返回了 HTML 页面而不是 JSON，请检查 Jizhi API base 配置。path=${path} baseUrl=${baseUrl}`);
@@ -368,10 +401,10 @@ function normalizeSession(row: JizhiTopicRow): JizhiSession {
 export async function fetchJizhiSessions(): Promise<JizhiSession[]> {
   const data = await fetchJizhiApi<JizhiTopicListResponse>(`${JIZHI_CHAT_API_PREFIX}/topic/all`);
   const rows = Array.isArray(data?.rows) ? data.rows : [];
-  trace('fetch sessions:raw', {
+  trace('fetch sessions:raw', sanitizeForLog({
     rowCount: rows.length,
     data,
-  });
+  }) as Record<string, unknown>);
   const sessions = rows.map(normalizeSession).sort((left, right) => {
     const leftTime = left.lastMessageCreatedAt ?? left.updatedAt ?? left.createdAt ?? 0;
     const rightTime = right.lastMessageCreatedAt ?? right.updatedAt ?? right.createdAt ?? 0;

@@ -10,11 +10,9 @@ import {
   MessageSquare,
   RefreshCw,
   RotateCcw,
-  Send,
-  Square,
 } from 'lucide-react';
+import { ComposerBase, ComposerChip, ComposerIconButton } from '@/components/common/composer';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { JizhiMessageContent } from '@/components/jizhi/JizhiMessageContent';
 import { cn } from '@/lib/utils';
 import {
@@ -130,31 +128,29 @@ function getLatestAssistantMessage(messages: HostJizhiChatMessage[]): HostJizhiA
 
 function UserBubble({ message }: { message: HostJizhiUserMessage }) {
   return (
-    <div className="ml-auto w-full max-w-[92%] rounded-[30px] border border-[#D6E5FF] bg-[linear-gradient(180deg,rgba(244,248,255,0.96)_0%,rgba(236,244,255,0.92)_100%)] px-3 py-3 shadow-[0_14px_38px_rgba(38,103,216,0.08)] dark:border-[#31415E] dark:bg-[linear-gradient(180deg,rgba(33,44,66,0.88)_0%,rgba(24,33,48,0.92)_100%)] dark:shadow-[0_16px_38px_rgba(0,0,0,0.24)] md:max-w-[82%]">
-      <ChatItem
-        avatar={{
-          avatar: (
-            <span className="flex h-full w-full items-center justify-center text-sm font-semibold text-[#2667D8]">
-              我
-            </span>
-          ),
-          backgroundColor: 'rgba(38,103,216,0.14)',
-          title: '我',
-        }}
-        className="w-full"
-        message="用户消息"
-        placement="right"
-        renderMessage={() => <JizhiMessageContent message={message.content} />}
-        showTitle={false}
-        time={Date.parse(message.createdAt)}
-        variant="bubble"
-        aboveMessage={(
-          <div className="mb-2 flex justify-end px-1 text-[11px] text-[#4B6EA8]/70 dark:text-white/42">
-            <span>{formatMessageTime(message.createdAt)}</span>
-          </div>
-        )}
-      />
-    </div>
+    <ChatItem
+      avatar={{
+        avatar: (
+          <span className="flex h-full w-full items-center justify-center text-sm font-semibold text-[#2667D8]">
+            我
+          </span>
+        ),
+        backgroundColor: 'rgba(38,103,216,0.14)',
+        title: '我',
+      }}
+      className="w-full"
+      message="用户消息"
+      placement="right"
+      renderMessage={() => <JizhiMessageContent message={message.content} />}
+      showTitle={false}
+      time={Date.parse(message.createdAt)}
+      variant="bubble"
+      aboveMessage={(
+        <div className="mb-2 flex justify-end px-1 text-[11px] text-[#4B6EA8]/70 dark:text-white/42">
+          <span>{formatMessageTime(message.createdAt)}</span>
+        </div>
+      )}
+    />
   );
 }
 
@@ -185,90 +181,88 @@ function AssistantBubble({
   const copyText = getAssistantClipboardText(message);
 
   return (
-    <div className="w-full max-w-[94%] rounded-[30px] border border-black/6 bg-white/78 px-3 py-3 shadow-[0_16px_42px_rgba(15,23,42,0.07)] backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.055] dark:shadow-[0_16px_42px_rgba(0,0,0,0.28)] md:max-w-[84%]">
-      <div className="space-y-2">
-        <ChatItem
-          avatar={{
-            avatar: (
-              <span className="flex h-full w-full items-center justify-center text-sm font-semibold text-foreground/75">
-                智
+    <div className="space-y-2 w-full">
+      <ChatItem
+        avatar={{
+          avatar: (
+            <span className="flex h-full w-full items-center justify-center text-sm font-semibold text-foreground/75">
+              智
+            </span>
+          ),
+          backgroundColor: 'rgba(15,23,42,0.06)',
+          title: modelLabel,
+        }}
+        className="w-full"
+        message={modelLabel}
+        placement="left"
+        renderMessage={() => <JizhiMessageContent message={message.content} />}
+        showTitle={false}
+        time={Date.parse(message.createdAt)}
+        variant="bubble"
+        aboveMessage={(
+          <div className="mb-2 flex flex-wrap items-center gap-2 px-1 text-[11px] text-foreground/45">
+            <span>{modelLabel}</span>
+            {timeLabel ? <span>{timeLabel}</span> : null}
+            {statusLabel ? (
+              <span className="rounded-full bg-black/5 px-1.5 py-0.5 dark:bg-white/10">
+                {statusLabel}
               </span>
-            ),
-            backgroundColor: 'rgba(15,23,42,0.06)',
-            title: modelLabel,
-          }}
-          className="w-full"
-          message={modelLabel}
-          placement="left"
-          renderMessage={() => <JizhiMessageContent message={message.content} />}
-          showTitle={false}
-          time={Date.parse(message.createdAt)}
-          variant="bubble"
-          aboveMessage={(
-            <div className="mb-2 flex flex-wrap items-center gap-2 px-1 text-[11px] text-foreground/45">
-              <span>{modelLabel}</span>
-              {timeLabel ? <span>{timeLabel}</span> : null}
-              {statusLabel ? (
-                <span className="rounded-full bg-black/5 px-1.5 py-0.5 dark:bg-white/10">
-                  {statusLabel}
-                </span>
-              ) : null}
-            </div>
-          )}
-        />
+            ) : null}
+          </div>
+        )}
+      />
 
-        <div className="ml-12 flex flex-wrap items-center gap-2 pt-1">
-          {group.messages.length > 1 ? (
-            <div className="inline-flex items-center gap-1 rounded-full bg-black/5 p-1 dark:bg-white/10">
-              {group.messages.map((item, index) => {
-                const isActive = item.isActive;
-                const isSwitching = switchingMessageUUID === item.messageUUID;
+      <div className="ml-12 flex flex-wrap items-center gap-2 pt-1">
+        {group.messages.length > 1 ? (
+          <div className="inline-flex items-center gap-1 rounded-full bg-black/5 p-1 dark:bg-white/10">
+            {group.messages.map((item, index) => {
+              const isActive = item.isActive;
+              const isSwitching = switchingMessageUUID === item.messageUUID;
 
-                return (
-                  <button
-                    key={item.messageUUID || `${group.answerGroup}-${index + 1}`}
-                    type="button"
-                    className={cn(
-                      'flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-[11px] transition',
-                      isActive
-                        ? 'bg-white text-foreground shadow-sm dark:bg-black/30'
-                        : 'text-foreground/55 hover:text-foreground',
-                    )}
-                    disabled={isActive || !canSwitchVersion}
-                    onClick={() => onSwitchVersion(item)}
-                    title={`切换到回答 ${index + 1}`}
-                  >
-                    {isSwitching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : index + 1}
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
+              return (
+                <button
+                  key={item.messageUUID || `${group.answerGroup}-${index + 1}`}
+                  type="button"
+                  className={cn(
+                    'flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-[11px] transition',
+                    isActive
+                      ? 'bg-white text-foreground shadow-sm dark:bg-black/30'
+                      : 'text-foreground/55 hover:text-foreground',
+                  )}
+                  disabled={isActive || !canSwitchVersion}
+                  onClick={() => onSwitchVersion(item)}
+                  title={`切换到回答 ${index + 1}`}
+                >
+                  {isSwitching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : index + 1}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 rounded-full px-3 text-xs text-foreground/55"
-            onClick={() => onCopy(message)}
-            disabled={!copyText}
-          >
-            {copied ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Copy className="mr-1.5 h-3.5 w-3.5" />}
-            {copied ? '已复制' : '复制'}
-          </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 rounded-full px-3 text-xs text-foreground/55"
+          onClick={() => onCopy(message)}
+          disabled={!copyText}
+        >
+          {copied ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Copy className="mr-1.5 h-3.5 w-3.5" />}
+          {copied ? '已复制' : '复制'}
+        </Button>
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 rounded-full px-3 text-xs text-foreground/55"
-            onClick={() => onRetry(message)}
-            disabled={!canRetry}
-          >
-            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-            重新生成
-          </Button>
-        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 rounded-full px-3 text-xs text-foreground/55"
+          onClick={() => onRetry(message)}
+          disabled={!canRetry}
+        >
+          <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+          重新生成
+        </Button>
       </div>
     </div>
   );
@@ -326,64 +320,12 @@ function MessageRow({
   return null;
 }
 
-function InputBadge({
-  children,
-  icon,
-  compact = false,
-}: {
-  children: React.ReactNode;
-  icon?: React.ReactNode;
-  compact?: boolean;
-}) {
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-full border border-black/6 bg-black/[0.03] text-[12px] font-medium text-foreground/65 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/70',
-        compact ? 'h-8 gap-1.5 px-3' : 'h-8 px-3',
-      )}
-    >
-      {icon ? <span className="mr-1.5 text-foreground/55">{icon}</span> : null}
-      {children}
-    </span>
-  );
-}
-
-function ComposerActionButton({
-  icon,
-  label,
-  active = false,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  active?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      title={label}
-      onClick={onClick}
-      className={cn(
-        'inline-flex h-8 w-8 items-center justify-center rounded-full border transition',
-        active
-          ? 'border-[#2667D8]/18 bg-[#EEF5FF] text-[#2667D8] shadow-[0_4px_12px_rgba(38,103,216,0.10)] dark:border-[#7FB0FF]/20 dark:bg-[#1F2B3F] dark:text-[#8CB8FF]'
-          : 'border-black/6 bg-transparent text-foreground/58 hover:bg-black/[0.05] dark:border-white/10 dark:bg-transparent dark:text-white/70 dark:hover:bg-white/[0.08]',
-      )}
-    >
-      {icon}
-    </button>
-  );
-}
-
 export function JizhiChat() {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [copiedMessageUUID, setCopiedMessageUUID] = useState<string | null>(null);
   const [switchingMessageUUID, setSwitchingMessageUUID] = useState<string | null>(null);
-  const [composerFocused, setComposerFocused] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const shouldScrollToBottomRef = useRef(false);
   const copyTimeoutRef = useRef<number | null>(null);
 
@@ -406,6 +348,7 @@ export function JizhiChat() {
     () => sessions.find((session) => session.id === activeSessionId) ?? null,
     [activeSessionId, sessions],
   );
+  const isLlmSession = currentSession?.category?.toLowerCase().includes('llm') ?? false;
   const messages = useMemo(
     () => {
       if (!activeSessionId) return [];
@@ -439,16 +382,7 @@ export function JizhiChat() {
   const latestAssistantMessage = useMemo(() => {
     return getLatestAssistantMessage(messages);
   }, [messages]);
-  const isLlmSession = currentSession?.category === 'llm';
-  const canSend = Boolean(
-    activeSessionId
-    && currentSession
-    && currentSession.category
-    && draft.trim()
-    && !sending,
-  ) && !activeStreamingMessageUUID;
 
-  const canStop = Boolean(activeSessionId && activeStreamingMessageUUID && !sending);
   const canRetry = Boolean(
     activeSessionId
     && currentSession?.category
@@ -485,14 +419,7 @@ export function JizhiChat() {
     shouldScrollToBottomRef.current = false;
   }, [messages, loading]);
 
-  useEffect(() => {
-    const node = composerRef.current;
-    if (!node) return;
 
-    node.style.height = '0px';
-    const nextHeight = Math.min(Math.max(node.scrollHeight, 92), 220);
-    node.style.height = `${nextHeight}px`;
-  }, [draft]);
 
   useEffect(() => () => {
     if (copyTimeoutRef.current != null) {
@@ -747,133 +674,53 @@ export function JizhiChat() {
       </div>
 
       <div className="border-t border-black/5 px-6 py-4 dark:border-white/10">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-3">
-          <div
-            className={cn(
-              'rounded-[26px] border border-black/8 bg-white/92 p-3 backdrop-blur-xl transition-[border-color,box-shadow,transform,background-color] duration-200 dark:border-white/10 dark:bg-[#181b22]/88',
-              composerFocused
-                ? 'border-[#2667D8]/30 bg-white shadow-[0_22px_60px_rgba(38,103,216,0.14)] dark:border-[#7FB0FF]/35 dark:bg-[#1a1e26] dark:shadow-[0_24px_65px_rgba(64,116,214,0.18)]'
-                : 'shadow-[0_18px_50px_rgba(15,23,42,0.08)] hover:border-black/12 hover:shadow-[0_20px_56px_rgba(15,23,42,0.10)] dark:shadow-[0_18px_50px_rgba(0,0,0,0.32)] dark:hover:border-white/14 dark:hover:bg-[#1a1d24]',
-            )}
-          >
-            <div
-              className={cn(
-                'rounded-[20px] border border-transparent bg-transparent transition-[background-color,border-color,box-shadow] duration-200',
-                composerFocused
-                  ? 'bg-[#F9FBFF] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:bg-[#151922]'
-                  : 'hover:bg-black/[0.015] dark:hover:bg-white/[0.02]',
-              )}
-              onClick={() => composerRef.current?.focus()}
-            >
-              <Textarea
-                ref={composerRef}
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                onFocus={() => setComposerFocused(true)}
-                onBlur={() => setComposerFocused(false)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault();
-                    if (canSend) {
-                      void handleSend();
-                    }
-                  }
-                }}
-                placeholder="输入你想让极智继续处理的内容..."
-                disabled={!activeSessionId || sending}
-                className="min-h-[92px] resize-none overflow-y-auto border-0 bg-transparent px-2 py-3 text-[15px] leading-7 shadow-none ring-0 placeholder:text-foreground/28 placeholder:transition-colors focus-visible:ring-0 focus-visible:ring-offset-0 dark:placeholder:text-white/22"
-              />
-            </div>
-
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-3 border-t border-black/6 px-1 pt-3 dark:border-white/8">
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                <div className="inline-flex items-center gap-1 rounded-full border border-black/6 bg-black/[0.025] px-1.5 py-1 dark:border-white/10 dark:bg-white/[0.03]">
-                  <ComposerActionButton
-                    icon={<Bot className="h-4 w-4" />}
-                    label={isLlmSession ? '模型模式' : '智能体模式'}
-                    active={Boolean(currentSession.category)}
-                    onClick={() => composerRef.current?.focus()}
-                  />
-                  <ComposerActionButton
-                    icon={<Cpu className="h-4 w-4" />}
-                    label={currentSession.model || '当前模型'}
-                    active={Boolean(currentSession.model)}
-                    onClick={() => composerRef.current?.focus()}
-                  />
-                  {isLlmSession ? (
-                    <ComposerActionButton
-                      icon={<BrainCircuit className="h-4 w-4" />}
-                      label="思考模式"
-                      active
-                      onClick={() => composerRef.current?.focus()}
-                    />
-                  ) : null}
-                </div>
-
+        <div className="mx-auto flex w-full max-w-[800px] flex-col gap-3">
+          <ComposerBase
+            variant="desktop"
+            value={draft}
+            onInput={setDraft}
+            onSend={() => {
+              void handleSend();
+            }}
+            onStop={() => {
+              void handleStop();
+            }}
+            loading={sending || Boolean(activeStreamingMessageUUID)}
+            disabled={!activeSessionId || sending}
+            sendDisabled={!activeSessionId || sending}
+            placeholder="输入你想让极智继续处理的内容..."
+            leftActions={(
+              <>
+                <ComposerChip variant="desktop" icon={<Bot className="h-3.5 w-3.5" />}>
+                  {isLlmSession ? '模型模式' : '智能体模式'}
+                </ComposerChip>
                 {currentSession.model ? (
-                  <InputBadge icon={<Cpu className="h-3.5 w-3.5" />} compact>
-                    <span className="max-w-[140px] truncate">{currentSession.model}</span>
-                  </InputBadge>
+                  <ComposerChip variant="desktop" icon={<Cpu className="h-3.5 w-3.5" />}>
+                    {currentSession.model}
+                  </ComposerChip>
                 ) : null}
-
-                <span className={cn('text-[12px] transition-colors', composerFocused ? 'text-foreground/50' : 'text-foreground/40')}>
-                  Enter 发送
-                </span>
-                <span className="text-[12px] text-foreground/28">/</span>
-                <span className={cn('text-[12px] transition-colors', composerFocused ? 'text-foreground/50' : 'text-foreground/40')}>
-                  Shift + Enter 换行
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {canRetry ? (
-                  <Button
-                    onClick={() => {
-                      void handleRetry();
-                    }}
-                    disabled={!canRetry}
-                    variant="ghost"
-                    className="h-10 w-10 rounded-full border border-black/8 bg-black/[0.03] px-0 text-[13px] font-medium text-foreground/70 hover:bg-black/[0.045] dark:border-white/10 dark:bg-white/[0.05] dark:text-white/80 dark:hover:bg-white/[0.08]"
-                    title="重新生成"
-                  >
-                    {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                  </Button>
+                {isLlmSession ? (
+                  <ComposerChip variant="desktop" icon={<BrainCircuit className="h-3.5 w-3.5" />}>
+                    思考模式
+                  </ComposerChip>
                 ) : null}
-
-                <div className="inline-flex items-center gap-2">
-                  <div className={cn('hidden text-[12px] transition-colors lg:block', composerFocused ? 'text-[#2667D8] dark:text-[#8CB8FF]' : 'text-foreground/42')}>
-                    {activeStreamingMessageUUID ? '正在生成' : draft.trim() ? '准备发送' : '等待输入'}
-                  </div>
-                  <Button
-                    onClick={() => {
-                      if (activeStreamingMessageUUID) {
-                        void handleStop();
-                        return;
-                      }
-                      void handleSend();
-                    }}
-                    disabled={activeStreamingMessageUUID ? !canStop : !canSend}
-                    className={cn(
-                      'h-11 w-11 rounded-full px-0 text-[13px] font-medium shadow-[0_10px_24px_rgba(38,103,216,0.18)] transition disabled:shadow-none',
-                      activeStreamingMessageUUID
-                        ? 'border border-[#E8B6BC] bg-[#FFF3F4] text-[#B42318] hover:bg-[#FFE5E8] dark:border-[#6B2B31] dark:bg-[#33181C] dark:text-[#FFB4A8] dark:hover:bg-[#432126]'
-                        : 'bg-[#2667D8] text-white hover:bg-[#1F58BA] dark:bg-[#3B82F6] dark:hover:bg-[#2F6FDB]',
-                    )}
-                    variant={activeStreamingMessageUUID ? 'outline' : 'default'}
-                    title={activeStreamingMessageUUID ? '停止生成' : '发送'}
-                  >
-                    {sending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : activeStreamingMessageUUID ? (
-                      <Square className="h-4 w-4" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
+              </>
+            )}
+            rightActions={canRetry ? (
+              <ComposerIconButton
+                variant="desktop"
+                icon={<RotateCcw className="h-4 w-4" />}
+                onClick={() => { void handleRetry(); }}
+                disabled={!canRetry}
+                title="重新生成"
+              />
+            ) : null}
+            sendTexts={{
+              send: '发送',
+              stop: '停止',
+              warp: 'Shift + Enter',
+            }}
+          />
         </div>
       </div>
     </div>

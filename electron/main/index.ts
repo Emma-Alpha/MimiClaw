@@ -23,7 +23,8 @@ import { autoInstallCliIfNeeded, generateCompletionCache, installCompletionToPro
 import { isInstallingUpdate, isQuitting, setInstallingUpdate, setQuitting } from './app-state';
 import { applyProxySettings } from './proxy';
 import { syncLaunchAtStartupSettingFromStore } from './launch-at-startup';
-import { syncPetWindowFromSettings } from './pet-window';
+import { syncPetWindowFromSettings, getPetWindow } from './pet-window';
+import { getMiniChatWindow } from './mini-chat-window';
 import { registerPetRuntime } from './pet-runtime';
 import { startVoiceShortcutMonitor, stopVoiceShortcutMonitor } from './voice-shortcut';
 import {
@@ -588,6 +589,24 @@ async function initialize(): Promise<void> {
     }
   });
 
+  codeAgentManager.on('run:token', (payload) => {
+    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('code-agent:token', payload);
+      }
+    }
+  });
+
+  codeAgentManager.on('run:activity', (payload) => {
+    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('code-agent:activity', payload);
+      }
+    }
+  });
+
   deviceOAuthManager.on('oauth:code', (payload) => {
     hostEventBus.emit('oauth:code', payload);
   });
@@ -750,6 +769,57 @@ if (gotTheLock) {
 
   // Application lifecycle
   app.whenReady().then(() => {
+    // Prevent default Chromium navigation for dropped files across all windows.
+    // Without this, dropping a file/folder onto any window (especially the main
+    // window or an unhandled area) will cause Chromium to navigate to file:///...
+    // and crash the app UI with ERR_FILE_NOT_FOUND or ERR_BLOCKED_BY_CLIENT.
+  app.on('web-contents-created', (_event, contents) => {
+    contents.on('will-navigate', (navEvent, navigationUrl) => {
+      console.log("[App DEBUG] will-navigate globally:", navigationUrl);
+      if (navigationUrl.startsWith('file://')) {
+        // Allow internal file:// loads (e.g. index.html in production)
+        if (!navigationUrl.includes('index.html')) {
+          navEvent.preventDefault();
+          logger.debug(`[App] Prevented navigation to dropped file: ${navigationUrl}`);
+        }
+      }
+    });
+
+    contents.on('did-fail-provisional-load', (e, code, desc, url, isMainFrame) => {
+      console.log(`[App DEBUG] did-fail-provisional-load globally: code=${code}, url=${url}, isMainFrame=${isMainFrame}`);
+      if (isMainFrame && url.startsWith('file://') && !url.includes('index.html')) {
+        console.log("[App DEBUG] Attempting to recover from did-fail-provisional-load...");
+        setTimeout(() => {
+          if (!contents.isDestroyed()) {
+            if (contents.canGoBack()) {
+              contents.goBack();
+            }
+          }
+        }, 50);
+      }
+    });
+
+    contents.on('did-fail-load', (e, code, desc, url, isMainFrame) => {
+      console.log(`[App DEBUG] did-fail-load globally: code=${code}, url=${url}, isMainFrame=${isMainFrame}`);
+      // If the page failed to load a dropped file, we must force it back to the app URL
+      if (isMainFrame && url.startsWith('file://') && !url.includes('index.html')) {
+        console.log("[App DEBUG] Attempting to recover from did-fail-load...");
+        // Delay the recovery slightly so Chromium finishes its error page transition
+        setTimeout(() => {
+          if (!contents.isDestroyed()) {
+            if (contents.canGoBack()) {
+              contents.goBack();
+            } else {
+              // We don't know the exact route here, but we can guess or use a default.
+              // We'll let the window-specific listener handle the exact reload if possible.
+              console.log("[App DEBUG] Cannot go back, needs manual reload.");
+            }
+          }
+        }, 50);
+      }
+    });
+  });
+
     registerAppProtocolClient();
     void initialize().catch((error) => {
       logger.error('Application initialization failed:', error);

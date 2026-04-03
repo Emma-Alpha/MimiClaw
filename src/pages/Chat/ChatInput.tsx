@@ -1,30 +1,18 @@
-/**
- * Chat Input Component
- * Uses @lobehub/ui sub-components directly:
- *   - ChatInputAreaInner  → styled textarea (Enter to send, Chinese IME, borderless)
- *   - ChatInputActionBar  → toolbar with left/right slots
- *   - ChatSendButton      → send / stop button row with keyboard hints
- * Avoids the DraggablePanel wrapper so it sits correctly inside our flex layout.
- */
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
 import {
-	X,
-	FileText,
-	Film,
-	Music,
-	FileArchive,
-	File as FileIcon,
-	Loader2,
 	AtSign,
 	Camera,
 	Mic,
 	Square,
 	Paperclip,
 } from "lucide-react";
-import { ActionIcon } from "@lobehub/ui";
-import { ChatInputAreaInner, ChatSendButton } from "@lobehub/ui/chat";
 import { createStyles } from "antd-style";
+import {
+	ComposerBase,
+	ComposerChip,
+	ComposerIconButton,
+} from "@/components/common/composer";
+import { type FileAttachment, readFileAsBase64 } from "@/components/common/composer-helpers";
 import { hostApiFetch } from "@/lib/host-api";
 import { invokeIpc } from "@/lib/api-client";
 import { useGatewayStore } from "@/stores/gateway";
@@ -37,69 +25,13 @@ import { toast } from "sonner";
 
 // ── Styles ───────────────────────────────────────────────────────
 
-const useStyles = createStyles(({ token, css, prefixCls }) => ({
+const useStyles = createStyles(({ token, css }) => ({
 	wrapper: css`
     box-sizing: border-box;
     width: 100%;
     max-width: 800px;
     margin: 0 auto;
     padding: 0 24px 24px;
-  `,
-	attachmentRow: css`
-    display: flex;
-    gap: 8px;
-    margin-bottom: 6px;
-    flex-wrap: wrap;
-  `,
-	inputBox: css`
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    gap: 4px;
-    border-radius: 16px;
-    border: 1px solid ${token.colorBorder};
-    background: ${token.colorBgContainer};
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-    overflow: visible;
-    padding: 12px 12px 8px 12px;
-    transition: border-color 0.2s, box-shadow 0.2s;
-
-    &:focus-within {
-      border-color: ${token.colorPrimary};
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
-    }
-  `,
-	inputBoxDragOver: css`
-    border-color: ${token.colorPrimary};
-    box-shadow: 0 0 0 2px ${token.colorPrimaryBorder};
-    background: ${token.colorPrimaryBg};
-  `,
-	textareaContainer: css`
-    position: relative;
-    width: 100%;
-  `,
-	textarea: css`
-    &[class*='${prefixCls}-input'] {
-      min-height: 24px !important;
-      max-height: 200px;
-      padding: 0;
-      line-height: 1.5;
-      font-size: 14px;
-      resize: none;
-      box-shadow: none !important;
-      background: transparent;
-    }
-  `,
-	bottomToolbar: css`
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 4px;
-  `,
-	leftActions: css`
-    display: flex;
-    align-items: center;
-    gap: 8px;
   `,
 	recordingPill: css`
     display: flex;
@@ -124,64 +56,6 @@ const useStyles = createStyles(({ token, css, prefixCls }) => ({
     font-variant-numeric: tabular-nums;
     min-width: 36px;
   `,
-	rightActions: css`
-    display: flex;
-    align-items: center;
-    gap: 12px;
-
-    /* Override Lobe UI's ChatSendButton negative margins */
-    & > * {
-      margin: 0 !important;
-    }
-
-    /* Animation for the button when sending */
-    & .${prefixCls}-btn {
-      transition: all 0.3s ease;
-    }
-    
-    /* When loading/sending, add a pulsing glow effect */
-    &.is-sending .${prefixCls}-btn {
-      position: relative;
-      border-color: ${token.colorPrimary} !important;
-      color: ${token.colorPrimary} !important;
-      animation: button-bg-pulse 2s infinite !important;
-    }
-
-    @keyframes button-bg-pulse {
-      0%, 100% {
-        background-color: transparent !important;
-      }
-      50% {
-        background-color: ${token.colorPrimaryBg} !important;
-      }
-    }
-
-    &.is-sending .${prefixCls}-btn svg {
-      animation: spin 1s linear infinite;
-    }
-
-    &.is-sending .${prefixCls}-btn::after {
-      content: '';
-      position: absolute;
-      inset: -1px;
-      border-radius: inherit;
-      border: 1px solid ${token.colorPrimary};
-      opacity: 0;
-      animation: pulse-ring 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
-      pointer-events: none;
-    }
-
-    @keyframes pulse-ring {
-      0% {
-        transform: scale(1);
-        opacity: 0.6;
-      }
-      100% {
-        transform: scale(1.15);
-        opacity: 0;
-      }
-    }
-  `,
 	recordingDot: css`
     width: 8px;
     height: 8px;
@@ -193,31 +67,6 @@ const useStyles = createStyles(({ token, css, prefixCls }) => ({
       0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
       70% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
       100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-    }
-  `,
-	targetChip: css`
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    border-radius: 24px;
-    border: 1px solid ${token.colorPrimaryBorder};
-    background: ${token.colorPrimaryBg};
-    padding: 4px 10px 4px 12px;
-    font-size: 13px;
-    font-weight: 500;
-    color: ${token.colorPrimary};
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    animation: pill-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-
-    &:hover { 
-      background: ${token.colorPrimaryBgHover}; 
-      transform: translateY(-1px);
-      box-shadow: 0 2px 8px ${token.colorPrimaryBgHover};
-    }
-    
-    &:active {
-      transform: translateY(0);
     }
   `,
 	agentPickerDropdown: css`
@@ -289,17 +138,6 @@ const useStyles = createStyles(({ token, css, prefixCls }) => ({
 
 // ── Types ────────────────────────────────────────────────────────
 
-export interface FileAttachment {
-	id: string;
-	fileName: string;
-	mimeType: string;
-	fileSize: number;
-	stagedPath: string;
-	preview: string | null;
-	status: "staging" | "ready" | "error";
-	error?: string;
-}
-
 interface ChatInputProps {
 	onSend: (
 		text: string,
@@ -309,65 +147,6 @@ interface ChatInputProps {
 	onStop?: () => void;
 	disabled?: boolean;
 	sending?: boolean;
-}
-
-// ── Helpers ──────────────────────────────────────────────────────
-
-function formatFileSize(bytes: number): string {
-	if (bytes < 1024) return `${bytes} B`;
-	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-	if (bytes < 1024 * 1024 * 1024)
-		return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-	return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-}
-
-function FileIconComp({
-	mimeType,
-	style,
-}: {
-	mimeType: string;
-	style?: React.CSSProperties;
-}) {
-	if (mimeType.startsWith("video/")) return <Film style={style} />;
-	if (mimeType.startsWith("audio/")) return <Music style={style} />;
-	if (
-		mimeType.startsWith("text/") ||
-		mimeType === "application/json" ||
-		mimeType === "application/xml"
-	)
-		return <FileText style={style} />;
-	if (
-		mimeType.includes("zip") ||
-		mimeType.includes("compressed") ||
-		mimeType.includes("archive") ||
-		mimeType.includes("tar") ||
-		mimeType.includes("rar") ||
-		mimeType.includes("7z")
-	)
-		return <FileArchive style={style} />;
-	if (mimeType === "application/pdf") return <FileText style={style} />;
-	return <FileIcon style={style} />;
-}
-
-function readFileAsBase64(file: globalThis.File): Promise<string> {
-	return new Promise((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onload = () => {
-			const dataUrl = reader.result as string;
-			if (!dataUrl?.includes(",")) {
-				reject(new Error(`Invalid data URL for ${file.name}`));
-				return;
-			}
-			const base64 = dataUrl.split(",")[1];
-			if (!base64) {
-				reject(new Error(`Empty base64 for ${file.name}`));
-				return;
-			}
-			resolve(base64);
-		};
-		reader.onerror = () => reject(new Error(`Failed to read: ${file.name}`));
-		reader.readAsDataURL(file);
-	});
 }
 
 // ── Component ────────────────────────────────────────────────────
@@ -386,10 +165,6 @@ export function ChatInput({
 	const [targetAgentId, setTargetAgentId] = useState<string | null>(null);
 	const [pickerOpen, setPickerOpen] = useState(false);
 	const [dragOver, setDragOver] = useState(false);
-	const [previewImage, setPreviewImage] = useState<{
-		src: string;
-		fileName: string;
-	} | null>(null);
 
 	// Recording state
 	const [isRecording, setIsRecording] = useState(false);
@@ -912,59 +687,37 @@ export function ChatInput({
 			onDragLeave={handleDragLeave}
 			onDrop={handleDrop}
 		>
-			{/* ── Main input box ── */}
-			<div className={cx(styles.inputBox, dragOver && styles.inputBoxDragOver)}>
-				{/* Attachment previews */}
-				{attachments.length > 0 && (
-					<div className={styles.attachmentRow}>
-						{attachments.map((att) => (
-							<AttachmentPreview
-								key={att.id}
-								attachment={att}
-								onRemove={() => removeAttachment(att.id)}
-								onPreview={(src, fileName) =>
-									setPreviewImage({ src, fileName })
-								}
-							/>
-						))}
-					</div>
-				)}
-
-				{/* Textarea (Top) */}
-				<div className={styles.textareaContainer}>
-					<ChatInputAreaInner
-						className={styles.textarea}
-						value={input}
-						onInput={setInput}
-						onSend={handleSend}
-						loading={sending}
-						disabled={disabled}
-						placeholder={
-							disabled
-								? t("composer.gatewayDisconnectedPlaceholder")
-								: t("composer.placeholder", "给大模型发送消息...")
-						}
-						onPaste={handlePaste}
-					/>
-				</div>
-
-				{/* Toolbar (Bottom) */}
-				<div className={styles.bottomToolbar}>
-					{/* Left Actions */}
-					<div className={styles.leftActions}>
-						{selectedTarget && (
-							<button
-								type="button"
-								onClick={() => setTargetAgentId(null)}
-								className={styles.targetChip}
+			<ComposerBase
+				variant="desktop"
+				value={input}
+				onInput={setInput}
+				onSend={handleSend}
+				onStop={handleStop}
+				loading={sending}
+				disabled={disabled}
+				sendDisabled={!canSend}
+				placeholder={
+					disabled
+						? t("composer.gatewayDisconnectedPlaceholder")
+						: t("composer.placeholder", "给大模型发送消息...")
+				}
+				textareaProps={{ onPaste: handlePaste }}
+				attachments={attachments}
+				onRemoveAttachment={removeAttachment}
+				dragOver={dragOver}
+				leftActions={(
+					<>
+						{selectedTarget ? (
+							<ComposerChip
+								variant="desktop"
+								icon={<AtSign style={{ width: 12, height: 12 }} />}
+								onRemove={() => setTargetAgentId(null)}
+								removableTitle={t("composer.clearTarget")}
 								title={t("composer.clearTarget")}
 							>
-								<span>
-									{t("composer.targetChip", { agent: selectedTarget.name })}
-								</span>
-								<X style={{ width: 11, height: 11, opacity: 0.5 }} />
-							</button>
-						)}
+								{t("composer.targetChip", { agent: selectedTarget.name })}
+							</ComposerChip>
+						) : null}
 
 						{isRecording ? (
 							<div className={styles.recordingPill}>
@@ -972,46 +725,68 @@ export function ChatInput({
 								<span className={styles.recordingTime}>
 									{formatTime(recordingTime)}
 								</span>
-								<ActionIcon
-									icon={Square}
+								<button
+									type="button"
 									onClick={toggleRecording}
 									title={t("composer.stopRecording", "停止录音")}
-									style={{ color: "#ef4444" }}
-								/>
+									style={{
+										display: "inline-flex",
+										alignItems: "center",
+										justifyContent: "center",
+										width: 26,
+										height: 26,
+										border: "none",
+										borderRadius: "999px",
+										background: "rgba(239,68,68,0.12)",
+										color: "#ef4444",
+										cursor: "pointer",
+										padding: 0,
+									}}
+								>
+									<Square style={{ width: 13, height: 13 }} />
+								</button>
 							</div>
 						) : (
-							<ActionIcon
-								icon={Mic}
+							<ComposerIconButton
+								variant="desktop"
+								icon={<Mic style={{ width: 16, height: 16 }} />}
 								onClick={toggleRecording}
 								disabled={disabled || sending}
 								title={t("composer.startRecording", "开始录音")}
 							/>
 						)}
 
-						<ActionIcon
-							icon={Paperclip}
-							onClick={pickFiles}
+						<ComposerIconButton
+							variant="desktop"
+							icon={<Paperclip style={{ width: 16, height: 16 }} />}
+							onClick={() => {
+								void pickFiles();
+							}}
 							disabled={disabled || sending}
 							title={t("composer.attachFiles")}
 						/>
 
-						<ActionIcon
-							icon={Camera}
-							onClick={captureScreenshot}
+						<ComposerIconButton
+							variant="desktop"
+							icon={<Camera style={{ width: 16, height: 16 }} />}
+							onClick={() => {
+								void captureScreenshot();
+							}}
 							disabled={disabled || sending}
 							title={t("composer.captureScreenshot")}
 						/>
 
-						{showAgentPicker && (
+						{showAgentPicker ? (
 							<div ref={pickerRef} style={{ position: "relative" }}>
-								<ActionIcon
-									icon={AtSign}
-									onClick={() => setPickerOpen((o) => !o)}
+								<ComposerIconButton
+									variant="desktop"
+									icon={<AtSign style={{ width: 16, height: 16 }} />}
+									onClick={() => setPickerOpen((open) => !open)}
 									disabled={disabled || sending}
 									title={t("composer.pickAgent")}
 									active={pickerOpen || !!selectedTarget}
 								/>
-								{pickerOpen && (
+								{pickerOpen ? (
 									<div className={styles.agentPickerDropdown}>
 										<div className={styles.agentPickerLabel}>
 											{t("composer.agentPickerTitle", {
@@ -1032,34 +807,18 @@ export function ChatInput({
 											))}
 										</div>
 									</div>
-								)}
+								) : null}
 							</div>
-						)}
-					</div>
+						) : null}
+					</>
+				)}
+				sendTexts={{
+					send: t("composer.send"),
+					stop: t("composer.stop"),
+					warp: "Shift + Enter",
+				}}
+			/>
 
-					{/* Send button row (Right) */}
-					<div className={cx(styles.rightActions, sending && "is-sending")}>
-						<ChatSendButton
-							loading={sending}
-							onSend={handleSend}
-							onStop={handleStop}
-							texts={{
-								send: t("composer.send"),
-								stop: t("composer.stop"),
-								warp: "Shift + Enter",
-							}}
-						/>
-					</div>
-				</div>
-			</div>
-
-			{previewImage && (
-				<ImageLightbox
-					src={previewImage.src}
-					fileName={previewImage.fileName}
-					onClose={() => setPreviewImage(null)}
-				/>
-			)}
 			{/* Footer status */}
 			<div className={styles.footer}>
 				<div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -1108,240 +867,6 @@ export function ChatInput({
 				)}
 			</div>
 		</div>
-	);
-}
-
-// ── Attachment Preview ───────────────────────────────────────────
-
-function AttachmentPreview({
-	attachment,
-	onRemove,
-	onPreview,
-}: {
-	attachment: FileAttachment;
-	onRemove: () => void;
-	onPreview: (src: string, fileName: string) => void;
-}) {
-	const { theme } = useStyles();
-	const isImage =
-		attachment.mimeType.startsWith("image/") && attachment.preview;
-	return (
-		<div
-			style={{
-				position: "relative",
-				borderRadius: 12,
-				overflow: "hidden",
-				border: `1px solid ${theme.colorBorder}`,
-				background: theme.colorFillQuaternary,
-				transition: "all 0.2s ease",
-			}}
-		>
-			{isImage ? (
-				<button
-					type="button"
-					onClick={() => onPreview(attachment.preview!, attachment.fileName)}
-					style={{
-						width: 52,
-						height: 52,
-						padding: 0,
-						border: "none",
-						background: "transparent",
-						cursor: "zoom-in",
-						display: "block",
-					}}
-					title={attachment.fileName}
-				>
-					{/* biome-ignore lint/style/noNonNullAssertion: isImage guarantees preview */}
-					<img
-						src={attachment.preview!}
-						alt={attachment.fileName}
-						style={{ width: "100%", height: "100%", objectFit: "cover" }}
-					/>
-				</button>
-			) : (
-				<div
-					style={{
-						display: "flex",
-						alignItems: "center",
-						gap: 7,
-						padding: "6px 10px",
-						background: "rgba(0,0,0,0.04)",
-						maxWidth: 180,
-					}}
-				>
-					<FileIconComp
-						mimeType={attachment.mimeType}
-						style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.6 }}
-					/>
-					<div style={{ minWidth: 0, overflow: "hidden" }}>
-						<p
-							style={{
-								fontSize: 11,
-								fontWeight: 500,
-								margin: 0,
-								overflow: "hidden",
-								textOverflow: "ellipsis",
-								whiteSpace: "nowrap",
-							}}
-						>
-							{attachment.fileName}
-						</p>
-						<p style={{ fontSize: 10, margin: 0, opacity: 0.6 }}>
-							{attachment.fileSize > 0
-								? formatFileSize(attachment.fileSize)
-								: "..."}
-						</p>
-					</div>
-				</div>
-			)}
-			{attachment.status === "staging" && (
-				<div
-					style={{
-						position: "absolute",
-						inset: 0,
-						background: "rgba(0,0,0,0.4)",
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-					}}
-				>
-					<Loader2
-						style={{
-							width: 13,
-							height: 13,
-							color: "white",
-							animation: "spin 1s linear infinite",
-						}}
-					/>
-				</div>
-			)}
-			{attachment.status === "error" && (
-				<div
-					style={{
-						position: "absolute",
-						inset: 0,
-						background: "rgba(239,68,68,0.2)",
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-					}}
-				>
-					<span style={{ fontSize: 10, color: "#ef4444", fontWeight: 500 }}>
-						Error
-					</span>
-				</div>
-			)}
-			<button
-				type="button"
-				onClick={onRemove}
-				style={{
-					position: "absolute",
-					top: -6,
-					right: -6,
-					background: theme.colorError,
-					color: "white",
-					borderRadius: "50%",
-					width: 18,
-					height: 18,
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "center",
-					border: `2px solid ${theme.colorBgContainer}`,
-					cursor: "pointer",
-					boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-					transition: "transform 0.2s ease, background 0.2s ease",
-				}}
-				onMouseEnter={(e) => {
-					e.currentTarget.style.transform = "scale(1.1)";
-					e.currentTarget.style.background = theme.colorErrorHover;
-				}}
-				onMouseLeave={(e) => {
-					e.currentTarget.style.transform = "scale(1)";
-					e.currentTarget.style.background = theme.colorError;
-				}}
-			>
-				<X style={{ width: 10, height: 10 }} />
-			</button>
-		</div>
-	);
-}
-
-function ImageLightbox({
-	src,
-	fileName,
-	onClose,
-}: {
-	src: string;
-	fileName: string;
-	onClose: () => void;
-}) {
-	useEffect(() => {
-		const handleKey = (e: KeyboardEvent) => {
-			if (e.key === "Escape") onClose();
-		};
-		window.addEventListener("keydown", handleKey);
-		return () => window.removeEventListener("keydown", handleKey);
-	}, [onClose]);
-
-	return createPortal(
-		// biome-ignore lint/a11y/noStaticElementInteractions: lightbox backdrop
-		// biome-ignore lint/a11y/useKeyWithClickEvents: Escape key handles keyboard close
-		<div
-			style={{
-				position: "fixed",
-				inset: 0,
-				zIndex: 1000,
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				background: "rgba(0,0,0,0.78)",
-				backdropFilter: "blur(4px)",
-			}}
-			onClick={onClose}
-		>
-			{/* biome-ignore lint/a11y/noStaticElementInteractions: stop propagation */}
-			{/* biome-ignore lint/a11y/useKeyWithClickEvents: stop propagation */}
-			<div
-				style={{ position: "relative", maxWidth: "90vw", maxHeight: "88vh" }}
-				onClick={(e) => e.stopPropagation()}
-			>
-				<img
-					src={src}
-					alt={fileName}
-					style={{
-						maxWidth: "90vw",
-						maxHeight: "88vh",
-						objectFit: "contain",
-						borderRadius: 12,
-						boxShadow: "0 25px 50px rgba(0,0,0,0.45)",
-						display: "block",
-					}}
-				/>
-				<button
-					type="button"
-					onClick={onClose}
-					style={{
-						position: "absolute",
-						top: 12,
-						right: 12,
-						width: 32,
-						height: 32,
-						borderRadius: "9999px",
-						border: "none",
-						background: "rgba(0,0,0,0.55)",
-						color: "white",
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-						cursor: "pointer",
-					}}
-					title="Close preview"
-				>
-					<X style={{ width: 16, height: 16 }} />
-				</button>
-			</div>
-		</div>,
-		document.body,
 	);
 }
 

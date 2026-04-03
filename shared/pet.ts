@@ -42,6 +42,8 @@ export interface PetMiniChatSeed {
   text: string;
   attachments?: PetMiniChatSeedAttachment[];
   autoSend?: boolean;
+  target?: 'chat' | 'code';
+  persistTarget?: boolean;
 }
 
 export interface PetRuntimeState {

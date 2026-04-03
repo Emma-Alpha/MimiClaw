@@ -7,6 +7,7 @@ import { randomBytes } from 'crypto';
 import { app } from 'electron';
 import { DEFAULT_CODE_AGENT_RUNTIME_CONFIG, type CodeAgentRuntimeConfig } from '../../shared/code-agent';
 import { resolveSupportedLanguage } from '../../shared/language';
+import type { StoredPetCompanion } from '../../shared/pet-companion';
 import { DEFAULT_PET_ANIMATION, type PetAnimation } from '../../shared/pet';
 
 // Lazy-load electron-store (ESM module)
@@ -32,6 +33,10 @@ export interface AppSettings {
   telemetryEnabled: boolean;
   petEnabled: boolean;
   petAnimation: PetAnimation;
+  petCompanionSeed: string;
+  petCompanion: StoredPetCompanion | null;
+  xiaojiuEnabled: boolean;
+  jizhiEnabled: boolean;
   machineId: string;
   hasReportedInstall: boolean;
 
@@ -96,6 +101,10 @@ function createDefaultSettings(): AppSettings {
     telemetryEnabled: true,
     petEnabled: true,
     petAnimation: DEFAULT_PET_ANIMATION,
+    petCompanionSeed: '',
+    petCompanion: null,
+    xiaojiuEnabled: false,
+    jizhiEnabled: false,
     machineId: '',
     hasReportedInstall: false,
 

@@ -25,11 +25,11 @@ export function RemoteJizhiChat() {
         .border-r, [class*="border-r-"] {
           border-right-color: transparent !important;
         }
-        /* 调整输入框样式，去掉生硬边框，增加阴影，减小宽度 */
-        textarea, [contenteditable="true"], .chat-input-container {
+        /* 统一输入框样式：无边框，轻微阴影，圆角 */
+        .chat-input-container, [class*="inputArea"], [class*="chatInput"] {
           border-color: transparent !important;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.05) !important;
-          background-color: #F9FAFB !important;
+          border-radius: 16px !important;
+          box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02) !important;
         }
         /* 限制输入框最大宽度并居中，减小高度 */
         .chat-input-container, [class*="inputArea"] {

@@ -349,7 +349,6 @@ function PetBubbleContent({
 								<span
 									key={chip.id}
 									className={`bubble-chip ${chip.phase}`}
-									title={chip.label}
 								>
 									<span className="bubble-chip-dot" />
 									<span className="bubble-chip-label">{chip.label}</span>

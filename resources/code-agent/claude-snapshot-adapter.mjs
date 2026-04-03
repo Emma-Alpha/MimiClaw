@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 
@@ -403,7 +403,63 @@ function buildCliSummary(outputText, parsed, exitCode) {
     : `Claude CLI exited with code ${exitCode}.`;
 }
 
-function runClaudeCliTask({
+function buildEphemeralRunId() {
+  return resolve(`${Date.now()}-${Math.random().toString(16).slice(2)}`);
+}
+
+function normalizeTraceText(text) {
+  return typeof text === 'string' ? text.replace(/\r\n/g, '\n') : '';
+}
+
+function buildToolInputSummary(toolName, input) {
+  if (!input || typeof input !== 'object') return '';
+  const name = toolName.toLowerCase();
+  const truncate = (s, max = 80) => (typeof s === 'string' && s.length > max ? s.slice(0, max) + '…' : String(s || ''));
+
+  if (name === 'read' || name === 'write' || name === 'edit' || name === 'multiedit' || name === 'notebookedit') {
+    return truncate(input.file_path || input.path || '');
+  }
+  if (name === 'bash') {
+    return truncate(input.command || '', 72);
+  }
+  if (name === 'grep') {
+    const pattern = input.pattern || '';
+    const path = input.path || '';
+    return pattern ? truncate(path ? `"${pattern}" in ${path}` : `"${pattern}"`) : '';
+  }
+  if (name === 'glob') {
+    const glob = input.pattern || input.glob_pattern || '';
+    const dir = input.path || input.target_directory || '';
+    return truncate(dir ? `${glob} in ${dir}` : glob);
+  }
+  if (name === 'ls' || name === 'listfiles') {
+    return truncate(input.path || '');
+  }
+  if (name === 'websearch') {
+    return truncate(input.query || '');
+  }
+  if (name === 'webfetch') {
+    return truncate(input.url || '');
+  }
+  if (name === 'todowrite') {
+    const todos = Array.isArray(input.todos) ? input.todos : [];
+    return todos.length > 0 ? `${todos.length} item${todos.length > 1 ? 's' : ''}` : '';
+  }
+  // Fallback: first short string value
+  const first = Object.values(input).find((v) => typeof v === 'string' && v.length > 0);
+  return first ? truncate(first) : '';
+}
+
+function emitTrace(onEvent, step, payload = {}) {
+  if (typeof onEvent !== 'function') return;
+  onEvent({
+    step,
+    timestamp: new Date().toISOString(),
+    ...payload,
+  });
+}
+
+async function runClaudeCliTask({
   cliConfig,
   vendorPath,
   workspaceRoot,
@@ -411,11 +467,12 @@ function runClaudeCliTask({
   sessionId,
   allowedTools,
   timeoutMs,
+  onEvent,
 }) {
   const cliProbe = probeClaudeCli(cliConfig.cliPath);
   if (!cliProbe.cliFound) {
     return {
-      runId: resolve(`${Date.now()}-${Math.random().toString(16).slice(2)}`),
+      runId: buildEphemeralRunId(),
       status: 'failed',
       output: cliProbe.diagnostics.join('\n'),
       summary: 'Claude CLI is not available.',
@@ -433,7 +490,7 @@ function runClaudeCliTask({
     ...(Array.isArray(allowedTools) ? allowedTools.filter((tool) => typeof tool === 'string' && tool.trim()).map((tool) => tool.trim()) : []),
   ])];
 
-  const args = ['-p', prompt, '--output-format', 'json'];
+  const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose'];
   if (sessionId) {
     args.push('--resume', sessionId);
   }
@@ -466,49 +523,213 @@ function runClaudeCliTask({
     env.ANTHROPIC_API_KEY = cliConfig.apiKey;
   }
 
+  emitTrace(onEvent, 'request:start', {
+    executionMode: 'cli',
+    workspaceRoot,
+    vendorPath: existsSync(vendorPath) ? vendorPath : null,
+    cliPath: cliConfig.cliPath,
+    prompt,
+    args,
+    timeoutMs: timeoutMs > 0 ? timeoutMs : 120_000,
+    sessionId: sessionId || null,
+    model: cliConfig.model || null,
+    fallbackModel: cliConfig.fallbackModel || null,
+    baseUrl: cliConfig.baseUrl || null,
+    permissionMode: cliConfig.permissionMode,
+    allowedTools: mergedAllowedTools,
+    appendSystemPrompt: cliConfig.appendSystemPrompt || null,
+    apiKeyConfigured: Boolean(cliConfig.apiKey),
+  });
+
   const startedAt = Date.now();
-  const result = spawnSync(cliConfig.cliPath, args, {
+  let child;
+  try {
+    child = spawn(cliConfig.cliPath, args, {
+      cwd: workspaceRoot,
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    emitTrace(onEvent, 'process:error', { message });
+    return {
+      runId: buildEphemeralRunId(),
+      status: 'failed',
+      output: message,
+      summary: 'Claude CLI failed to start.',
+      diagnostics: [message],
+      metadata: {
+        executionMode: 'cli',
+        cliPath: cliConfig.cliPath,
+        cliVersion: cliProbe.cliVersion,
+        permissionMode: cliConfig.permissionMode,
+        allowedTools: mergedAllowedTools,
+      },
+    };
+  }
+
+  emitTrace(onEvent, 'process:spawn', {
+    pid: child.pid ?? null,
     cwd: workspaceRoot,
-    encoding: 'utf8',
-    env,
-    timeout: timeoutMs > 0 ? timeoutMs : 120_000,
-    maxBuffer: 8 * 1024 * 1024,
+  });
+
+  child.stdout.setEncoding('utf8');
+  child.stderr.setEncoding('utf8');
+
+  let stdout = '';
+  let stderr = '';
+  let timedOut = false;
+  let spawnError = null;
+  let stdoutLineBuffer = '';
+
+  child.stdout.on('data', (chunk) => {
+    const text = normalizeTraceText(chunk);
+    stdout += text;
+    stdoutLineBuffer += text;
+
+    // Parse complete newline-delimited JSON lines for stream-json format.
+    // Each line is one event; extract text deltas from assistant turns in real time.
+    while (true) {
+      const nlIdx = stdoutLineBuffer.indexOf('\n');
+      if (nlIdx === -1) break;
+      const line = stdoutLineBuffer.slice(0, nlIdx).trim();
+      stdoutLineBuffer = stdoutLineBuffer.slice(nlIdx + 1);
+      if (!line) continue;
+
+      const parsed = tryParseJson(line);
+      if (parsed && parsed.type === 'assistant' && parsed.message) {
+        const content = parsed.message.content;
+        if (Array.isArray(content)) {
+          for (const block of content) {
+            if (block && block.type === 'text' && typeof block.text === 'string' && block.text) {
+              emitTrace(onEvent, 'run:text-delta', { text: block.text });
+            }
+            if (block && block.type === 'tool_use' && typeof block.name === 'string') {
+              emitTrace(onEvent, 'run:tool-activity', {
+                toolId: block.id || '',
+                toolName: block.name,
+                inputSummary: buildToolInputSummary(block.name, block.input || {}),
+              });
+            }
+          }
+        }
+      }
+
+      emitTrace(onEvent, 'stdout:chunk', { text: line + '\n' });
+    }
+  });
+
+  child.stderr.on('data', (chunk) => {
+    const text = normalizeTraceText(chunk);
+    stderr += text;
+    emitTrace(onEvent, 'stderr:chunk', { text });
+  });
+
+  const effectiveTimeoutMs = timeoutMs > 0 ? timeoutMs : 120_000;
+  const result = await new Promise((resolvePromise) => {
+    let settled = false;
+    let killTimer = null;
+    const settle = (value) => {
+      if (settled) return;
+      settled = true;
+      if (killTimer) {
+        clearTimeout(killTimer);
+      }
+      resolvePromise(value);
+    };
+
+    killTimer = setTimeout(() => {
+      timedOut = true;
+      emitTrace(onEvent, 'process:timeout', {
+        timeoutMs: effectiveTimeoutMs,
+      });
+      try {
+        child.kill('SIGTERM');
+      } catch {
+        // ignore termination failures
+      }
+      setTimeout(() => {
+        if (!child.killed) {
+          try {
+            child.kill('SIGKILL');
+          } catch {
+            // ignore forced kill failures
+          }
+        }
+      }, 2_000);
+    }, effectiveTimeoutMs);
+
+    child.once('error', (error) => {
+      spawnError = error;
+      emitTrace(onEvent, 'process:error', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+      settle({
+        code: null,
+        signal: null,
+      });
+    });
+
+    child.once('close', (code, signal) => {
+      settle({ code, signal });
+    });
   });
   const durationMs = Date.now() - startedAt;
-  const stdout = typeof result.stdout === 'string' ? result.stdout.trim() : '';
-  const stderr = typeof result.stderr === 'string' ? result.stderr.trim() : '';
-  const parsed = parseClaudeCliOutput(stdout);
+  const normalizedStdout = stdout.trim();
+  const normalizedStderr = stderr.trim();
+  const parsed = parseClaudeCliOutput(normalizedStdout);
   const output = extractCliOutput(parsed, stdout || stderr);
-  const isError = Boolean(result.error) || result.status !== 0 || parsed?.is_error === true;
+  const isError = Boolean(spawnError) || timedOut || result.code !== 0 || parsed?.is_error === true;
   const diagnostics = [];
 
-  if (result.error) {
-    diagnostics.push(String(result.error));
+  if (spawnError) {
+    diagnostics.push(String(spawnError));
   }
   if (result.signal) {
     diagnostics.push(`Claude CLI exited via signal ${result.signal}.`);
   }
-  if (stderr) {
-    diagnostics.push(stderr);
+  if (timedOut) {
+    diagnostics.push(`Claude CLI timed out after ${effectiveTimeoutMs}ms.`);
   }
-  if (result.status !== 0) {
-    diagnostics.push(`Claude CLI exited with code ${result.status}.`);
+  if (normalizedStderr) {
+    diagnostics.push(normalizedStderr);
+  }
+  if (result.code !== 0) {
+    diagnostics.push(`Claude CLI exited with code ${result.code}.`);
   }
 
   const root = parsed && typeof parsed === 'object' && parsed.final ? parsed.final : parsed;
-  const runId = root?.session_id || root?.sessionId || resolve(`${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const runId = root?.session_id || root?.sessionId || buildEphemeralRunId();
+
+  emitTrace(onEvent, 'process:close', {
+    pid: child.pid ?? null,
+    exitCode: result.code,
+    signal: result.signal,
+    durationMs,
+    stdoutBytes: Buffer.byteLength(stdout, 'utf8'),
+    stderrBytes: Buffer.byteLength(stderr, 'utf8'),
+    timedOut,
+  });
+
+  emitTrace(onEvent, 'result:final', {
+    runId,
+    status: isError ? 'failed' : 'completed',
+    summary: buildCliSummary(output, root, result.code ?? 0),
+    output,
+    diagnostics,
+  });
 
   return {
     runId,
     status: isError ? 'failed' : 'completed',
-    output: output || stderr || 'Claude CLI completed without text output.',
-    summary: buildCliSummary(output, root, result.status ?? 0),
+    output: output || normalizedStderr || 'Claude CLI completed without text output.',
+    summary: buildCliSummary(output, root, result.code ?? 0),
     diagnostics: diagnostics.length > 0 ? diagnostics : undefined,
     metadata: {
       executionMode: 'cli',
       cliPath: cliConfig.cliPath,
       cliVersion: cliProbe.cliVersion,
-      exitCode: result.status,
+      exitCode: result.code,
       durationMs,
       sessionId: root?.session_id || root?.sessionId || sessionId || null,
       model: root?.model || cliConfig.model || null,
@@ -563,10 +784,10 @@ export function buildExecutionHealth({ vendorPath, bunAvailable, config }) {
   };
 }
 
-export function runSnapshotAnalysis({ vendorPath, workspaceRoot, prompt, bunAvailable, config, sessionId, allowedTools, timeoutMs }) {
+export async function runSnapshotAnalysis({ vendorPath, workspaceRoot, prompt, bunAvailable, config, sessionId, allowedTools, timeoutMs, onEvent }) {
   const cliConfig = normalizeRuntimeConfig(config);
   if (cliConfig.executionMode === 'cli') {
-    return runClaudeCliTask({
+    return await runClaudeCliTask({
       cliConfig,
       vendorPath,
       workspaceRoot,
@@ -574,6 +795,7 @@ export function runSnapshotAnalysis({ vendorPath, workspaceRoot, prompt, bunAvai
       sessionId,
       allowedTools,
       timeoutMs,
+      onEvent,
     });
   }
 
@@ -613,7 +835,7 @@ export function runSnapshotAnalysis({ vendorPath, workspaceRoot, prompt, bunAvai
   ];
 
   return {
-    runId: resolve(`${Date.now()}-${Math.random().toString(16).slice(2)}`),
+    runId: buildEphemeralRunId(),
     status: 'analysis_only',
     output: outputLines.join('\n\n'),
     summary,

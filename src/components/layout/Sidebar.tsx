@@ -217,6 +217,8 @@ export function Sidebar() {
 	const voiceLastSyncedAt = useVoiceChatSessionsStore((s) => s.lastSyncedAt);
 	const voiceActiveSessionId = useVoiceChatSessionsStore((s) => s.activeSessionId);
 	const setVoiceActiveSessionId = useVoiceChatSessionsStore((s) => s.setActiveSessionId);
+	const xiaojiuEnabled = useSettingsStore((s) => s.xiaojiuEnabled);
+	const jizhiEnabled = useSettingsStore((s) => s.jizhiEnabled);
 
 	const navigate = useNavigate();
 	const pathname = useLocation().pathname;
@@ -267,7 +269,7 @@ export function Sidebar() {
 			};
 		});
 		const syncBaseMs = remoteLastSyncedAt ?? nowMs;
-		const messengerSessions = remoteSessions.map((session) => ({
+		const messengerSessions = xiaojiuEnabled ? remoteSessions.map((session) => ({
 			key: `xiaojiu:${session.id}`,
 			source: "xiaojiu" as const,
 			label: session.name,
@@ -275,9 +277,9 @@ export function Sidebar() {
 				session.updatedAt ?? Math.max(1, syncBaseMs - session.sortIndex * 1000),
 			tagLabel: "小九",
 			deletable: false as const,
-		}));
+		})) : [];
 		const jizhiSyncBaseMs = jizhiLastSyncedAt ?? nowMs;
-		const jizhiSessionItems = jizhiSessions.map((session, index) => ({
+		const jizhiSessionItems = jizhiEnabled ? jizhiSessions.map((session, index) => ({
 			key: `jizhi:${session.id}`,
 			source: "jizhi" as const,
 			label: session.name,
@@ -287,7 +289,7 @@ export function Sidebar() {
 				?? Math.max(1, jizhiSyncBaseMs - index * 1000),
 			tagLabel: "极智",
 			deletable: false as const,
-		}));
+		})) : [];
 		const voiceSyncBaseMs = voiceLastSyncedAt ?? nowMs;
 		const voiceSessionItems = voiceSessions.map((session, index) => ({
 			key: `voice:${session.id}`,
@@ -303,6 +305,7 @@ export function Sidebar() {
 	}, [
 		agentNameById,
 		getSessionLabel,
+		jizhiEnabled,
 		jizhiLastSyncedAt,
 		jizhiSessions,
 		nowMs,
@@ -312,6 +315,7 @@ export function Sidebar() {
 		sessions,
 		voiceLastSyncedAt,
 		voiceSessions,
+		xiaojiuEnabled,
 	]);
 	const sessionBuckets: Array<{
 		key: SessionBucketKey;

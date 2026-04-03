@@ -1,6 +1,7 @@
 export const SUPPORTED_LANGUAGE_CODES = ['en', 'zh'] as const;
 
 export type LanguageCode = (typeof SUPPORTED_LANGUAGE_CODES)[number];
+export const DEFAULT_LANGUAGE_CODE: LanguageCode = 'zh';
 
 const SUPPORTED_LANGUAGE_CODE_SET = new Set<string>(SUPPORTED_LANGUAGE_CODES);
 
@@ -10,7 +11,7 @@ function normalizeLocale(locale: string | null | undefined): string {
 
 export function resolveSupportedLanguage(
   locale: string | null | undefined,
-  fallback: LanguageCode = 'en',
+  fallback: LanguageCode = DEFAULT_LANGUAGE_CODE,
 ): LanguageCode {
   const normalizedLocale = normalizeLocale(locale);
   if (!normalizedLocale) {

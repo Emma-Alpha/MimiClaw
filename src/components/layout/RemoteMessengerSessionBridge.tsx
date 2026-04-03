@@ -8,6 +8,7 @@ import {
   useRemoteMessengerStore,
   type RemoteMessengerSession,
 } from '@/stores/remote-messenger';
+import { useSettingsStore } from '@/stores/settings';
 import {
   useXiaojiuChatStore,
   type XiaojiuMessage,
@@ -55,6 +56,7 @@ function toMessage(message: XiaojiuMessage): XiaojiuMessage {
 }
 
 export function RemoteMessengerSessionBridge() {
+  const xiaojiuEnabled = useSettingsStore((state) => state.xiaojiuEnabled);
   const handledLoadMoreNonceRef = useRef<Record<string, number>>({});
   const setLoading = useRemoteMessengerStore((state) => state.setLoading);
   const setSessions = useRemoteMessengerStore((state) => state.setSessions);
@@ -80,6 +82,13 @@ export function RemoteMessengerSessionBridge() {
     : null;
 
   useEffect(() => {
+    if (!xiaojiuEnabled) {
+      setLoading(false);
+      setSyncError(null);
+      setChatSyncError(null);
+      return;
+    }
+
     let disposed = false;
 
     const syncSessions = async () => {
@@ -118,10 +127,10 @@ export function RemoteMessengerSessionBridge() {
       disposed = true;
       window.clearInterval(intervalId);
     };
-  }, [setLoading, setSessions, setSyncError]);
+  }, [setChatSyncError, setLoading, setSessions, setSyncError, xiaojiuEnabled]);
 
   useEffect(() => {
-    if (!activeSessionId) return;
+    if (!xiaojiuEnabled || !activeSessionId) return;
 
     let disposed = false;
 
@@ -177,10 +186,11 @@ export function RemoteMessengerSessionBridge() {
     mergeLatestMessages,
     setChatSyncError,
     setLoadingSession,
+    xiaojiuEnabled,
   ]);
 
   useEffect(() => {
-    if (!activeSessionId || activeLoadMoreNonce <= 0 || !activeHasMore) return;
+    if (!xiaojiuEnabled || !activeSessionId || activeLoadMoreNonce <= 0 || !activeHasMore) return;
     if ((handledLoadMoreNonceRef.current[activeSessionId] ?? 0) >= activeLoadMoreNonce) return;
 
     let disposed = false;
@@ -242,6 +252,7 @@ export function RemoteMessengerSessionBridge() {
     prependMessages,
     setChatSyncError,
     setLoadingMoreSession,
+    xiaojiuEnabled,
   ]);
 
   return null;

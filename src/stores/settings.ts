@@ -8,6 +8,10 @@ import i18n from '@/i18n';
 import { hostApiFetch } from '@/lib/host-api';
 import { DEFAULT_CODE_AGENT_RUNTIME_CONFIG, type CodeAgentRuntimeConfig } from '../../shared/code-agent';
 import { resolveSupportedLanguage } from '../../shared/language';
+import {
+  normalizePetCompanion,
+  type StoredPetCompanion,
+} from '../../shared/pet-companion';
 import { DEFAULT_PET_ANIMATION, type PetAnimation } from '../../shared/pet';
 import {
   cloudLogin,
@@ -46,6 +50,11 @@ interface SettingsState extends CloudAuthState {
   telemetryEnabled: boolean;
   petEnabled: boolean;
   petAnimation: PetAnimation;
+  petCompanionSeed: string;
+  petCompanion: StoredPetCompanion | null;
+  xiaojiuEnabled: boolean;
+  jizhiEnabled: boolean;
+  machineId: string;
 
   // Gateway
   gatewayAutoStart: boolean;
@@ -83,6 +92,9 @@ interface SettingsState extends CloudAuthState {
   setTelemetryEnabled: (value: boolean) => void;
   setPetEnabled: (value: boolean) => void;
   setPetAnimation: (value: PetAnimation) => void;
+  setPetCompanion: (value: StoredPetCompanion, seed?: string) => void;
+  setXiaojiuEnabled: (value: boolean) => void;
+  setJizhiEnabled: (value: boolean) => void;
   setGatewayAutoStart: (value: boolean) => void;
   setGatewayPort: (port: number) => void;
   setRemoteGatewayUrl: (url: string) => void;
@@ -119,6 +131,11 @@ const defaultSettings = {
   telemetryEnabled: true,
   petEnabled: true,
   petAnimation: DEFAULT_PET_ANIMATION,
+  petCompanionSeed: '',
+  petCompanion: null as StoredPetCompanion | null,
+  xiaojiuEnabled: false,
+  jizhiEnabled: false,
+  machineId: '',
   gatewayAutoStart: true,
   gatewayPort: 18789,
   remoteGatewayUrl: '',
@@ -152,12 +169,25 @@ export const useSettingsStore = create<SettingsState>()(
       init: async () => {
         try {
           const settings = await hostApiFetch<Partial<typeof defaultSettings>>('/api/settings');
+          const codeAgent = settings.codeAgent
+            ? {
+                ...settings.codeAgent,
+                permissionMode: settings.codeAgent.permissionMode === 'default'
+                  ? DEFAULT_CODE_AGENT_RUNTIME_CONFIG.permissionMode
+                  : settings.codeAgent.permissionMode,
+              }
+            : undefined;
+          const petCompanion = settings.petCompanion
+            ? normalizePetCompanion(settings.petCompanion)
+            : null;
           const resolvedLanguage = settings.language
             ? resolveSupportedLanguage(settings.language)
             : undefined;
           set((state) => ({
             ...state,
             ...settings,
+            ...(codeAgent ? { codeAgent } : {}),
+            ...(petCompanion ? { petCompanion } : {}),
             ...(resolvedLanguage ? { language: resolvedLanguage } : {}),
           }));
           if (resolvedLanguage) {
@@ -206,6 +236,32 @@ export const useSettingsStore = create<SettingsState>()(
         void hostApiFetch('/api/settings', {
           method: 'PUT',
           body: JSON.stringify({ petAnimation }),
+        }).catch(() => { });
+      },
+      setPetCompanion: (petCompanion, seed) => {
+        const normalizedCompanion = normalizePetCompanion(petCompanion);
+        const patch = {
+          petCompanion: normalizedCompanion,
+          petCompanionSeed: seed ?? normalizedCompanion.seed,
+        };
+        set(patch);
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify(patch),
+        }).catch(() => { });
+      },
+      setXiaojiuEnabled: (xiaojiuEnabled) => {
+        set({ xiaojiuEnabled });
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ xiaojiuEnabled }),
+        }).catch(() => { });
+      },
+      setJizhiEnabled: (jizhiEnabled) => {
+        set({ jizhiEnabled });
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ jizhiEnabled }),
         }).catch(() => { });
       },
       setGatewayAutoStart: (gatewayAutoStart) => {

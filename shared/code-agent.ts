@@ -24,7 +24,7 @@ export const DEFAULT_CODE_AGENT_RUNTIME_CONFIG: CodeAgentRuntimeConfig = {
   fallbackModel: '',
   baseUrl: '',
   apiKey: '',
-  permissionMode: 'default',
+  permissionMode: 'bypassPermissions',
   allowedTools: [],
   appendSystemPrompt: '',
 };

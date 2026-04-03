@@ -21,6 +21,7 @@ import { Settings } from "./pages/Settings";
 import { CodeAgent } from "./pages/CodeAgent";
 import { PetFloating } from "./pages/PetFloating";
 import { PetBubble } from "./pages/PetBubble";
+import { PetCompanion } from "./pages/PetCompanion";
 import { MiniChat } from "./pages/MiniChat";
 import { VoiceDialog } from "./pages/VoiceDialog";
 import { VoiceChatHistory } from "./pages/VoiceChatHistory";
@@ -125,6 +126,7 @@ function App() {
 	const isPetRoute =
 		location.pathname === "/pet" || location.pathname.startsWith("/pet/");
 	const isMiniChatRoute = location.pathname.startsWith("/mini-chat");
+	const isPetCompanionRoute = location.pathname.startsWith("/pet-companion");
 	const isVoiceDialogRoute = location.pathname.startsWith("/voice-dialog");
 	const isMainChatRoute = location.pathname === "/";
 
@@ -153,6 +155,7 @@ function App() {
 			!isPetRoute &&
 			!isPetBubbleRoute &&
 			!isMiniChatRoute &&
+			!isPetCompanionRoute &&
 			!isVoiceDialogRoute
 		) {
 			initGateway();
@@ -160,6 +163,7 @@ function App() {
 	}, [
 		initGateway,
 		isMiniChatRoute,
+		isPetCompanionRoute,
 		isPetBubbleRoute,
 		isPetRoute,
 		isVoiceDialogRoute,
@@ -173,6 +177,7 @@ function App() {
 			!isPetRoute &&
 			!isPetBubbleRoute &&
 			!isMiniChatRoute &&
+			!isPetCompanionRoute &&
 			!isVoiceDialogRoute
 		) {
 			navigate("/login", { replace: true });
@@ -180,6 +185,7 @@ function App() {
 	}, [
 		cloudLoggedIn,
 		isMiniChatRoute,
+		isPetCompanionRoute,
 		isPetBubbleRoute,
 		isPetRoute,
 		isVoiceDialogRoute,
@@ -198,6 +204,7 @@ function App() {
 			!isPetRoute &&
 			!isPetBubbleRoute &&
 			!isMiniChatRoute &&
+			!isPetCompanionRoute &&
 			!isVoiceDialogRoute
 		) {
 			navigate("/setup", { replace: true });
@@ -205,6 +212,7 @@ function App() {
 	}, [
 		cloudLoggedIn,
 		isMiniChatRoute,
+		isPetCompanionRoute,
 		isPetBubbleRoute,
 		isPetRoute,
 		isVoiceDialogRoute,
@@ -271,6 +279,7 @@ function App() {
 			isPetRoute ||
 			isPetBubbleRoute ||
 			isMiniChatRoute ||
+			isPetCompanionRoute ||
 			isVoiceDialogRoute ||
 			isMainChatRoute
 		)
@@ -281,6 +290,7 @@ function App() {
 	}, [
 		isMainChatRoute,
 		isMiniChatRoute,
+		isPetCompanionRoute,
 		isPetBubbleRoute,
 		isPetRoute,
 		isVoiceDialogRoute,
@@ -294,6 +304,7 @@ function App() {
 					{!isPetRoute &&
 					!isPetBubbleRoute &&
 					!isMiniChatRoute &&
+					!isPetCompanionRoute &&
 					!isVoiceDialogRoute ? (
 						<UpdateBootstrap />
 					) : null}
@@ -310,6 +321,7 @@ function App() {
 
 						{/* Mini chat popup (opened by clicking the floating pet) */}
 						<Route path="/mini-chat" element={<MiniChat />} />
+						<Route path="/pet-companion" element={<PetCompanion />} />
 						<Route path="/voice-dialog" element={<VoiceDialog />} />
 
 						{/* Main application routes */}

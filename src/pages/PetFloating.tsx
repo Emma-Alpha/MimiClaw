@@ -28,6 +28,7 @@ import type {
 	PetRecordingCommandPayload,
 	PetRuntimeState,
 } from "../../shared/pet";
+import { rollPetCompanion } from "../../shared/pet-companion";
 
 const FALLBACK_RUNTIME_STATE: PetRuntimeState = {
 	animation: DEFAULT_PET_ANIMATION,
@@ -234,12 +235,17 @@ export function PetFloating() {
 	const videoRef = useRef<HTMLVideoElement | null>(null);
 	const initSettings = useSettingsStore((state) => state.init);
 	const petAnimation = useSettingsStore((state) => state.petAnimation);
+	const petCompanion = useSettingsStore((state) => state.petCompanion);
+	const petCompanionSeed = useSettingsStore((state) => state.petCompanionSeed);
+	const machineId = useSettingsStore((state) => state.machineId);
+	const setPetCompanion = useSettingsStore((state) => state.setPetCompanion);
 	const [runtimeState, setRuntimeState] = useState<PetRuntimeState>(
 		FALLBACK_RUNTIME_STATE,
 	);
 	const [recordingAnalyser, setRecordingAnalyser] = useState<AnalyserNode | null>(null);
 	const [liveTranscript, setLiveTranscript] = useState("");
 	const [hasPlayedIntro, setHasPlayedIntro] = useState(false);
+	const [settingsReady, setSettingsReady] = useState(false);
 	const recordingStreamRef = useRef<MediaStream | null>(null);
 	const recordingAudioContextRef = useRef<AudioContext | null>(null);
 	const recordingSourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -554,7 +560,9 @@ export function PetFloating() {
 	// ── Settings & runtime state sync ────────────────────────────
 
 	useEffect(() => {
-		void initSettings();
+		void initSettings().finally(() => {
+			setSettingsReady(true);
+		});
 	}, [initSettings]);
 
 	useEffect(() => {
@@ -677,6 +685,17 @@ export function PetFloating() {
 		};
 	}, [applyRecordingCommand, cleanupRecordingPreview, startPetRecording, syncPetInputActivity]);
 
+	useEffect(() => {
+		if (!settingsReady || petCompanion) return;
+
+		const seed = petCompanionSeed.trim()
+			|| (machineId.trim()
+				? `machine:${machineId.trim()}`
+				: `local:${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`}`);
+
+		setPetCompanion(rollPetCompanion(seed), seed);
+	}, [machineId, petCompanion, petCompanionSeed, setPetCompanion, settingsReady]);
+
 	// ── Mouse pass-through setup ──────────────────────────────────
 	// By default the entire window ignores mouse events (they fall through to
 	// whatever is behind). When the cursor enters the pet's video area we
@@ -793,7 +812,6 @@ export function PetFloating() {
 						void invokeIpc("pet:toggleMiniChat");
 					}
 				}}
-				title="点击打开轻量聊天 / CLI · 拖动移位"
 			>
 				{statusOverlay?.variant === "thinking" ? (
 					<PetThinkingBubble label={statusOverlay.label} />

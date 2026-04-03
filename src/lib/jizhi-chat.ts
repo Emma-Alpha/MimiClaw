@@ -18,6 +18,7 @@ export interface HostJizhiMessageContentItem {
   parentMessageUUID: string;
   contentType: string;
   content: string;
+  sseMode?: string;
 }
 
 export interface HostJizhiMessageContent {

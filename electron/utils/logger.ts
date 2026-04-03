@@ -126,25 +126,85 @@ export function getLogFilePath(): string | null {
   return logFilePath;
 }
 
+// ── ANSI color codes (terminal output only) ──────────────────────
+
+const A = {
+  reset:   '\x1b[0m',
+  bold:    '\x1b[1m',
+  dim:     '\x1b[2m',
+  red:     '\x1b[31m',
+  yellow:  '\x1b[33m',
+  green:   '\x1b[32m',
+  cyan:    '\x1b[36m',
+  blue:    '\x1b[34m',
+  magenta: '\x1b[35m',
+  gray:    '\x1b[90m',
+  white:   '\x1b[97m',
+};
+
+const LEVEL_COLORS: Record<string, string> = {
+  DEBUG: A.gray,
+  INFO:  A.cyan,
+  WARN:  A.yellow,
+  ERROR: A.red + A.bold,
+};
+
+/** Return ANSI-colored level badge for terminal display. */
+function colorLevel(level: string): string {
+  const color = LEVEL_COLORS[level.trim()] ?? '';
+  return `${color}[${level.padEnd(5)}]${A.reset}`;
+}
+
+/**
+ * Color-annotate a jizhi-trace step for terminal display.
+ * Segments like `[jizhi-trace][service]` get distinct hues so
+ * the eye can skim them quickly.
+ */
+function colorMessage(message: string): string {
+  return message
+    .replace(/(\[jizhi-trace\])/, `${A.blue}$1${A.reset}`)
+    .replace(/(\[code-agent trace\])/, `${A.magenta}$1${A.reset}`)
+    .replace(/(\[stdout\]|\[stderr\]|\[prompt\]|\[final-output\])/, `${A.gray}$1${A.reset}`)
+    .replace(/(\[route\]|\[service\])/, `${A.gray}$1${A.reset}`)
+    .replace(/(request:start|stream:start)/, `${A.green}$1${A.reset}`)
+    .replace(/(process:spawn|process:close|result:final)/, `${A.green}$1${A.reset}`)
+    .replace(/(process:timeout|process:error)/, `${A.yellow}$1${A.reset}`)
+    .replace(/(request:response)/, `${A.cyan}$1${A.reset}`)
+    .replace(/(request:payload)/, `${A.dim}$1${A.reset}`)
+    .replace(/(stream:event)/, `${A.magenta}$1${A.reset}`)
+    .replace(/(stream:complete|:success)/, `${A.green}$1${A.reset}`)
+    .replace(/(stream aborted|:error)/, `${A.yellow}$1${A.reset}`);
+}
+
 // ── Formatting ───────────────────────────────────────────────────
 
+function serializeArg(arg: unknown): string {
+  if (arg instanceof Error) return `${arg.message}\n${arg.stack || ''}`;
+  if (typeof arg === 'object') {
+    try { return JSON.stringify(arg, null, 2); } catch { return String(arg); }
+  }
+  return String(arg);
+}
+
+/** Plain-text format written to the log file (no ANSI). */
 function formatMessage(level: string, message: string, ...args: unknown[]): string {
   const timestamp = new Date().toISOString();
-  const formattedArgs = args.length > 0 ? ' ' + args.map(arg => {
-    if (arg instanceof Error) {
-      return `${arg.message}\n${arg.stack || ''}`;
-    }
-    if (typeof arg === 'object') {
-      try {
-        return JSON.stringify(arg, null, 2);
-      } catch {
-        return String(arg);
-      }
-    }
-    return String(arg);
-  }).join(' ') : '';
-
+  const formattedArgs = args.length > 0
+    ? ' ' + args.map(serializeArg).join(' ')
+    : '';
   return `[${timestamp}] [${level.padEnd(5)}] ${message}${formattedArgs}`;
+}
+
+/** Colored format for console/terminal output only. */
+function formatForTerminal(level: string, message: string, ...args: unknown[]): string {
+  const timestamp = new Date().toISOString();
+  const ts   = `${A.dim}[${timestamp}]${A.reset}`;
+  const lvl  = colorLevel(level);
+  const msg  = colorMessage(message);
+  const formattedArgs = args.length > 0
+    ? ' ' + args.map(arg => `${A.gray}${serializeArg(arg)}${A.reset}`).join(' ')
+    : '';
+  return `${ts} ${lvl} ${msg}${formattedArgs}`;
 }
 
 function shouldMuteTerminalOutput(message: string): boolean {
@@ -183,41 +243,41 @@ function writeLog(formatted: string): void {
 
 export function debug(message: string, ...args: unknown[]): void {
   if (currentLevel <= LogLevel.DEBUG) {
-    const formatted = formatMessage('DEBUG', message, ...args);
+    const fileFormatted = formatMessage('DEBUG', message, ...args);
     if (!shouldMuteTerminalOutput(message)) {
-      console.debug(formatted);
+      console.debug(formatForTerminal('DEBUG', message, ...args));
     }
-    writeLog(formatted);
+    writeLog(fileFormatted);
   }
 }
 
 export function info(message: string, ...args: unknown[]): void {
   if (currentLevel <= LogLevel.INFO) {
-    const formatted = formatMessage('INFO', message, ...args);
+    const fileFormatted = formatMessage('INFO', message, ...args);
     if (!shouldMuteTerminalOutput(message)) {
-      console.info(formatted);
+      console.info(formatForTerminal('INFO', message, ...args));
     }
-    writeLog(formatted);
+    writeLog(fileFormatted);
   }
 }
 
 export function warn(message: string, ...args: unknown[]): void {
   if (currentLevel <= LogLevel.WARN) {
-    const formatted = formatMessage('WARN', message, ...args);
+    const fileFormatted = formatMessage('WARN', message, ...args);
     if (!shouldMuteTerminalOutput(message)) {
-      console.warn(formatted);
+      console.warn(formatForTerminal('WARN', message, ...args));
     }
-    writeLog(formatted);
+    writeLog(fileFormatted);
   }
 }
 
 export function error(message: string, ...args: unknown[]): void {
   if (currentLevel <= LogLevel.ERROR) {
-    const formatted = formatMessage('ERROR', message, ...args);
+    const fileFormatted = formatMessage('ERROR', message, ...args);
     if (!shouldMuteTerminalOutput(message)) {
-      console.error(formatted);
+      console.error(formatForTerminal('ERROR', message, ...args));
     }
-    writeLog(formatted);
+    writeLog(fileFormatted);
   }
 }
 
