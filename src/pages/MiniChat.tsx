@@ -6,10 +6,8 @@ import {
 	useState,
 	type KeyboardEvent,
 } from "react";
-import type { TextAreaRef } from "antd/es/input/TextArea";
 import {
 	type FileAttachment,
-	getNativeTextArea,
 	readFileAsBase64,
 } from "@/components/common/composer-helpers";
 import {
@@ -23,25 +21,31 @@ import {
 import { invokeIpc, toUserMessage } from "@/lib/api-client";
 import { subscribeHostEvent } from "@/lib/host-events";
 import { hostApiFetch } from "@/lib/host-api";
+import {
+	mergeUnifiedComposerPaths,
+	toCliSubmission,
+	toMiniChatSubmission,
+	type UnifiedComposerPath,
+} from "@/lib/unified-composer";
 import i18n from "@/i18n";
-import { toast } from "sonner";
 import { useChatStore, type RawMessage } from "@/stores/chat";
 import { useGatewayStore } from "@/stores/gateway";
 import { useSettingsStore } from "@/stores/settings";
 import type { CodeAgentStatus } from "../../shared/code-agent";
+import type { CodeAgentPermissionRequest } from "../../shared/code-agent";
 import type {
 	PetMiniChatSeed,
 	PetMiniChatSeedAttachment,
 } from "../../shared/pet";
 import { MiniChatComposer } from "./MiniChat/components/MiniChatComposer";
 import { MiniChatHeader } from "./MiniChat/components/MiniChatHeader";
+import { MiniChatPermissionCard } from "./MiniChat/components/MiniChatPermissionCard";
 import { MiniChatTimeline } from "./MiniChat/components/MiniChatTimeline";
 import { useMiniChatStyles } from "./MiniChat/styles";
 import type {
 	MentionOption,
 	MiniChatTarget,
 	MiniCodeMessage,
-	PathAttachment,
 	TimelineItem,
 	ToolActivityItem,
 } from "./MiniChat/types";
@@ -57,12 +61,6 @@ import {
 	removeTrailingMention,
 } from "./MiniChat/utils";
 
-type DroppedPathPayload = {
-	absolutePath: string;
-	name: string;
-	isDirectory: boolean;
-};
-
 export function MiniChat() {
 	const { styles } = useMiniChatStyles();
 	const initSettings = useSettingsStore((state) => state.init);
@@ -72,6 +70,7 @@ export function MiniChat() {
 	const messages = useChatStore((state) => state.messages);
 	const sending = useChatStore((state) => state.sending);
 	const streamingText = useChatStore((state) => state.streamingText);
+	const streamingMessage = useChatStore((state) => state.streamingMessage);
 	const streamingTools = useChatStore((state) => state.streamingTools);
 	const pendingFinal = useChatStore((state) => state.pendingFinal);
 	const newSession = useChatStore((state) => state.newSession);
@@ -79,7 +78,7 @@ export function MiniChat() {
 
 	const [input, setInput] = useState("");
 	const [attachments, setAttachments] = useState<FileAttachment[]>([]);
-	const [pathAttachments, setPathAttachments] = useState<PathAttachment[]>([]);
+	const [droppedPaths, setDroppedPaths] = useState<UnifiedComposerPath[]>([]);
 	const [selectedMode, setSelectedMode] = useState<MiniChatTarget | null>(null);
 	const [persistentMode, setPersistentMode] = useState<MiniChatTarget | null>(
 		null,
@@ -102,9 +101,10 @@ export function MiniChat() {
 	const [codeWorkspaceRoot, setCodeWorkspaceRoot] = useState(() =>
 		readStoredCodeAgentWorkspaceRoot(),
 	);
+	const [pendingPermission, setPendingPermission] =
+		useState<CodeAgentPermissionRequest | null>(null);
 
 	const messagesEndRef = useRef<HTMLDivElement>(null);
-	const textareaRef = useRef<TextAreaRef | null>(null);
 	const pendingAutoSend = useRef<PetMiniChatSeed | null>(null);
 	const chatSeenAtRef = useRef(new Map<string, number>());
 	const chatSeenCounterRef = useRef(0);
@@ -115,6 +115,21 @@ export function MiniChat() {
 		gatewayState === "starting" || gatewayState === "reconnecting";
 	const isError = gatewayState === "error";
 	const isReady = gatewayState === "running";
+	const liveStreamingText = useMemo(() => {
+		const direct = streamingText.trim();
+		if (direct) return direct;
+		if (!streamingMessage || typeof streamingMessage !== "object") return "";
+
+		const raw = streamingMessage as Record<string, unknown>;
+		if (typeof raw.text === "string" && raw.text.trim()) {
+			return raw.text.trim();
+		}
+
+		if ("content" in raw) {
+			return extractText(raw.content);
+		}
+		return "";
+	}, [streamingMessage, streamingText]);
 
 	useEffect(() => {
 		void initSettings();
@@ -227,12 +242,22 @@ export function MiniChat() {
 			},
 		);
 
+		const unsubscribePermission = subscribeHostEvent<CodeAgentPermissionRequest>(
+			"code-agent:permission-request",
+			(payload) => {
+				if (payload && typeof payload.requestId === "string") {
+					setPendingPermission(payload);
+				}
+			},
+		);
+
 		return () => {
 			unsubscribeStatus();
 			unsubscribeActivity();
 			unsubscribeRunStarted();
 			unsubscribeRunDone();
 			unsubscribeRunFailed();
+			unsubscribePermission();
 		};
 	}, []);
 
@@ -244,7 +269,12 @@ export function MiniChat() {
 		setInput("");
 		setSelectedMode(null);
 		setAttachments([]);
-		setPathAttachments([]);
+		setDroppedPaths([]);
+	}, []);
+
+	const applyDroppedPaths = useCallback((dropped: UnifiedComposerPath[]) => {
+		if (!Array.isArray(dropped) || dropped.length === 0) return;
+		setDroppedPaths((current) => mergeUnifiedComposerPaths(current, dropped));
 	}, []);
 
 	const resolveSeedTarget = useCallback(
@@ -275,13 +305,6 @@ export function MiniChat() {
 			if (seed.autoSend === false && seed.text.trim()) {
 				setInput((current) => current || seed.text);
 				setCaretIndex((current) => current || seed.text.length);
-				requestAnimationFrame(() => {
-					const textarea = getNativeTextArea(textareaRef.current);
-					if (!textarea) return;
-					const nextCaret = textarea.value.length;
-					textarea.focus();
-					textarea.setSelectionRange(nextCaret, nextCaret);
-				});
 			}
 
 			return target;
@@ -395,6 +418,7 @@ export function MiniChat() {
 			rawText: string,
 			attachmentOverride?: PetMiniChatSeedAttachment[],
 			forcedTarget?: MiniChatTarget,
+			pathOverride?: UnifiedComposerPath[],
 		) => {
 			const target =
 				forcedTarget ||
@@ -402,14 +426,20 @@ export function MiniChat() {
 				persistentMode ||
 				parseSubmissionIntent(rawText).target;
 
-			// Append dragged path references to the message text.
-			const pathSuffix =
-				pathAttachments.length > 0
-					? "\n" + pathAttachments.map((p) => p.absolutePath).join("\n")
-					: "";
-			const prompt = rawText.trim() + pathSuffix;
 			const effectiveAttachments =
 				(attachmentOverride as FileAttachment[] | undefined) ?? attachments;
+			const effectivePaths = pathOverride ?? droppedPaths;
+			const prompt =
+				target === "code"
+					? toCliSubmission({
+							text: rawText,
+							paths: effectivePaths,
+						}).prompt
+					: toMiniChatSubmission({
+							text: rawText,
+							paths: effectivePaths,
+							attachments: effectiveAttachments,
+						}).prompt;
 
 			if (!prompt && effectiveAttachments.length === 0) return false;
 
@@ -431,9 +461,9 @@ export function MiniChat() {
 		},
 		[
 			attachments,
-			pathAttachments,
 			clearComposer,
 			codeWorkspaceRoot,
+			droppedPaths,
 			isReady,
 			runMiniCodeTask,
 			persistentMode,
@@ -472,27 +502,14 @@ export function MiniChat() {
 		const unsubscribe = window.electron.ipcRenderer.on(
 			"mini-chat:paths-dropped",
 			(payload) => {
-				const dropped = payload as DroppedPathPayload[];
-
-				console.log("[MiniChat DEBUG] Main process IPC received:", dropped);
-				toast(
-					`[MiniChat DEBUG] 收到 Main 兜底拖拽，提取路径数: ${dropped?.length ?? 0}`,
-				);
-
-				if (!Array.isArray(dropped)) return;
-				setPathAttachments((prev) => {
-					const existing = new Set(prev.map((p) => p.absolutePath));
-					const fresh = dropped
-						.filter((d) => d.absolutePath && !existing.has(d.absolutePath))
-						.map((d) => ({ id: crypto.randomUUID(), ...d }));
-					return fresh.length > 0 ? [...prev, ...fresh] : prev;
-				});
+				const dropped = payload as UnifiedComposerPath[];
+				applyDroppedPaths(dropped);
 			},
 		);
 		return () => {
 			unsubscribe?.();
 		};
-	}, []);
+	}, [applyDroppedPaths]);
 
 	useEffect(() => {
 		const queuedSeed = pendingAutoSend.current;
@@ -513,11 +530,11 @@ export function MiniChat() {
 				? "idle"
 				: codeSending
 					? "working"
-					: pendingFinal || streamingText || streamingTools.length > 0
+					: pendingFinal || liveStreamingText || streamingTools.length > 0
 						? "working"
 						: "listening";
 		void invokeIpc("pet:setUiActivity", { activity }).catch(() => {});
-	}, [codeSending, pendingFinal, sending, streamingText, streamingTools]);
+	}, [codeSending, liveStreamingText, pendingFinal, sending, streamingTools]);
 
 	useEffect(() => {
 		if (streamingTools.length === 0) {
@@ -538,11 +555,19 @@ export function MiniChat() {
 
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-	}, [messages, streamingText, sending, codeMessages, codeSending]);
+	}, [messages, liveStreamingText, sending, codeMessages, codeSending]);
 
 	const handleClose = useCallback(() => {
 		void invokeIpc("pet:closeMiniChat");
 	}, []);
+
+	const handlePermissionDecision = useCallback(
+		async (requestId: string, decision: "allow" | "deny") => {
+			setPendingPermission(null);
+			await invokeIpc("code-agent:respond-permission", { requestId, decision });
+		},
+		[],
+	);
 
 	const handlePickWorkspace = useCallback(async () => {
 		const result = (await invokeIpc("dialog:open", {
@@ -583,13 +608,6 @@ export function MiniChat() {
 			setSelectedMode("code");
 			setInput(nextInput);
 			setCaretIndex(nextCaret);
-
-			requestAnimationFrame(() => {
-				const textarea = getNativeTextArea(textareaRef.current);
-				if (!textarea) return;
-				textarea.focus();
-				textarea.setSelectionRange(nextCaret, nextCaret);
-			});
 		},
 		[input, mentionDraft],
 	);
@@ -603,34 +621,18 @@ export function MiniChat() {
 			.trimStart();
 		setInput(nextInput);
 		setCaretIndex(nextInput.length);
-
-		requestAnimationFrame(() => {
-			const textarea = getNativeTextArea(textareaRef.current);
-			if (!textarea) return;
-			textarea.focus();
-			textarea.setSelectionRange(nextInput.length, nextInput.length);
-		});
 	}, [input]);
 
 	const handleSend = useCallback(async () => {
 		if (
-			(!input.trim() &&
-				attachments.length === 0 &&
-				pathAttachments.length === 0) ||
+			(!input.trim() && attachments.length === 0 && droppedPaths.length === 0) ||
 			sending ||
 			codeSending
 		) {
 			return;
 		}
 		await submitPrompt(input);
-	}, [
-		attachments.length,
-		pathAttachments.length,
-		codeSending,
-		input,
-		sending,
-		submitPrompt,
-	]);
+	}, [attachments.length, codeSending, droppedPaths.length, input, sending, submitPrompt]);
 
 	const handleUploadFile = useCallback(async () => {
 		try {
@@ -842,7 +844,7 @@ export function MiniChat() {
 	}, []);
 
 	const handleKeyDown = useCallback(
-		(event: KeyboardEvent<HTMLTextAreaElement>) => {
+		(event: KeyboardEvent<HTMLElement>) => {
 			if (showMentionPicker && event.key === "ArrowDown") {
 				event.preventDefault();
 				setActiveMentionIndex(
@@ -866,30 +868,19 @@ export function MiniChat() {
 				return;
 			}
 
-			if (
-				event.key === "Backspace" &&
-				event.currentTarget.selectionStart === event.currentTarget.selectionEnd
-			) {
-				const removal = removeTrailingMention(
-					input,
-					event.currentTarget.selectionStart ?? input.length,
-				);
+			if (event.key === "Backspace") {
+				const removal = removeTrailingMention(input, caretIndex);
 				if (removal) {
 					event.preventDefault();
 					setInput(removal.text);
 					setCaretIndex(removal.caret);
-					requestAnimationFrame(() => {
-						const textarea = getNativeTextArea(textareaRef.current);
-						if (!textarea) return;
-						textarea.focus();
-						textarea.setSelectionRange(removal.caret, removal.caret);
-					});
 				}
 			}
 		},
 		[
 			activeMentionIndex,
 			applyMention,
+			caretIndex,
 			input,
 			mentionOptions,
 			showMentionPicker,
@@ -897,7 +888,7 @@ export function MiniChat() {
 	);
 
 	const handlePressEnter = useCallback(
-		(event: KeyboardEvent<HTMLTextAreaElement>) => {
+		(event: KeyboardEvent<HTMLElement>) => {
 			if (showMentionPicker) {
 				event.preventDefault();
 				applyMention(mentionOptions[activeMentionIndex] ?? mentionOptions[0]);
@@ -941,9 +932,7 @@ export function MiniChat() {
 					: "输入消息… 输入 @ 呼唤智能助手";
 
 	const sendDisabled =
-		(!input.trim() &&
-			attachments.length === 0 &&
-			pathAttachments.length === 0) ||
+		(!input.trim() && attachments.length === 0 && droppedPaths.length === 0) ||
 		disableComposer ||
 		showMentionPicker ||
 		(draftTarget === "code" && !codeWorkspaceRoot.trim());
@@ -1011,7 +1000,7 @@ export function MiniChat() {
 			<MiniChatTimeline
 				timelineItems={timelineItems}
 				sending={sending}
-				streamingText={streamingText}
+				streamingText={liveStreamingText}
 				pendingFinal={pendingFinal}
 				codeSending={codeSending}
 				codeActivities={codeActivities}
@@ -1019,6 +1008,14 @@ export function MiniChat() {
 			/>
 
 			<div className={styles.inputDock}>
+				{pendingPermission && (
+					<MiniChatPermissionCard
+						request={pendingPermission}
+						onDecision={(requestId, decision) => {
+							void handlePermissionDecision(requestId, decision);
+						}}
+					/>
+				)}
 				<MiniChatComposer
 					input={input}
 					onInputChange={setInput}
@@ -1029,13 +1026,14 @@ export function MiniChat() {
 					disabled={disableComposer}
 					sendDisabled={sendDisabled}
 					placeholder={composerPlaceholder}
-					textareaRef={textareaRef}
 					attachments={attachments}
+					droppedPaths={droppedPaths}
 					onRemoveAttachment={(id) => {
 						setAttachments((previous) =>
 							previous.filter((attachment) => attachment.id !== id),
 						);
 					}}
+					onPathsChange={setDroppedPaths}
 					onUploadFile={() => {
 						void handleUploadFile();
 					}}
@@ -1043,26 +1041,8 @@ export function MiniChat() {
 						void handleScreenshot();
 					}}
 					stageBufferFiles={stageBufferFiles}
-					pathAttachments={pathAttachments}
-					onRemovePathAttachment={(id) => {
-						setPathAttachments((prev) => prev.filter((p) => p.id !== id));
-					}}
 					onDropPaths={(paths) => {
-						setPathAttachments((prev) => {
-							const existingPaths = new Set(prev.map((p) => p.absolutePath));
-							return [
-								...prev,
-								...paths.filter((p) => !existingPaths.has(p.absolutePath)),
-							];
-						});
-
-						console.log(
-							"[MiniChat DEBUG] onDropPaths triggered from Composer",
-							paths,
-						);
-						toast(
-							`[MiniChat DEBUG] 组件内部拖拽，拿到 ${paths.length} 个文件/夹`,
-						);
+						applyDroppedPaths(paths);
 					}}
 					showMentionPicker={showMentionPicker}
 					mentionOptions={mentionOptions}

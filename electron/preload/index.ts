@@ -2,7 +2,7 @@
  * Preload Script
  * Exposes safe APIs to the renderer process via contextBridge
  */
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
 /**
  * IPC renderer methods exposed to the renderer process
@@ -167,6 +167,7 @@ const electronAPI = {
         'openclaw:getConfigDir',
         'openclaw:getSkillsDir',
         'openclaw:getCliCommand',
+        'code-agent:respond-permission',
       ];
 
       if (validChannels.includes(channel)) {
@@ -218,6 +219,7 @@ const electronAPI = {
         'code-agent:run-failed',
         'code-agent:token',
         'code-agent:activity',
+        'code-agent:permission-request',
         'openclaw:cli-installed',
         'pet:settings-updated',
         'pet:runtime-state',
@@ -287,6 +289,7 @@ const electronAPI = {
         'code-agent:run-failed',
         'code-agent:token',
         'code-agent:activity',
+        'code-agent:permission-request',
         'pet:settings-updated',
         'pet:runtime-state',
         'pet:asr-event',
@@ -326,6 +329,18 @@ const electronAPI = {
    */
   captureScreenshot: async () => {
     return ipcRenderer.invoke('screenshot:captureSnipaste');
+  },
+
+  /**
+   * Resolve absolute filesystem path from a dropped File object.
+   * Returns empty string when unavailable.
+   */
+  getPathForFile: (file: unknown): string => {
+    try {
+      return webUtils.getPathForFile(file as never);
+    } catch {
+      return '';
+    }
   },
 
   /**

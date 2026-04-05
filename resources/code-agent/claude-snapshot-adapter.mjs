@@ -468,6 +468,7 @@ async function runClaudeCliTask({
   allowedTools,
   timeoutMs,
   onEvent,
+  onPermissionRequest,
 }) {
   const cliProbe = probeClaudeCli(cliConfig.cliPath);
   if (!cliProbe.cliFound) {
@@ -543,11 +544,41 @@ async function runClaudeCliTask({
 
   const startedAt = Date.now();
   let child;
+
+  // Tracks whether we're currently awaiting a user permission decision.
+  // While true, the stdout stream is paused so we don't process subsequent
+  // CLI output before we've written the permission response to stdin.
+  let awaitingPermission = false;
+
+  async function handlePermissionEvent(parsed) {
+    if (typeof onPermissionRequest !== 'function') {
+      // No handler: auto-allow so the task can proceed
+      const responseId = parsed.request_id || parsed.requestId || '';
+      const response = JSON.stringify({ type: 'permission_response', request_id: responseId, decision: 'allow' }) + '\n';
+      child?.stdin.write(response);
+      return;
+    }
+    awaitingPermission = true;
+    child?.stdout.pause();
+    try {
+      const toolName = parsed.tool || parsed.toolName || parsed.name || 'Unknown';
+      const rawInput = parsed.input || parsed.tool_input || {};
+      const inputSummary = buildToolInputSummary(toolName, rawInput) || String(rawInput.command || rawInput.path || '');
+      const requestId = parsed.request_id || parsed.requestId || String(Date.now());
+      const decision = await onPermissionRequest({ requestId, toolName, inputSummary, rawInput });
+      const response = JSON.stringify({ type: 'permission_response', request_id: requestId, decision: decision || 'deny' }) + '\n';
+      child?.stdin.write(response);
+    } finally {
+      awaitingPermission = false;
+      child?.stdout.resume();
+    }
+  }
+
   try {
     child = spawn(cliConfig.cliPath, args, {
       cwd: workspaceRoot,
       env,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ['pipe', 'pipe', 'pipe'],
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -612,6 +643,23 @@ async function runClaudeCliTask({
               });
             }
           }
+        }
+      }
+
+      // Detect permission request events emitted by Claude CLI in stream-json mode.
+      // The CLI may use various shapes depending on version; we match broadly.
+      if (parsed && typeof parsed === 'object') {
+        const isPermissionRequest = (
+          parsed.type === 'permission'
+          || parsed.type === 'permission_request'
+          || (parsed.type === 'system' && (parsed.subtype === 'permission_request' || parsed.subtype === 'permission'))
+          || parsed.request_type === 'permission'
+        );
+        if (isPermissionRequest) {
+          emitTrace(onEvent, 'run:permission-request', { raw: parsed });
+          // handlePermissionEvent is async; we call it fire-and-forget but stdout
+          // is paused inside it so subsequent data events won't race.
+          void handlePermissionEvent(parsed);
         }
       }
 
@@ -784,7 +832,7 @@ export function buildExecutionHealth({ vendorPath, bunAvailable, config }) {
   };
 }
 
-export async function runSnapshotAnalysis({ vendorPath, workspaceRoot, prompt, bunAvailable, config, sessionId, allowedTools, timeoutMs, onEvent }) {
+export async function runSnapshotAnalysis({ vendorPath, workspaceRoot, prompt, bunAvailable, config, sessionId, allowedTools, timeoutMs, onEvent, onPermissionRequest }) {
   const cliConfig = normalizeRuntimeConfig(config);
   if (cliConfig.executionMode === 'cli') {
     return await runClaudeCliTask({
@@ -796,6 +844,7 @@ export async function runSnapshotAnalysis({ vendorPath, workspaceRoot, prompt, b
       allowedTools,
       timeoutMs,
       onEvent,
+      onPermissionRequest,
     });
   }
 

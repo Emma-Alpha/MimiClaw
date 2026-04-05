@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { ChatItem } from '@lobehub/ui/chat';
 import {
   Bot,
@@ -15,6 +15,13 @@ import { ComposerBase, ComposerChip, ComposerIconButton } from '@/components/com
 import { Button } from '@/components/ui/button';
 import { JizhiMessageContent } from '@/components/jizhi/JizhiMessageContent';
 import { cn } from '@/lib/utils';
+import {
+  extractDroppedPathsFromTransfer,
+  isPathDrag,
+  mergeUnifiedComposerPaths,
+  toJizhiSubmission,
+  type UnifiedComposerPath,
+} from '@/lib/unified-composer';
 import {
   activeHostJizhiMessage,
   retryHostJizhiMessage,
@@ -322,6 +329,8 @@ function MessageRow({
 
 export function JizhiChat() {
   const [draft, setDraft] = useState('');
+  const [droppedPaths, setDroppedPaths] = useState<UnifiedComposerPath[]>([]);
+  const [dragOver, setDragOver] = useState(false);
   const [sending, setSending] = useState(false);
   const [copiedMessageUUID, setCopiedMessageUUID] = useState<string | null>(null);
   const [switchingMessageUUID, setSwitchingMessageUUID] = useState<string | null>(null);
@@ -430,7 +439,10 @@ export function JizhiChat() {
   const handleSend = async () => {
     if (!activeSessionId || !currentSession) return;
 
-    const prompt = draft.trim();
+    const prompt = toJizhiSubmission({
+      text: draft,
+      paths: droppedPaths,
+    }).prompt;
     if (!prompt) return;
     if (!currentSession.category) {
       setChatSyncError('当前极智会话缺少 category，暂时无法发送消息。');
@@ -450,6 +462,7 @@ export function JizhiChat() {
       });
       shouldScrollToBottomRef.current = true;
       setDraft('');
+      setDroppedPaths([]);
       await sendHostJizhiMessage({
         sessionId: activeSessionId,
         prompt,
@@ -468,6 +481,30 @@ export function JizhiChat() {
     } finally {
       setSending(false);
     }
+  };
+
+  const handleComposerDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (!isPathDrag(event.dataTransfer ?? null)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setDragOver(true);
+  };
+
+  const handleComposerDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    if (!isPathDrag(event.dataTransfer ?? null)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setDragOver(false);
+  };
+
+  const handleComposerDrop = (event: DragEvent<HTMLDivElement>) => {
+    if (!isPathDrag(event.dataTransfer ?? null)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setDragOver(false);
+    const dropped = extractDroppedPathsFromTransfer(event.dataTransfer ?? null);
+    if (!dropped.length) return;
+    setDroppedPaths((current) => mergeUnifiedComposerPaths(current, dropped));
   };
 
   const handleRetry = async () => {
@@ -679,6 +716,8 @@ export function JizhiChat() {
             variant="desktop"
             value={draft}
             onInput={setDraft}
+            paths={droppedPaths}
+            onPathsChange={setDroppedPaths}
             onSend={() => {
               void handleSend();
             }}
@@ -689,6 +728,10 @@ export function JizhiChat() {
             disabled={!activeSessionId || sending}
             sendDisabled={!activeSessionId || sending}
             placeholder="输入你想让极智继续处理的内容..."
+            dragOver={dragOver}
+            onDragOver={handleComposerDragOver}
+            onDragLeave={handleComposerDragLeave}
+            onDrop={handleComposerDrop}
             leftActions={(
               <>
                 <ComposerChip variant="desktop" icon={<Bot className="h-3.5 w-3.5" />}>

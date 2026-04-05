@@ -12,6 +12,7 @@ let miniChatWindow: BrowserWindow | null = null;
 let isCreatingMiniChat = false;
 /** Seed payload queued from pet interactions; consumed once by MiniChat on mount. */
 let pendingInitialPayload: PetMiniChatSeed | null = null;
+let pendingDroppedPaths: string[] = [];
 
 const MINI_CHAT_WIDTH = 360;
 const MINI_CHAT_HEIGHT = 520;
@@ -87,6 +88,48 @@ function normalizeMiniChatSeed(seed: string | PetMiniChatSeed): PetMiniChatSeed 
 	};
 }
 
+function parseDroppedFileUrl(url: string): string | null {
+	if (!url.startsWith("file://")) return null;
+	try {
+		return decodeURIComponent(new URL(url).pathname);
+	} catch {
+		return null;
+	}
+}
+
+function queueDroppedPath(path: string): void {
+	const normalized = path.trim();
+	if (!normalized) return;
+	if (!pendingDroppedPaths.includes(normalized)) {
+		pendingDroppedPaths.push(normalized);
+	}
+}
+
+function flushPendingDroppedPaths(win: BrowserWindow): void {
+	if (pendingDroppedPaths.length === 0 || win.isDestroyed()) return;
+
+	const queuedPaths = [...pendingDroppedPaths];
+	pendingDroppedPaths = [];
+
+	void Promise.all(
+		queuedPaths.map(async (absolutePath) => {
+			const info = await stat(absolutePath).catch(() => null);
+			return {
+				absolutePath,
+				name: basename(absolutePath),
+				isDirectory: info?.isDirectory() ?? false,
+			};
+		}),
+	)
+		.then((payload) => {
+			if (win.isDestroyed() || payload.length === 0) return;
+			win.webContents.send("mini-chat:paths-dropped", payload);
+		})
+		.catch(() => {
+			pendingDroppedPaths = queuedPaths.concat(pendingDroppedPaths);
+		});
+}
+
 async function createMiniChatWindow(): Promise<BrowserWindow> {
 	const pos = computeMiniChatPosition();
 
@@ -105,11 +148,13 @@ async function createMiniChatWindow(): Promise<BrowserWindow> {
 		skipTaskbar: true,
 		alwaysOnTop: true,
 		hasShadow: true,
+		backgroundColor: "#0B1118",
 		show: false,
 		webPreferences: {
 			preload: join(__dirname, "../preload/index.js"),
 			nodeIntegration: false,
 			contextIsolation: true,
+			navigateOnDragDrop: false,
 			sandbox: false,
 		},
 	});
@@ -125,6 +170,7 @@ async function createMiniChatWindow(): Promise<BrowserWindow> {
 		if (!win.isDestroyed()) {
 			win.show();
 			win.focus();
+			flushPendingDroppedPaths(win);
 		}
 	});
 
@@ -186,40 +232,9 @@ async function createMiniChatWindow(): Promise<BrowserWindow> {
 			});
 	};
 
-	// 1. Intercept the navigation before it even starts using webRequest.
-	// This is the ONLY reliable way to catch file:// drops on app-region: drag areas on macOS.
-	win.webContents.session.webRequest.onBeforeRequest({ urls: ['file:///*'] }, (details, callback) => {
-		const url = details.url;
-		if (!isAppUrl(url)) {
-			console.log("[drop-debug main] webRequest intercepted:", url);
-			handleDroppedFileUrl(url);
-
-			// UI Recovery: Canceling a main-frame navigation via webRequest replaces the page
-			// with an ERR_BLOCKED_BY_CLIENT error page. We immediately tell the webContents
-			// to go back or reload to hide the white screen.
-			// We MUST use setTimeout to wait for the error page navigation to finish
-			// before we can successfully go back or reload.
-			setTimeout(() => {
-				if (!win.isDestroyed()) {
-					if (win.webContents.canGoBack()) {
-						win.webContents.goBack();
-					} else {
-						void (route.type === "url"
-							? win.loadURL(route.value)
-							: win.loadFile(route.value, { hash: route.hash }));
-					}
-				}
-			}, 100);
-
-			callback({ cancel: true });
-			return;
-		}
-		callback({ cancel: false });
-	});
-
-	// 2. Handle file drops if the renderer navigation wasn't already stopped by preload.
-	win.webContents.on('will-navigate', (event, url) => {
-		if (url.startsWith('file://') && !isAppUrl(url)) {
+	// Handle file drops that still arrive as a navigation fallback.
+	win.webContents.on("will-navigate", (event, url) => {
+		if (url.startsWith("file://") && !isAppUrl(url)) {
 			event.preventDefault();
 			console.log("[drop-debug main] will-navigate intercepted:", url);
 			handleDroppedFileUrl(url);
@@ -271,6 +286,30 @@ export function consumePendingInitialMessage(): PetMiniChatSeed | null {
   return payload;
 }
 
+export function queueDroppedPathForMiniChat(path: string): void {
+	queueDroppedPath(path);
+}
+
+export async function ensureMiniChatWindowForDroppedPath(path: string): Promise<void> {
+	queueDroppedPath(path);
+
+	const existingWindow = getMiniChatWindow();
+	if (existingWindow) {
+		existingWindow.focus();
+		flushPendingDroppedPaths(existingWindow);
+		return;
+	}
+
+	if (isCreatingMiniChat) return;
+
+	isCreatingMiniChat = true;
+	try {
+		await createMiniChatWindow();
+	} finally {
+		isCreatingMiniChat = false;
+	}
+}
+
 export async function toggleMiniChatWindow(): Promise<void> {
   // If a window is already being created, ignore rapid repeated calls (e.g. double-click)
   if (isCreatingMiniChat) return;
@@ -299,6 +338,18 @@ export function getMiniChatWindow(): BrowserWindow | null {
 		miniChatWindow = null;
 	}
 	return miniChatWindow;
+}
+
+export function forwardDroppedPathToMiniChat(url: string): boolean {
+	const win = getMiniChatWindow();
+	if (!win) return false;
+
+	const absPath = parseDroppedFileUrl(url);
+	if (!absPath) return false;
+
+	queueDroppedPath(absPath);
+	flushPendingDroppedPaths(win);
+	return true;
 }
 
 app.on("before-quit", () => {

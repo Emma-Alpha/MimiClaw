@@ -3,9 +3,10 @@
  * Manages window creation, system tray, and IPC handlers
  */
 import '../load-env';
-import { app, autoUpdater as electronAutoUpdater, BrowserWindow, globalShortcut, nativeImage, session, shell } from 'electron';
+import { app, autoUpdater as electronAutoUpdater, BrowserWindow, globalShortcut, ipcMain, nativeImage, session, shell } from 'electron';
 import type { Server } from 'node:http';
 import { join, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
 import { CodeAgentManager } from '../code-agent/manager';
 import { GatewayManager } from '../gateway/manager';
 import { registerIpcHandlers } from './ipc-handlers';
@@ -24,7 +25,7 @@ import { isInstallingUpdate, isQuitting, setInstallingUpdate, setQuitting } from
 import { applyProxySettings } from './proxy';
 import { syncLaunchAtStartupSettingFromStore } from './launch-at-startup';
 import { syncPetWindowFromSettings, getPetWindow } from './pet-window';
-import { getMiniChatWindow } from './mini-chat-window';
+import { getMiniChatWindow, forwardDroppedPathToMiniChat, ensureMiniChatWindowForDroppedPath } from './mini-chat-window';
 import { registerPetRuntime } from './pet-runtime';
 import { startVoiceShortcutMonitor, stopVoiceShortcutMonitor } from './voice-shortcut';
 import {
@@ -300,6 +301,7 @@ function createWindow(): BrowserWindow {
       contextIsolation: true,
       sandbox: false,
       webviewTag: true, // Enable <webview> for embedding OpenClaw Control UI
+      navigateOnDragDrop: false,
     },
     titleBarStyle: isMac ? 'hiddenInset' : useCustomTitleBar ? 'hidden' : 'default',
     trafficLightPosition: isMac ? { x: 16, y: 16 } : undefined,
@@ -344,6 +346,73 @@ function focusMainWindow(): void {
 
   clearPendingSecondInstanceFocus(mainWindowFocusState);
   focusWindow(mainWindow);
+}
+
+function normalizeOpenedPath(candidate: string): string | null {
+  const value = candidate.trim();
+  if (!value || value.startsWith('-')) {
+    return null;
+  }
+
+  if (value.startsWith(`${APP_PROTOCOL}://`)) {
+    return null;
+  }
+
+  if (value.startsWith('file://')) {
+    try {
+      const parsed = decodeURIComponent(new URL(value).pathname);
+      return parsed && existsSync(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  const resolvedPath = resolve(value);
+  return existsSync(resolvedPath) ? resolvedPath : null;
+}
+
+function extractOpenedPaths(argv: string[]): string[] {
+  const seen = new Set<string>();
+  const results: string[] = [];
+
+  for (const arg of argv) {
+    const normalized = normalizeOpenedPath(arg);
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    results.push(normalized);
+  }
+
+  return results;
+}
+
+async function routePathToMiniChat(candidate: string): Promise<boolean> {
+  const normalizedPath = normalizeOpenedPath(candidate);
+  if (!normalizedPath) {
+    return false;
+  }
+
+  const miniChatWindow = getMiniChatWindow();
+  if (miniChatWindow) {
+    miniChatWindow.focus();
+    return forwardDroppedPathToMiniChat(`file://${encodeURI(normalizedPath)}`);
+  }
+
+  await ensureMiniChatWindowForDroppedPath(normalizedPath);
+  return true;
+}
+
+function closeNonMiniChatOwnerWindow(contents: Electron.WebContents): void {
+  const miniChatWindow = getMiniChatWindow();
+  const ownerWindow = BrowserWindow.fromWebContents(contents);
+  if (!ownerWindow || ownerWindow.isDestroyed()) {
+    return;
+  }
+  if (miniChatWindow && ownerWindow === miniChatWindow) {
+    return;
+  }
+  ownerWindow.close();
 }
 
 function createMainWindow(): BrowserWindow {
@@ -461,6 +530,20 @@ async function initialize(): Promise<void> {
         );
       }
       callback({ responseHeaders: headers });
+    },
+  );
+
+  session.defaultSession.webRequest.onBeforeRequest(
+    { urls: ['file://*/*'] },
+    (details, callback) => {
+      const normalizedPath = normalizeOpenedPath(details.url);
+      if (!normalizedPath) {
+        callback({ cancel: false });
+        return;
+      }
+
+      void routePathToMiniChat(normalizedPath);
+      callback({ cancel: true });
     },
   );
 
@@ -607,6 +690,20 @@ async function initialize(): Promise<void> {
     }
   });
 
+  codeAgentManager.on('run:permission-request', (payload) => {
+    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('code-agent:permission-request', payload);
+      }
+    }
+  });
+
+  ipcMain.handle('code-agent:respond-permission', async (_event, payload: { requestId: string; decision: string }) => {
+    await codeAgentManager.respondPermission(payload.requestId, payload.decision);
+    return { ok: true };
+  });
+
   deviceOAuthManager.on('oauth:code', (payload) => {
     hostEventBus.emit('oauth:code', payload);
   });
@@ -746,12 +843,22 @@ if (gotTheLock) {
     void handleDeepLink(url);
   });
 
+  app.on('open-file', (event, filePath) => {
+    event.preventDefault();
+    void routePathToMiniChat(filePath);
+  });
+
   // When a second instance is launched, focus the existing window instead.
   app.on('second-instance', (_event, argv) => {
     logger.info('Second ClawX instance detected; redirecting to the existing window');
     const deepLinkUrl = extractProtocolUrl(argv);
     if (deepLinkUrl) {
       void handleDeepLink(deepLinkUrl);
+    }
+
+    const openedPaths = extractOpenedPaths(argv);
+    for (const openedPath of openedPaths) {
+      void routePathToMiniChat(openedPath);
     }
 
     const focusRequest = requestSecondInstanceFocus(
@@ -777,9 +884,10 @@ if (gotTheLock) {
     contents.on('will-navigate', (navEvent, navigationUrl) => {
       console.log("[App DEBUG] will-navigate globally:", navigationUrl);
       if (navigationUrl.startsWith('file://')) {
-        // Allow internal file:// loads (e.g. index.html in production)
         if (!navigationUrl.includes('index.html')) {
           navEvent.preventDefault();
+          closeNonMiniChatOwnerWindow(contents);
+          void routePathToMiniChat(navigationUrl);
           logger.debug(`[App] Prevented navigation to dropped file: ${navigationUrl}`);
         }
       }
@@ -788,34 +896,16 @@ if (gotTheLock) {
     contents.on('did-fail-provisional-load', (e, code, desc, url, isMainFrame) => {
       console.log(`[App DEBUG] did-fail-provisional-load globally: code=${code}, url=${url}, isMainFrame=${isMainFrame}`);
       if (isMainFrame && url.startsWith('file://') && !url.includes('index.html')) {
-        console.log("[App DEBUG] Attempting to recover from did-fail-provisional-load...");
-        setTimeout(() => {
-          if (!contents.isDestroyed()) {
-            if (contents.canGoBack()) {
-              contents.goBack();
-            }
-          }
-        }, 50);
+        closeNonMiniChatOwnerWindow(contents);
+        void routePathToMiniChat(url);
       }
     });
 
     contents.on('did-fail-load', (e, code, desc, url, isMainFrame) => {
       console.log(`[App DEBUG] did-fail-load globally: code=${code}, url=${url}, isMainFrame=${isMainFrame}`);
-      // If the page failed to load a dropped file, we must force it back to the app URL
       if (isMainFrame && url.startsWith('file://') && !url.includes('index.html')) {
-        console.log("[App DEBUG] Attempting to recover from did-fail-load...");
-        // Delay the recovery slightly so Chromium finishes its error page transition
-        setTimeout(() => {
-          if (!contents.isDestroyed()) {
-            if (contents.canGoBack()) {
-              contents.goBack();
-            } else {
-              // We don't know the exact route here, but we can guess or use a default.
-              // We'll let the window-specific listener handle the exact reload if possible.
-              console.log("[App DEBUG] Cannot go back, needs manual reload.");
-            }
-          }
-        }, 50);
+        closeNonMiniChatOwnerWindow(contents);
+        void routePathToMiniChat(url);
       }
     });
   });

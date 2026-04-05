@@ -24,10 +24,17 @@ export const DEFAULT_CODE_AGENT_RUNTIME_CONFIG: CodeAgentRuntimeConfig = {
   fallbackModel: '',
   baseUrl: '',
   apiKey: '',
-  permissionMode: 'bypassPermissions',
+  permissionMode: 'acceptEdits',
   allowedTools: [],
   appendSystemPrompt: '',
 };
+
+export interface CodeAgentPermissionRequest {
+  requestId: string;
+  toolName: string;
+  inputSummary: string;
+  rawInput?: Record<string, unknown>;
+}
 
 export interface CodeAgentDescriptor {
   adapter: CodeAgentAdapterKind;

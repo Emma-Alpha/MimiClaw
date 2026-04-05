@@ -67,9 +67,24 @@ function send(message) {
   process.stdout.write(`${JSON.stringify(message)}\n`);
 }
 
+// Pending permission requests keyed by requestId.
+// Resolved when the manager sends a run.approve RPC call.
+const pendingPermissions = new Map();
+
 async function handleRequest(method, params) {
   if (method === 'health') {
     return buildHealth(params?.config);
+  }
+
+  if (method === 'run.approve') {
+    const requestId = typeof params?.requestId === 'string' ? params.requestId : '';
+    const decision = typeof params?.decision === 'string' ? params.decision : 'deny';
+    const resolve = pendingPermissions.get(requestId);
+    if (resolve) {
+      pendingPermissions.delete(requestId);
+      resolve(decision);
+    }
+    return { ok: true };
   }
 
   if (method === 'run.start') {
@@ -116,6 +131,18 @@ async function handleRequest(method, params) {
             },
           });
         }
+      },
+      onPermissionRequest: async (request) => {
+        // Forward the permission request to the manager as a protocol-level request.
+        // The manager will IPC it to the renderer, collect user input, then call run.approve.
+        return new Promise((resolve) => {
+          pendingPermissions.set(request.requestId, resolve);
+          send({
+            type: 'request',
+            method: 'permission',
+            payload: request,
+          });
+        });
       },
     });
 

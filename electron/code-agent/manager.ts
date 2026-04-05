@@ -43,7 +43,13 @@ type SidecarEvent = {
   payload?: unknown;
 };
 
-type SidecarMessage = SidecarResponse | SidecarReadyEvent | SidecarEvent;
+type SidecarRequest = {
+  type: 'request';
+  method: string;
+  payload?: unknown;
+};
+
+type SidecarMessage = SidecarResponse | SidecarReadyEvent | SidecarEvent | SidecarRequest;
 
 type PendingRequest = {
   resolve: (value: unknown) => void;
@@ -532,6 +538,13 @@ export class CodeAgentManager extends EventEmitter {
       return;
     }
 
+    if (message.type === 'request') {
+      if (message.method === 'permission') {
+        this.emit('run:permission-request', message.payload);
+      }
+      return;
+    }
+
     const pending = this.pendingRequests.get(message.id);
     if (!pending) {
       logger.warn(`[code-agent] Received response for unknown request id=${message.id}`);
@@ -590,6 +603,10 @@ export class CodeAgentManager extends EventEmitter {
         reject(error);
       });
     });
+  }
+
+  async respondPermission(requestId: string, decision: string): Promise<void> {
+    await this.sendRequest<{ ok: boolean }>('run.approve', { requestId, decision }, 10_000);
   }
 
   private buildRequestRecord(input: CodeAgentRunRequest): CodeAgentRunRecord['request'] {

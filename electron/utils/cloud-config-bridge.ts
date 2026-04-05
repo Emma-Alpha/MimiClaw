@@ -51,12 +51,13 @@ async function parseJsonResponse<T>(
 }
 
 async function getCloudCredentials(): Promise<{ apiUrl: string; token: string } | null> {
-  const [apiUrl, token] = await Promise.all([
+  const [apiUrl, token, jizhiEnabled] = await Promise.all([
     getSetting('cloudApiUrl'),
     getSetting('cloudApiToken'),
+    getSetting('jizhiEnabled'),
   ]);
 
-  if (!apiUrl || !token) {
+  if (!jizhiEnabled || !apiUrl || !token) {
     return null;
   }
 

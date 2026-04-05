@@ -20,6 +20,7 @@ export interface ElectronAPI {
     base64: string;
     preview: string;
   }>;
+  getPathForFile: (file: File) => string;
   platform: NodeJS.Platform;
   isDev: boolean;
 }

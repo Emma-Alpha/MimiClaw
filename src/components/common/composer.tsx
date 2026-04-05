@@ -1,9 +1,16 @@
 import { createPortal } from "react-dom";
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { ChatInputAreaInner, ChatSendButton } from "@lobehub/ui/chat";
+import {
+	useEffect,
+	useMemo,
+	useState,
+	type CSSProperties,
+	type KeyboardEvent as ReactKeyboardEvent,
+	type ReactNode,
+} from "react";
 import { createStyles } from "antd-style";
 import { Loader2, Send, Square, X, FileText, Film, Music, FileArchive, File as FileIcon } from "lucide-react";
-import type { TextAreaRef } from "antd/es/input/TextArea";
+import type { UnifiedComposerPath } from "@/lib/unified-composer";
+import { UnifiedComposerInput } from "./unified-composer-input";
 import { formatFileSize, type FileAttachment } from "./composer-helpers";
 
 export type { FileAttachment } from "./composer-helpers";
@@ -16,16 +23,10 @@ type SendTexts = {
 	warp?: string;
 };
 
-type TextareaExtraProps = Omit<
-	React.ComponentProps<typeof ChatInputAreaInner>,
-	| "className"
-	| "value"
-	| "onInput"
-	| "onSend"
-	| "loading"
-	| "disabled"
-	| "ref"
->;
+type TextareaExtraProps = {
+	onPaste?: React.ClipboardEventHandler<HTMLDivElement>;
+	onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
+};
 
 interface ComposerBaseProps {
 	variant: ComposerVariant;
@@ -43,8 +44,9 @@ interface ComposerBaseProps {
 	topActions?: ReactNode;
 	overlay?: ReactNode;
 	attachments?: FileAttachment[];
+	paths?: UnifiedComposerPath[];
+	onPathsChange?: (paths: UnifiedComposerPath[]) => void;
 	onRemoveAttachment?: (id: string) => void;
-	textareaRef?: React.Ref<TextAreaRef>;
 	textareaProps?: TextareaExtraProps;
 	sendTexts?: SendTexts;
 	submitOnEnter?: boolean;
@@ -74,33 +76,31 @@ interface ComposerChipProps {
 	removableTitle?: string;
 }
 
-const useStyles = createStyles(({ token, css, prefixCls }) => ({
+const useStyles = createStyles(({ token, css }) => ({
 	shell: css`
 		position: relative;
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
-		border-radius: 16px;
+		border-radius: 20px;
 		background: ${token.colorBgContainer};
 		border: 1px solid ${token.colorBorderSecondary};
 		box-shadow:
-			0 1px 2px 0 rgba(0, 0, 0, 0.03),
-			0 1px 6px -1px rgba(0, 0, 0, 0.02),
-			0 2px 4px 0 rgba(0, 0, 0, 0.02);
+			0 2px 6px rgba(0, 0, 0, 0.04);
 		overflow: visible;
 		transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 
 		&:focus-within {
-			border-color: ${token.colorPrimary};
-			box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+			border-color: ${token.colorBorder};
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 		}
 	`,
 	shellDesktop: css`
-		padding: 12px 12px 8px;
+		padding: 8px 10px 8px;
 	`,
 	shellCompact: css`
-		border-radius: 14px;
-		padding: 10px 12px 8px;
+		border-radius: 16px;
+		padding: 8px 10px 8px;
 	`,
 	shellDragOver: css`
 		border-color: ${token.colorPrimary};
@@ -113,37 +113,92 @@ const useStyles = createStyles(({ token, css, prefixCls }) => ({
 		gap: 8px;
 		margin-bottom: 6px;
 	`,
-	textareaWrap: css`
+	inputWrap: css`
 		position: relative;
 		width: 100%;
+		padding: 0 4px;
 	`,
-	textarea: css`
-		&[class*='${prefixCls}-input'] {
-			padding: 0;
-			line-height: 1.6;
-			font-size: 14px;
-			box-shadow: none !important;
-			background: transparent;
-		}
+	inputEditor: css`
+		width: 100%;
+		padding: 0;
+		line-height: 1.6;
+		font-size: 14px;
+		box-shadow: none !important;
+		background: transparent;
+		white-space: pre-wrap;
+		word-break: break-word;
+		outline: none;
+		color: ${token.colorText};
+		caret-color: ${token.colorText};
+		overflow: auto;
 	`,
-	textareaDesktop: css`
-		&[class*='${prefixCls}-input'] {
-			min-height: 24px !important;
-			max-height: 200px;
-		}
+	inputEditorDesktop: css`
+		min-height: 24px;
+		max-height: 200px;
 	`,
-	textareaCompact: css`
-		&[class*='${prefixCls}-input'] {
-			min-height: 24px !important;
-			max-height: 112px;
+	inputEditorCompact: css`
+		min-height: 24px;
+		max-height: 112px;
+	`,
+	inputPlaceholder: css`
+		color: ${token.colorTextQuaternary};
+		pointer-events: none;
+		user-select: none;
+	`,
+	pathChip: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		padding: 3px 6px 3px 8px;
+		border-radius: 999px;
+		background: ${token.colorFillQuaternary};
+		border: 1px solid ${token.colorBorderSecondary};
+		font-size: 12px;
+		color: ${token.colorText};
+		max-width: 260px;
+		cursor: text;
+		vertical-align: middle;
+	`,
+	pathChipIcon: css`
+		color: ${token.colorTextTertiary};
+		flex-shrink: 0;
+	`,
+	pathChipName: css`
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		flex: 1;
+		min-width: 0;
+		color: ${token.colorText};
+		font-size: 12px;
+		font-weight: 500;
+	`,
+	pathChipRemove: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 16px;
+		height: 16px;
+		border-radius: 999px;
+		border: none;
+		background: transparent;
+		color: ${token.colorTextQuaternary};
+		cursor: pointer;
+		padding: 0;
+		flex-shrink: 0;
+
+		&:hover {
+			background: ${token.colorFillSecondary};
+			color: ${token.colorTextSecondary};
 		}
 	`,
 	bottomRow: css`
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 12px;
-		margin-top: 4px;
+		gap: 8px;
+		margin-top: 6px;
+		padding: 0 2px;
 	`,
 	topActionsRow: css`
 		display: flex;
@@ -159,14 +214,14 @@ const useStyles = createStyles(({ token, css, prefixCls }) => ({
 		flex: 1;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 8px;
+		gap: 6px;
 		min-width: 0;
 	`,
 	rightActions: css`
 		display: flex;
 		flex-shrink: 0;
 		align-items: center;
-		gap: 10px;
+		gap: 6px;
 
 		& > * {
 			margin: 0 !important;
@@ -184,7 +239,7 @@ const useStyles = createStyles(({ token, css, prefixCls }) => ({
 		transition: all 0.18s ease;
 
 		&:hover:not(:disabled) {
-			background: ${token.colorFillQuaternary};
+			background: ${token.colorFillTertiary};
 			color: ${token.colorText};
 		}
 
@@ -194,12 +249,12 @@ const useStyles = createStyles(({ token, css, prefixCls }) => ({
 		}
 	`,
 	iconButtonDesktop: css`
-		width: 34px;
-		height: 34px;
+		width: 28px;
+		height: 28px;
 	`,
 	iconButtonCompact: css`
-		width: 30px;
-		height: 30px;
+		width: 28px;
+		height: 28px;
 	`,
 	iconButtonActive: css`
 		border-color: ${token.colorPrimaryBorder};
@@ -268,35 +323,29 @@ const useStyles = createStyles(({ token, css, prefixCls }) => ({
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 32px;
-		height: 32px;
+		width: 28px;
+		height: 28px;
 		border: none;
-		border-radius: 10px;
-		background: ${token.colorPrimary};
-		color: #fff;
+		border-radius: 14px;
+		background: ${token.colorText};
+		color: ${token.colorBgLayout};
 		cursor: pointer;
-		transition: all 0.18s ease;
+		transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 
 		&:hover:not(:disabled) {
-			background: ${token.colorPrimaryHover};
-			transform: translateY(-1px);
+			transform: scale(1.05);
+			box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 		}
 
 		&:disabled {
-			background: ${token.colorFillSecondary};
-			color: ${token.colorTextQuaternary};
+			opacity: 0.35;
 			cursor: not-allowed;
-			transform: none;
+			box-shadow: none;
 		}
 	`,
-	compactSendButtonLoading: css`
-		animation: composer-send-pulse 1.5s infinite;
-
-		@keyframes composer-send-pulse {
-			0% { opacity: 1; }
-			50% { opacity: 0.6; }
-			100% { opacity: 1; }
-		}
+	sendButtonSending: css`
+		background: ${token.colorTextSecondary};
 	`,
 	previewCard: css`
 		position: relative;
@@ -669,8 +718,9 @@ export function ComposerBase({
 	topActions,
 	overlay,
 	attachments = [],
+	paths = [],
+	onPathsChange,
 	onRemoveAttachment,
-	textareaRef,
 	textareaProps,
 	sendTexts,
 	submitOnEnter = true,
@@ -684,8 +734,47 @@ export function ComposerBase({
 
 	const compact = variant === "compact";
 	const canStop = loading && Boolean(onStop);
+	const composerValue = useMemo(
+		() => ({ text: value, paths }),
+		[value, paths],
+	);
 
 	const compactSendDisabled = loading ? !onStop : sendDisabled;
+	const sendButtonTitle = canStop ? sendTexts?.stop ?? "停止" : sendTexts?.send ?? "发送";
+	const handleComposerChange = (next: { text: string; paths: UnifiedComposerPath[] }) => {
+		if (next.text !== value) {
+			onInput(next.text);
+		}
+		if (onPathsChange) {
+			const samePaths =
+				next.paths.length === paths.length
+				&& next.paths.every((item, index) => {
+					const current = paths[index];
+					return (
+						current?.absolutePath === item.absolutePath
+						&& current?.name === item.name
+						&& current?.isDirectory === item.isDirectory
+					);
+				});
+			if (!samePaths) {
+				onPathsChange(next.paths);
+			}
+		}
+	};
+	const handlePressEnter = (event: ReactKeyboardEvent<HTMLElement>) => {
+		if (!submitOnEnter) return;
+		if (event.shiftKey || (event.nativeEvent as KeyboardEvent).isComposing) {
+			return;
+		}
+		event.preventDefault();
+		if (loading && onStop) {
+			onStop();
+			return;
+		}
+		if (!disabled && !sendDisabled) {
+			onSend();
+		}
+	};
 
 	return (
 		<>
@@ -720,21 +809,32 @@ export function ComposerBase({
 					<div className={styles.topActionsRow}>{topActions}</div>
 				) : null}
 
-				<div className={styles.textareaWrap}>
-					<ChatInputAreaInner
-						ref={textareaRef}
-						className={cx(
-							styles.textarea,
-							compact ? styles.textareaCompact : styles.textareaDesktop,
-						)}
-						value={value}
-						onInput={onInput}
-						onSend={submitOnEnter ? onSend : undefined}
-						loading={loading}
-						disabled={disabled}
+				<div className={styles.inputWrap}>
+					<UnifiedComposerInput
+						value={composerValue}
+						onChange={handleComposerChange}
 						placeholder={placeholder}
-						autoSize={compact ? { minRows: 1, maxRows: 4 } : { minRows: 1, maxRows: 8 }}
-						{...textareaProps}
+						disabled={disabled}
+						className={cx(
+							styles.inputEditor,
+							compact ? styles.inputEditorCompact : styles.inputEditorDesktop,
+						)}
+						placeholderClassName={styles.inputPlaceholder}
+						pathChipClassName={styles.pathChip}
+						pathChipIconClassName={styles.pathChipIcon}
+						pathChipNameClassName={styles.pathChipName}
+						pathChipRemoveClassName={styles.pathChipRemove}
+						onKeyDown={
+							textareaProps?.onKeyDown
+								? (event) => {
+									textareaProps.onKeyDown?.(
+										event as unknown as ReactKeyboardEvent<HTMLDivElement>,
+									);
+								}
+								: undefined
+						}
+						onPaste={textareaProps?.onPaste}
+						onPressEnter={handlePressEnter}
 					/>
 				</div>
 
@@ -742,33 +842,24 @@ export function ComposerBase({
 					<div className={styles.leftActions}>{leftActions}</div>
 					<div className={styles.rightActions}>
 						{rightActions}
-						{compact ? (
-							<button
-								type="button"
-								className={cx(
-									styles.compactSendButton,
-									loading && styles.compactSendButtonLoading,
-								)}
-								onClick={canStop ? onStop : onSend}
-								disabled={compactSendDisabled}
-								title={canStop ? sendTexts?.stop ?? "停止" : sendTexts?.send ?? "发送"}
-							>
-								{canStop ? (
-									<Square style={{ width: 14, height: 14 }} />
-								) : loading ? (
-									<Loader2 style={{ width: 15, height: 15, animation: "spin 1s linear infinite" }} />
-								) : (
-									<Send style={{ width: 15, height: 15 }} />
-								)}
-							</button>
-						) : (
-							<ChatSendButton
-								loading={loading}
-								onSend={onSend}
-								onStop={onStop}
-								texts={sendTexts}
-							/>
-						)}
+						<button
+							type="button"
+							className={cx(
+								styles.compactSendButton,
+								loading && styles.sendButtonSending,
+							)}
+							onClick={canStop ? onStop : onSend}
+							disabled={compactSendDisabled}
+							title={sendButtonTitle}
+						>
+							{canStop ? (
+								<Square style={{ width: 12, height: 12 }} fill="currentColor" />
+							) : loading ? (
+								<Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />
+							) : (
+								<Send style={{ width: compact ? 14 : 15, height: compact ? 14 : 15 }} />
+							)}
+						</button>
 					</div>
 				</div>
 			</div>

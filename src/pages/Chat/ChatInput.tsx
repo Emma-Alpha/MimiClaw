@@ -15,6 +15,12 @@ import {
 import { type FileAttachment, readFileAsBase64 } from "@/components/common/composer-helpers";
 import { hostApiFetch } from "@/lib/host-api";
 import { invokeIpc } from "@/lib/api-client";
+import {
+	extractDroppedPathsFromTransfer,
+	mergeUnifiedComposerPaths,
+	toOpenClawSubmission,
+	type UnifiedComposerPath,
+} from "@/lib/unified-composer";
 import { useGatewayStore } from "@/stores/gateway";
 import { useSettingsStore } from "@/stores/settings";
 import { useAgentsStore } from "@/stores/agents";
@@ -162,6 +168,7 @@ export function ChatInput({
 
 	const [input, setInput] = useState("");
 	const [attachments, setAttachments] = useState<FileAttachment[]>([]);
+	const [droppedPaths, setDroppedPaths] = useState<UnifiedComposerPath[]>([]);
 	const [targetAgentId, setTargetAgentId] = useState<string | null>(null);
 	const [pickerOpen, setPickerOpen] = useState(false);
 	const [dragOver, setDragOver] = useState(false);
@@ -602,7 +609,7 @@ export function ChatInput({
 		attachments.length === 0 || attachments.every((a) => a.status === "ready");
 	const hasFailedAttachments = attachments.some((a) => a.status === "error");
 	const canSend =
-		(input.trim() || attachments.length > 0) &&
+		(input.trim() || attachments.length > 0 || droppedPaths.length > 0) &&
 		allReady &&
 		!disabled &&
 		!sending;
@@ -610,17 +617,22 @@ export function ChatInput({
 	const handleSend = useCallback(() => {
 		if (!canSend) return;
 		const readyAttachments = attachments.filter((a) => a.status === "ready");
-		const text = input.trim();
+		const submission = toOpenClawSubmission({
+			text: input,
+			attachments: readyAttachments,
+			paths: droppedPaths,
+		});
 		setInput("");
 		setAttachments([]);
+		setDroppedPaths([]);
 		onSend(
-			text,
-			readyAttachments.length > 0 ? readyAttachments : undefined,
+			submission.prompt,
+			submission.attachments.length > 0 ? submission.attachments : undefined,
 			targetAgentId,
 		);
 		setTargetAgentId(null);
 		setPickerOpen(false);
-	}, [input, attachments, canSend, onSend, targetAgentId]);
+	}, [input, attachments, canSend, droppedPaths, onSend, targetAgentId]);
 
 	const handleStop = useCallback(() => {
 		if (sending && onStop) onStop();
@@ -673,8 +685,14 @@ export function ChatInput({
 			e.preventDefault();
 			e.stopPropagation();
 			setDragOver(false);
-			if (e.dataTransfer?.files?.length)
+			const dropped = extractDroppedPathsFromTransfer(e.dataTransfer ?? null);
+			if (dropped.length > 0) {
+				setDroppedPaths((current) => mergeUnifiedComposerPaths(current, dropped));
+				return;
+			}
+			if (e.dataTransfer?.files?.length) {
 				stageBufferFiles(Array.from(e.dataTransfer.files));
+			}
 		},
 		[stageBufferFiles],
 	);
@@ -691,6 +709,8 @@ export function ChatInput({
 				variant="desktop"
 				value={input}
 				onInput={setInput}
+				paths={droppedPaths}
+				onPathsChange={setDroppedPaths}
 				onSend={handleSend}
 				onStop={handleStop}
 				loading={sending}
@@ -718,43 +738,6 @@ export function ChatInput({
 								{t("composer.targetChip", { agent: selectedTarget.name })}
 							</ComposerChip>
 						) : null}
-
-						{isRecording ? (
-							<div className={styles.recordingPill}>
-								<div className={styles.recordingDot} />
-								<span className={styles.recordingTime}>
-									{formatTime(recordingTime)}
-								</span>
-								<button
-									type="button"
-									onClick={toggleRecording}
-									title={t("composer.stopRecording", "停止录音")}
-									style={{
-										display: "inline-flex",
-										alignItems: "center",
-										justifyContent: "center",
-										width: 26,
-										height: 26,
-										border: "none",
-										borderRadius: "999px",
-										background: "rgba(239,68,68,0.12)",
-										color: "#ef4444",
-										cursor: "pointer",
-										padding: 0,
-									}}
-								>
-									<Square style={{ width: 13, height: 13 }} />
-								</button>
-							</div>
-						) : (
-							<ComposerIconButton
-								variant="desktop"
-								icon={<Mic style={{ width: 16, height: 16 }} />}
-								onClick={toggleRecording}
-								disabled={disabled || sending}
-								title={t("composer.startRecording", "开始录音")}
-							/>
-						)}
 
 						<ComposerIconButton
 							variant="desktop"
@@ -812,6 +795,44 @@ export function ChatInput({
 						) : null}
 					</>
 				)}
+				rightActions={
+					isRecording ? (
+						<div className={styles.recordingPill}>
+							<div className={styles.recordingDot} />
+							<span className={styles.recordingTime}>
+								{formatTime(recordingTime)}
+							</span>
+							<button
+								type="button"
+								onClick={toggleRecording}
+								title={t("composer.stopRecording", "停止录音")}
+								style={{
+									display: "inline-flex",
+									alignItems: "center",
+									justifyContent: "center",
+									width: 26,
+									height: 26,
+									border: "none",
+									borderRadius: "999px",
+									background: "rgba(239,68,68,0.12)",
+									color: "#ef4444",
+									cursor: "pointer",
+									padding: 0,
+								}}
+							>
+								<Square style={{ width: 13, height: 13 }} />
+							</button>
+						</div>
+					) : (
+						<ComposerIconButton
+							variant="desktop"
+							icon={<Mic style={{ width: 16, height: 16 }} />}
+							onClick={toggleRecording}
+							disabled={disabled || sending}
+							title={t("composer.startRecording", "开始录音")}
+						/>
+					)
+				}
 				sendTexts={{
 					send: t("composer.send"),
 					stop: t("composer.stop"),

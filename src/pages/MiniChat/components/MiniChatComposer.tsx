@@ -1,21 +1,41 @@
-import type {
-	KeyboardEvent as ReactKeyboardEvent,
-	MutableRefObject,
-} from "react";
-import { useState, useCallback, useRef, useEffect } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 
-import { Plus, Camera, Paperclip, Mic, ArrowUp, Square, X, Folder, FileText } from "lucide-react";
+import {
+	Plus,
+	Camera,
+	Paperclip,
+	Mic,
+	ArrowUp,
+	Square,
+	X,
+} from "lucide-react";
 import { ClaudeCode } from "@lobehub/icons";
 import { Dropdown } from "antd";
-import type { TextAreaRef } from "antd/es/input/TextArea";
-import { ChatInputAreaInner } from "@lobehub/ui/chat";
 import { createStyles } from "antd-style";
 import { ComposerAttachmentPreview, ImageLightbox } from "@/components/common/composer";
 import type { FileAttachment } from "@/components/common/composer-helpers";
+import {
+	type UnifiedComposerInputValue,
+	UnifiedComposerInput,
+} from "@/components/common/unified-composer-input";
 import { useVolcengineAsr } from "@/hooks/useVolcengineAsr";
+import {
+	extractDroppedPathsFromTransfer as extractUnifiedDroppedPathsFromTransfer,
+	isPathDrag,
+	type UnifiedComposerPath,
+} from "@/lib/unified-composer";
 import { useMiniChatStyles } from "../styles";
-import type { MentionOption, PathAttachment } from "../types";
+import type { MentionOption } from "../types";
+
+type DroppedPathChip = UnifiedComposerPath;
+
+function extractDroppedPathsFromTransfer(
+	dataTransfer: DataTransfer | null,
+): UnifiedComposerPath[] {
+	return extractUnifiedDroppedPathsFromTransfer(dataTransfer);
+}
 
 type MiniChatComposerProps = {
 	input: string;
@@ -25,9 +45,10 @@ type MiniChatComposerProps = {
 	disabled: boolean;
 	sendDisabled: boolean;
 	placeholder: string;
-	textareaRef: MutableRefObject<TextAreaRef | null>;
 	attachments: FileAttachment[];
+	droppedPaths: DroppedPathChip[];
 	onRemoveAttachment: (id: string) => void;
+	onPathsChange: (paths: DroppedPathChip[]) => void;
 	onUploadFile: () => void;
 	onScreenshot: () => void;
 	/** Still used by the + file-upload menu; no longer used for voice recording. */
@@ -38,17 +59,15 @@ type MiniChatComposerProps = {
 	onActiveMentionIndexChange: (value: number) => void;
 	onApplyMention: (option: MentionOption) => void;
 	onCaretChange: (value: number) => void;
-	onKeyDown: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void;
-	onPressEnter: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void;
+	onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => void;
+	onPressEnter: (event: ReactKeyboardEvent<HTMLElement>) => void;
 	onCompositionStart: () => void;
 	onCompositionEnd: () => void;
 	onFocusChange: (focused: boolean) => void;
-	pathAttachments: PathAttachment[];
-	onRemovePathAttachment: (id: string) => void;
-	onDropPaths: (paths: PathAttachment[]) => void;
+	onDropPaths: (paths: DroppedPathChip[]) => void;
 };
 
-const useComposerStyles = createStyles(({ css, token, prefixCls }) => ({
+const useComposerStyles = createStyles(({ css, token }) => ({
 	container: css`
 		position: relative;
 		display: flex;
@@ -87,6 +106,11 @@ const useComposerStyles = createStyles(({ css, token, prefixCls }) => ({
 		border-radius: 12px;
 		padding: 6px 5px 5px;
 	`,
+	pillDragOver: css`
+		border-color: ${token.colorPrimary};
+		background: ${token.colorPrimaryBg};
+		box-shadow: 0 0 0 2px ${token.colorPrimaryBorder};
+	`,
 	plusWrapper: css`
 		display: flex;
 		align-items: center;
@@ -104,42 +128,40 @@ const useComposerStyles = createStyles(({ css, token, prefixCls }) => ({
 		padding: 0 6px;
 		display: flex;
 		align-items: center;
+		flex-wrap: wrap;
+		gap: 6px;
 		order: 2;
-
-		& > div {
-			padding: 0 !important;
-			width: 100%;
-			display: flex;
-			align-items: center;
-		}
-
-		& .${prefixCls}-input {
-			background: transparent !important;
-			border: none !important;
-			box-shadow: none !important;
-			padding: 0 !important;
-			font-size: 14px !important;
-			line-height: 20px !important;
-			resize: none !important;
-			color: ${token.colorText} !important;
-			min-height: 20px !important;
-			
-			&::placeholder {
-				color: ${token.colorTextQuaternary} !important;
-				font-size: 14px;
-			}
-		}
+	`,
+	inputTextWrap: css`
+		flex: 1 1 120px;
+		min-width: 120px;
+		display: flex;
+		align-items: center;
+		width: 100%;
 	`,
 	inputAreaMultiline: css`
 		flex: 1;
 		align-items: flex-start;
-		& > div {
-			align-items: flex-start;
-		}
-		& .${prefixCls}-input {
-			line-height: 1.5 !important;
-			padding: 4px 0 6px !important;
-		}
+	`,
+	editor: css`
+		width: 100%;
+		min-height: 20px;
+		max-height: 180px;
+		overflow: auto;
+		cursor: text;
+		caret-color: ${token.colorText};
+		outline: none;
+		background: transparent;
+		color: ${token.colorText};
+		font-size: 14px;
+		line-height: 1.5;
+		white-space: pre-wrap;
+		word-break: break-word;
+	`,
+	editorPlaceholder: css`
+		color: ${token.colorTextQuaternary};
+		pointer-events: none;
+		user-select: none;
 	`,
 	actionsWrapper: css`
 		display: flex;
@@ -344,32 +366,27 @@ const useComposerStyles = createStyles(({ css, token, prefixCls }) => ({
 		gap: 8px;
 		padding: 0 12px;
 	`,
-	pathRow: css`
-		display: flex;
-		flex-wrap: wrap;
-		gap: 6px;
-		padding: 0 12px;
-	`,
 	pathChip: css`
-		display: flex;
+		display: inline-flex;
 		align-items: center;
 		gap: 5px;
-		padding: 4px 6px 4px 8px;
+		padding: 3px 6px 3px 8px;
 		border-radius: 14px;
-		background: rgba(99, 102, 241, 0.07);
-		border: 1px solid rgba(99, 102, 241, 0.2);
+		background: ${token.colorFillQuaternary};
+		border: 1px solid ${token.colorBorderSecondary};
 		font-size: 12px;
 		color: ${token.colorText};
 		max-width: 220px;
-		cursor: default;
+		cursor: text;
 		transition: background 0.15s;
+		vertical-align: middle;
 
 		&:hover {
-			background: rgba(99, 102, 241, 0.12);
+			background: ${token.colorFillTertiary};
 		}
 	`,
 	pathChipIcon: css`
-		color: #6366f1;
+		color: ${token.colorTextTertiary};
 		flex-shrink: 0;
 	`,
 	pathChipName: css`
@@ -391,40 +408,16 @@ const useComposerStyles = createStyles(({ css, token, prefixCls }) => ({
 		border-radius: 8px;
 		border: none;
 		background: transparent;
-		color: rgba(99, 102, 241, 0.45);
+		color: ${token.colorTextQuaternary};
 		cursor: pointer;
 		padding: 0;
 		flex-shrink: 0;
 		transition: all 0.15s;
 
 		&:hover {
-			background: rgba(99, 102, 241, 0.15);
-			color: #6366f1;
+			background: ${token.colorFillTertiary};
+			color: ${token.colorTextSecondary};
 		}
-	`,
-	dragOverlay: css`
-		position: absolute;
-		inset: 0;
-		border-radius: 28px;
-		background: rgba(99, 102, 241, 0.04);
-		border: 2px dashed rgba(99, 102, 241, 0.45);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: 10;
-		pointer-events: none;
-		animation: drag-in 0.15s ease;
-
-		@keyframes drag-in {
-			from { opacity: 0; }
-			to { opacity: 1; }
-		}
-	`,
-	dragOverlayText: css`
-		font-size: 13px;
-		color: #6366f1;
-		font-weight: 500;
-		opacity: 0.85;
 	`,
 }));
 
@@ -436,9 +429,10 @@ export function MiniChatComposer({
 	disabled,
 	sendDisabled,
 	placeholder,
-	textareaRef,
 	attachments,
+	droppedPaths,
 	onRemoveAttachment,
+	onPathsChange,
 	onUploadFile,
 	onScreenshot,
 	stageBufferFiles: _stageBufferFiles,
@@ -453,8 +447,6 @@ export function MiniChatComposer({
 	onCompositionStart,
 	onCompositionEnd,
 	onFocusChange,
-	pathAttachments,
-	onRemovePathAttachment,
 	onDropPaths,
 }: MiniChatComposerProps) {
 	const { styles: miniChatStyles, cx } = useMiniChatStyles();
@@ -473,6 +465,13 @@ export function MiniChatComposer({
 	const { isRecording, isTranscribing, toggleRecording, cancelRecording, stopAndTranscribe } =
 		useVolcengineAsr({ onTranscriptReady: handleTranscriptReady });
 
+	const handleToggleRecording = useCallback(async () => {
+		if (!isRecording) {
+			setRecordingTime(0);
+		}
+		await toggleRecording();
+	}, [isRecording, toggleRecording]);
+
 	const formatRecordingTime = (seconds: number) => {
 		const m = Math.floor(seconds / 60);
 		const s = seconds % 60;
@@ -482,7 +481,6 @@ export function MiniChatComposer({
 	useEffect(() => {
 		let interval: ReturnType<typeof setInterval>;
 		if (isRecording) {
-			setRecordingTime(0);
 			interval = setInterval(() => {
 				setRecordingTime(prev => prev + 1);
 			}, 1000);
@@ -492,122 +490,126 @@ export function MiniChatComposer({
 		};
 	}, [isRecording]);
 
+	const [isMultiline, setIsMultiline] = useState(false);
+	const composerValue = useMemo<UnifiedComposerInputValue>(
+		() => ({
+			text: input,
+			paths: droppedPaths,
+		}),
+		[input, droppedPaths],
+	);
+	const updateIsMultiline = useCallback((next: boolean) => {
+		setIsMultiline((previous) => (previous === next ? previous : next));
+	}, []);
+
+	// Keep latest callbacks in refs so document-level drag listeners can stay stable.
+	const onPathsChangeRef = useRef(onPathsChange);
+	const onDropPathsRef = useRef(onDropPaths);
+	useEffect(() => {
+		onPathsChangeRef.current = onPathsChange;
+	}, [onPathsChange]);
+	useEffect(() => {
+		onDropPathsRef.current = onDropPaths;
+	}, [onDropPaths]);
+
+	const handleComposerChange = useCallback(
+		(next: UnifiedComposerInputValue) => {
+			if (next.text !== input) {
+				onInputChange(next.text);
+			}
+
+			const samePaths =
+				next.paths.length === droppedPaths.length
+				&& next.paths.every((item, index) => {
+					const current = droppedPaths[index];
+					return (
+						current?.absolutePath === item.absolutePath
+						&& current?.name === item.name
+						&& current?.isDirectory === item.isDirectory
+					);
+				});
+			if (!samePaths) {
+				onPathsChangeRef.current(next.paths);
+			}
+		},
+		[droppedPaths, input, onInputChange],
+	);
+
 	// ── Drag-and-drop path attachment ────────────────────────────
 	// ── Drag-and-drop: native document-level listeners ───────────
 	// Must be document-level (not React synthetic) so Chromium sees the
 	// preventDefault() on dragover and routes OS-level file drags here.
 	const [isDragOver, setIsDragOver] = useState(false);
-	const onDropPathsRef = useRef(onDropPaths);
-	useEffect(() => { onDropPathsRef.current = onDropPaths; }, [onDropPaths]);
 
 	useEffect(() => {
 		let enterCount = 0;
 
 		const onDragOver = (e: globalThis.DragEvent) => {
+			if (!isPathDrag(e.dataTransfer ?? null)) return;
 			e.preventDefault();
-			if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+			if (e.dataTransfer) {
+				e.dataTransfer.dropEffect = "copy";
+			}
 		};
 
 		const onDragEnter = (e: globalThis.DragEvent) => {
+			if (!isPathDrag(e.dataTransfer ?? null)) return;
 			e.preventDefault();
-			const types = Array.from(e.dataTransfer?.types ?? []);
-			console.log('[drop-debug] dragenter types:', types, 'enterCount->', enterCount + 1);
-			if (!types.includes('Files')) return;
 			enterCount += 1;
 			if (enterCount === 1) setIsDragOver(true);
 		};
 
-		const onDragLeave = () => {
+		const onDragLeave = (e: globalThis.DragEvent) => {
+			if (!isPathDrag(e.dataTransfer ?? null)) return;
+			e.preventDefault();
 			enterCount -= 1;
-			console.log('[drop-debug] dragleave enterCount->', enterCount);
-			if (enterCount <= 0) { enterCount = 0; setIsDragOver(false); }
+			if (enterCount <= 0) {
+				enterCount = 0;
+				setIsDragOver(false);
+			}
 		};
 
 		const onDrop = (e: globalThis.DragEvent) => {
+			if (!isPathDrag(e.dataTransfer ?? null)) return;
 			enterCount = 0;
 			setIsDragOver(false);
-			console.log('[drop-debug] drop fired');
-
-			const paths: PathAttachment[] = [];
-
-			// ── Method 1: dataTransfer.items + webkitGetAsEntry ──────────
-			const items = e.dataTransfer?.items;
-			console.log('[drop-debug] items count:', items?.length ?? 0);
-			if (items?.length) {
-				for (let i = 0; i < items.length; i++) {
-					const item = items[i];
-					if (!item || item.kind !== 'file') continue;
-					const entry = item.webkitGetAsEntry();
-					const file = item.getAsFile();
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					const electronPath = file ? (file as any).path as string | undefined : undefined;
-					console.log('[drop-debug] item[' + i + ']', {
-						kind: item.kind,
-						entryName: entry?.name,
-						isDirectory: entry?.isDirectory,
-						fileName: file?.name,
-						fileSize: file?.size,
-						fileType: file?.type,
-						electronPath,
-					});
-					if (file && electronPath) {
-						paths.push({
-							id: crypto.randomUUID(),
-							absolutePath: electronPath,
-							name: file.name,
-							isDirectory: entry?.isDirectory ?? (file.size === 0 && file.type === ''),
-						});
-					}
-				}
-			}
-
-			// ── Method 2: text/uri-list ───────────────────────────────────
-			if (paths.length === 0 && e.dataTransfer) {
-				const uriList = e.dataTransfer.getData('text/uri-list');
-				const plain   = e.dataTransfer.getData('text/plain');
-				console.log('[drop-debug] uri-list:', JSON.stringify(uriList));
-				console.log('[drop-debug] text/plain:', JSON.stringify(plain));
-				for (const raw of (uriList || '').split(/\r?\n/)) {
-					const uri = raw.trim();
-					if (!uri || uri.startsWith('#')) continue;
-					try {
-						const url = new URL(uri);
-						if (url.protocol !== 'file:') continue;
-						const absPath = decodeURIComponent(url.pathname);
-						const name = absPath.split('/').filter(Boolean).pop() || absPath;
-						if (absPath) paths.push({ id: crypto.randomUUID(), absolutePath: absPath, name, isDirectory: false });
-					} catch { /* skip */ }
-				}
-			}
-
-			console.log('[drop-debug] collected paths:', paths);
+			if (e.defaultPrevented) return;
+			const paths = extractDroppedPathsFromTransfer(e.dataTransfer);
 			if (paths.length > 0) {
 				e.preventDefault();
+				e.stopPropagation();
 				onDropPathsRef.current(paths);
-			} else {
-				console.log('[drop-debug] no paths — letting will-navigate handle');
 			}
+			// If no paths were extracted here, do not prevent default:
+			// main process `will-navigate` fallback can still intercept file:// drop
+			// and forward absolute paths via `mini-chat:paths-dropped`.
+		};
+		const onDragEnd = () => {
+			enterCount = 0;
+			setIsDragOver(false);
 		};
 
-		document.addEventListener('dragover', onDragOver);
-		document.addEventListener('dragenter', onDragEnter);
-		document.addEventListener('dragleave', onDragLeave);
-		document.addEventListener('drop', onDrop);
+		document.addEventListener("dragover", onDragOver, true);
+		document.addEventListener("dragenter", onDragEnter, true);
+		document.addEventListener("dragleave", onDragLeave, true);
+		document.addEventListener("drop", onDrop, true);
+		document.addEventListener("dragend", onDragEnd, true);
 		return () => {
-			document.removeEventListener('dragover', onDragOver);
-			document.removeEventListener('dragenter', onDragEnter);
-			document.removeEventListener('dragleave', onDragLeave);
-			document.removeEventListener('drop', onDrop);
+			document.removeEventListener("dragover", onDragOver, true);
+			document.removeEventListener("dragenter", onDragEnter, true);
+			document.removeEventListener("dragleave", onDragLeave, true);
+			document.removeEventListener("drop", onDrop, true);
+			document.removeEventListener("dragend", onDragEnd, true);
 		};
 	}, []);
 
 	// Forward pet:recording-command IPC events (e.g. from F2 / Fn key) to the ASR hook.
 	const stopAndTranscribeRef = useRef(stopAndTranscribe);
 	const cancelRecordingRef = useRef(cancelRecording);
-	const toggleRecordingRef = useRef(toggleRecording);
+	const toggleRecordingRef = useRef(handleToggleRecording);
 	useEffect(() => { stopAndTranscribeRef.current = stopAndTranscribe; }, [stopAndTranscribe]);
 	useEffect(() => { cancelRecordingRef.current = cancelRecording; }, [cancelRecording]);
-	useEffect(() => { toggleRecordingRef.current = toggleRecording; }, [toggleRecording]);
+	useEffect(() => { toggleRecordingRef.current = handleToggleRecording; }, [handleToggleRecording]);
 
 	useEffect(() => {
 		const unsubscribe = window.electron.ipcRenderer.on('pet:recording-command', payload => {
@@ -629,9 +631,8 @@ export function MiniChatComposer({
 		return () => { unsubscribe?.(); };
 	}, []);
 
-	const hasInput = input.trim().length > 0 || attachments.length > 0 || pathAttachments.length > 0;
-	const lineCount = input.split('\n').length;
-	const isMultiline = lineCount > 1 || input.length > 30; // Auto-switch if long or manual newline
+	const hasInput =
+		input.trim().length > 0 || attachments.length > 0 || droppedPaths.length > 0;
 
 	const renderActions = () => {
 		if (loading) {
@@ -640,7 +641,7 @@ export function MiniChatComposer({
 					<button
 						type="button"
 						className={cx(styles.micIconBtn, isRecording && styles.micButtonRecording)}
-						onClick={() => { void toggleRecording(); }}
+						onClick={() => { void handleToggleRecording(); }}
 						title={isRecording ? '停止录音' : '语音输入'}
 					>
 						<Mic style={{ width: 14, height: 14 }} />
@@ -664,7 +665,7 @@ export function MiniChatComposer({
 					<button
 						type="button"
 						className={cx(styles.micIconBtn, isRecording && styles.micButtonRecording)}
-						onClick={() => { void toggleRecording(); }}
+						onClick={() => { void handleToggleRecording(); }}
 						title={isRecording ? '停止录音' : '语音输入'}
 					>
 						<Mic style={{ width: 14, height: 14 }} />
@@ -686,7 +687,7 @@ export function MiniChatComposer({
 			<button
 				type="button"
 				className={cx(styles.micButton, !isRecording && styles.micButtonHighlighted, isRecording && styles.micButtonRecording)}
-				onClick={() => { void toggleRecording(); }}
+				onClick={() => { void handleToggleRecording(); }}
 				title={isRecording ? '停止录音' : '语音输入'}
 			>
 				<Mic style={{ width: 15, height: 15 }} />
@@ -697,11 +698,6 @@ export function MiniChatComposer({
 	return (
 		<>
 			<div className={styles.container}>
-				{isDragOver && (
-					<div className={styles.dragOverlay}>
-						<span className={styles.dragOverlayText}>松开以添加文件 / 文件夹路径</span>
-					</div>
-				)}
 
 				{/* Mention Overlay */}
 				{showMentionPicker && (
@@ -781,29 +777,6 @@ export function MiniChatComposer({
 				</div>
 			)}
 
-		{/* Path Attachments Row */}
-			{pathAttachments.length > 0 && (
-				<div className={styles.pathRow}>
-					{pathAttachments.map((pa) => (
-						<div key={pa.id} className={styles.pathChip} title={pa.absolutePath}>
-							<span className={styles.pathChipIcon}>
-								{pa.isDirectory
-									? <Folder style={{ width: 12, height: 12 }} />
-									: <FileText style={{ width: 12, height: 12 }} />}
-							</span>
-							<span className={styles.pathChipName}>{pa.name}</span>
-							<button
-								type="button"
-								className={styles.pathChipRemove}
-								onClick={() => onRemovePathAttachment(pa.id)}
-								title="移除"
-							>
-								<X style={{ width: 10, height: 10 }} />
-							</button>
-						</div>
-					))}
-				</div>
-			)}
 
 		{/* Attachments Row */}
 			{attachments.length > 0 && (
@@ -824,7 +797,11 @@ export function MiniChatComposer({
 				<motion.div 
 					layout
 					transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-					className={cx(styles.pill, isMultiline && styles.pillMultiline)}
+					className={cx(
+						styles.pill,
+						isMultiline && styles.pillMultiline,
+						isDragOver && styles.pillDragOver,
+					)}
 				>
 					{/* Top Area: Inline Actions or just Input */}
 					<div 
@@ -880,42 +857,27 @@ export function MiniChatComposer({
 							className={cx(styles.inputArea, isMultiline && styles.inputAreaMultiline)}
 							style={{ flex: 1, minWidth: 0 }}
 						>
-							<ChatInputAreaInner
-								ref={textareaRef}
-								value={input}
-								onInput={onInputChange}
-								disabled={disabled}
-								placeholder={placeholder || (isMultiline ? "输入描述或指令..." : "输入消息...")}
-								autoSize={{ minRows: 1, maxRows: 10 }}
-								onChange={(event) => {
-									onCaretChange(
-										event.currentTarget.selectionStart ?? event.currentTarget.value.length,
-									);
-								}}
-								onKeyDown={onKeyDown}
-								onPressEnter={onPressEnter}
-								onCompositionStart={onCompositionStart}
-								onCompositionEnd={onCompositionEnd}
-								onFocus={(event) => {
-									onFocusChange(true);
-									onCaretChange(
-										event.currentTarget.selectionStart ?? event.currentTarget.value.length,
-									);
-								}}
-								onBlur={() => {
-									onFocusChange(false);
-								}}
-								onClick={(event) => {
-									onCaretChange(
-										event.currentTarget.selectionStart ?? event.currentTarget.value.length,
-									);
-								}}
-								onSelect={(event) => {
-									onCaretChange(
-										event.currentTarget.selectionStart ?? event.currentTarget.value.length,
-									);
-								}}
-							/>
+							<div className={styles.inputTextWrap}>
+								<UnifiedComposerInput
+									value={composerValue}
+									onChange={handleComposerChange}
+									placeholder={placeholder || (isMultiline ? "输入描述或指令..." : "输入消息...")}
+									disabled={disabled}
+									className={styles.editor}
+									placeholderClassName={styles.editorPlaceholder}
+									pathChipClassName={styles.pathChip}
+									pathChipIconClassName={styles.pathChipIcon}
+									pathChipNameClassName={styles.pathChipName}
+									pathChipRemoveClassName={styles.pathChipRemove}
+									onFocusChange={onFocusChange}
+									onCompositionStart={onCompositionStart}
+									onCompositionEnd={onCompositionEnd}
+									onKeyDown={onKeyDown}
+									onPressEnter={onPressEnter}
+									onCaretChange={onCaretChange}
+									onVisualMultilineChange={updateIsMultiline}
+								/>
+							</div>
 						</motion.div>
 
 						{/* Inline Send */}

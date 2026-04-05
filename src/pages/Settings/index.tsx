@@ -282,10 +282,14 @@ export function Settings() {
   }, [t]);
 
   useEffect(() => {
+    if (!jizhiEnabled) {
+      setCloudGateway({ cloudMode: false });
+      return;
+    }
     void refreshCloudGateway();
     const timer = setInterval(() => { void refreshCloudGateway(); }, 10_000);
     return () => clearInterval(timer);
-  }, [refreshCloudGateway]);
+  }, [jizhiEnabled, refreshCloudGateway]);
 
   useEffect(() => {
     void loadSpeechConfig();
