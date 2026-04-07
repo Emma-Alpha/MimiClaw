@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import { randomUUID } from 'node:crypto';
-import { shell } from 'electron';
+import { BrowserWindow, shell } from 'electron';
 import type { HostApiContext } from '../context';
 import { parseJsonBody, sendJson } from '../route-utils';
 import {
@@ -12,7 +12,13 @@ import {
   stopJizhiMessage,
   streamJizhiMessage,
 } from '../../services/jizhi-chat';
-import { getSetting, setSetting } from '../../utils/store';
+import {
+  applyPetCompanionGrowth,
+  normalizePetCompanion,
+  rollPetCompanion,
+  type StoredPetCompanion,
+} from '../../../shared/pet-companion';
+import { getSetting, setSetting, type AppSettings } from '../../utils/store';
 import { logger } from '../../utils/logger';
 
 function readJizhiAppBaseUrl(): string {
@@ -40,6 +46,59 @@ function emitJizhiStreamEvent(ctx: HostApiContext, payload: JizhiHostStreamEvent
   const window = ctx.mainWindow;
   if (window && !window.isDestroyed()) {
     window.webContents.send('jizhi:stream', payload);
+  }
+}
+
+async function emitPetSettingsUpdated(): Promise<void> {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('pet:settings-updated');
+    }
+  }
+}
+
+function buildPetCompanionSeed(storedSeed: string, machineId: string): string {
+  if (storedSeed.trim()) return storedSeed.trim();
+  if (machineId.trim()) return `machine:${machineId.trim()}`;
+  return `local:${randomUUID()}`;
+}
+
+async function ensurePetCompanionForJizhi(): Promise<StoredPetCompanion> {
+  const stored = await getSetting('petCompanion');
+  if (stored) {
+    const normalized = normalizePetCompanion(stored);
+    if (
+      !('potentialStats' in stored)
+      || !('usage' in stored)
+      || !('activityExp' in stored)
+      || !('bondExp' in stored)
+      || !('updatedAt' in stored)
+      || !('lastActiveAt' in stored)
+    ) {
+      await setSetting('petCompanion', normalized as AppSettings['petCompanion']);
+    }
+    return normalized;
+  }
+
+  const [storedSeed, machineId] = await Promise.all([
+    getSetting('petCompanionSeed'),
+    getSetting('machineId'),
+  ]);
+  const seed = buildPetCompanionSeed(storedSeed, machineId);
+  const companion = rollPetCompanion(seed);
+  await setSetting('petCompanionSeed', seed);
+  await setSetting('petCompanion', companion as AppSettings['petCompanion']);
+  return companion;
+}
+
+async function recordJizhiPetCompanionGrowth(): Promise<void> {
+  try {
+    const companion = await ensurePetCompanionForJizhi();
+    const updated = applyPetCompanionGrowth(companion, 'mini_chat');
+    await setSetting('petCompanion', updated as AppSettings['petCompanion']);
+    await emitPetSettingsUpdated();
+  } catch (error) {
+    logger.debug('[jizhi] Failed to record pet companion growth from jizhi usage:', error);
   }
 }
 
@@ -176,6 +235,7 @@ export async function handleJizhiRoutes(
         fallbackModel: body.model,
         messageUUID: requestMessageUUID,
       });
+      await recordJizhiPetCompanionGrowth();
 
       const messageUUID = result.messageUUID ?? requestMessageUUID;
       const controller = new AbortController();
@@ -332,6 +392,7 @@ export async function handleJizhiRoutes(
         category: body.category,
         model: body.model,
       });
+      await recordJizhiPetCompanionGrowth();
 
       const retryMessageUUID = result.messageUUID?.trim();
       if (retryMessageUUID) {

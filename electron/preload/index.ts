@@ -70,6 +70,7 @@ const electronAPI = {
         'pet:openMiniChatWithMessage',
         'pet:openMiniChatWithPayload',
         'pet:consumeInitialMessage',
+        'pet:syncCompanionProgress',
         'voice:openDialog',
         'voice:closeDialog',
         'voice:setDialogState',

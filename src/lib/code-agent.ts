@@ -1,5 +1,7 @@
 import type {
   CodeAgentHealth,
+  CodeAgentSessionMessage,
+  CodeAgentSessionSummary,
   CodeAgentRunRequest,
   CodeAgentRunRecord,
   CodeAgentRunResult,
@@ -74,4 +76,34 @@ export async function runCodeAgentTask(input: CodeAgentRunRequest): Promise<Code
 export async function fetchLatestCodeAgentRun(): Promise<CodeAgentRunRecord | null> {
   const response = await hostApiFetch<{ success: boolean; run: CodeAgentRunRecord | null }>('/api/code-agent/runs/latest');
   return response.run;
+}
+
+export async function fetchCodeAgentSessions(
+  workspaceRoot: string,
+  limit = 30,
+): Promise<CodeAgentSessionSummary[]> {
+  const params = new URLSearchParams({
+    workspaceRoot,
+    limit: String(limit),
+  });
+  const response = await hostApiFetch<{ success: boolean; sessions: CodeAgentSessionSummary[] }>(
+    `/api/code-agent/sessions?${params.toString()}`,
+  );
+  return Array.isArray(response.sessions) ? response.sessions : [];
+}
+
+export async function fetchCodeAgentSessionHistory(
+  workspaceRoot: string,
+  sessionId: string,
+  limit = 120,
+): Promise<CodeAgentSessionMessage[]> {
+  const params = new URLSearchParams({
+    workspaceRoot,
+    sessionId,
+    limit: String(limit),
+  });
+  const response = await hostApiFetch<{ success: boolean; messages: CodeAgentSessionMessage[] }>(
+    `/api/code-agent/session-history?${params.toString()}`,
+  );
+  return Array.isArray(response.messages) ? response.messages : [];
 }

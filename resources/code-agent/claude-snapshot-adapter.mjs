@@ -50,6 +50,8 @@ const CODE_AGENT_PERMISSION_MODES = new Set([
   'plan',
   'auto',
 ]);
+const CODE_AGENT_EFFORT_LEVELS = new Set(['low', 'medium', 'high', 'max']);
+const CODE_AGENT_THINKING_MODES = new Set(['enabled', 'adaptive', 'disabled']);
 
 function safeReadText(filePath, maxBytes = 256 * 1024) {
   try {
@@ -297,6 +299,15 @@ export function normalizeRuntimeConfig(input) {
   const permissionMode = CODE_AGENT_PERMISSION_MODES.has(input?.permissionMode)
     ? input.permissionMode
     : 'default';
+  const effort =
+    typeof input?.effort === 'string' && CODE_AGENT_EFFORT_LEVELS.has(input.effort)
+      ? input.effort
+      : '';
+  const thinking =
+    typeof input?.thinking === 'string' && CODE_AGENT_THINKING_MODES.has(input.thinking)
+      ? input.thinking
+      : 'enabled';
+  const fastMode = input?.fastMode === true;
 
   return {
     executionMode,
@@ -304,6 +315,9 @@ export function normalizeRuntimeConfig(input) {
       typeof input?.cliPath === 'string' && input.cliPath.trim() ? input.cliPath.trim() : 'claude',
     model: typeof input?.model === 'string' ? input.model.trim() : '',
     fallbackModel: typeof input?.fallbackModel === 'string' ? input.fallbackModel.trim() : '',
+    effort,
+    thinking,
+    fastMode,
     baseUrl: typeof input?.baseUrl === 'string' ? input.baseUrl.trim() : '',
     apiKey: typeof input?.apiKey === 'string' ? input.apiKey.trim() : '',
     permissionMode,
@@ -671,6 +685,13 @@ async function runClaudeCliTask({
   if (cliConfig.fallbackModel) {
     args.push('--fallback-model', cliConfig.fallbackModel);
   }
+  if (cliConfig.effort) {
+    args.push('--effort', cliConfig.effort);
+  }
+  if (cliConfig.thinking) {
+    args.push('--thinking', cliConfig.thinking);
+  }
+  args.push('--settings', JSON.stringify({ fastMode: cliConfig.fastMode === true }));
   if (cliConfig.permissionMode) {
     args.push('--permission-mode', cliConfig.permissionMode);
   }
@@ -705,6 +726,9 @@ async function runClaudeCliTask({
     sessionId: sessionId || null,
     model: cliConfig.model || null,
     fallbackModel: cliConfig.fallbackModel || null,
+    effort: cliConfig.effort || null,
+    thinking: cliConfig.thinking || null,
+    fastMode: cliConfig.fastMode === true,
     baseUrl: cliConfig.baseUrl || null,
     permissionMode: cliConfig.permissionMode,
     allowedTools: mergedAllowedTools,

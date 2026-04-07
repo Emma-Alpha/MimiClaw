@@ -19,6 +19,12 @@ export type MiniCodeMessageImagePreview = {
 	fileName: string;
 };
 
+export type MiniCodeMessagePathTag = {
+	absolutePath: string;
+	name: string;
+	isDirectory: boolean;
+};
+
 export type MiniCodeMessage = {
 	id: string;
 	role: "user" | "assistant" | "system";
@@ -30,6 +36,7 @@ export type MiniCodeMessage = {
 	targetLabel?: string;
 	activities?: ToolActivityItem[];
 	imagePreviews?: MiniCodeMessageImagePreview[];
+	pathTags?: MiniCodeMessagePathTag[];
 };
 
 export type SubmissionIntent = {

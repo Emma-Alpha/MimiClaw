@@ -171,10 +171,11 @@ export const useSettingsStore = create<SettingsState>()(
           const settings = await hostApiFetch<Partial<typeof defaultSettings>>('/api/settings');
           const codeAgent = settings.codeAgent
             ? {
+                ...DEFAULT_CODE_AGENT_RUNTIME_CONFIG,
                 ...settings.codeAgent,
                 permissionMode: settings.codeAgent.permissionMode === 'default'
                   ? DEFAULT_CODE_AGENT_RUNTIME_CONFIG.permissionMode
-                  : settings.codeAgent.permissionMode,
+                  : settings.codeAgent.permissionMode ?? DEFAULT_CODE_AGENT_RUNTIME_CONFIG.permissionMode,
               }
             : undefined;
           const petCompanion = settings.petCompanion

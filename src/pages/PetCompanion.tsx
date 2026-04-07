@@ -301,6 +301,11 @@ export function PetCompanion() {
 	}, [initSettings]);
 
 	useEffect(() => {
+		if (!settingsReady) return;
+		void invokeIpc("pet:syncCompanionProgress").catch(() => {});
+	}, [settingsReady]);
+
+	useEffect(() => {
 		if (!settingsReady || petCompanion) return;
 
 		const seed =

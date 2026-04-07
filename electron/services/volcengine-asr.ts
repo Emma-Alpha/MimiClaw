@@ -68,7 +68,15 @@ function buildPacket(
 
 function decodePayload(payload: Buffer, compressionType: number): Buffer {
   if (compressionType === COMPRESSION_GZIP && payload.length > 0) {
-    return gunzipSync(payload);
+    try {
+      return gunzipSync(payload);
+    } catch (error) {
+      logger.warn(
+        '[speech] Volcengine ASR payload marked as gzip but failed to decompress, fallback to raw payload',
+        error,
+      );
+      return payload;
+    }
   }
   return payload;
 }

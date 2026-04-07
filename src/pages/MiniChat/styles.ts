@@ -103,10 +103,28 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		cursor: pointer;
 		transition: max-width 0.4s cubic-bezier(0.32, 0.72, 0, 1),
 			flex 0.4s cubic-bezier(0.32, 0.72, 0, 1), filter 0.3s ease;
-		filter: drop-shadow(0 0 12px rgba(124, 58, 237, 0.15));
-		max-width: 240px;
+		filter: drop-shadow(0 8px 18px rgba(2, 6, 23, 0.32));
+		max-width: min(100%, 480px);
 		min-width: 40px;
 		will-change: max-width, flex;
+	`,
+	dynamicIslandWrapperGenerating: css`
+		filter: drop-shadow(0 0 16px rgba(37, 99, 235, 0.34));
+		animation: islandBreath 1.8s ease-in-out infinite;
+
+		@keyframes islandBreath {
+			0%,
+			100% {
+				transform: translateY(0) scale(1);
+			}
+			50% {
+				transform: translateY(-0.5px) scale(1.012);
+			}
+		}
+
+		@media (prefers-reduced-motion: reduce) {
+			animation: none;
+		}
 	`,
 	dynamicIslandWrapperExpanded: css`
 		flex: 1;
@@ -117,21 +135,44 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		inset: 0;
 		border-radius: inherit;
 		z-index: 0;
-		background: linear-gradient(#fff, #fff) padding-box,
+		background:
+			linear-gradient(
+				180deg,
+				rgba(10, 14, 21, 0.92),
+				rgba(7, 10, 16, 0.88)
+			)
+			padding-box,
+			linear-gradient(
+				145deg,
+				rgba(255, 255, 255, 0.3),
+				rgba(148, 163, 184, 0.14),
+				rgba(15, 23, 42, 0.18)
+			)
+			border-box;
+		border: 1px solid transparent;
+		opacity: 1;
+	`,
+	dynamicIslandGlowGenerating: css`
+		background:
+			linear-gradient(
+				180deg,
+				rgba(10, 14, 21, 0.94),
+				rgba(8, 12, 19, 0.9)
+			)
+			padding-box,
 			conic-gradient(
 				from var(--ai-angle),
+				#3b82f6,
 				#60a5fa,
-				#a78bfa,
-				#f472b6,
-				#fb7185,
-				#fb923c,
-				#fbbf24,
-				#4ade80,
-				#2dd4bf,
-				#60a5fa
-			) border-box;
-		border: 2px solid transparent;
-		animation: aiRotate 4.5s linear infinite;
+				#22d3ee,
+				#1d4ed8,
+				#3b82f6
+			)
+			border-box;
+		border: 1px solid transparent;
+		animation: aiRotate 3.2s linear infinite;
+		opacity: 1;
+		filter: saturate(1.18) brightness(1.05);
 
 		@property --ai-angle {
 			syntax: "<angle>";
@@ -147,13 +188,37 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 				--ai-angle: 360deg;
 			}
 		}
+
+		@media (prefers-reduced-motion: reduce) {
+			animation: none;
+		}
+	`,
+	dynamicIslandFrost: css`
+		position: absolute;
+		inset: 1px;
+		border-radius: inherit;
+		z-index: 1;
+		pointer-events: none;
+		background:
+			radial-gradient(
+				140% 95% at 18% -20%,
+				rgba(255, 255, 255, 0.16),
+				rgba(255, 255, 255, 0) 58%
+			),
+			linear-gradient(
+				180deg,
+				rgba(255, 255, 255, 0.08),
+				rgba(255, 255, 255, 0.01) 45%,
+				rgba(255, 255, 255, 0.06) 100%
+			);
+		opacity: 0.9;
 	`,
 	dynamicIslandSpecular: css`
 		position: absolute;
 		top: 0;
 		left: 15%;
 		right: 15%;
-		height: 0.5px;
+		height: 1px;
 		background: linear-gradient(
 			to right,
 			transparent,
@@ -161,18 +226,18 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			transparent
 		);
 		z-index: 3;
-		opacity: 0.5;
+		opacity: 0.38;
 	`,
 	dynamicIsland: css`
 		display: flex;
 		align-items: center;
-		background: rgba(255, 255, 255, 0.55);
-		backdrop-filter: blur(25px) saturate(1.8);
+		background: rgba(7, 10, 16, 0.86);
+		backdrop-filter: blur(20px) saturate(1.1);
 		border-radius: 999px;
 		height: 32px;
 		padding: 0 12px;
 		gap: 8px;
-		color: ${token.colorText};
+		color: rgba(248, 250, 252, 0.96);
 		max-width: 100%;
 		min-width: 0;
 		position: relative;
@@ -183,7 +248,27 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		overflow: hidden;
 
 		&:hover {
-			background: rgba(255, 255, 255, 0.75);
+			background: rgba(10, 14, 21, 0.92);
+		}
+	`,
+	dynamicIslandGenerating: css`
+		background: rgba(8, 12, 20, 0.92);
+		animation: islandSurfacePulse 1.8s ease-in-out infinite;
+
+		@keyframes islandSurfacePulse {
+			0%,
+			100% {
+				box-shadow: inset 0 0 0 0 rgba(59, 130, 246, 0.06),
+					0 0 0 0 rgba(37, 99, 235, 0);
+			}
+			50% {
+				box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.24),
+					0 0 18px 0 rgba(37, 99, 235, 0.24);
+			}
+		}
+
+		@media (prefers-reduced-motion: reduce) {
+			animation: none;
 		}
 	`,
 	dynamicIslandExpanded: css`
@@ -208,7 +293,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 	islandTextLabel: css`
 		font-weight: 500;
 		font-size: 13px;
-		color: ${token.colorText};
+		color: rgba(248, 250, 252, 0.95);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -220,10 +305,56 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		will-change: flex, max-width, opacity, transform;
 	`,
 	islandTextLabelCollapsed: css`
-		flex: 0 1 auto;
-		max-width: 160px;
+		flex: 1 1 auto;
+		max-width: 100%;
 		opacity: 1;
 		transform: translateX(0);
+	`,
+	islandGeneratingBadge: css`
+		display: inline-flex;
+		align-items: center;
+		flex-shrink: 0;
+		padding: 2px 7px;
+		border-radius: 999px;
+		background: rgba(15, 23, 42, 0.46);
+		border: 1px solid rgba(148, 163, 184, 0.22);
+	`,
+	islandGeneratingWave: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+	`,
+	islandGeneratingDot: css`
+		width: 6px;
+		height: 6px;
+		border-radius: 999px;
+		background: #2563eb;
+		box-shadow: 0 0 8px rgba(37, 99, 235, 0.5);
+		animation: islandDotPulse 1.15s ease-in-out infinite;
+
+		&:nth-of-type(2) {
+			animation-delay: 0.12s;
+		}
+
+		&:nth-of-type(3) {
+			animation-delay: 0.24s;
+		}
+
+		@keyframes islandDotPulse {
+			0%,
+			100% {
+				opacity: 0.32;
+				transform: scale(0.9) translateY(0);
+			}
+			50% {
+				opacity: 1;
+				transform: scale(1.15) translateY(-0.5px);
+			}
+		}
+
+		@media (prefers-reduced-motion: reduce) {
+			animation: none;
+		}
 	`,
 	islandTextLabelExpanded: css`
 		flex: 0;
@@ -234,7 +365,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 	`,
 	islandPath: css`
 		font-family: ${token.fontFamilyCode};
-		color: ${token.colorTextSecondary};
+		color: rgba(203, 213, 225, 0.78);
 		font-size: 12px;
 		white-space: nowrap;
 		overflow: hidden;
@@ -247,7 +378,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		will-change: flex, max-width, opacity, transform;
 
 		&:hover {
-			color: ${token.colorText};
+			color: rgba(248, 250, 252, 0.96);
 		}
 	`,
 	islandPathCollapsed: css`
@@ -274,13 +405,13 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
-		color: ${token.colorPrimary};
+		color: rgba(191, 219, 254, 0.98);
 		border-radius: 50%;
 		height: 22px;
 		width: 22px;
 		transition: background 0.2s ease, transform 0.2s ease;
 		&:hover {
-			background: ${token.colorFill};
+			background: rgba(148, 163, 184, 0.22);
 			transform: scale(1.1);
 		}
 	`,
@@ -290,13 +421,14 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		left: 50%;
 		transform: translateX(-50%);
 		z-index: 100;
-		min-width: 280px;
-		max-width: 340px;
-		border-radius: 12px;
-		border: 1px solid ${token.colorBorderSecondary};
-		background: ${token.colorBgElevated};
-		box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.02);
-		padding: 8px 0;
+		width: min(94vw, 640px);
+		min-width: 320px;
+		border-radius: 22px;
+		border: 1px solid rgba(15, 23, 42, 0.12);
+		background: rgba(245, 245, 247, 0.96);
+		backdrop-filter: blur(18px) saturate(1.05);
+		box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18), 0 2px 12px rgba(15, 23, 42, 0.12);
+		padding: 10px 0;
 		animation: dropdownIn 0.18s cubic-bezier(0.32, 0.72, 0, 1);
 
 		@keyframes dropdownIn {
@@ -311,13 +443,13 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		}
 	`,
 	islandDropdownSection: css`
-		padding: 8px 12px 10px;
+		padding: 8px 18px 10px;
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
+		gap: 6px;
 	`,
 	islandDropdownTitle: css`
-		font-size: 13px;
+		font-size: 14px;
 		font-weight: 600;
 		color: ${token.colorText};
 		overflow: hidden;
@@ -328,7 +460,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		display: flex;
 		align-items: center;
 		gap: 4px;
-		font-size: 11px;
+		font-size: 12px;
 		color: ${token.colorTextTertiary};
 	`,
 	islandDropdownInfo: css`
@@ -375,61 +507,117 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 	`,
 	islandDropdownDivider: css`
 		height: 1px;
-		background: ${token.colorBorderSecondary};
-		margin: 0 8px;
+		background: rgba(15, 23, 42, 0.1);
+		margin: 2px 18px;
+	`,
+	islandSessionSearch: css`
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 8px 18px 10px;
+	`,
+	islandSessionSearchIcon: css`
+		flex-shrink: 0;
+		color: ${token.colorTextSecondary};
+		opacity: 0.9;
+	`,
+	islandSessionSearchInput: css`
+		width: 100%;
+		font-size: 16px;
+		font-weight: 600;
+		line-height: 1.3;
+		background: transparent;
+		border: 0;
+		outline: 0;
+		color: ${token.colorText};
+		padding: 4px 0;
+
+		&::placeholder {
+			color: ${token.colorTextSecondary};
+			opacity: 0.9;
+		}
 	`,
 	islandSessionList: css`
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
-		max-height: 180px;
+		gap: 2px;
+		max-height: 360px;
 		overflow-y: auto;
-		margin-top: 6px;
+		padding: 8px 8px 6px;
 	`,
 	islandSessionItem: css`
 		display: flex;
 		width: 100%;
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 2px;
-		padding: 8px 10px;
-		border-radius: 8px;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		padding: 10px 12px;
+		border-radius: 14px;
 		text-align: left;
-		transition: background 0.15s ease, color 0.15s ease;
+		transition: background 0.16s ease, color 0.16s ease;
 
 		&:hover {
-			background: ${token.colorFillTertiary};
+			background: rgba(15, 23, 42, 0.06);
 		}
 	`,
 	islandSessionItemActive: css`
-		background: ${token.colorPrimaryBg};
+		background: rgba(15, 23, 42, 0.08);
 	`,
 	islandSessionItemTitle: css`
-		width: 100%;
-		font-size: 12px;
+		flex: 1;
+		min-width: 0;
+		font-size: clamp(14px, 1.8vw, 16px);
 		font-weight: 500;
 		color: ${token.colorText};
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+		line-height: 1.25;
+	`,
+	islandSessionItemSide: css`
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		flex-shrink: 0;
+		min-width: 72px;
+		justify-content: flex-end;
 	`,
 	islandSessionItemMeta: css`
-		font-size: 11px;
-		color: ${token.colorTextTertiary};
+		font-size: clamp(12px, 1.6vw, 14px);
+		line-height: 1;
+		color: ${token.colorTextSecondary};
+		font-weight: 500;
+		font-variant-numeric: tabular-nums;
+	`,
+	islandSessionItemIndicator: css`
+		width: 12px;
+		height: 12px;
+		border-radius: 999px;
+		border: 2px solid rgba(15, 23, 42, 0.22);
+		flex-shrink: 0;
+	`,
+	islandSessionItemIndicatorActive: css`
+		border-color: rgba(15, 23, 42, 0.7);
+		background: rgba(15, 23, 42, 0.6);
+	`,
+	islandSessionEmpty: css`
+		font-size: 14px;
+		color: ${token.colorTextSecondary};
+		padding: 14px 12px;
 	`,
 	islandDropdownNewBtn: css`
 		display: flex;
 		width: 100%;
 		align-items: center;
 		gap: 8px;
-		padding: 8px 12px;
-		font-size: 13px;
+		padding: 10px 18px;
+		font-size: 14px;
 		color: ${token.colorTextSecondary};
 		border-radius: 0;
 		transition: background 0.15s ease, color 0.15s ease;
 		text-align: left;
 		&:hover {
-			background: ${token.colorFillTertiary};
+			background: rgba(15, 23, 42, 0.06);
 			color: ${token.colorText};
 		}
 	`,
@@ -438,14 +626,14 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
-		color: ${token.colorTextTertiary};
+		color: rgba(226, 232, 240, 0.62);
 		border-radius: 50%;
 		height: 20px;
 		width: 20px;
 		transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 		&:hover {
-			color: ${token.colorText};
-			background: ${token.colorFill};
+			color: rgba(248, 250, 252, 0.96);
+			background: rgba(148, 163, 184, 0.2);
 			transform: scale(1.1);
 		}
 	`,
@@ -482,6 +670,164 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		text-overflow: ellipsis;
 		max-width: 180px;
 	`,
+	mentionPicker: css`
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: calc(100% + 10px);
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		padding: 8px;
+		border-radius: 12px;
+		border: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorBgElevated};
+		box-shadow: ${token.boxShadowSecondary};
+		z-index: 20;
+	`,
+	mentionOption: css`
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: flex-start;
+		padding: 8px 10px;
+		border-radius: 10px;
+		color: ${token.colorTextSecondary};
+		transition: background 0.15s ease, color 0.15s ease;
+		&:hover {
+			background: ${token.colorFillTertiary};
+			color: ${token.colorText};
+		}
+	`,
+	mentionOptionActive: css`
+		background: ${token.colorPrimaryBg};
+		color: ${token.colorPrimary};
+	`,
+	mentionOptionMeta: css`
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-width: 0;
+	`,
+	mentionOptionIcon: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	`,
+	mentionOptionTitle: css`
+		font-size: 13px;
+		font-weight: 500;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	`,
+	messageBodyFrame: css`
+		width: 100%;
+		min-width: 0;
+	`,
+	messageBodyContent: css`
+		width: 100%;
+		min-width: 0;
+	`,
+	userAvatar: css`
+		width: 22px;
+		height: 22px;
+		border-radius: 999px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 11px;
+		font-weight: 600;
+		color: ${token.colorTextSecondary};
+		border: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorBgElevated};
+	`,
+	assistantAvatar: css`
+		width: 22px;
+		height: 22px;
+		border-radius: 999px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorBgElevated};
+	`,
+	codeAvatar: css`
+		width: 22px;
+		height: 22px;
+		border-radius: 999px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorBgElevated};
+	`,
+	userMessageText: css`
+		font-size: 13px;
+		line-height: 1.5;
+		color: ${token.colorText};
+		white-space: pre-wrap;
+		word-break: break-word;
+	`,
+	systemNotice: css`
+		padding: 8px 10px;
+		margin: 2px auto;
+		font-size: 12px;
+		color: ${token.colorTextTertiary};
+		background: ${token.colorFillTertiary};
+		border-radius: 10px;
+	`,
+	emptyState: css`
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 42px 16px 20px;
+		text-align: center;
+	`,
+	emptyIcon: css`
+		width: 34px;
+		height: 34px;
+		border-radius: 999px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		background: ${token.colorBgElevated};
+		border: 1px solid ${token.colorBorderSecondary};
+		margin-bottom: 10px;
+	`,
+	emptyTitle: css`
+		font-size: 14px;
+		font-weight: 600;
+		color: ${token.colorText};
+	`,
+	emptyDesc: css`
+		margin-top: 6px;
+		font-size: 12px;
+		line-height: 1.5;
+		color: ${token.colorTextSecondary};
+	`,
+	streamCursor: css`
+		display: inline-block;
+		width: 2px;
+		height: 1em;
+		margin-left: 2px;
+		vertical-align: text-bottom;
+		background: ${token.colorTextTertiary};
+		animation: streamBlink 1s steps(1, end) infinite;
+
+		@keyframes streamBlink {
+			0%,
+			49% {
+				opacity: 1;
+			}
+			50%,
+			100% {
+				opacity: 0;
+			}
+		}
+	`,
 	scrollArea: css`
 		flex: 1;
 		overflow-y: auto;
@@ -491,6 +837,47 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
+	`,
+	messageMetaRow: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		margin: 1px 0 4px 2px;
+		min-height: 18px;
+	`,
+	messageMetaAvatar: css`
+		width: 18px;
+		height: 18px;
+		border-radius: 999px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border: 1px solid rgba(15, 23, 42, 0.12);
+		background: rgba(255, 255, 255, 0.92);
+		box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+	`,
+	messageMetaLabel: css`
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.01em;
+		color: rgba(15, 23, 42, 0.78);
+	`,
+	messageMetaDot: css`
+		font-size: 10px;
+		color: rgba(15, 23, 42, 0.38);
+	`,
+	messageMetaTime: css`
+		font-size: 11px;
+		color: rgba(15, 23, 42, 0.52);
+		font-variant-numeric: tabular-nums;
+	`,
+	messageMetaStreaming: css`
+		font-size: 10px;
+		font-weight: 500;
+		padding: 1px 6px;
+		border-radius: 999px;
+		color: rgba(37, 99, 235, 0.9);
+		background: rgba(37, 99, 235, 0.12);
 	`,
 	chatItem: css`
 		width: 100%;
@@ -512,11 +899,13 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			.lobe-chat-item {
 				width: 100%;
 				gap: 4px !important;
+				padding: 8px 0 4px !important;
 			}
 			.lobe-chat-item-message {
 				margin-left: 0 !important;
 				margin-right: 0 !important;
 				align-items: flex-start !important;
+				gap: 2px !important;
 			}
 			.lobe-chat-item-message-item {
 				padding: 8px 12px !important;

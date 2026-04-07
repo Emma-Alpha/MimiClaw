@@ -8,6 +8,7 @@ import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import {
 	Plus,
 	Camera,
+	FolderOpen,
 	Paperclip,
 	Mic,
 	ArrowUp,
@@ -47,12 +48,14 @@ type MiniChatComposerProps = {
 	loading: boolean;
 	disabled: boolean;
 	sendDisabled: boolean;
+	isClaudeCodeCliMode: boolean;
 	placeholder: string;
 	attachments: FileAttachment[];
 	droppedPaths: DroppedPathChip[];
 	onRemoveAttachment: (id: string) => void;
 	onPathsChange: (paths: DroppedPathChip[]) => void;
 	onUploadFile: () => void;
+	onUploadFolder: () => void;
 	onScreenshot: () => void;
 	/** Still used by the + file-upload menu; no longer used for voice recording. */
 	stageBufferFiles: (files: globalThis.File[]) => Promise<void>;
@@ -64,6 +67,17 @@ type MiniChatComposerProps = {
 	onCaretChange: (value: number) => void;
 	onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => void;
 	onPressEnter: (event: ReactKeyboardEvent<HTMLElement>) => void;
+	modelLabel: string;
+	onCycleModel: () => void;
+	effortEnabled: boolean;
+	thinkingEnabled: boolean;
+	fastModeEnabled: boolean;
+	onToggleEffort: () => void;
+	onToggleThinking: () => void;
+	onToggleFastMode: () => void;
+	onOpenAccountUsage: () => void;
+	onRewind: () => void;
+	onClearConversation?: () => void;
 	onCompositionStart: () => void;
 	onCompositionEnd: () => void;
 	onFocusChange: (focused: boolean) => void;
@@ -422,6 +436,99 @@ const useComposerStyles = createStyles(({ css, token }) => ({
 			color: ${token.colorTextSecondary};
 		}
 	`,
+	claudeSlashPanel: css`
+		border-radius: 18px;
+		border: 1px solid #b9b9b9;
+		background: #efefef;
+		overflow: hidden;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+	`,
+	claudeSlashSection: css`
+		padding: 10px 0 8px;
+	`,
+	claudeSlashSectionTitle: css`
+		padding: 0 18px 8px;
+		font-size: 16px;
+		font-weight: 500;
+		letter-spacing: 0.1px;
+		color: #9c9c9c;
+	`,
+	claudeSlashDivider: css`
+		height: 1px;
+		background: #b9b9b9;
+	`,
+	claudeSlashItem: css`
+		width: 100%;
+		min-height: 50px;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 0 18px;
+		background: transparent;
+		border: none;
+		text-align: left;
+		font-size: 17px;
+		line-height: 1.25;
+		font-weight: 500;
+		color: #444549;
+	`,
+	claudeSlashItemAction: css`
+		cursor: pointer;
+		transition: background-color 0.15s ease;
+
+		&:hover {
+			background: rgba(17, 24, 39, 0.06);
+		}
+	`,
+	claudeSlashItemStatic: css`
+		user-select: none;
+	`,
+	claudeSlashItemHint: css`
+		font-size: 16px;
+		font-weight: 500;
+		color: #74787f;
+		white-space: nowrap;
+	`,
+	claudeSlashToggle: css`
+		position: relative;
+		width: 80px;
+		height: 32px;
+		border-radius: 16px;
+		background: #d0d2d7;
+		border: 1px solid rgba(0, 0, 0, 0.1);
+		transition: background-color 0.18s ease;
+		flex-shrink: 0;
+	`,
+	claudeSlashToggleOn: css`
+		background: #0c66cc;
+		border-color: #0c66cc;
+	`,
+	claudeSlashToggleDots: css`
+		position: absolute;
+		left: 13px;
+		top: 0;
+		height: 100%;
+		display: inline-flex;
+		align-items: center;
+		gap: 10px;
+	`,
+	claudeSlashToggleDot: css`
+		width: 8px;
+		height: 8px;
+		border-radius: 999px;
+		background: rgba(52, 67, 88, 0.78);
+	`,
+	claudeSlashToggleKnob: css`
+		position: absolute;
+		top: 2px;
+		left: 2px;
+		width: 26px;
+		height: 26px;
+		border-radius: 999px;
+		background: #3b3d42;
+		transition: transform 0.2s ease;
+	`,
 }));
 
 export function MiniChatComposer({
@@ -431,12 +538,14 @@ export function MiniChatComposer({
 	loading,
 	disabled,
 	sendDisabled,
+	isClaudeCodeCliMode,
 	placeholder,
 	attachments,
 	droppedPaths,
 	onRemoveAttachment,
 	onPathsChange,
 	onUploadFile,
+	onUploadFolder,
 	onScreenshot,
 	stageBufferFiles,
 	showMentionPicker,
@@ -447,6 +556,17 @@ export function MiniChatComposer({
 	onCaretChange,
 	onKeyDown,
 	onPressEnter,
+	modelLabel,
+	onCycleModel,
+	effortEnabled,
+	thinkingEnabled,
+	fastModeEnabled,
+	onToggleEffort,
+	onToggleThinking,
+	onToggleFastMode,
+	onOpenAccountUsage,
+	onRewind,
+	onClearConversation,
 	onCompositionStart,
 	onCompositionEnd,
 	onFocusChange,
@@ -460,20 +580,26 @@ export function MiniChatComposer({
 	const [recordingTime, setRecordingTime] = useState(0);
 
 	const handleTranscriptReady = useCallback((text: string) => {
-		onInputChange(text);
-		// Defer the send so the state update has a chance to flush first.
-		queueMicrotask(() => { onSend(); });
-	}, [onInputChange, onSend]);
+		const transcript = text.trim();
+		if (!transcript) return;
+		const current = input.trim();
+		if (!current) {
+			onInputChange(transcript);
+			return;
+		}
+		onInputChange(`${current}\n${transcript}`);
+	}, [input, onInputChange]);
 
 	const { isRecording, isTranscribing, toggleRecording, cancelRecording, stopAndTranscribe } =
 		useVolcengineAsr({ onTranscriptReady: handleTranscriptReady });
 
 	const handleToggleRecording = useCallback(async () => {
+		if (isTranscribing) return;
 		if (!isRecording) {
 			setRecordingTime(0);
 		}
 		await toggleRecording();
-	}, [isRecording, toggleRecording]);
+	}, [isRecording, isTranscribing, toggleRecording]);
 
 	const formatRecordingTime = (seconds: number) => {
 		const m = Math.floor(seconds / 60);
@@ -501,6 +627,10 @@ export function MiniChatComposer({
 		}),
 		[input, droppedPaths],
 	);
+	const showClaudeSlashPanel = useMemo(() => {
+		if (!isClaudeCodeCliMode) return false;
+		return /^\s*\//.test(input);
+	}, [input, isClaudeCodeCliMode]);
 	const updateIsMultiline = useCallback((next: boolean) => {
 		setIsMultiline((previous) => (previous === next ? previous : next));
 	}, []);
@@ -657,6 +787,7 @@ export function MiniChatComposer({
 
 	const hasInput =
 		input.trim().length > 0 || attachments.length > 0 || droppedPaths.length > 0;
+	const sendingDisabledByRecording = isRecording || isTranscribing;
 
 	const renderActions = () => {
 		if (loading) {
@@ -666,6 +797,7 @@ export function MiniChatComposer({
 						type="button"
 						className={cx(styles.micIconBtn, isRecording && styles.micButtonRecording)}
 						onClick={() => { void handleToggleRecording(); }}
+						disabled={isTranscribing}
 						title={isRecording ? '停止录音' : '语音输入'}
 					>
 						<Mic style={{ width: 14, height: 14 }} />
@@ -690,6 +822,7 @@ export function MiniChatComposer({
 						type="button"
 						className={cx(styles.micIconBtn, isRecording && styles.micButtonRecording)}
 						onClick={() => { void handleToggleRecording(); }}
+						disabled={isTranscribing}
 						title={isRecording ? '停止录音' : '语音输入'}
 					>
 						<Mic style={{ width: 14, height: 14 }} />
@@ -697,9 +830,9 @@ export function MiniChatComposer({
 					<button
 						type="button"
 						className={styles.sendButton}
-						disabled={sendDisabled}
+						disabled={sendDisabled || sendingDisabledByRecording}
 						onClick={onSend}
-						title="发送"
+						title={sendingDisabledByRecording ? (isTranscribing ? '正在转写' : '请先停止录音') : '发送'}
 					>
 						<ArrowUp style={{ width: 15, height: 15 }} />
 					</button>
@@ -712,6 +845,7 @@ export function MiniChatComposer({
 				type="button"
 				className={cx(styles.micButton, !isRecording && styles.micButtonHighlighted, isRecording && styles.micButtonRecording)}
 				onClick={() => { void handleToggleRecording(); }}
+				disabled={isTranscribing}
 				title={isRecording ? '停止录音' : '语音输入'}
 			>
 				<Mic style={{ width: 15, height: 15 }} />
@@ -722,6 +856,126 @@ export function MiniChatComposer({
 	return (
 		<>
 			<div className={styles.container}>
+				{showClaudeSlashPanel && (
+					<div className={styles.claudeSlashPanel}>
+						<div className={styles.claudeSlashSection}>
+							<div className={styles.claudeSlashSectionTitle}>Context</div>
+							<button
+								type="button"
+								className={cx(styles.claudeSlashItem, styles.claudeSlashItemAction)}
+								onClick={() => {
+									onUploadFile();
+									onInputChange("");
+								}}
+								disabled={disabled}
+							>
+								<span>Attach file...</span>
+							</button>
+							<button
+								type="button"
+								className={cx(styles.claudeSlashItem, styles.claudeSlashItemAction)}
+								onClick={() => {
+									onUploadFolder();
+									onInputChange("");
+								}}
+								disabled={disabled}
+							>
+								<span>Mention file from this project...</span>
+							</button>
+							<button
+								type="button"
+								className={cx(styles.claudeSlashItem, styles.claudeSlashItemAction)}
+								onClick={() => {
+									onClearConversation?.();
+									onInputChange("");
+								}}
+							>
+								<span>Clear conversation</span>
+							</button>
+							<button
+								type="button"
+								className={cx(styles.claudeSlashItem, styles.claudeSlashItemAction)}
+								onClick={onRewind}
+							>
+								<span>Rewind</span>
+							</button>
+						</div>
+						<div className={styles.claudeSlashDivider} />
+						<div className={styles.claudeSlashSection}>
+							<div className={styles.claudeSlashSectionTitle}>Model</div>
+							<button
+								type="button"
+								className={cx(styles.claudeSlashItem, styles.claudeSlashItemAction)}
+								onClick={onCycleModel}
+							>
+								<span>Switch model...</span>
+								<span className={styles.claudeSlashItemHint}>{modelLabel}</span>
+							</button>
+							<button
+								type="button"
+								className={cx(styles.claudeSlashItem, styles.claudeSlashItemAction)}
+								onClick={onToggleEffort}
+							>
+								<span>{effortEnabled ? "Effort (High)" : "Effort (Default)"}</span>
+								<span
+									className={cx(
+										styles.claudeSlashToggle,
+										effortEnabled && styles.claudeSlashToggleOn,
+									)}
+								>
+									<span className={styles.claudeSlashToggleDots}>
+										<span className={styles.claudeSlashToggleDot} />
+										<span className={styles.claudeSlashToggleDot} />
+									</span>
+									<span
+										className={styles.claudeSlashToggleKnob}
+										style={{
+											transform: effortEnabled ? "translateX(48px)" : "translateX(0)",
+										}}
+									/>
+								</span>
+							</button>
+							<button
+								type="button"
+								className={cx(styles.claudeSlashItem, styles.claudeSlashItemAction)}
+								onClick={onToggleThinking}
+							>
+								<span>Thinking</span>
+								<span
+									className={cx(
+										styles.claudeSlashToggle,
+										thinkingEnabled && styles.claudeSlashToggleOn,
+									)}
+									style={{ width: 80 }}
+								>
+									<span
+										className={styles.claudeSlashToggleKnob}
+										style={{
+											transform: thinkingEnabled ? "translateX(48px)" : "translateX(0)",
+										}}
+									/>
+								</span>
+							</button>
+							<button
+								type="button"
+								className={cx(styles.claudeSlashItem, styles.claudeSlashItemAction)}
+								onClick={onOpenAccountUsage}
+							>
+								<span>Account &amp; usage...</span>
+							</button>
+							<button
+								type="button"
+								className={cx(styles.claudeSlashItem, styles.claudeSlashItemAction)}
+								onClick={onToggleFastMode}
+							>
+								<span>Toggle fast mode (Opus 4.6 only)</span>
+								<span className={styles.claudeSlashItemHint}>
+									{fastModeEnabled ? "On" : "Off"}
+								</span>
+							</button>
+						</div>
+					</div>
+				)}
 
 				{/* Mention Overlay */}
 				{showMentionPicker && (
@@ -855,6 +1109,13 @@ export function MiniChatComposer({
 												disabled,
 											},
 											{
+												key: 'folder',
+												label: '上传文件夹',
+												icon: <FolderOpen className="h-3.5 w-3.5" />,
+												onClick: onUploadFolder,
+												disabled,
+											},
+											{
 												key: 'screenshot',
 												label: '截图',
 												icon: <Camera className="h-3.5 w-3.5" />,
@@ -955,6 +1216,13 @@ export function MiniChatComposer({
 													label: '上传文件',
 													icon: <Paperclip className="h-3.5 w-3.5" />,
 													onClick: onUploadFile,
+													disabled,
+												},
+												{
+													key: 'folder',
+													label: '上传文件夹',
+													icon: <FolderOpen className="h-3.5 w-3.5" />,
+													onClick: onUploadFolder,
 													disabled,
 												},
 												{

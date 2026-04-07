@@ -121,11 +121,13 @@ import {
 } from "../../shared/pet";
 import {
 	applyPetCompanionGrowth,
+	PET_COMPANION_GROWTH_ACTIONS,
 	normalizePetCompanion,
 	rollPetCompanion,
 	type PetCompanionGrowthAction,
 	type StoredPetCompanion,
 } from "../../shared/pet-companion";
+import { getPetCompanionRealUsageSnapshot } from "../utils/pet-real-usage";
 import { PORTS } from "../utils/config";
 import { captureWithSnipaste } from "../utils/snipaste";
 import {
@@ -212,21 +214,116 @@ function buildPetCompanionSeed(
 	return `local:${crypto.randomUUID()}`;
 }
 
+const PET_COMPANION_REAL_SYNC_INTERVAL_MS = 90_000;
+let petCompanionRealSyncAt = 0;
+let petCompanionRealSyncInFlight: Promise<{
+	companion: StoredPetCompanion;
+	changed: boolean;
+}> | null = null;
+
+type PetCompanionRealSyncOptions = {
+	force?: boolean;
+};
+
+async function syncPetCompanionWithRealUsage(
+	companion: StoredPetCompanion,
+	options?: PetCompanionRealSyncOptions,
+): Promise<{ companion: StoredPetCompanion; changed: boolean }> {
+	const now = Date.now();
+	if (
+		!options?.force &&
+		now - petCompanionRealSyncAt < PET_COMPANION_REAL_SYNC_INTERVAL_MS
+	) {
+		return { companion, changed: false };
+	}
+
+	if (petCompanionRealSyncInFlight) {
+		return await petCompanionRealSyncInFlight;
+	}
+
+	petCompanionRealSyncInFlight = (async () => {
+		try {
+			const snapshot = await getPetCompanionRealUsageSnapshot();
+			const nextActivityExp = { ...companion.activityExp };
+			const nextUsage = { ...companion.usage };
+			let nextBondExp = companion.bondExp;
+			let nextLastActiveAt = companion.lastActiveAt;
+			let changed = false;
+
+			for (const action of PET_COMPANION_GROWTH_ACTIONS) {
+				const snapshotExp = Math.max(
+					0,
+					Math.floor(snapshot.activityExp[action] ?? 0),
+				);
+				if (snapshotExp > nextActivityExp[action]) {
+					nextActivityExp[action] = snapshotExp;
+					changed = true;
+				}
+
+				const snapshotUsage = Math.max(0, Math.floor(snapshot.usage[action] ?? 0));
+				if (snapshotUsage > nextUsage[action]) {
+					nextUsage[action] = snapshotUsage;
+					changed = true;
+				}
+			}
+
+			const snapshotBondExp = Math.max(0, Math.floor(snapshot.bondExp));
+			if (snapshotBondExp > nextBondExp) {
+				nextBondExp = snapshotBondExp;
+				changed = true;
+			}
+
+			const snapshotLastActiveAt = Math.max(
+				0,
+				Math.floor(snapshot.lastActiveAt ?? 0),
+			);
+			if (snapshotLastActiveAt > nextLastActiveAt) {
+				nextLastActiveAt = snapshotLastActiveAt;
+				changed = true;
+			}
+
+			if (!changed) {
+				return { companion, changed: false };
+			}
+
+			const merged = normalizePetCompanion({
+				...companion,
+				activityExp: nextActivityExp,
+				usage: nextUsage,
+				bondExp: nextBondExp,
+				lastActiveAt: nextLastActiveAt,
+				updatedAt: Date.now(),
+			});
+			await setSetting("petCompanion", merged as AppSettings["petCompanion"]);
+			return { companion: merged, changed: true };
+		} catch (error) {
+			logger.debug("[pet] Failed to sync companion from real usage:", error);
+			return { companion, changed: false };
+		} finally {
+			petCompanionRealSyncAt = Date.now();
+			petCompanionRealSyncInFlight = null;
+		}
+	})();
+
+	return await petCompanionRealSyncInFlight;
+}
+
 async function ensurePetCompanion(): Promise<StoredPetCompanion> {
 	const stored = await getSetting("petCompanion");
-		if (stored) {
-			const normalized = normalizePetCompanion(stored);
-			if (
-				!("potentialStats" in stored) ||
-				!("usage" in stored) ||
-				!("activityExp" in stored) ||
-				!("bondExp" in stored) ||
-				!("updatedAt" in stored) ||
-				!("lastActiveAt" in stored)
-			) {
-				await setSetting("petCompanion", normalized as AppSettings["petCompanion"]);
-			}
-		return normalized;
+	if (stored) {
+		const normalized = normalizePetCompanion(stored);
+		if (
+			!("potentialStats" in stored) ||
+			!("usage" in stored) ||
+			!("activityExp" in stored) ||
+			!("bondExp" in stored) ||
+			!("updatedAt" in stored) ||
+			!("lastActiveAt" in stored)
+		) {
+			await setSetting("petCompanion", normalized as AppSettings["petCompanion"]);
+		}
+		const syncResult = await syncPetCompanionWithRealUsage(normalized);
+		return syncResult.companion;
 	}
 
 	const storedSeed = await getSetting("petCompanionSeed");
@@ -236,7 +333,10 @@ async function ensurePetCompanion(): Promise<StoredPetCompanion> {
 
 	await setSetting("petCompanionSeed", seed);
 	await setSetting("petCompanion", companion);
-	return companion;
+	const syncResult = await syncPetCompanionWithRealUsage(companion, {
+		force: true,
+	});
+	return syncResult.companion;
 }
 
 async function recordPetCompanionUsage(
@@ -593,6 +693,21 @@ function registerPetHandlers(): void {
 
 	ipcMain.handle("pet:consumeInitialMessage", () => {
 		return consumePendingInitialMessage();
+	});
+
+	ipcMain.handle("pet:syncCompanionProgress", async () => {
+		const companion = await ensurePetCompanion();
+		const syncResult = await syncPetCompanionWithRealUsage(companion, {
+			force: true,
+		});
+		if (syncResult.changed) {
+			await emitPetSettingsUpdated();
+		}
+		return {
+			success: true,
+			changed: syncResult.changed,
+			companion: syncResult.companion,
+		};
 	});
 
 	ipcMain.handle("pet:openMainWindow", (_event) => {

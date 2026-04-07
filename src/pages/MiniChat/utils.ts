@@ -10,8 +10,6 @@ import type {
 const CODE_MODE_PREFIXES = ["@code", "@cli", "@cli编程", "@CLI编程"];
 const CHAT_MODE_PREFIXES = ["@chat"];
 
-export const CODE_TARGET_LABEL = "@CLI 编程";
-
 export const MENTION_OPTIONS: MentionOption[] = [
 	{
 		id: "code",

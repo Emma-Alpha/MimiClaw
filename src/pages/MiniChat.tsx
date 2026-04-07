@@ -11,6 +11,8 @@ import {
 	readFileAsBase64,
 } from "@/components/common/composer-helpers";
 import {
+	fetchCodeAgentSessionHistory,
+	fetchCodeAgentSessions,
 	fetchCodeAgentStatus,
 	fetchLatestCodeAgentRun,
 	inferCodeAgentWorkspaceRoot,
@@ -53,11 +55,11 @@ import type {
 	MiniChatTarget,
 	MiniCodeMessage,
 	MiniCodeMessageImagePreview,
+	MiniCodeMessagePathTag,
 	TimelineItem,
 	ToolActivityItem,
 } from "./MiniChat/types";
 import {
-	CODE_TARGET_LABEL,
 	MENTION_OPTIONS,
 	extractText,
 	getMentionDraft,
@@ -80,10 +82,18 @@ function getChatSessionTitle(
 	);
 }
 
+type HeaderSessionOption = {
+	key: string;
+	title: string;
+	updatedAt: number | null;
+};
+
 export function MiniChat() {
 	const { styles } = useMiniChatStyles();
 	const initSettings = useSettingsStore((state) => state.init);
 	const language = useSettingsStore((state) => state.language);
+	const codeAgentConfig = useSettingsStore((state) => state.codeAgent);
+	const setCodeAgentConfig = useSettingsStore((state) => state.setCodeAgent);
 	const initGateway = useGatewayStore((state) => state.init);
 	const gatewayStatus = useGatewayStore((state) => state.status);
 	const messages = useChatStore((state) => state.messages);
@@ -97,6 +107,7 @@ export function MiniChat() {
 	const sessionLabels = useChatStore((state) => state.sessionLabels);
 	const sessionLastActivity = useChatStore((state) => state.sessionLastActivity);
 	const loadSessions = useChatStore((state) => state.loadSessions);
+	const loadHistory = useChatStore((state) => state.loadHistory);
 	const switchSession = useChatStore((state) => state.switchSession);
 	const newSession = useChatStore((state) => state.newSession);
 	const sendMessage = useChatStore((state) => state.sendMessage);
@@ -116,6 +127,10 @@ export function MiniChat() {
 	const [codeSending, setCodeSending] = useState(false);
 	const [_codeActivities, setCodeActivities] = useState<ToolActivityItem[]>([]);
 	const [codeStreamingText, setCodeStreamingText] = useState("");
+	const [claudeSessions, setClaudeSessions] = useState<HeaderSessionOption[]>(
+		[],
+	);
+	const [activeClaudeSessionId, setActiveClaudeSessionId] = useState("");
 	// Ref keeps the latest activities accessible in callbacks without dep-array churn
 	const codeActivitiesRef = useRef<ToolActivityItem[]>([]);
 	// Snapshot taken at run-completed, before the ref is cleared, so
@@ -154,18 +169,23 @@ export function MiniChat() {
 	const pendingAutoSend = useRef<PetMiniChatSeed | null>(null);
 	const chatSeenAtRef = useRef(new Map<string, number>());
 	const chatSeenCounterRef = useRef(0);
+	const lastHydratedClaudeSessionRef = useRef("");
 	const pushedToolIdsRef = useRef<Set<string>>(new Set());
 	const chatSubmitInFlightRef = useRef(false);
-
-	useEffect(() => {
-		void loadSessions();
-	}, [loadSessions]);
-
 	const gatewayState = gatewayStatus.state;
 	const isConnecting =
 		gatewayState === "starting" || gatewayState === "reconnecting";
 	const isError = gatewayState === "error";
 	const isReady = gatewayState === "running";
+
+	useEffect(() => {
+		void loadSessions();
+	}, [loadSessions]);
+
+	useEffect(() => {
+		if (!isReady) return;
+		void loadSessions();
+	}, [isReady, loadSessions]);
 	const chatSessions = useMemo(
 		() =>
 			[...sessions]
@@ -184,6 +204,97 @@ export function MiniChat() {
 				})),
 		[sessions, sessionLabels, sessionLastActivity],
 	);
+	const resetCodeTimelineState = useCallback(() => {
+		resetCodeAgent();
+		setCodeMessages([]);
+		setCodeStreamingText("");
+		setCodeActivities([]);
+		codeActivitiesRef.current = [];
+		pendingCompletionActivitiesRef.current = [];
+	}, [resetCodeAgent]);
+
+	const loadClaudeSessions = useCallback(async () => {
+		const workspaceRoot = codeWorkspaceRoot.trim();
+		if (!workspaceRoot) {
+			setClaudeSessions([]);
+			setActiveClaudeSessionId("");
+			return;
+		}
+
+		try {
+			const sessionsInWorkspace = await fetchCodeAgentSessions(workspaceRoot, 60);
+			const mapped: HeaderSessionOption[] = sessionsInWorkspace.map((session) => ({
+				key: session.sessionId,
+				title: session.title || session.sessionId,
+				updatedAt:
+					typeof session.updatedAt === "number" && Number.isFinite(session.updatedAt)
+						? session.updatedAt
+						: null,
+			}));
+			setClaudeSessions(mapped);
+			setActiveClaudeSessionId((current) => {
+				if (current && mapped.some((item) => item.key === current)) {
+					return current;
+				}
+				return mapped[0]?.key ?? "";
+			});
+		} catch {
+			setClaudeSessions([]);
+			setActiveClaudeSessionId("");
+		}
+	}, [codeWorkspaceRoot]);
+
+	const hydrateClaudeSessionHistory = useCallback(
+		async (sessionId: string) => {
+			const workspaceRoot = codeWorkspaceRoot.trim();
+			if (!workspaceRoot || !sessionId) return false;
+
+			setActiveClaudeSessionId(sessionId);
+			resetCodeTimelineState();
+			chatSeenAtRef.current.clear();
+			chatSeenCounterRef.current = 0;
+
+				try {
+					const history = await fetchCodeAgentSessionHistory(
+						workspaceRoot,
+						sessionId,
+						300,
+					);
+
+					const mappedMessages: MiniCodeMessage[] = history
+						.filter((message) => typeof message.text === "string" && message.text.trim())
+						.map((message) => ({
+							id: message.id || crypto.randomUUID(),
+							role: message.role,
+							text: message.text,
+							createdAt: message.timestamp,
+						}));
+
+				setCodeMessages(mappedMessages);
+				return true;
+			} catch (error) {
+				setCodeMessages([
+					{
+						id: crypto.randomUUID(),
+						role: "system",
+						text: `加载 Claude 会话失败：${toUserMessage(error)}`,
+						createdAt: Date.now(),
+						isError: true,
+					},
+				]);
+				return false;
+			}
+		},
+		[codeWorkspaceRoot, resetCodeTimelineState],
+	);
+
+	useEffect(() => {
+		void loadClaudeSessions();
+	}, [loadClaudeSessions]);
+
+	useEffect(() => {
+		lastHydratedClaudeSessionRef.current = "";
+	}, [codeWorkspaceRoot]);
 
 	const liveStreamingText = useMemo(() => {
 		const direct = streamingText.trim();
@@ -448,20 +559,96 @@ export function MiniChat() {
 		});
 	}, [applySeedState]);
 
+	const effortEnabled = codeAgentConfig.effort !== "";
+	const thinkingEnabled = codeAgentConfig.thinking !== "disabled";
+	const fastModeEnabled = codeAgentConfig.fastMode === true;
+	const modelLabel = useMemo(() => {
+		const model = (codeAgentConfig.model || "").trim();
+		if (!model) return "Default (recommended)";
+		if (model === "sonnet") return "Sonnet";
+		if (model === "opus") return "Opus";
+		return model;
+	}, [codeAgentConfig.model]);
+
+	const updateCodeAgentConfig = useCallback(
+		(patch: Partial<typeof codeAgentConfig>) => {
+			const latest = useSettingsStore.getState().codeAgent;
+			setCodeAgentConfig({
+				...latest,
+				...patch,
+			});
+		},
+		[setCodeAgentConfig],
+	);
+
+	const handleCycleModel = useCallback(() => {
+		const cycle: Array<"" | "sonnet" | "opus"> = ["", "sonnet", "opus"];
+		const current = (useSettingsStore.getState().codeAgent.model || "").trim();
+		const currentIndex = cycle.indexOf(current as (typeof cycle)[number]);
+		const nextModel =
+			currentIndex === -1 ? "sonnet" : cycle[(currentIndex + 1) % cycle.length];
+		updateCodeAgentConfig({ model: nextModel });
+		void invokeIpc(
+			"pet:pushTerminalLine",
+			`› Model 已切换为 ${nextModel || "Default (recommended)"}`,
+		).catch(() => {});
+	}, [updateCodeAgentConfig]);
+
+	const handleToggleEffort = useCallback(() => {
+		const nextEffort = useSettingsStore.getState().codeAgent.effort ? "" : "high";
+		updateCodeAgentConfig({ effort: nextEffort });
+		void invokeIpc(
+			"pet:pushTerminalLine",
+			`› Effort 已切换为 ${nextEffort || "默认"}`,
+		).catch(() => {});
+	}, [updateCodeAgentConfig]);
+
+	const handleToggleThinking = useCallback(() => {
+		const nextThinking =
+			useSettingsStore.getState().codeAgent.thinking === "disabled"
+				? "enabled"
+				: "disabled";
+		updateCodeAgentConfig({ thinking: nextThinking });
+		void invokeIpc(
+			"pet:pushTerminalLine",
+			`› Thinking 已切换为 ${nextThinking === "disabled" ? "关闭" : "开启"}`,
+		).catch(() => {});
+	}, [updateCodeAgentConfig]);
+
+	const handleToggleFastMode = useCallback(() => {
+		const nextFastMode = !(useSettingsStore.getState().codeAgent.fastMode === true);
+		updateCodeAgentConfig({ fastMode: nextFastMode });
+		void invokeIpc(
+			"pet:pushTerminalLine",
+			`› Fast mode 已切换为 ${nextFastMode ? "开启" : "关闭"}`,
+		).catch(() => {});
+	}, [updateCodeAgentConfig]);
+
 	const runMiniCodeTask = useCallback(
-		async (prompt: string, images?: CodeAgentImageAttachment[], imagePreviews?: MiniCodeMessageImagePreview[]) => {
+		async (
+			prompt: string,
+			images?: CodeAgentImageAttachment[],
+			options?: {
+				imagePreviews?: MiniCodeMessageImagePreview[];
+				pathTags?: MiniCodeMessagePathTag[];
+				displayText?: string;
+			},
+		) => {
 			const workspaceRoot = codeWorkspaceRoot.trim();
 			if (!workspaceRoot || codeSending) return false;
+			const displayText = options?.displayText?.trim() ?? "";
+			const pathTags = options?.pathTags?.length ? options.pathTags : undefined;
 
 			setCodeMessages((previous) => [
 				...previous,
 				{
 					id: crypto.randomUUID(),
 					role: "user",
-					text: prompt,
+					text: displayText || (pathTags?.length ? "" : prompt),
 					createdAt: Date.now(),
-					targetLabel: CODE_TARGET_LABEL,
-					imagePreviews: imagePreviews?.length ? imagePreviews : undefined,
+					imagePreviews:
+						options?.imagePreviews?.length ? options.imagePreviews : undefined,
+					pathTags,
 				},
 			]);
 			// Reset store immediately so the previous run's items don't flash
@@ -475,15 +662,36 @@ export function MiniChat() {
 			);
 
 			try {
+				const latestCodeAgentConfig = useSettingsStore.getState().codeAgent;
 				const result = await runCodeAgentTask({
 					workspaceRoot,
 					prompt,
 					images: images?.length ? images : undefined,
+					sessionId: activeClaudeSessionId || undefined,
+					configOverride: {
+						model: latestCodeAgentConfig.model,
+						fallbackModel: latestCodeAgentConfig.fallbackModel,
+						effort: latestCodeAgentConfig.effort,
+						thinking: latestCodeAgentConfig.thinking,
+						fastMode: latestCodeAgentConfig.fastMode === true,
+					},
 					metadata: {
 						source: "pet-mini-chat",
 						ui: "floating-pet",
 					},
 				});
+
+				const metadata =
+					result.metadata && typeof result.metadata === "object"
+						? (result.metadata as Record<string, unknown>)
+						: null;
+				const resultSessionId =
+					metadata && typeof metadata.sessionId === "string"
+						? metadata.sessionId.trim()
+						: "";
+				if (resultSessionId) {
+					setActiveClaudeSessionId(resultSessionId);
+				}
 
 				const outputText =
 					result.output?.trim() || result.summary || "任务已完成";
@@ -535,9 +743,16 @@ export function MiniChat() {
 						setCodeAgentStatus(status);
 					})
 					.catch(() => {});
+				void loadClaudeSessions();
 			}
 		},
-		[codeSending, codeWorkspaceRoot, resetCodeAgent],
+		[
+			activeClaudeSessionId,
+			codeSending,
+			codeWorkspaceRoot,
+			loadClaudeSessions,
+			resetCodeAgent,
+		],
 	);
 
 	const submitPrompt = useCallback(
@@ -596,6 +811,10 @@ export function MiniChat() {
 				},
 				[],
 			);
+			const mergedPathTags = mergeUnifiedComposerPaths(
+				effectivePaths,
+				codeAttachmentPaths,
+			);
 
 			const hasNonImageAttachments = codeAttachmentPaths.length > 0;
 			const prompt =
@@ -635,7 +854,11 @@ export function MiniChat() {
 			if (!codeWorkspaceRoot.trim()) return false;
 
 			clearComposer();
-			return runMiniCodeTask(prompt, imageAttachments, imagePreviews);
+			return runMiniCodeTask(prompt, imageAttachments, {
+				imagePreviews,
+				pathTags: mergedPathTags,
+				displayText: rawText,
+			});
 		},
 		[
 			attachments,
@@ -741,14 +964,117 @@ export function MiniChat() {
 		codeStreamingText,
 	]);
 
+	const draftIntent = useMemo(() => parseSubmissionIntent(input), [input]);
+	const draftTarget = selectedMode || persistentMode || draftIntent.target;
+
+	useEffect(() => {
+		if (draftTarget !== "code") return;
+		if (!activeClaudeSessionId) return;
+		if (codeMessages.length > 0 || codeSending) return;
+		if (lastHydratedClaudeSessionRef.current === activeClaudeSessionId) return;
+		lastHydratedClaudeSessionRef.current = activeClaudeSessionId;
+		void hydrateClaudeSessionHistory(activeClaudeSessionId);
+	}, [
+		activeClaudeSessionId,
+		codeMessages.length,
+		codeSending,
+		draftTarget,
+		hydrateClaudeSessionHistory,
+	]);
+
 	const handleClose = useCallback(() => {
 		void invokeIpc("pet:closeMiniChat");
 	}, []);
 
 	const handleNewConversation = useCallback(() => {
-		resetCodeAgent();
-		setCodeMessages([]);
-	}, [resetCodeAgent]);
+		resetCodeTimelineState();
+		chatSeenAtRef.current.clear();
+		chatSeenCounterRef.current = 0;
+		clearComposer();
+		if (draftTarget === "code") {
+			lastHydratedClaudeSessionRef.current = "";
+			setActiveClaudeSessionId("");
+			return;
+		}
+		newSession();
+		void loadSessions();
+	}, [
+		clearComposer,
+		draftTarget,
+		loadSessions,
+		newSession,
+		resetCodeTimelineState,
+	]);
+
+	const handleSwitchSession = useCallback(
+		(key: string) => {
+			if (!key) return;
+
+			if (draftTarget === "code") {
+				if (key === activeClaudeSessionId) return;
+				lastHydratedClaudeSessionRef.current = "";
+				setActiveClaudeSessionId(key);
+				resetCodeTimelineState();
+				chatSeenAtRef.current.clear();
+				chatSeenCounterRef.current = 0;
+				return;
+			}
+
+			if (key === currentSessionKey) return;
+
+			// MiniChat timeline mixes chat history + local code timeline.
+			// When switching chat session, clear local code-only entries so
+			// the newly loaded session history is immediately visible.
+			resetCodeTimelineState();
+			chatSeenAtRef.current.clear();
+			chatSeenCounterRef.current = 0;
+
+			switchSession(key);
+			// Defensive refresh: ensures MiniChat view always hydrates history
+			// even when session change originated outside the main Chat page.
+			void loadHistory(true);
+		},
+		[
+			activeClaudeSessionId,
+			currentSessionKey,
+			draftTarget,
+			loadHistory,
+			resetCodeTimelineState,
+			switchSession,
+		],
+	);
+
+	const handleRewindConversation = useCallback(() => {
+		if (draftTarget !== "code") return;
+		if (claudeSessions.length <= 1) {
+			void invokeIpc("pet:pushTerminalLine", "› 没有可回退的会话").catch(
+				() => {},
+			);
+			return;
+		}
+		const currentIndex = claudeSessions.findIndex(
+			(item) => item.key === activeClaudeSessionId,
+		);
+		const fallbackIndex = currentIndex === -1 ? 0 : currentIndex + 1;
+		const target = claudeSessions[fallbackIndex];
+		if (!target) {
+			void invokeIpc("pet:pushTerminalLine", "› 已经是最早会话").catch(() => {});
+			return;
+		}
+		handleSwitchSession(target.key);
+		void invokeIpc(
+			"pet:pushTerminalLine",
+			`› Rewind 到会话: ${target.title}`,
+		).catch(() => {});
+	}, [activeClaudeSessionId, claudeSessions, draftTarget, handleSwitchSession]);
+
+	const handleOpenAccountUsage = useCallback(() => {
+		void invokeIpc("pet:openMainWindow").catch(() => {});
+		void invokeIpc(
+			"pet:pushTerminalLine",
+			"› 已打开主窗口，可在 Models/Settings 查看账户与用量",
+		).catch(() => {});
+	}, []);
 
 	const handlePermissionDecision = useCallback(
 		async (requestId: string, decision: "allow" | "deny") => {
@@ -906,6 +1232,22 @@ export function MiniChat() {
 			);
 		}
 	}, []);
+
+	const handleUploadFolder = useCallback(async () => {
+		const result = (await invokeIpc("dialog:open", {
+			properties: ["openDirectory", "multiSelections"],
+		})) as { canceled: boolean; filePaths?: string[] };
+		if (result.canceled || !result.filePaths?.length) return;
+
+		const folderPaths: UnifiedComposerPath[] = result.filePaths.map(
+			(absolutePath) => ({
+				absolutePath,
+				name: absolutePath.split(/[\\/]/).pop() || absolutePath,
+				isDirectory: true,
+			}),
+		);
+		applyDroppedPaths(folderPaths);
+	}, [applyDroppedPaths]);
 
 	const stageBufferFiles = useCallback(async (files: globalThis.File[]) => {
 		for (const file of files) {
@@ -1118,8 +1460,6 @@ export function MiniChat() {
 		() => messages.filter(isVisibleMessage).slice(-10),
 		[messages],
 	);
-	const draftIntent = useMemo(() => parseSubmissionIntent(input), [input]);
-	const draftTarget = selectedMode || persistentMode || draftIntent.target;
 	const disableComposer =
 		draftTarget === "chat"
 			? isConnecting || isError || sending || codeSending
@@ -1141,6 +1481,16 @@ export function MiniChat() {
 		disableComposer ||
 		showMentionPicker ||
 		(draftTarget === "code" && !codeWorkspaceRoot.trim());
+	const headerSessions =
+		draftTarget === "code" ? claudeSessions : chatSessions;
+	const headerSessionKey =
+		draftTarget === "code" ? activeClaudeSessionId : currentSessionKey;
+	const isHeaderGenerating =
+		sending ||
+		codeSending ||
+		pendingFinal ||
+		Boolean(liveStreamingText) ||
+		codeStreaming.isStreaming;
 
 	const handleOpenFull = useCallback(() => {
 		void invokeIpc(
@@ -1189,12 +1539,13 @@ export function MiniChat() {
 			<MiniChatHeader
 				draftTarget={draftTarget}
 				codeSending={codeSending}
+				isGenerating={isHeaderGenerating}
 				codeAgentStatus={codeAgentStatus}
 				sessionInit={sessionInit}
 				sessionTitle={sessionTitle}
 				lastUpdatedAt={lastUpdatedAt}
-				chatSessions={chatSessions}
-				currentSessionKey={currentSessionKey}
+				chatSessions={headerSessions}
+				currentSessionKey={headerSessionKey}
 				isReady={isReady}
 				isError={isError}
 				isConnecting={isConnecting}
@@ -1206,7 +1557,7 @@ export function MiniChat() {
 					void handlePickWorkspace();
 				}}
 				onNewConversation={handleNewConversation}
-				onSwitchSession={switchSession}
+				onSwitchSession={handleSwitchSession}
 			/>
 
 			<MiniChatTimeline
@@ -1267,6 +1618,7 @@ export function MiniChat() {
 					loading={sending || codeSending}
 					disabled={disableComposer}
 					sendDisabled={sendDisabled}
+					isClaudeCodeCliMode={draftTarget === "code"}
 					placeholder={composerPlaceholder}
 					attachments={attachments}
 					droppedPaths={droppedPaths}
@@ -1278,6 +1630,9 @@ export function MiniChat() {
 					onPathsChange={setDroppedPaths}
 					onUploadFile={() => {
 						void handleUploadFile();
+					}}
+					onUploadFolder={() => {
+						void handleUploadFolder();
 					}}
 					onScreenshot={() => {
 						void handleScreenshot();
@@ -1294,6 +1649,17 @@ export function MiniChat() {
 					onCaretChange={setCaretIndex}
 					onKeyDown={handleKeyDown}
 					onPressEnter={handlePressEnter}
+					modelLabel={modelLabel}
+					onCycleModel={handleCycleModel}
+					effortEnabled={effortEnabled}
+					thinkingEnabled={thinkingEnabled}
+					fastModeEnabled={fastModeEnabled}
+					onToggleEffort={handleToggleEffort}
+					onToggleThinking={handleToggleThinking}
+					onToggleFastMode={handleToggleFastMode}
+					onOpenAccountUsage={handleOpenAccountUsage}
+					onRewind={handleRewindConversation}
+					onClearConversation={handleNewConversation}
 					onCompositionStart={() => setIsComposing(true)}
 					onCompositionEnd={() => setIsComposing(false)}
 					onFocusChange={setIsInputFocused}

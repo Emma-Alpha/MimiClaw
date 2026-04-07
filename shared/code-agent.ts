@@ -4,12 +4,17 @@ export type CodeAgentLifecycleState = 'stopped' | 'starting' | 'running' | 'erro
 export type CodeAgentRunStatus = 'completed' | 'failed' | 'not_implemented' | 'analysis_only' | 'cancelled';
 export type CodeAgentExecutionMode = 'cli' | 'snapshot';
 export type CodeAgentPermissionMode = 'acceptEdits' | 'bypassPermissions' | 'default' | 'dontAsk' | 'plan' | 'auto';
+export type CodeAgentEffortLevel = 'low' | 'medium' | 'high' | 'max' | '';
+export type CodeAgentThinkingMode = 'enabled' | 'adaptive' | 'disabled';
 
 export interface CodeAgentRuntimeConfig {
   executionMode: CodeAgentExecutionMode;
   cliPath: string;
   model: string;
   fallbackModel: string;
+  effort: CodeAgentEffortLevel;
+  thinking: CodeAgentThinkingMode;
+  fastMode: boolean;
   baseUrl: string;
   apiKey: string;
   permissionMode: CodeAgentPermissionMode;
@@ -22,6 +27,9 @@ export const DEFAULT_CODE_AGENT_RUNTIME_CONFIG: CodeAgentRuntimeConfig = {
   cliPath: 'claude',
   model: '',
   fallbackModel: '',
+  effort: '',
+  thinking: 'enabled',
+  fastMode: false,
   baseUrl: '',
   apiKey: '',
   permissionMode: 'default',
@@ -107,4 +115,17 @@ export interface CodeAgentRunRecord {
   request: Pick<CodeAgentRunRequest, 'workspaceRoot' | 'prompt' | 'images' | 'sessionId' | 'allowedTools' | 'metadata' | 'timeoutMs' | 'configOverride'>;
   result?: CodeAgentRunResult;
   error?: string;
+}
+
+export interface CodeAgentSessionSummary {
+  sessionId: string;
+  title: string;
+  updatedAt: number;
+}
+
+export interface CodeAgentSessionMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  timestamp: number;
 }

@@ -1,7 +1,214 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import type { CodeAgentRunRequest } from '../../../shared/code-agent';
+import { promises as fs } from 'node:fs';
+import { homedir } from 'node:os';
+import { basename, join, resolve } from 'node:path';
+import type {
+  CodeAgentRunRequest,
+  CodeAgentSessionMessage,
+  CodeAgentSessionSummary,
+} from '../../../shared/code-agent';
 import type { HostApiContext } from '../context';
 import { parseJsonBody, sendJson } from '../route-utils';
+
+function toTimestampMs(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value < 1e12 ? value * 1000 : value;
+  }
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) return parsed;
+    const num = Number(value);
+    if (Number.isFinite(num)) return num < 1e12 ? num * 1000 : num;
+  }
+  return null;
+}
+
+function encodeClaudeProjectPath(workspaceRoot: string): string {
+  return resolve(workspaceRoot).replace(/[^A-Za-z0-9]/g, '-');
+}
+
+async function resolveClaudeProjectDir(workspaceRoot: string): Promise<string | null> {
+  const projectsRoot = join(homedir(), '.claude', 'projects');
+  const direct = join(projectsRoot, encodeClaudeProjectPath(workspaceRoot));
+
+  try {
+    const stat = await fs.stat(direct);
+    if (stat.isDirectory()) return direct;
+  } catch {
+    // fallback below
+  }
+
+  try {
+    const entries = await fs.readdir(projectsRoot, { withFileTypes: true });
+    const needle = basename(resolve(workspaceRoot)).replace(/[^A-Za-z0-9]/g, '').toLowerCase();
+    if (!needle) return null;
+    const match = entries.find((entry) =>
+      entry.isDirectory() && entry.name.replace(/[^A-Za-z0-9]/g, '').toLowerCase().includes(needle),
+    );
+    return match ? join(projectsRoot, match.name) : null;
+  } catch {
+    return null;
+  }
+}
+
+function extractTextFromContent(content: unknown): string {
+  if (typeof content === 'string') return content.trim();
+  if (Array.isArray(content)) {
+    const parts: string[] = [];
+    for (const block of content as Array<Record<string, unknown>>) {
+      if (block?.type === 'text' && typeof block.text === 'string' && block.text.trim()) {
+        parts.push(block.text.trim());
+      }
+    }
+    return parts.join('\n').trim();
+  }
+  if (content && typeof content === 'object') {
+    const record = content as Record<string, unknown>;
+    if (typeof record.text === 'string') return record.text.trim();
+  }
+  return '';
+}
+
+function sanitizeUserText(text: string): string {
+  return text
+    .replace(/<local-command-caveat>[\s\S]*?<\/local-command-caveat>/gi, '')
+    .replace(/<local-command-[^>]+>[\s\S]*?<\/local-command-[^>]+>/gi, '')
+    .replace(/<command-name>[\s\S]*?<\/command-name>/gi, '')
+    .replace(/<command-message>[\s\S]*?<\/command-message>/gi, '')
+    .replace(/<command-args>[\s\S]*?<\/command-args>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extractUserMessageText(message: unknown): string {
+  if (!message || typeof message !== 'object') return '';
+  const record = message as Record<string, unknown>;
+  const role = typeof record.role === 'string' ? record.role : '';
+  if (role && role !== 'user') return '';
+  const contentText = extractTextFromContent(record.content);
+  return sanitizeUserText(contentText);
+}
+
+function extractAssistantMessageText(message: unknown): string {
+  if (!message || typeof message !== 'object') return '';
+  const record = message as Record<string, unknown>;
+  const role = typeof record.role === 'string' ? record.role : '';
+  if (role && role !== 'assistant') return '';
+  return extractTextFromContent(record.content);
+}
+
+async function listClaudeCodeSessions(
+  workspaceRoot: string,
+  limit = 30,
+): Promise<CodeAgentSessionSummary[]> {
+  const projectDir = await resolveClaudeProjectDir(workspaceRoot);
+  if (!projectDir) return [];
+
+  const entries = await fs.readdir(projectDir, { withFileTypes: true });
+  const files = entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.jsonl'))
+    .map((entry) => entry.name);
+
+  const sessionSummaries = await Promise.all(
+    files.map(async (fileName): Promise<CodeAgentSessionSummary | null> => {
+      const sessionId = fileName.replace(/\.jsonl$/i, '');
+      const filePath = join(projectDir, fileName);
+
+      let updatedAt = 0;
+      let title = '';
+
+      try {
+        const stat = await fs.stat(filePath);
+        updatedAt = stat.mtimeMs;
+      } catch {
+        // ignore stat failures
+      }
+
+      try {
+        const raw = await fs.readFile(filePath, 'utf8');
+        const lines = raw.split(/\r?\n/).filter(Boolean);
+        for (const line of lines) {
+          try {
+            const row = JSON.parse(line) as Record<string, unknown>;
+            const ts = toTimestampMs(row.timestamp);
+            if (ts && ts > updatedAt) updatedAt = ts;
+
+            if (!title && row.type === 'user' && row.isMeta !== true) {
+              const text = extractUserMessageText(row.message);
+              if (text) {
+                title = text.length > 50 ? `${text.slice(0, 50)}…` : text;
+              }
+            }
+          } catch {
+            // ignore malformed lines
+          }
+        }
+      } catch {
+        return null;
+      }
+
+      return {
+        sessionId,
+        title: title || sessionId,
+        updatedAt: updatedAt || Date.now(),
+      };
+    }),
+  );
+
+  return sessionSummaries
+    .filter((item): item is CodeAgentSessionSummary => Boolean(item))
+    .sort((left, right) => right.updatedAt - left.updatedAt)
+    .slice(0, Math.max(1, limit));
+}
+
+async function loadClaudeCodeSessionHistory(
+  workspaceRoot: string,
+  sessionId: string,
+  limit = 120,
+): Promise<CodeAgentSessionMessage[]> {
+  const projectDir = await resolveClaudeProjectDir(workspaceRoot);
+  if (!projectDir) return [];
+
+  const safeSessionId = basename(sessionId).replace(/\.jsonl$/i, '');
+  if (!safeSessionId) return [];
+
+  const filePath = join(projectDir, `${safeSessionId}.jsonl`);
+  const raw = await fs.readFile(filePath, 'utf8');
+  const lines = raw.split(/\r?\n/).filter(Boolean);
+  const messages: CodeAgentSessionMessage[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line) continue;
+
+    try {
+      const row = JSON.parse(line) as Record<string, unknown>;
+      const type = typeof row.type === 'string' ? row.type : '';
+      const timestamp = toTimestampMs(row.timestamp) ?? Date.now();
+      const id = typeof row.uuid === 'string' ? row.uuid : `${safeSessionId}-${index}`;
+
+      if (type === 'user') {
+        if (row.isMeta === true) continue;
+        const text = extractUserMessageText(row.message);
+        if (!text) continue;
+        messages.push({ id, role: 'user', text, timestamp });
+        continue;
+      }
+
+      if (type === 'assistant') {
+        const text = extractAssistantMessageText(row.message);
+        if (!text) continue;
+        messages.push({ id, role: 'assistant', text, timestamp });
+      }
+    } catch {
+      // ignore malformed lines
+    }
+  }
+
+  if (messages.length <= limit) return messages;
+  return messages.slice(messages.length - limit);
+}
 
 export async function handleCodeAgentRoutes(
   req: IncomingMessage,
@@ -24,6 +231,48 @@ export async function handleCodeAgentRoutes(
       success: true,
       run: ctx.codeAgentManager.getLastRun(),
     });
+    return true;
+  }
+
+  if (url.pathname === '/api/code-agent/sessions' && req.method === 'GET') {
+    try {
+      const workspaceRoot = url.searchParams.get('workspaceRoot')?.trim() || '';
+      const limit = Number(url.searchParams.get('limit') ?? 30);
+      if (!workspaceRoot) {
+        sendJson(res, 400, { success: false, error: 'workspaceRoot is required' });
+        return true;
+      }
+
+      const sessions = await listClaudeCodeSessions(
+        workspaceRoot,
+        Number.isFinite(limit) && limit > 0 ? Math.min(Math.floor(limit), 200) : 30,
+      );
+      sendJson(res, 200, { success: true, sessions });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
+  if (url.pathname === '/api/code-agent/session-history' && req.method === 'GET') {
+    try {
+      const workspaceRoot = url.searchParams.get('workspaceRoot')?.trim() || '';
+      const sessionId = url.searchParams.get('sessionId')?.trim() || '';
+      const limit = Number(url.searchParams.get('limit') ?? 120);
+      if (!workspaceRoot || !sessionId) {
+        sendJson(res, 400, { success: false, error: 'workspaceRoot and sessionId are required' });
+        return true;
+      }
+
+      const messages = await loadClaudeCodeSessionHistory(
+        workspaceRoot,
+        sessionId,
+        Number.isFinite(limit) && limit > 0 ? Math.min(Math.floor(limit), 500) : 120,
+      );
+      sendJson(res, 200, { success: true, messages });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
     return true;
   }
 
