@@ -21,6 +21,7 @@ import {
 import { invokeIpc, toUserMessage } from "@/lib/api-client";
 import { subscribeHostEvent } from "@/lib/host-events";
 import { hostApiFetch } from "@/lib/host-api";
+import { useCodeAgentStore } from "@/stores/code-agent";
 import {
 	mergeUnifiedComposerPaths,
 	toCliSubmission,
@@ -31,8 +32,11 @@ import i18n from "@/i18n";
 import { useChatStore, type RawMessage } from "@/stores/chat";
 import { useGatewayStore } from "@/stores/gateway";
 import { useSettingsStore } from "@/stores/settings";
-import type { CodeAgentStatus } from "../../shared/code-agent";
-import type { CodeAgentPermissionRequest } from "../../shared/code-agent";
+import type {
+	CodeAgentImageAttachment,
+	CodeAgentPermissionRequest,
+	CodeAgentStatus,
+} from "../../shared/code-agent";
 import type {
 	PetMiniChatSeed,
 	PetMiniChatSeedAttachment,
@@ -41,11 +45,14 @@ import { MiniChatComposer } from "./MiniChat/components/MiniChatComposer";
 import { MiniChatHeader } from "./MiniChat/components/MiniChatHeader";
 import { MiniChatPermissionCard } from "./MiniChat/components/MiniChatPermissionCard";
 import { MiniChatTimeline } from "./MiniChat/components/MiniChatTimeline";
+import { PermissionDispatcher } from "./MiniChat/components/code-agent/permissions/PermissionDispatcher";
+import { ElicitationForm } from "./MiniChat/components/code-agent/ElicitationForm";
 import { useMiniChatStyles } from "./MiniChat/styles";
 import type {
 	MentionOption,
 	MiniChatTarget,
 	MiniCodeMessage,
+	MiniCodeMessageImagePreview,
 	TimelineItem,
 	ToolActivityItem,
 } from "./MiniChat/types";
@@ -61,6 +68,18 @@ import {
 	removeTrailingMention,
 } from "./MiniChat/utils";
 
+function getChatSessionTitle(
+	session: { key: string; label?: string; displayName?: string },
+	sessionLabels: Record<string, string>,
+) {
+	return (
+		sessionLabels[session.key] ||
+		session.label ||
+		session.displayName ||
+		session.key
+	);
+}
+
 export function MiniChat() {
 	const { styles } = useMiniChatStyles();
 	const initSettings = useSettingsStore((state) => state.init);
@@ -73,6 +92,12 @@ export function MiniChat() {
 	const streamingMessage = useChatStore((state) => state.streamingMessage);
 	const streamingTools = useChatStore((state) => state.streamingTools);
 	const pendingFinal = useChatStore((state) => state.pendingFinal);
+	const sessions = useChatStore((state) => state.sessions);
+	const currentSessionKey = useChatStore((state) => state.currentSessionKey);
+	const sessionLabels = useChatStore((state) => state.sessionLabels);
+	const sessionLastActivity = useChatStore((state) => state.sessionLastActivity);
+	const loadSessions = useChatStore((state) => state.loadSessions);
+	const switchSession = useChatStore((state) => state.switchSession);
 	const newSession = useChatStore((state) => state.newSession);
 	const sendMessage = useChatStore((state) => state.sendMessage);
 
@@ -89,13 +114,34 @@ export function MiniChat() {
 	const [activeMentionIndex, setActiveMentionIndex] = useState(0);
 	const [codeMessages, setCodeMessages] = useState<MiniCodeMessage[]>([]);
 	const [codeSending, setCodeSending] = useState(false);
-	const [codeActivities, setCodeActivities] = useState<ToolActivityItem[]>([]);
+	const [_codeActivities, setCodeActivities] = useState<ToolActivityItem[]>([]);
+	const [codeStreamingText, setCodeStreamingText] = useState("");
 	// Ref keeps the latest activities accessible in callbacks without dep-array churn
 	const codeActivitiesRef = useRef<ToolActivityItem[]>([]);
 	// Snapshot taken at run-completed, before the ref is cleared, so
 	// runMiniCodeTask can attach it to the completed message even if another
 	// run starts before the promise resolves.
 	const pendingCompletionActivitiesRef = useRef<ToolActivityItem[]>([]);
+
+	// New SDK-message driven store
+	const pushSdkMessage = useCodeAgentStore((s) => s.pushSdkMessage);
+	const resetCodeAgent = useCodeAgentStore((s) => s.reset);
+	const codeAgentItems = useCodeAgentStore((s) => s.items);
+	const codeStreaming = useCodeAgentStore((s) => s.streaming);
+	const codeAgentPendingPermission = useCodeAgentStore(
+		(s) => s.pendingPermission,
+	);
+	const setCodeAgentPendingPermission = useCodeAgentStore(
+		(s) => s.setPendingPermission,
+	);
+	const resolveCodeAgentPermission = useCodeAgentStore(
+		(s) => s.resolvePermission,
+	);
+	const pendingElicitation = useCodeAgentStore((s) => s.pendingElicitation);
+	const resolveElicitation = useCodeAgentStore((s) => s.resolveElicitation);
+	const sessionInit = useCodeAgentStore((s) => s.sessionInit);
+	const sessionTitle = useCodeAgentStore((s) => s.sessionTitle);
+	const lastUpdatedAt = useCodeAgentStore((s) => s.lastUpdatedAt);
 	const [codeAgentStatus, setCodeAgentStatus] =
 		useState<CodeAgentStatus | null>(null);
 	const [codeWorkspaceRoot, setCodeWorkspaceRoot] = useState(() =>
@@ -109,12 +155,36 @@ export function MiniChat() {
 	const chatSeenAtRef = useRef(new Map<string, number>());
 	const chatSeenCounterRef = useRef(0);
 	const pushedToolIdsRef = useRef<Set<string>>(new Set());
+	const chatSubmitInFlightRef = useRef(false);
+
+	useEffect(() => {
+		void loadSessions();
+	}, [loadSessions]);
 
 	const gatewayState = gatewayStatus.state;
 	const isConnecting =
 		gatewayState === "starting" || gatewayState === "reconnecting";
 	const isError = gatewayState === "error";
 	const isReady = gatewayState === "running";
+	const chatSessions = useMemo(
+		() =>
+			[...sessions]
+				.sort((left, right) => {
+					const rightUpdated =
+						sessionLastActivity[right.key] ?? right.updatedAt ?? 0;
+					const leftUpdated =
+						sessionLastActivity[left.key] ?? left.updatedAt ?? 0;
+					return rightUpdated - leftUpdated;
+				})
+				.map((session) => ({
+					key: session.key,
+					title: getChatSessionTitle(session, sessionLabels),
+					updatedAt:
+						sessionLastActivity[session.key] ?? session.updatedAt ?? null,
+				})),
+		[sessions, sessionLabels, sessionLastActivity],
+	);
+
 	const liveStreamingText = useMemo(() => {
 		const direct = streamingText.trim();
 		if (direct) return direct;
@@ -213,11 +283,43 @@ export function MiniChat() {
 			}
 		});
 
+		const unsubscribeToolResult = subscribeHostEvent<{
+			toolId: string;
+			resultSummary: string;
+		}>("code-agent:tool-result", (payload) => {
+			if (payload?.toolId && payload?.resultSummary) {
+				setCodeActivities((prev) => {
+					const updated = prev.map((act) =>
+						act.toolId === payload.toolId
+							? { ...act, resultSummary: payload.resultSummary }
+							: act,
+					);
+					codeActivitiesRef.current = updated;
+					return updated;
+				});
+			}
+		});
+
+		const appendStreamingText =
+			useCodeAgentStore.getState().appendStreamingText;
+		const unsubscribeToken = subscribeHostEvent<{ text: string }>(
+			"code-agent:token",
+			(payload) => {
+				if (payload?.text) {
+					setCodeStreamingText((prev) => prev + payload.text);
+					// Also feed the new store so CodeTimeline shows live streaming text
+					appendStreamingText(payload.text);
+				}
+			},
+		);
+
 		const unsubscribeRunStarted = subscribeHostEvent(
 			"code-agent:run-started",
 			() => {
+				setCodeStreamingText("");
 				setCodeActivities([]);
 				codeActivitiesRef.current = [];
+				resetCodeAgent();
 			},
 		);
 
@@ -228,6 +330,7 @@ export function MiniChat() {
 				// attach them to the completed message even if another run
 				// starts (and clears the ref) before the promise resolves.
 				pendingCompletionActivitiesRef.current = [...codeActivitiesRef.current];
+				setCodeStreamingText("");
 				setCodeActivities([]);
 				codeActivitiesRef.current = [];
 			},
@@ -237,29 +340,48 @@ export function MiniChat() {
 			"code-agent:run-failed",
 			() => {
 				pendingCompletionActivitiesRef.current = [...codeActivitiesRef.current];
+				setCodeStreamingText("");
 				setCodeActivities([]);
 				codeActivitiesRef.current = [];
 			},
 		);
 
-		const unsubscribePermission = subscribeHostEvent<CodeAgentPermissionRequest>(
-			"code-agent:permission-request",
+		const unsubscribePermission =
+			subscribeHostEvent<CodeAgentPermissionRequest>(
+				"code-agent:permission-request",
+				(payload) => {
+					if (payload && typeof payload.requestId === "string") {
+						setPendingPermission(payload);
+						setCodeAgentPendingPermission({
+							requestId: payload.requestId,
+							toolName: payload.toolName,
+							inputSummary: payload.inputSummary,
+							rawInput: payload.rawInput ?? {},
+						});
+					}
+				},
+			);
+
+		const unsubscribeSdkMessage = subscribeHostEvent<unknown>(
+			"code-agent:sdk-message",
 			(payload) => {
-				if (payload && typeof payload.requestId === "string") {
-					setPendingPermission(payload);
-				}
+				pushSdkMessage(payload);
 			},
 		);
 
 		return () => {
+			unsubscribeToken();
 			unsubscribeStatus();
 			unsubscribeActivity();
+			unsubscribeToolResult();
 			unsubscribeRunStarted();
 			unsubscribeRunDone();
 			unsubscribeRunFailed();
 			unsubscribePermission();
+			unsubscribeSdkMessage();
 		};
-	}, []);
+		// appendStreamingText is accessed via getState() inside the effect, so no dep needed
+	}, [pushSdkMessage, resetCodeAgent, setCodeAgentPendingPermission]);
 
 	useEffect(() => {
 		writeStoredCodeAgentWorkspaceRoot(codeWorkspaceRoot.trim());
@@ -327,7 +449,7 @@ export function MiniChat() {
 	}, [applySeedState]);
 
 	const runMiniCodeTask = useCallback(
-		async (prompt: string) => {
+		async (prompt: string, images?: CodeAgentImageAttachment[], imagePreviews?: MiniCodeMessageImagePreview[]) => {
 			const workspaceRoot = codeWorkspaceRoot.trim();
 			if (!workspaceRoot || codeSending) return false;
 
@@ -339,8 +461,12 @@ export function MiniChat() {
 					text: prompt,
 					createdAt: Date.now(),
 					targetLabel: CODE_TARGET_LABEL,
+					imagePreviews: imagePreviews?.length ? imagePreviews : undefined,
 				},
 			]);
+			// Reset store immediately so the previous run's items don't flash
+			// before the code-agent:run-started event fires.
+			resetCodeAgent();
 			setCodeSending(true);
 
 			await invokeIpc(
@@ -352,6 +478,7 @@ export function MiniChat() {
 				const result = await runCodeAgentTask({
 					workspaceRoot,
 					prompt,
+					images: images?.length ? images : undefined,
 					metadata: {
 						source: "pet-mini-chat",
 						ui: "floating-pet",
@@ -410,7 +537,7 @@ export function MiniChat() {
 					.catch(() => {});
 			}
 		},
-		[codeSending, codeWorkspaceRoot],
+		[codeSending, codeWorkspaceRoot, resetCodeAgent],
 	);
 
 	const submitPrompt = useCallback(
@@ -429,11 +556,59 @@ export function MiniChat() {
 			const effectiveAttachments =
 				(attachmentOverride as FileAttachment[] | undefined) ?? attachments;
 			const effectivePaths = pathOverride ?? droppedPaths;
+			const readyAttachments = effectiveAttachments.filter(
+				(attachment) => attachment.status === "ready",
+			);
+			const allAttachmentsReady =
+				effectiveAttachments.length === 0 ||
+				readyAttachments.length === effectiveAttachments.length;
+
+			// Avoid racing "paste/upload -> immediate Enter": send only when all attachments
+			// have finished staging, otherwise code/chat targets may miss files.
+			if (!allAttachmentsReady) return false;
+
+			const isImageMime = (mime: string) =>
+				/^image\/(png|jpe?g|gif|webp|bmp|svg\+xml)$/i.test(mime);
+
+			const imageAttachments: CodeAgentImageAttachment[] = [];
+			const imagePreviews: MiniCodeMessageImagePreview[] = [];
+			const codeAttachmentPaths = readyAttachments.reduce<UnifiedComposerPath[]>(
+				(accumulator, attachment) => {
+					const absolutePath = attachment.stagedPath?.trim();
+					if (!absolutePath) return accumulator;
+					if (target === "code" && isImageMime(attachment.mimeType)) {
+						imageAttachments.push({
+							filePath: absolutePath,
+							mimeType: attachment.mimeType,
+						});
+						imagePreviews.push({
+							preview: attachment.preview,
+							fileName: attachment.fileName,
+						});
+						return accumulator;
+					}
+					accumulator.push({
+						absolutePath,
+						name: attachment.fileName || absolutePath.split(/[\\/]/).pop() || absolutePath,
+						isDirectory: false,
+					});
+					return accumulator;
+				},
+				[],
+			);
+
+			const hasNonImageAttachments = codeAttachmentPaths.length > 0;
 			const prompt =
 				target === "code"
 					? toCliSubmission({
-							text: rawText,
-							paths: effectivePaths,
+							text:
+								hasNonImageAttachments
+									? `${rawText}\n\n请优先读取并分析已附带的文件路径。`
+									: rawText,
+							paths: mergeUnifiedComposerPaths(
+								effectivePaths,
+								codeAttachmentPaths,
+							),
 						}).prompt
 					: toMiniChatSubmission({
 							text: rawText,
@@ -441,23 +616,26 @@ export function MiniChat() {
 							attachments: effectiveAttachments,
 						}).prompt;
 
-			if (!prompt && effectiveAttachments.length === 0) return false;
-
-			const readyAttachments = effectiveAttachments.filter(
-				(attachment) => attachment.status === "ready",
-			);
+			if (!prompt && effectiveAttachments.length === 0 && imageAttachments.length === 0) return false;
 
 			if (target === "chat") {
-				if (!isReady || sending) return false;
+				const { sending: sendingNow } = useChatStore.getState();
+				if (!isReady || sendingNow || chatSubmitInFlightRef.current)
+					return false;
+				chatSubmitInFlightRef.current = true;
 				clearComposer();
-				await sendMessage(prompt, readyAttachments);
-				return true;
+				try {
+					await sendMessage(prompt, readyAttachments);
+					return true;
+				} finally {
+					chatSubmitInFlightRef.current = false;
+				}
 			}
 
 			if (!codeWorkspaceRoot.trim()) return false;
 
 			clearComposer();
-			return runMiniCodeTask(prompt);
+			return runMiniCodeTask(prompt, imageAttachments, imagePreviews);
 		},
 		[
 			attachments,
@@ -469,7 +647,6 @@ export function MiniChat() {
 			persistentMode,
 			selectedMode,
 			sendMessage,
-			sending,
 		],
 	);
 
@@ -555,18 +732,31 @@ export function MiniChat() {
 
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-	}, [messages, liveStreamingText, sending, codeMessages, codeSending]);
+	}, [
+		messages,
+		liveStreamingText,
+		sending,
+		codeMessages,
+		codeSending,
+		codeStreamingText,
+	]);
 
 	const handleClose = useCallback(() => {
 		void invokeIpc("pet:closeMiniChat");
 	}, []);
 
+	const handleNewConversation = useCallback(() => {
+		resetCodeAgent();
+		setCodeMessages([]);
+	}, [resetCodeAgent]);
+
 	const handlePermissionDecision = useCallback(
 		async (requestId: string, decision: "allow" | "deny") => {
 			setPendingPermission(null);
+			setCodeAgentPendingPermission(null);
 			await invokeIpc("code-agent:respond-permission", { requestId, decision });
 		},
-		[],
+		[setCodeAgentPendingPermission],
 	);
 
 	const handlePickWorkspace = useCallback(async () => {
@@ -623,16 +813,30 @@ export function MiniChat() {
 		setCaretIndex(nextInput.length);
 	}, [input]);
 
+	const allComposerAttachmentsReady =
+		attachments.length === 0 || attachments.every((attachment) => attachment.status === "ready");
+
 	const handleSend = useCallback(async () => {
 		if (
-			(!input.trim() && attachments.length === 0 && droppedPaths.length === 0) ||
+			(!input.trim() &&
+					attachments.length === 0 &&
+					droppedPaths.length === 0) ||
+			!allComposerAttachmentsReady ||
 			sending ||
 			codeSending
 		) {
 			return;
 		}
 		await submitPrompt(input);
-	}, [attachments.length, codeSending, droppedPaths.length, input, sending, submitPrompt]);
+	}, [
+		allComposerAttachmentsReady,
+		attachments.length,
+		codeSending,
+		droppedPaths.length,
+		input,
+		sending,
+		submitPrompt,
+	]);
 
 	const handleUploadFile = useCallback(async () => {
 		try {
@@ -933,6 +1137,7 @@ export function MiniChat() {
 
 	const sendDisabled =
 		(!input.trim() && attachments.length === 0 && droppedPaths.length === 0) ||
+		!allComposerAttachmentsReady ||
 		disableComposer ||
 		showMentionPicker ||
 		(draftTarget === "code" && !codeWorkspaceRoot.trim());
@@ -985,6 +1190,11 @@ export function MiniChat() {
 				draftTarget={draftTarget}
 				codeSending={codeSending}
 				codeAgentStatus={codeAgentStatus}
+				sessionInit={sessionInit}
+				sessionTitle={sessionTitle}
+				lastUpdatedAt={lastUpdatedAt}
+				chatSessions={chatSessions}
+				currentSessionKey={currentSessionKey}
 				isReady={isReady}
 				isError={isError}
 				isConnecting={isConnecting}
@@ -995,6 +1205,8 @@ export function MiniChat() {
 				onPickWorkspace={() => {
 					void handlePickWorkspace();
 				}}
+				onNewConversation={handleNewConversation}
+				onSwitchSession={switchSession}
 			/>
 
 			<MiniChatTimeline
@@ -1003,16 +1215,46 @@ export function MiniChat() {
 				streamingText={liveStreamingText}
 				pendingFinal={pendingFinal}
 				codeSending={codeSending}
-				codeActivities={codeActivities}
+				codeAgentItems={codeAgentItems}
+				streamingThinkingText={codeStreaming.thinkingText}
+				streamingAssistantText={codeStreaming.assistantText}
+				isThinking={codeStreaming.isThinking}
+				isCodeStreaming={codeStreaming.isStreaming}
+				codeWorkspaceRoot={codeWorkspaceRoot}
 				messagesEndRef={messagesEndRef}
 			/>
 
 			<div className={styles.inputDock}>
-				{pendingPermission && (
+				{/* New SDK-driven permission dispatcher (tool-specific UI) */}
+				{codeAgentPendingPermission && (
+					<PermissionDispatcher
+						permission={codeAgentPendingPermission}
+						onDecision={(requestId, decision) => {
+							resolveCodeAgentPermission(requestId, decision);
+							void handlePermissionDecision(requestId, decision);
+						}}
+					/>
+				)}
+				{/* Legacy permission fallback for non-SDK paths */}
+				{pendingPermission && !codeAgentPendingPermission && (
 					<MiniChatPermissionCard
 						request={pendingPermission}
 						onDecision={(requestId, decision) => {
 							void handlePermissionDecision(requestId, decision);
+						}}
+					/>
+				)}
+				{/* MCP Elicitation form */}
+				{pendingElicitation && (
+					<ElicitationForm
+						elicitation={pendingElicitation}
+						onSubmit={(action, content) => {
+							resolveElicitation(action, content);
+							void invokeIpc("code-agent:respond-elicitation", {
+								elicitationId: pendingElicitation.elicitationId,
+								action,
+								content,
+							}).catch(() => {});
 						}}
 					/>
 				)}

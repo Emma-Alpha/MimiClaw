@@ -1,4 +1,7 @@
-import type { KeyboardEvent as ReactKeyboardEvent } from "react";
+import type {
+	ClipboardEvent as ReactClipboardEvent,
+	KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 
@@ -435,7 +438,7 @@ export function MiniChatComposer({
 	onPathsChange,
 	onUploadFile,
 	onScreenshot,
-	stageBufferFiles: _stageBufferFiles,
+	stageBufferFiles,
 	showMentionPicker,
 	mentionOptions,
 	activeMentionIndex,
@@ -533,6 +536,27 @@ export function MiniChatComposer({
 			}
 		},
 		[droppedPaths, input, onInputChange],
+	);
+
+	const handlePaste = useCallback(
+		(event: ReactClipboardEvent<HTMLDivElement>) => {
+			if (disabled) return;
+			const items = event.clipboardData?.items;
+			if (!items?.length) return;
+
+			const files: globalThis.File[] = [];
+			for (const item of Array.from(items)) {
+				if (item.kind !== "file") continue;
+				const file = item.getAsFile();
+				if (!file) continue;
+				files.push(file);
+			}
+
+			if (files.length === 0) return;
+			event.preventDefault();
+			void stageBufferFiles(files);
+		},
+		[disabled, stageBufferFiles],
 	);
 
 	// ── Drag-and-drop path attachment ────────────────────────────
@@ -875,6 +899,7 @@ export function MiniChatComposer({
 									onKeyDown={onKeyDown}
 									onPressEnter={onPressEnter}
 									onCaretChange={onCaretChange}
+									onPaste={handlePaste}
 									onVisualMultilineChange={updateIsMultiline}
 								/>
 							</div>

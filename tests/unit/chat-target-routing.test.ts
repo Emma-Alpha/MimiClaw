@@ -187,4 +187,71 @@ describe('chat target routing', () => {
     expect(payload.message).toBe('Process the attached file(s).');
     expect(payload.media[0]?.filePath).toBe('/tmp/design.png');
   });
+
+  it('ignores overlapping sends while a previous send invocation is still in flight', async () => {
+    const { useChatStore } = await import('@/stores/chat');
+
+    let resolveHistory: ((value: { messages: [] }) => void) | null = null;
+    gatewayRpcMock.mockImplementation((method: string) => {
+      if (method === 'chat.history') {
+        return new Promise<{ messages: [] }>((resolve) => {
+          resolveHistory = resolve;
+        });
+      }
+      if (method === 'chat.send') {
+        return Promise.resolve({ runId: 'run-text' });
+      }
+      if (method === 'chat.abort') {
+        return Promise.resolve({ ok: true });
+      }
+      if (method === 'sessions.list') {
+        return Promise.resolve({ sessions: [] });
+      }
+      throw new Error(`Unexpected gateway RPC: ${method}`);
+    });
+
+    useChatStore.setState({
+      currentSessionKey: 'agent:main:main',
+      currentAgentId: 'main',
+      sessions: [{ key: 'agent:main:main' }],
+      messages: [],
+      sessionLabels: {},
+      sessionLastActivity: {},
+      sending: false,
+      activeRunId: null,
+      streamingText: '',
+      streamingMessage: null,
+      streamingTools: [],
+      pendingFinal: false,
+      lastUserMessageAt: null,
+      pendingToolImages: [],
+      error: null,
+      loading: false,
+      thinkingLevel: null,
+      showThinking: true,
+    });
+
+    const first = useChatStore.getState().sendMessage('First question', undefined, 'research');
+    const second = useChatStore.getState().sendMessage('Second question', undefined, 'research');
+
+    await Promise.resolve();
+    expect(resolveHistory).not.toBeNull();
+    resolveHistory?.({ messages: [] });
+
+    await Promise.all([first, second]);
+
+    const sendCalls = gatewayRpcMock.mock.calls.filter(([method]) => method === 'chat.send');
+    expect(sendCalls).toHaveLength(1);
+    expect(sendCalls[0]?.[1]).toMatchObject({
+      sessionKey: 'agent:research:desk',
+      message: 'First question',
+      deliver: false,
+    });
+
+    const userMessages = useChatStore
+      .getState()
+      .messages.filter((message) => message.role === 'user')
+      .map((message) => String(message.content));
+    expect(userMessages).toEqual(['First question']);
+  });
 });

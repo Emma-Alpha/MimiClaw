@@ -16,6 +16,8 @@ let pendingDroppedPaths: string[] = [];
 
 const MINI_CHAT_WIDTH = 360;
 const MINI_CHAT_HEIGHT = 520;
+const MINI_CHAT_MIN_WIDTH = 300;
+const MINI_CHAT_MIN_HEIGHT = 360;
 
 function getMiniChatWindowUrl():
 	| { type: "url"; value: string }
@@ -136,12 +138,14 @@ async function createMiniChatWindow(): Promise<BrowserWindow> {
 	const win = new BrowserWindow({
 		width: MINI_CHAT_WIDTH,
 		height: MINI_CHAT_HEIGHT,
+		minWidth: MINI_CHAT_MIN_WIDTH,
+		minHeight: MINI_CHAT_MIN_HEIGHT,
 		x: pos.x,
 		y: pos.y,
 		useContentSize: true,
 		frame: false,
 		transparent: false,
-		resizable: false,
+		resizable: true,
 		maximizable: false,
 		minimizable: false,
 		fullscreenable: false,
