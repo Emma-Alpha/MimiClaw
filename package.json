@@ -1,6 +1,6 @@
 {
     "name": "jizhi",
-    "version": "0.1.25",
+    "version": "0.1.26",
     "pnpm": {
         "onlyBuiltDependencies": [
             "@discordjs/opus",
@@ -92,6 +92,7 @@
         "@lobehub/fluent-emoji": "^4.1.0",
         "@lobehub/icons": "^5.2.0",
         "@lobehub/ui": "^5.6.1",
+        "@rjsf/core": "^6.4.2",
         "antd": "^6.3.4",
         "antd-style": "^4.1.0",
         "clawhub": "^0.5.0",

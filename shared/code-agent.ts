@@ -24,7 +24,7 @@ export const DEFAULT_CODE_AGENT_RUNTIME_CONFIG: CodeAgentRuntimeConfig = {
   fallbackModel: '',
   baseUrl: '',
   apiKey: '',
-  permissionMode: 'acceptEdits',
+  permissionMode: 'default',
   allowedTools: [],
   appendSystemPrompt: '',
 };
@@ -76,9 +76,15 @@ export interface CodeAgentHealth extends CodeAgentDescriptor {
   inheritedApiKey?: boolean;
 }
 
+export interface CodeAgentImageAttachment {
+  filePath: string;
+  mimeType: string;
+}
+
 export interface CodeAgentRunRequest {
   workspaceRoot: string;
   prompt: string;
+  images?: CodeAgentImageAttachment[];
   sessionId?: string;
   allowedTools?: string[];
   metadata?: Record<string, unknown>;
@@ -98,7 +104,7 @@ export interface CodeAgentRunResult {
 export interface CodeAgentRunRecord {
   startedAt: number;
   completedAt?: number;
-  request: Pick<CodeAgentRunRequest, 'workspaceRoot' | 'prompt' | 'sessionId' | 'allowedTools' | 'metadata' | 'timeoutMs' | 'configOverride'>;
+  request: Pick<CodeAgentRunRequest, 'workspaceRoot' | 'prompt' | 'images' | 'sessionId' | 'allowedTools' | 'metadata' | 'timeoutMs' | 'configOverride'>;
   result?: CodeAgentRunResult;
   error?: string;
 }

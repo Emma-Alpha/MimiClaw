@@ -112,6 +112,17 @@ const useFeedStyles = createStyles(({ token, css }) => ({
 		flex: 1;
 	`,
 
+	// Result summary shown below the tool name (e.g. "66 lines of output")
+	toolResult: css`
+		font-size: 11px;
+		color: ${token.colorTextQuaternary};
+		padding-left: 22px; /* align with tool name */
+		margin-top: -1px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	`,
+
 	// "Thinking…" placeholder when no tools yet
 	thinking: css`
 		display: flex;
@@ -191,13 +202,14 @@ export function CodeAgentFeed({
 	return (
 		<div className={styles.root}>
 			{/* Tool-use rows */}
-			{hasActivities
-				? activities.map((act, idx) => {
-						const isLast = idx === activities.length - 1;
-						const isActive = isLast && isRunning;
-						const label = getToolLabel(act.toolName);
-						return (
-							<div key={act.id} className={styles.row}>
+		{hasActivities
+			? activities.map((act, idx) => {
+					const isLast = idx === activities.length - 1;
+					const isActive = isLast && isRunning;
+					const label = getToolLabel(act.toolName);
+					return (
+						<div key={act.id}>
+							<div className={styles.row}>
 								<span
 									className={cx(
 										styles.dot,
@@ -219,8 +231,12 @@ export function CodeAgentFeed({
 									<span className={styles.toolArg}>{act.inputSummary}</span>
 								) : null}
 							</div>
-						);
-					})
+							{!isActive && act.resultSummary ? (
+								<div className={styles.toolResult}>{act.resultSummary}</div>
+							) : null}
+						</div>
+					);
+				})
 				: isRunning && !hasText
 					? (
 						<div className={styles.thinking}>

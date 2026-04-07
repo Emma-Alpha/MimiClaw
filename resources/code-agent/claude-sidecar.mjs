@@ -95,10 +95,12 @@ async function handleRequest(method, params) {
     }
 
     const descriptor = buildDescriptor(params?.config);
+    const images = Array.isArray(params?.images) ? params.images : [];
     const analysis = await runSnapshotAnalysis({
       vendorPath: descriptor.vendorPath,
       workspaceRoot,
       prompt,
+      images,
       bunAvailable: descriptor.bunAvailable,
       config: params?.config,
       sessionId: typeof params?.sessionId === 'string' ? params.sessionId : '',
@@ -129,6 +131,26 @@ async function handleRequest(method, params) {
               toolName: payload.toolName,
               inputSummary: typeof payload.inputSummary === 'string' ? payload.inputSummary : '',
             },
+          });
+        }
+        // Forward tool result summaries so the renderer can annotate each activity row.
+        if (payload && payload.step === 'run:tool-result' && typeof payload.toolId === 'string' && payload.resultSummary) {
+          send({
+            type: 'event',
+            event: 'code-agent:tool-result',
+            payload: {
+              toolId: payload.toolId,
+              resultSummary: payload.resultSummary,
+            },
+          });
+        }
+        // Forward the raw SDK message so the renderer can power its full CLI UI
+        // without re-parsing or re-deriving information already in the protocol.
+        if (payload && payload.step === 'run:sdk-message' && payload.raw && typeof payload.raw.type === 'string') {
+          send({
+            type: 'event',
+            event: 'code-agent:sdk-message',
+            payload: payload.raw,
           });
         }
       },

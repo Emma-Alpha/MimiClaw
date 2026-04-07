@@ -140,6 +140,7 @@ let _historyPollTimer: ReturnType<typeof setTimeout> | null = null;
 // error (e.g. "terminated"), it may retry internally and recover. We wait
 // before committing the error to give the recovery path a chance.
 let _errorRecoveryTimer: ReturnType<typeof setTimeout> | null = null;
+let _sendMessageInFlight = false;
 let _loadSessionsInFlight: Promise<void> | null = null;
 let _lastLoadSessionsAt = 0;
 const _historyLoadInFlight = new Map<string, Promise<void>>();
@@ -1563,170 +1564,185 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const trimmed = text.trim();
     if (!trimmed && (!attachments || attachments.length === 0)) return;
 
-    const targetSessionKey = resolveMainSessionKeyForAgent(targetAgentId) ?? get().currentSessionKey;
-
-    if (targetSessionKey !== get().currentSessionKey) {
-      set((s) => buildSessionSwitchPatch(s, targetSessionKey));
-      await get().loadHistory(true);
+    if (_sendMessageInFlight) {
+      console.warn('[sendMessage] Ignored overlapping send invocation');
+      return;
     }
 
-    const currentSessionKey = targetSessionKey;
-
-    // Add user message optimistically (with local file metadata for UI display)
-    const nowMs = Date.now();
-    const userMsg: RawMessage = {
-      role: 'user',
-      content: trimmed || (attachments?.length ? '(file attached)' : ''),
-      timestamp: nowMs / 1000,
-      id: crypto.randomUUID(),
-      _attachedFiles: attachments?.map(a => ({
-        fileName: a.fileName,
-        mimeType: a.mimeType,
-        fileSize: a.fileSize,
-        preview: a.preview,
-        filePath: a.stagedPath,
-      })),
-    };
-    set((s) => ({
-      messages: [...s.messages, userMsg],
-      sending: true,
-      error: null,
-      streamingText: '',
-      streamingMessage: null,
-      streamingTools: [],
-      pendingFinal: false,
-      lastUserMessageAt: nowMs,
-    }));
-
-    // Update session label with first user message text as soon as it's sent
-    const { sessionLabels, messages } = get();
-    const isFirstMessage = !messages.slice(0, -1).some((m) => m.role === 'user');
-    if (!currentSessionKey.endsWith(':main') && isFirstMessage && !sessionLabels[currentSessionKey] && trimmed) {
-      const truncated = trimmed.length > 50 ? `${trimmed.slice(0, 50)}…` : trimmed;
-      set((s) => ({ sessionLabels: { ...s.sessionLabels, [currentSessionKey]: truncated } }));
+    if (get().sending) {
+      console.warn('[sendMessage] Ignored send while another run is active');
+      return;
     }
 
-    // Mark this session as most recently active
-    set((s) => ({ sessionLastActivity: { ...s.sessionLastActivity, [currentSessionKey]: nowMs } }));
-
-    // Start the history poll and safety timeout IMMEDIATELY (before the
-    // RPC await) because the gateway's chat.send RPC may block until the
-    // entire agentic conversation finishes — the poll must run in parallel.
-    _lastChatEventAt = Date.now();
-    clearHistoryPoll();
-    clearErrorRecoveryTimer();
-
-    const POLL_START_DELAY = 3_000;
-    const POLL_INTERVAL = 4_000;
-    const pollHistory = () => {
-      const state = get();
-      if (!state.sending) { clearHistoryPoll(); return; }
-      if (state.streamingMessage) {
-        _historyPollTimer = setTimeout(pollHistory, POLL_INTERVAL);
-        return;
-      }
-      if (Date.now() - _lastChatEventAt < HISTORY_POLL_SILENCE_WINDOW_MS) {
-        _historyPollTimer = setTimeout(pollHistory, POLL_INTERVAL);
-        return;
-      }
-      state.loadHistory(true);
-      _historyPollTimer = setTimeout(pollHistory, POLL_INTERVAL);
-    };
-    _historyPollTimer = setTimeout(pollHistory, POLL_START_DELAY);
-
-    const SAFETY_TIMEOUT_MS = 90_000;
-    const checkStuck = () => {
-      const state = get();
-      if (!state.sending) return;
-      if (state.streamingMessage || state.streamingText) return;
-      if (state.pendingFinal) {
-        setTimeout(checkStuck, 10_000);
-        return;
-      }
-      if (Date.now() - _lastChatEventAt < SAFETY_TIMEOUT_MS) {
-        setTimeout(checkStuck, 10_000);
-        return;
-      }
-      clearHistoryPoll();
-      set({
-        error: 'No response received from the model. The provider may be unavailable or the API key may have insufficient quota. Please check your provider settings.',
-        sending: false,
-        activeRunId: null,
-        lastUserMessageAt: null,
-      });
-    };
-    setTimeout(checkStuck, 30_000);
-
+    _sendMessageInFlight = true;
     try {
-      const idempotencyKey = crypto.randomUUID();
-      const hasMedia = attachments && attachments.length > 0;
-      if (hasMedia) {
-        console.log('[sendMessage] Media paths:', attachments!.map(a => a.stagedPath));
+      const targetSessionKey = resolveMainSessionKeyForAgent(targetAgentId) ?? get().currentSessionKey;
+
+      if (targetSessionKey !== get().currentSessionKey) {
+        set((s) => buildSessionSwitchPatch(s, targetSessionKey));
+        await get().loadHistory(true);
       }
 
-      // Cache image attachments BEFORE the IPC call to avoid race condition:
-      // history may reload (via Gateway event) before the RPC returns.
-      // Keyed by staged file path which appears in [media attached: <path> ...].
-      if (hasMedia && attachments) {
-        for (const a of attachments) {
-          _imageCache.set(a.stagedPath, {
-            fileName: a.fileName,
-            mimeType: a.mimeType,
-            fileSize: a.fileSize,
-            preview: a.preview,
-          });
+      const currentSessionKey = targetSessionKey;
+
+      // Add user message optimistically (with local file metadata for UI display)
+      const nowMs = Date.now();
+      const userMsg: RawMessage = {
+        role: 'user',
+        content: trimmed || (attachments?.length ? '(file attached)' : ''),
+        timestamp: nowMs / 1000,
+        id: crypto.randomUUID(),
+        _attachedFiles: attachments?.map(a => ({
+          fileName: a.fileName,
+          mimeType: a.mimeType,
+          fileSize: a.fileSize,
+          preview: a.preview,
+          filePath: a.stagedPath,
+        })),
+      };
+      set((s) => ({
+        messages: [...s.messages, userMsg],
+        sending: true,
+        error: null,
+        streamingText: '',
+        streamingMessage: null,
+        streamingTools: [],
+        pendingFinal: false,
+        lastUserMessageAt: nowMs,
+      }));
+
+      // Update session label with first user message text as soon as it's sent
+      const { sessionLabels, messages } = get();
+      const isFirstMessage = !messages.slice(0, -1).some((m) => m.role === 'user');
+      if (!currentSessionKey.endsWith(':main') && isFirstMessage && !sessionLabels[currentSessionKey] && trimmed) {
+        const truncated = trimmed.length > 50 ? `${trimmed.slice(0, 50)}…` : trimmed;
+        set((s) => ({ sessionLabels: { ...s.sessionLabels, [currentSessionKey]: truncated } }));
+      }
+
+      // Mark this session as most recently active
+      set((s) => ({ sessionLastActivity: { ...s.sessionLastActivity, [currentSessionKey]: nowMs } }));
+
+      // Start the history poll and safety timeout IMMEDIATELY (before the
+      // RPC await) because the gateway's chat.send RPC may block until the
+      // entire agentic conversation finishes — the poll must run in parallel.
+      _lastChatEventAt = Date.now();
+      clearHistoryPoll();
+      clearErrorRecoveryTimer();
+
+      const POLL_START_DELAY = 3_000;
+      const POLL_INTERVAL = 4_000;
+      const pollHistory = () => {
+        const state = get();
+        if (!state.sending) { clearHistoryPoll(); return; }
+        if (state.streamingMessage) {
+          _historyPollTimer = setTimeout(pollHistory, POLL_INTERVAL);
+          return;
         }
-        saveImageCache(_imageCache);
-      }
+        if (Date.now() - _lastChatEventAt < HISTORY_POLL_SILENCE_WINDOW_MS) {
+          _historyPollTimer = setTimeout(pollHistory, POLL_INTERVAL);
+          return;
+        }
+        state.loadHistory(true);
+        _historyPollTimer = setTimeout(pollHistory, POLL_INTERVAL);
+      };
+      _historyPollTimer = setTimeout(pollHistory, POLL_START_DELAY);
 
-      let result: { success: boolean; result?: { runId?: string }; error?: string };
+      const SAFETY_TIMEOUT_MS = 90_000;
+      const checkStuck = () => {
+        const state = get();
+        if (!state.sending) return;
+        if (state.streamingMessage || state.streamingText) return;
+        if (state.pendingFinal) {
+          setTimeout(checkStuck, 10_000);
+          return;
+        }
+        if (Date.now() - _lastChatEventAt < SAFETY_TIMEOUT_MS) {
+          setTimeout(checkStuck, 10_000);
+          return;
+        }
+        clearHistoryPoll();
+        set({
+          error: 'No response received from the model. The provider may be unavailable or the API key may have insufficient quota. Please check your provider settings.',
+          sending: false,
+          activeRunId: null,
+          lastUserMessageAt: null,
+        });
+      };
+      setTimeout(checkStuck, 30_000);
 
-      // Longer timeout for chat sends to tolerate high-latency networks (avoids connect error)
-      const CHAT_SEND_TIMEOUT_MS = 120_000;
+      try {
+        const idempotencyKey = crypto.randomUUID();
+        const hasMedia = attachments && attachments.length > 0;
+        if (hasMedia) {
+          console.log('[sendMessage] Media paths:', attachments!.map(a => a.stagedPath));
+        }
 
-      if (hasMedia) {
-        result = await hostApiFetch<{ success: boolean; result?: { runId?: string }; error?: string }>(
-          '/api/chat/send-with-media',
-          {
-            method: 'POST',
-            body: JSON.stringify({
+        // Cache image attachments BEFORE the IPC call to avoid race condition:
+        // history may reload (via Gateway event) before the RPC returns.
+        // Keyed by staged file path which appears in [media attached: <path> ...].
+        if (hasMedia && attachments) {
+          for (const a of attachments) {
+            _imageCache.set(a.stagedPath, {
+              fileName: a.fileName,
+              mimeType: a.mimeType,
+              fileSize: a.fileSize,
+              preview: a.preview,
+            });
+          }
+          saveImageCache(_imageCache);
+        }
+
+        let result: { success: boolean; result?: { runId?: string }; error?: string };
+
+        // Longer timeout for chat sends to tolerate high-latency networks (avoids connect error)
+        const CHAT_SEND_TIMEOUT_MS = 120_000;
+
+        if (hasMedia) {
+          result = await hostApiFetch<{ success: boolean; result?: { runId?: string }; error?: string }>(
+            '/api/chat/send-with-media',
+            {
+              method: 'POST',
+              body: JSON.stringify({
+                sessionKey: currentSessionKey,
+                message: trimmed || 'Process the attached file(s).',
+                deliver: false,
+                idempotencyKey,
+                media: attachments.map((a) => ({
+                  filePath: a.stagedPath,
+                  mimeType: a.mimeType,
+                  fileName: a.fileName,
+                })),
+              }),
+            },
+          );
+        } else {
+          const rpcResult = await useGatewayStore.getState().rpc<{ runId?: string }>(
+            'chat.send',
+            {
               sessionKey: currentSessionKey,
-              message: trimmed || 'Process the attached file(s).',
+              message: trimmed,
               deliver: false,
               idempotencyKey,
-              media: attachments.map((a) => ({
-                filePath: a.stagedPath,
-                mimeType: a.mimeType,
-                fileName: a.fileName,
-              })),
-            }),
-          },
-        );
-      } else {
-        const rpcResult = await useGatewayStore.getState().rpc<{ runId?: string }>(
-          'chat.send',
-          {
-            sessionKey: currentSessionKey,
-            message: trimmed,
-            deliver: false,
-            idempotencyKey,
-          },
-          CHAT_SEND_TIMEOUT_MS,
-        );
-        result = { success: true, result: rpcResult };
-      }
+            },
+            CHAT_SEND_TIMEOUT_MS,
+          );
+          result = { success: true, result: rpcResult };
+        }
 
-      console.log(`[sendMessage] RPC result: success=${result.success}, runId=${result.result?.runId || 'none'}`);
+        console.log(`[sendMessage] RPC result: success=${result.success}, runId=${result.result?.runId || 'none'}`);
 
-      if (!result.success) {
+        if (!result.success) {
+          clearHistoryPoll();
+          set({ error: result.error || 'Failed to send message', sending: false });
+        } else if (result.result?.runId) {
+          set({ activeRunId: result.result.runId });
+        }
+      } catch (err) {
         clearHistoryPoll();
-        set({ error: result.error || 'Failed to send message', sending: false });
-      } else if (result.result?.runId) {
-        set({ activeRunId: result.result.runId });
+        set({ error: String(err), sending: false });
       }
-    } catch (err) {
-      clearHistoryPoll();
-      set({ error: String(err), sending: false });
+    } finally {
+      _sendMessageInFlight = false;
     }
   },
 

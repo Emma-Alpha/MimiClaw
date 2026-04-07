@@ -1,5 +1,6 @@
 import type { RawMessage } from "@/stores/chat";
 import type { CodeAgentRunStatus } from "../../../shared/code-agent";
+export type { CodeAgentTimelineItem } from "@/stores/code-agent";
 
 export type MiniChatTarget = "chat" | "code";
 
@@ -8,7 +9,14 @@ export type ToolActivityItem = {
 	toolId: string;
 	toolName: string;
 	inputSummary: string;
+	/** Optional result summary emitted after the tool completes (e.g. "66 lines of output") */
+	resultSummary?: string;
 	timestamp: number;
+};
+
+export type MiniCodeMessageImagePreview = {
+	preview: string | null;
+	fileName: string;
 };
 
 export type MiniCodeMessage = {
@@ -21,6 +29,7 @@ export type MiniCodeMessage = {
 	isError?: boolean;
 	targetLabel?: string;
 	activities?: ToolActivityItem[];
+	imagePreviews?: MiniCodeMessageImagePreview[];
 };
 
 export type SubmissionIntent = {

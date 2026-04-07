@@ -1,62 +1,43 @@
-import { useMemo, useState, type ReactNode, type RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 import { ClaudeCode, OpenClaw } from "@lobehub/icons";
 import { Markdown } from "@lobehub/ui";
 import { ChatItem } from "@lobehub/ui/chat";
 import { useMiniChatStyles } from "../styles";
 import type { TimelineItem } from "../types";
 import { extractText } from "../utils";
-import { CodeAgentFeed, type ToolActivityItem } from "./CodeAgentFeed";
+import { CodeTimeline } from "./code-agent/CodeTimeline";
 import { TypingIndicator } from "./TypingIndicator";
+import type { CodeAgentTimelineItem } from "@/stores/code-agent";
 
 type MiniChatTimelineProps = {
 	timelineItems: TimelineItem[];
 	sending: boolean;
 	streamingText: string;
 	pendingFinal: boolean;
+	/** Legacy codeSending for backward compat; new UI driven by codeAgentItems */
 	codeSending: boolean;
-	codeActivities: ToolActivityItem[];
+	/** New: structured SDK timeline items from useCodeAgentStore */
+	codeAgentItems: CodeAgentTimelineItem[];
+	streamingThinkingText: string;
+	streamingAssistantText: string;
+	isThinking: boolean;
+	isCodeStreaming: boolean;
+	codeWorkspaceRoot?: string;
 	messagesEndRef: RefObject<HTMLDivElement | null>;
 };
 
-function shouldCollapseMessage(text: string): boolean {
-	return text.length > 220 || text.split("\n").length > 8;
-}
-
 function CompactMessageBody({
-	text,
 	renderContent,
 }: {
 	text: string;
 	renderContent: () => ReactNode;
 }) {
-	const { styles, cx } = useMiniChatStyles();
-	const collapsible = useMemo(() => shouldCollapseMessage(text), [text]);
-	const [expanded, setExpanded] = useState(false);
-
+	const { styles } = useMiniChatStyles();
 	return (
 		<div className={styles.messageBodyFrame}>
-			<div
-				className={cx(
-					styles.messageBodyContent,
-					collapsible && !expanded && styles.messageBodyContentCollapsed,
-				)}
-			>
+			<div className={styles.messageBodyContent}>
 				{renderContent()}
 			</div>
-			{collapsible ? (
-				<button
-					type="button"
-					className={cx(
-						styles.messageToggle,
-						expanded && styles.messageToggleExpanded,
-					)}
-					onClick={() => {
-						setExpanded((current) => !current);
-					}}
-				>
-					{expanded ? "收起全文" : "展开全文"}
-				</button>
-			) : null}
 		</div>
 	);
 }
@@ -67,7 +48,12 @@ export function MiniChatTimeline({
 	streamingText,
 	pendingFinal,
 	codeSending,
-	codeActivities,
+	codeAgentItems,
+	streamingThinkingText,
+	streamingAssistantText,
+	isThinking,
+	isCodeStreaming,
+	codeWorkspaceRoot,
 	messagesEndRef,
 }: MiniChatTimelineProps) {
 	const { styles } = useMiniChatStyles();
@@ -178,22 +164,47 @@ export function MiniChatTimeline({
 						<CompactMessageBody
 							text={message.text}
 							renderContent={() => (
-								<div className={styles.userMessageText}>{message.text}</div>
+								<div className={styles.userMessageText}>
+									{message.imagePreviews && message.imagePreviews.length > 0 && (
+										<div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: message.text ? 6 : 0 }}>
+											{message.imagePreviews.map((img) => (
+												img.preview ? (
+													<img
+														key={img.fileName}
+														src={img.preview}
+														alt={img.fileName}
+														title={img.fileName}
+														style={{ maxWidth: 120, maxHeight: 90, borderRadius: 6, objectFit: "cover", display: "block" }}
+													/>
+												) : (
+													<div key={img.fileName} style={{ fontSize: 11, opacity: 0.6, padding: "2px 4px" }}>
+														{img.fileName}
+													</div>
+												)
+											))}
+										</div>
+									)}
+									{message.text && <span>{message.text}</span>}
+								</div>
 							)}
 						/>
-					) : (
-						<CompactMessageBody
-							text={message.text}
-							renderContent={() => (
-								<CodeAgentFeed
-									activities={message.activities ?? []}
-									streamingText={message.text}
-									isRunning={false}
-									isError={message.isError}
-								/>
-							)}
-						/>
-					)
+				) : (
+					<CompactMessageBody
+						text={message.text}
+						renderContent={() => (
+							<CodeTimeline
+								items={[
+									{
+										kind: "assistant-text",
+										id: message.id,
+										text: message.text,
+										isStreaming: false,
+									},
+								]}
+							/>
+						)}
+					/>
+				)
 				}
 				showTitle={false}
 				showAvatar={false}
@@ -252,32 +263,35 @@ export function MiniChatTimeline({
 					{pendingFinal && !streamingText && !sending ? (
 						<TypingIndicator />
 					) : null}
-					{codeSending ? (
-						<ChatItem
-							avatar={{
-								avatar: (
-									<span className={styles.codeAvatar}>
-										<ClaudeCode.Color size={22} />
-									</span>
-								),
-								backgroundColor: "transparent",
-								title: "CLI 编程",
-							}}
-							className={styles.chatItem}
-							message=""
-							placement="left"
-							showTitle={false}
-							showAvatar={false}
-							variant="bubble"
-							renderMessage={() => (
-								<CodeAgentFeed
-									activities={codeActivities}
-									streamingText=""
-									isRunning={true}
-								/>
-							)}
+			{codeSending ? (
+				<ChatItem
+					avatar={{
+						avatar: (
+							<span className={styles.codeAvatar}>
+								<ClaudeCode.Color size={22} />
+							</span>
+						),
+						backgroundColor: "transparent",
+						title: "CLI 编程",
+					}}
+					className={styles.chatItem}
+					message=""
+					placement="left"
+					showTitle={false}
+					showAvatar={false}
+					variant="bubble"
+					renderMessage={() => (
+						<CodeTimeline
+							items={codeAgentItems}
+							streamingThinkingText={streamingThinkingText}
+							streamingAssistantText={streamingAssistantText}
+							isThinking={isThinking}
+							isStreaming={isCodeStreaming}
+							workspaceRoot={codeWorkspaceRoot}
 						/>
-					) : null}
+					)}
+				/>
+			) : null}
 					<div ref={messagesEndRef} />
 				</div>
 			)}

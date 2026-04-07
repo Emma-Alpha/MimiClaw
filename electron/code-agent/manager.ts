@@ -214,6 +214,7 @@ export class CodeAgentManager extends EventEmitter {
       request: {
         workspaceRoot: input.workspaceRoot,
         prompt: input.prompt,
+        images: input.images,
         sessionId: input.sessionId,
         allowedTools: input.allowedTools,
         metadata: input.metadata,
@@ -228,6 +229,7 @@ export class CodeAgentManager extends EventEmitter {
       permissionMode: this.runtimeConfig.permissionMode,
       executionMode: this.runtimeConfig.executionMode,
       allowedTools: input.allowedTools ?? [],
+      imageCount: input.images?.length ?? 0,
       promptPreview: previewText(input.prompt),
     });
     this.emit('run:started', this.getLastRun());
@@ -401,12 +403,13 @@ export class CodeAgentManager extends EventEmitter {
       nextRuntimeConfig.apiKey = claudeUserSettings.apiKey;
       inheritedFromClaudeUserSettings = true;
     }
+    // When the app is set to 'default', defer to the user's ~/.claude/settings.json permissionMode
+    // (the same file Claude Code CLI reads), so our behaviour stays in sync with the CLI.
+    // If neither source specifies a mode, 'default' is passed to the CLI as-is, which matches
+    // Claude Code CLI's own interactive default (prompt before each tool use).
     if (nextRuntimeConfig.permissionMode === 'default' && claudeUserSettings.permissionMode) {
       nextRuntimeConfig.permissionMode = claudeUserSettings.permissionMode;
       inheritedFromClaudeUserSettings = true;
-    }
-    if (nextRuntimeConfig.permissionMode === 'default') {
-      nextRuntimeConfig.permissionMode = DEFAULT_CODE_AGENT_RUNTIME_CONFIG.permissionMode;
     }
 
     if (inheritedFromClaudeUserSettings) {
@@ -534,6 +537,12 @@ export class CodeAgentManager extends EventEmitter {
       if (message.event === 'code-agent:activity') {
         this.emit('run:activity', message.payload);
       }
+      if (message.event === 'code-agent:tool-result') {
+        this.emit('run:tool-result', message.payload);
+      }
+      if (message.event === 'code-agent:sdk-message') {
+        this.emit('run:sdk-message', message.payload);
+      }
       this.emit(message.event, message.payload);
       return;
     }
@@ -613,6 +622,7 @@ export class CodeAgentManager extends EventEmitter {
     return {
       workspaceRoot: input.workspaceRoot,
       prompt: input.prompt,
+      images: input.images,
       sessionId: input.sessionId,
       allowedTools: input.allowedTools,
       metadata: input.metadata,

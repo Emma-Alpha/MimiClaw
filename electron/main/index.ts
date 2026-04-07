@@ -690,11 +690,29 @@ async function initialize(): Promise<void> {
     }
   });
 
+  codeAgentManager.on('run:tool-result', (payload) => {
+    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('code-agent:tool-result', payload);
+      }
+    }
+  });
+
   codeAgentManager.on('run:permission-request', (payload) => {
     const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
     for (const win of wins) {
       if (win && !win.isDestroyed()) {
         win.webContents.send('code-agent:permission-request', payload);
+      }
+    }
+  });
+
+  codeAgentManager.on('run:sdk-message', (payload) => {
+    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('code-agent:sdk-message', payload);
       }
     }
   });
