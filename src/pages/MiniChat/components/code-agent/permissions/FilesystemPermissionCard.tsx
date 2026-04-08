@@ -1,11 +1,11 @@
 import { createStyles } from "antd-style";
 import { PermissionCardShell } from "./PermissionCardShell";
+import type { PermissionDecision } from "./PermissionCardShell";
 
 interface Props {
 	toolName: string;
 	rawInput: Record<string, unknown>;
-	onAllow: () => void;
-	onDeny: () => void;
+	onDecision: (decision: PermissionDecision, feedback?: string) => void;
 }
 
 const useStyles = createStyles(({ css, token }) => ({
@@ -21,7 +21,7 @@ const useStyles = createStyles(({ css, token }) => ({
 	`,
 }));
 
-export function FilesystemPermissionCard({ toolName, rawInput, onAllow, onDeny }: Props) {
+export function FilesystemPermissionCard({ toolName, rawInput, onDecision }: Props) {
 	const { styles } = useStyles();
 	const path = String(rawInput.path || rawInput.target_directory || rawInput.file_path || "");
 	const pattern = String(rawInput.pattern || rawInput.glob_pattern || "");
@@ -29,7 +29,7 @@ export function FilesystemPermissionCard({ toolName, rawInput, onAllow, onDeny }
 	const icon = toolName.toLowerCase() === "grep" ? "🔍" : toolName.toLowerCase() === "glob" ? "📂" : "📄";
 
 	return (
-		<PermissionCardShell toolDisplayName={toolName} onAllow={onAllow} onDeny={onDeny}>
+		<PermissionCardShell toolDisplayName={toolName} onDecision={onDecision}>
 			<div className={styles.row}>{icon} {display}</div>
 		</PermissionCardShell>
 	);

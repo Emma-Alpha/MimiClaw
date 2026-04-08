@@ -1,31 +1,34 @@
-import type { ReactNode, RefObject } from "react";
+import { memo, type ReactNode, type RefObject } from "react";
 import { ClaudeCode, OpenClaw } from "@lobehub/icons";
 import { Markdown } from "@lobehub/ui";
 import { ChatItem } from "@lobehub/ui/chat";
 import { File as FileIcon, Folder } from "lucide-react";
 import { useMiniChatStyles } from "../styles";
-import type { TimelineItem } from "../types";
+import type { MiniCodeMessage, TimelineItem } from "../types";
 import { extractText } from "../utils";
 import { CodeTimeline } from "./code-agent/CodeTimeline";
+import { ReadOnlySlateMessage } from "./ReadOnlySlateMessage";
 import { TypingIndicator } from "./TypingIndicator";
-import type { CodeAgentTimelineItem } from "@/stores/code-agent";
+import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/code-agent";
 
-type MiniChatTimelineProps = {
-	timelineItems: TimelineItem[];
-	sending: boolean;
-	streamingText: string;
-	pendingFinal: boolean;
-	/** Legacy codeSending for backward compat; new UI driven by codeAgentItems */
-	codeSending: boolean;
-	/** New: structured SDK timeline items from useCodeAgentStore */
-	codeAgentItems: CodeAgentTimelineItem[];
-	streamingThinkingText: string;
-	streamingAssistantText: string;
-	isThinking: boolean;
-	isCodeStreaming: boolean;
-	codeWorkspaceRoot?: string;
-	messagesEndRef: RefObject<HTMLDivElement | null>;
-};
+	type MiniChatTimelineProps = {
+		timelineItems: TimelineItem[];
+		sending: boolean;
+		streamingText: string;
+		pendingFinal: boolean;
+		/** Legacy codeSending for backward compat; new UI driven by codeAgentItems */
+		codeSending: boolean;
+		/** New: structured SDK timeline items from useCodeAgentStore */
+		codeAgentItems: CodeAgentTimelineItem[];
+		streamingThinkingText: string;
+		streamingAssistantText: string;
+		vendorStatusText: string;
+		isThinking: boolean;
+		isCodeStreaming: boolean;
+		codeWorkspaceRoot?: string;
+		messagesEndRef: RefObject<HTMLDivElement | null>;
+		spinnerMode?: SpinnerMode;
+	};
 
 function normalizeUnixTimestamp(timestamp: number | null | undefined): number | null {
 	if (typeof timestamp !== "number" || !Number.isFinite(timestamp)) return null;
@@ -77,7 +80,77 @@ function CompactMessageBody({
 	);
 }
 
-export function MiniChatTimeline({
+function hasInlineElements(content: import("slate").Descendant[]): boolean {
+	for (const node of content) {
+		if (typeof node === "object" && node !== null) {
+			const t = (node as { type?: string }).type;
+			if (t === "path" || t === "skill") return true;
+			if ("children" in node && Array.isArray((node as { children: unknown[] }).children)) {
+				if (hasInlineElements((node as { children: import("slate").Descendant[] }).children)) return true;
+			}
+		}
+	}
+	return false;
+}
+
+function UserMessageContent({ message }: { message: MiniCodeMessage }) {
+	const rich = message.richContent;
+	if (rich && Array.isArray(rich) && rich.length > 0 && hasInlineElements(rich)) {
+		return <ReadOnlySlateMessage content={rich} />;
+	}
+
+	return (
+		<>
+			{message.pathTags && message.pathTags.length > 0 && (
+				<div
+					style={{
+						display: "flex",
+						flexWrap: "wrap",
+						gap: 6,
+						marginBottom: message.text ? 6 : 0,
+					}}
+				>
+					{message.pathTags.map((pathTag) => (
+						<span
+							key={pathTag.absolutePath}
+							title={pathTag.absolutePath}
+							style={{
+								display: "inline-flex",
+								alignItems: "center",
+								gap: 5,
+								maxWidth: 220,
+								padding: "3px 8px",
+								borderRadius: 14,
+								fontSize: 12,
+								border: "1px solid rgba(15, 23, 42, 0.12)",
+								background: "rgba(255, 255, 255, 0.55)",
+								color: "rgba(15, 23, 42, 0.86)",
+							}}
+						>
+							{pathTag.isDirectory ? (
+								<Folder size={12} style={{ flexShrink: 0 }} />
+							) : (
+								<FileIcon size={12} style={{ flexShrink: 0 }} />
+							)}
+							<span
+								style={{
+									overflow: "hidden",
+									textOverflow: "ellipsis",
+									whiteSpace: "nowrap",
+								}}
+							>
+								{pathTag.name}
+							</span>
+						</span>
+					))}
+				</div>
+			)}
+			{message.text && <span>{message.text}</span>}
+		</>
+	);
+}
+
+function MiniChatTimelineImpl({
 	timelineItems,
 	sending,
 	streamingText,
@@ -86,10 +159,12 @@ export function MiniChatTimeline({
 	codeAgentItems,
 	streamingThinkingText,
 	streamingAssistantText,
+	vendorStatusText = "",
 	isThinking,
 	isCodeStreaming,
 	codeWorkspaceRoot,
 	messagesEndRef,
+	spinnerMode,
 }: MiniChatTimelineProps) {
 	const { styles } = useMiniChatStyles();
 	const showChatPending = sending || !!streamingText || pendingFinal;
@@ -131,12 +206,6 @@ export function MiniChatTimeline({
 		label: "极智",
 		streaming: true,
 	});
-	const codeAssistantStreamingMeta = renderMetaRow({
-		icon: <ClaudeCode.Color size={14} />,
-		label: "CLI 编程",
-		streaming: true,
-	});
-
 	const renderTimelineItem = (item: TimelineItem) => {
 		if (item.kind === "chat") {
 			const message = item.message;
@@ -248,58 +317,14 @@ export function MiniChatTimeline({
 								text={message.text}
 								renderContent={() => (
 									<div className={styles.userMessageText}>
-										{message.pathTags && message.pathTags.length > 0 && (
-											<div
-												style={{
-													display: "flex",
-													flexWrap: "wrap",
-													gap: 6,
-													marginBottom:
-														message.text || message.imagePreviews?.length ? 6 : 0,
-												}}
-											>
-												{message.pathTags.map((pathTag) => (
-													<span
-														key={pathTag.absolutePath}
-													title={pathTag.absolutePath}
-													style={{
-														display: "inline-flex",
-														alignItems: "center",
-														gap: 5,
-														maxWidth: 220,
-														padding: "3px 8px",
-														borderRadius: 14,
-														fontSize: 12,
-														border: "1px solid rgba(15, 23, 42, 0.12)",
-														background: "rgba(255, 255, 255, 0.55)",
-														color: "rgba(15, 23, 42, 0.86)",
-													}}
-												>
-													{pathTag.isDirectory ? (
-														<Folder size={12} style={{ flexShrink: 0 }} />
-													) : (
-														<FileIcon size={12} style={{ flexShrink: 0 }} />
-													)}
-													<span
-														style={{
-															overflow: "hidden",
-															textOverflow: "ellipsis",
-															whiteSpace: "nowrap",
-														}}
-													>
-														{pathTag.name}
-													</span>
-												</span>
-												))}
-											</div>
-										)}
 										{message.imagePreviews && message.imagePreviews.length > 0 && (
 											<div
 												style={{
 													display: "flex",
 													flexWrap: "wrap",
 													gap: 6,
-													marginBottom: message.text ? 6 : 0,
+													marginBottom:
+														(message.richContent || message.text) ? 6 : 0,
 												}}
 											>
 												{message.imagePreviews.map((img) => (
@@ -332,7 +357,7 @@ export function MiniChatTimeline({
 											))}
 										</div>
 									)}
-										{message.text && <span>{message.text}</span>}
+										<UserMessageContent message={message} />
 									</div>
 								)}
 							/>
@@ -363,7 +388,7 @@ export function MiniChatTimeline({
 
 	return (
 		<div className={styles.scrollArea}>
-				{timelineItems.length === 0 && !showChatPending && !codeSending ? (
+				{timelineItems.length === 0 && !showChatPending && !codeSending && codeAgentItems.length === 0 ? (
 					<div className={styles.emptyState}>
 						<div className={styles.emptyIcon}>
 							<OpenClaw.Color size={22} />
@@ -411,39 +436,25 @@ export function MiniChatTimeline({
 						{pendingFinal && !streamingText && !sending ? (
 							<TypingIndicator />
 						) : null}
-						{codeSending ? (
-							<ChatItem
-								aboveMessage={codeAssistantStreamingMeta}
-								avatar={{
-									avatar: (
-										<span className={styles.codeAvatar}>
-											<ClaudeCode.Color size={22} />
-										</span>
-									),
-									backgroundColor: "transparent",
-									title: "CLI 编程",
-								}}
-								className={styles.chatItem}
-								message=""
-								placement="left"
-								showTitle={false}
-								showAvatar={false}
-								variant="bubble"
-								renderMessage={() => (
-									<CodeTimeline
-										items={codeAgentItems}
-										streamingThinkingText={streamingThinkingText}
-										streamingAssistantText={streamingAssistantText}
-										isThinking={isThinking}
-										isStreaming={isCodeStreaming}
-										workspaceRoot={codeWorkspaceRoot}
-									/>
-								)}
-							/>
-						) : null}
+						{(codeSending || codeAgentItems.length > 0) ? (
+						<CodeTimeline
+							items={codeAgentItems}
+							streamingThinkingText={streamingThinkingText}
+							streamingAssistantText={streamingAssistantText}
+							vendorStatusText={vendorStatusText}
+							isThinking={isThinking}
+							isStreaming={isCodeStreaming}
+							workspaceRoot={codeWorkspaceRoot}
+							spinnerMode={spinnerMode}
+						/>
+					) : null}
 						<div ref={messagesEndRef} />
 					</div>
 				)}
 		</div>
 	);
 }
+
+MiniChatTimelineImpl.displayName = "MiniChatTimeline";
+
+export const MiniChatTimeline = memo(MiniChatTimelineImpl);

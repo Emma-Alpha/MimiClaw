@@ -1,12 +1,12 @@
 import { createStyles } from "antd-style";
 import { PermissionCardShell } from "./PermissionCardShell";
+import type { PermissionDecision } from "./PermissionCardShell";
 
 interface Props {
 	toolName: string;
 	rawInput: Record<string, unknown>;
 	title?: string;
-	onAllow: () => void;
-	onDeny: () => void;
+	onDecision: (decision: PermissionDecision, feedback?: string) => void;
 }
 
 const useStyles = createStyles(({ css, token }) => ({
@@ -25,12 +25,12 @@ const useStyles = createStyles(({ css, token }) => ({
 	`,
 }));
 
-export function FallbackPermissionCard({ toolName, rawInput, onAllow, onDeny }: Props) {
+export function FallbackPermissionCard({ toolName, rawInput, onDecision }: Props) {
 	const { styles } = useStyles();
 	const json = JSON.stringify(rawInput, null, 2);
 
 	return (
-		<PermissionCardShell toolDisplayName={toolName} onAllow={onAllow} onDeny={onDeny}>
+		<PermissionCardShell toolDisplayName={toolName} onDecision={onDecision}>
 			<div className={styles.pre}>{json.slice(0, 400)}</div>
 		</PermissionCardShell>
 	);

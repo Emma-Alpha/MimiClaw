@@ -1,10 +1,10 @@
 import { createStyles } from "antd-style";
 import { PermissionCardShell } from "./PermissionCardShell";
+import type { PermissionDecision } from "./PermissionCardShell";
 
 interface Props {
 	rawInput: Record<string, unknown>;
-	onAllow: () => void;
-	onDeny: () => void;
+	onDecision: (decision: PermissionDecision, feedback?: string) => void;
 }
 
 const useStyles = createStyles(({ css, token }) => ({
@@ -20,12 +20,12 @@ const useStyles = createStyles(({ css, token }) => ({
 	`,
 }));
 
-export function WebFetchPermissionCard({ rawInput, onAllow, onDeny }: Props) {
+export function WebFetchPermissionCard({ rawInput, onDecision }: Props) {
 	const { styles } = useStyles();
 	const url = String(rawInput.url || "");
 
 	return (
-		<PermissionCardShell toolDisplayName="WebFetch" onAllow={onAllow} onDeny={onDeny}>
+		<PermissionCardShell toolDisplayName="WebFetch" onDecision={onDecision}>
 			<div className={styles.url}>🌐 {url}</div>
 		</PermissionCardShell>
 	);

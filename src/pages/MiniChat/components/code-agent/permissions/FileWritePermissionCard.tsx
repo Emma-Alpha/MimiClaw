@@ -1,10 +1,10 @@
 import { createStyles } from "antd-style";
 import { PermissionCardShell } from "./PermissionCardShell";
+import type { PermissionDecision } from "./PermissionCardShell";
 
 interface Props {
 	rawInput: Record<string, unknown>;
-	onAllow: () => void;
-	onDeny: () => void;
+	onDecision: (decision: PermissionDecision, feedback?: string) => void;
 }
 
 const useStyles = createStyles(({ css, token }) => ({
@@ -28,14 +28,14 @@ const useStyles = createStyles(({ css, token }) => ({
 	`,
 }));
 
-export function FileWritePermissionCard({ rawInput, onAllow, onDeny }: Props) {
+export function FileWritePermissionCard({ rawInput, onDecision }: Props) {
 	const { styles } = useStyles();
 	const filePath = String(rawInput.file_path || rawInput.path || "");
 	const content = String(rawInput.content || "");
 	const preview = content.split("\n").slice(0, 10).join("\n");
 
 	return (
-		<PermissionCardShell toolDisplayName="FileWrite" onAllow={onAllow} onDeny={onDeny}>
+		<PermissionCardShell toolDisplayName="FileWrite" onDecision={onDecision}>
 			{filePath && <div className={styles.path}>📝 {filePath}</div>}
 			{preview && <div className={styles.preview}>{preview}</div>}
 		</PermissionCardShell>

@@ -1,13 +1,13 @@
 import { createStyles } from "antd-style";
 import { PermissionCardShell } from "./PermissionCardShell";
+import type { PermissionDecision } from "./PermissionCardShell";
 
 interface Props {
 	toolName: string;
 	rawInput: Record<string, unknown>;
 	title?: string;
 	description?: string;
-	onAllow: () => void;
-	onDeny: () => void;
+	onDecision: (decision: PermissionDecision, feedback?: string) => void;
 }
 
 const useStyles = createStyles(({ css, token }) => ({
@@ -31,14 +31,14 @@ const useStyles = createStyles(({ css, token }) => ({
 	`,
 }));
 
-export function McpToolPermissionCard({ toolName, rawInput, title, description, onAllow, onDeny }: Props) {
+export function McpToolPermissionCard({ toolName, rawInput, title, description, onDecision }: Props) {
 	const { styles } = useStyles();
 	const parts = toolName.split("__");
 	const serverName = parts.length > 1 ? parts[0] : "";
 	const shortToolName = parts.length > 1 ? parts.slice(1).join("__") : toolName;
 
 	return (
-		<PermissionCardShell toolDisplayName={`MCP: ${shortToolName}`} onAllow={onAllow} onDeny={onDeny}>
+		<PermissionCardShell toolDisplayName={`MCP: ${shortToolName}`} onDecision={onDecision}>
 			{serverName && <div className={styles.meta}>🔌 Server: {serverName}</div>}
 			{(title || description) && (
 				<div className={styles.meta}>{title || description}</div>

@@ -1,10 +1,10 @@
 import { createStyles } from "antd-style";
 import { PermissionCardShell } from "./PermissionCardShell";
+import type { PermissionDecision } from "./PermissionCardShell";
 
 interface Props {
 	rawInput: Record<string, unknown>;
-	onAllow: () => void;
-	onDeny: () => void;
+	onDecision: (decision: PermissionDecision, feedback?: string) => void;
 }
 
 const useStyles = createStyles(({ css, token }) => ({
@@ -28,13 +28,13 @@ const useStyles = createStyles(({ css, token }) => ({
 	`,
 }));
 
-export function BashPermissionCard({ rawInput, onAllow, onDeny }: Props) {
+export function BashPermissionCard({ rawInput, onDecision }: Props) {
 	const { styles } = useStyles();
 	const command = String(rawInput.command || rawInput.cmd || "");
 	const cwd = String(rawInput.cwd || rawInput.working_directory || "");
 
 	return (
-		<PermissionCardShell toolDisplayName="Bash" onAllow={onAllow} onDeny={onDeny}>
+		<PermissionCardShell toolDisplayName="Bash" onDecision={onDecision}>
 			{cwd && <div className={styles.meta}>📂 {cwd}</div>}
 			<div className={styles.cmd}>$ {command}</div>
 		</PermissionCardShell>

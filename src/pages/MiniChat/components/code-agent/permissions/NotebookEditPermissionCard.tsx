@@ -1,10 +1,10 @@
 import { createStyles } from "antd-style";
 import { PermissionCardShell } from "./PermissionCardShell";
+import type { PermissionDecision } from "./PermissionCardShell";
 
 interface Props {
 	rawInput: Record<string, unknown>;
-	onAllow: () => void;
-	onDeny: () => void;
+	onDecision: (decision: PermissionDecision, feedback?: string) => void;
 }
 
 const useStyles = createStyles(({ css, token }) => ({
@@ -25,14 +25,14 @@ const useStyles = createStyles(({ css, token }) => ({
 	`,
 }));
 
-export function NotebookEditPermissionCard({ rawInput, onAllow, onDeny }: Props) {
+export function NotebookEditPermissionCard({ rawInput, onDecision }: Props) {
 	const { styles } = useStyles();
 	const path = String(rawInput.notebook_path || rawInput.file_path || rawInput.path || "");
 	const cellIdx = rawInput.cell_index != null ? String(rawInput.cell_index) : null;
 	const source = String(rawInput.source || rawInput.new_source || "");
 
 	return (
-		<PermissionCardShell toolDisplayName="NotebookEdit" onAllow={onAllow} onDeny={onDeny}>
+		<PermissionCardShell toolDisplayName="NotebookEdit" onDecision={onDecision}>
 			<div className={styles.row}>📓 {path}{cellIdx != null ? ` · Cell ${cellIdx}` : ""}</div>
 			{source && <div className={styles.meta}>{source.slice(0, 80)}</div>}
 		</PermissionCardShell>

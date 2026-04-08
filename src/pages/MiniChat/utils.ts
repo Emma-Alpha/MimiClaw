@@ -4,21 +4,54 @@ import type { CodeAgentStatus } from "../../../shared/code-agent";
 import type {
 	MentionDraft,
 	MentionOption,
+	SlashDraft,
 	SubmissionIntent,
 } from "./types";
 
 const CODE_MODE_PREFIXES = ["@code", "@cli", "@cli编程", "@CLI编程"];
 const CHAT_MODE_PREFIXES = ["@chat"];
+const MENTION_QUERY_PATTERN = /^[a-z0-9_./\-\u4e00-\u9fa5]*$/i;
 
-export const MENTION_OPTIONS: MentionOption[] = [
-	{
-		id: "code",
-		label: "CLI 编程",
-		insertText: "@CLI编程 ",
-		description: "把这一条消息直接发给代码助手",
-		keywords: ["code", "cli", "coding", "cli编程"],
-	},
-];
+export function filterMentionOptions(
+	entries: MentionOption[],
+	query: string,
+): MentionOption[] {
+	const normalizedQuery = query.trim().toLowerCase().replace(/\\/g, "/");
+	if (!normalizedQuery) {
+		return entries.slice(0, 80);
+	}
+
+	const scored = entries
+		.map((entry) => {
+			const relative = entry.relativePath.toLowerCase();
+			const label = entry.label.toLowerCase();
+			const startsWithRelative = relative.startsWith(normalizedQuery);
+			const startsWithLabel = label.startsWith(normalizedQuery);
+			const includesRelative = relative.includes(normalizedQuery);
+			const includesLabel = label.includes(normalizedQuery);
+			if (!startsWithRelative && !startsWithLabel && !includesRelative && !includesLabel) {
+				return null;
+			}
+			const score = startsWithLabel
+				? 0
+				: startsWithRelative
+					? 1
+					: includesLabel
+						? 2
+						: 3;
+			return { entry, score };
+		})
+		.filter((item): item is { entry: MentionOption; score: number } => item !== null)
+		.sort((left, right) => {
+			if (left.score !== right.score) return left.score - right.score;
+			if (left.entry.isDirectory !== right.entry.isDirectory) {
+				return left.entry.isDirectory ? -1 : 1;
+			}
+			return left.entry.relativePath.localeCompare(right.entry.relativePath, "zh-CN");
+		});
+
+	return scored.slice(0, 80).map((item) => item.entry);
+}
 
 export function normalizeMiniChatSeed(
 	value: string | PetMiniChatSeed | null | undefined,
@@ -117,16 +150,48 @@ export function getMentionDraft(
 ): MentionDraft | null {
 	const safeCaret = Math.max(0, Math.min(caretIndex, text.length));
 	const beforeCaret = text.slice(0, safeCaret);
-	const tokenMatch = beforeCaret.match(/(^|\s)@([a-z0-9-\u4e00-\u9fa5]*)$/i);
+	const tokenMatch = beforeCaret.match(/(^|\s)@([^\s@]*)$/);
 	if (!tokenMatch) return null;
 	const fullToken = tokenMatch[0];
 	const atIndex = safeCaret - fullToken.length + fullToken.lastIndexOf("@");
-	const query = tokenMatch[2] ?? "";
-	if (!/^[a-z0-9-\u4e00-\u9fa5]*$/i.test(query)) return null;
+	const query = (tokenMatch[2] ?? "").replace(/\\/g, "/");
+	if (!MENTION_QUERY_PATTERN.test(query)) return null;
 	return {
 		start: atIndex,
 		end: safeCaret,
 		query,
+	};
+}
+
+export function getSlashDraft(
+	text: string,
+	caretIndex: number,
+): SlashDraft | null {
+	const safeCaret = Math.max(0, Math.min(caretIndex, text.length));
+	const beforeCaret = text.slice(0, safeCaret);
+	const tokenMatch = beforeCaret.match(/(^|\s)\/([a-z0-9-]*)$/i);
+	if (!tokenMatch) return null;
+	const fullToken = tokenMatch[0];
+	const slashIndex = safeCaret - fullToken.length + fullToken.lastIndexOf("/");
+	const query = tokenMatch[2] ?? "";
+	if (!/^[a-z0-9-]*$/i.test(query)) return null;
+	return {
+		start: slashIndex,
+		end: safeCaret,
+		query,
+	};
+}
+
+export function replaceSlashDraft(
+	text: string,
+	draft: SlashDraft,
+	command: string,
+): { text: string; caret: number } {
+	const nextText = `${text.slice(0, draft.start)}${command} ${text.slice(draft.end)}`;
+	const nextCaret = draft.start + command.length + 1;
+	return {
+		text: nextText,
+		caret: nextCaret,
 	};
 }
 

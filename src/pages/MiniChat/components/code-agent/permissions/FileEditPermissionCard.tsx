@@ -1,10 +1,10 @@
 import { createStyles } from "antd-style";
 import { PermissionCardShell } from "./PermissionCardShell";
+import type { PermissionDecision } from "./PermissionCardShell";
 
 interface Props {
 	rawInput: Record<string, unknown>;
-	onAllow: () => void;
-	onDeny: () => void;
+	onDecision: (decision: PermissionDecision, feedback?: string) => void;
 }
 
 const useStyles = createStyles(({ css, token }) => ({
@@ -67,7 +67,7 @@ function buildMiniDiff(oldStr: string, newStr: string) {
 	return result;
 }
 
-export function FileEditPermissionCard({ rawInput, onAllow, onDeny }: Props) {
+export function FileEditPermissionCard({ rawInput, onDecision }: Props) {
 	const { styles } = useStyles();
 	const filePath = String(rawInput.file_path || rawInput.path || "");
 	const oldContent = String(rawInput.old_content || rawInput.old_string || "");
@@ -75,7 +75,7 @@ export function FileEditPermissionCard({ rawInput, onAllow, onDeny }: Props) {
 	const diffLines = buildMiniDiff(oldContent, newContent);
 
 	return (
-		<PermissionCardShell toolDisplayName="FileEdit" onAllow={onAllow} onDeny={onDeny}>
+		<PermissionCardShell toolDisplayName="FileEdit" onDecision={onDecision}>
 			{filePath && <div className={styles.path}>✏️ {filePath}</div>}
 			{diffLines.length > 0 && (
 				<div className={styles.diff}>

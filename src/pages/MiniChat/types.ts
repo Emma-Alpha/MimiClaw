@@ -1,3 +1,4 @@
+import type { Descendant } from "slate";
 import type { RawMessage } from "@/stores/chat";
 import type { CodeAgentRunStatus } from "../../../shared/code-agent";
 export type { CodeAgentTimelineItem } from "@/stores/code-agent";
@@ -37,6 +38,8 @@ export type MiniCodeMessage = {
 	activities?: ToolActivityItem[];
 	imagePreviews?: MiniCodeMessageImagePreview[];
 	pathTags?: MiniCodeMessagePathTag[];
+	/** Slate editor tree for inline rendering in message list */
+	richContent?: Descendant[];
 };
 
 export type SubmissionIntent = {
@@ -59,17 +62,43 @@ export type TimelineItem =
 	  };
 
 export type MentionOption = {
-	id: "code";
+	id: string;
 	label: string;
-	insertText: string;
+	relativePath: string;
+	absolutePath: string;
+	isDirectory: boolean;
+};
+
+export type MentionEmptyState = {
+	title: string;
 	description: string;
-	keywords: string[];
+	actionLabel?: string;
 };
 
 export type MentionDraft = {
 	start: number;
 	end: number;
 	query: string;
+};
+
+export type SlashDraft = {
+	start: number;
+	end: number;
+	query: string;
+};
+
+export type SlashOption = {
+	id: string;
+	command: string;
+	title: string;
+	description: string;
+	keywords: string[];
+	icon?: string;
+	scope?: "project" | "global" | "command";
+	/** 'claude' = CLI-native skill, 'external' = from ~/.agents, ~/.codex, etc. */
+	source?: "claude" | "external";
+	/** Full SKILL.md content for external skills (injected as prompt instead of /command) */
+	skillContent?: string;
 };
 
 export type PathAttachment = {

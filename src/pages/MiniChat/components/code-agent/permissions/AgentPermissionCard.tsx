@@ -1,10 +1,10 @@
 import { createStyles } from "antd-style";
 import { PermissionCardShell } from "./PermissionCardShell";
+import type { PermissionDecision } from "./PermissionCardShell";
 
 interface Props {
 	rawInput: Record<string, unknown>;
-	onAllow: () => void;
-	onDeny: () => void;
+	onDecision: (decision: PermissionDecision, feedback?: string) => void;
 }
 
 const useStyles = createStyles(({ css, token }) => ({
@@ -19,12 +19,12 @@ const useStyles = createStyles(({ css, token }) => ({
 	`,
 }));
 
-export function AgentPermissionCard({ rawInput, onAllow, onDeny }: Props) {
+export function AgentPermissionCard({ rawInput, onDecision }: Props) {
 	const { styles } = useStyles();
 	const description = String(rawInput.description || rawInput.prompt || rawInput.task || "");
 
 	return (
-		<PermissionCardShell toolDisplayName="Agent/Task" onAllow={onAllow} onDeny={onDeny}>
+		<PermissionCardShell toolDisplayName="Agent/Task" onDecision={onDecision}>
 			{description && <div className={styles.desc}>⚙️ {description.slice(0, 200)}</div>}
 		</PermissionCardShell>
 	);

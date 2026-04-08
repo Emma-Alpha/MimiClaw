@@ -1,5 +1,5 @@
 import { createStyles } from "antd-style";
-import type { CodeAgentTimelineItem } from "@/stores/code-agent";
+import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/code-agent";
 import { StreamingText } from "./StreamingText";
 import { ThinkingBlock } from "./ThinkingBlock";
 import { ToolUseLine } from "./ToolUseLine";
@@ -11,6 +11,8 @@ import { HookNotice } from "./HookNotice";
 import { ApiRetryNotice } from "./ApiRetryNotice";
 import { TaskStart, TaskEnd } from "./TaskBoundary";
 import { ResultSummary } from "./ResultSummary";
+import { StatusIndicator } from "./StatusIndicator";
+import { TodoListCard } from "./TodoListCard";
 
 interface Props {
 	items: CodeAgentTimelineItem[];
@@ -19,7 +21,9 @@ interface Props {
 	streamingAssistantText?: string;
 	isThinking?: boolean;
 	isStreaming?: boolean;
+	vendorStatusText?: string;
 	workspaceRoot?: string;
+	spinnerMode?: SpinnerMode;
 }
 
 const useStyles = createStyles(({ css, token }) => ({
@@ -34,10 +38,18 @@ const useStyles = createStyles(({ css, token }) => ({
 		padding-left: 10px;
 		margin-left: 2px;
 	`,
+	userBubbleContainer: css`
+		display: flex;
+		justify-content: flex-end;
+		margin: 8px 0;
+	`,
 	userBubble: css`
 		font-size: 13px;
-		color: ${token.colorTextSecondary};
-		padding: 4px 0;
+		color: ${token.colorText};
+		background: ${token.colorFillTertiary};
+		padding: 8px 12px;
+		border-radius: 12px 12px 0 12px;
+		max-width: 85%;
 		word-break: break-word;
 	`,
 }));
@@ -48,7 +60,9 @@ export function CodeTimeline({
 	streamingAssistantText = "",
 	isThinking = false,
 	isStreaming = false,
+	vendorStatusText = "",
 	workspaceRoot,
+	spinnerMode,
 }: Props) {
 	const { styles } = useStyles();
 
@@ -77,6 +91,9 @@ export function CodeTimeline({
 				);
 
 			case "tool-use":
+				if (item.tool.toolName.toLowerCase() === "todowrite") {
+					return wrap(<TodoListCard key={item.id} tool={item.tool} />);
+				}
 				return wrap(<ToolUseLine key={item.id} tool={item.tool} />);
 
 			case "diff":
@@ -86,8 +103,10 @@ export function CodeTimeline({
 
 			case "user":
 				return (
-					<div key={item.id} className={styles.userBubble}>
-						{item.text}
+					<div key={item.id} className={styles.userBubbleContainer}>
+						<div className={styles.userBubble}>
+							{item.text}
+						</div>
 					</div>
 				);
 
@@ -177,6 +196,8 @@ export function CodeTimeline({
 		}
 	};
 
+	const isBusy = !!spinnerMode;
+
 	return (
 		<div className={styles.root}>
 			{items.map((item) => renderItem(item))}
@@ -184,6 +205,7 @@ export function CodeTimeline({
 			{/* Live thinking stream */}
 			{(isThinking || streamingThinkingText) && (
 				<ThinkingBlock
+					key="live-thinking"
 					text={streamingThinkingText}
 					isStreaming={isThinking}
 					isRedacted={false}
@@ -194,6 +216,9 @@ export function CodeTimeline({
 			{(isStreaming || streamingAssistantText) && (
 				<StreamingText text={streamingAssistantText} isStreaming={isStreaming} />
 			)}
+
+			{/* ✶ Status indicator – visible for all busy spinner modes */}
+			{isBusy && <StatusIndicator text={vendorStatusText} />}
 		</div>
 	);
 }

@@ -4,12 +4,14 @@
  * Renders a dynamic form from a JSON Schema for MCP server elicitation requests.
  * Uses a lightweight built-in renderer (no external rjsf dependency required).
  */
-import { useState } from "react";
 import { createStyles } from "antd-style";
+import { X } from "lucide-react";
+import { useMemo, useState } from "react";
 import type { PendingElicitation } from "@/stores/code-agent";
 
 interface Props {
 	elicitation: PendingElicitation;
+	onClose?: () => void;
 	onSubmit: (action: "accept" | "decline", content?: Record<string, unknown>) => void;
 }
 
@@ -17,86 +19,211 @@ const useStyles = createStyles(({ css, token }) => ({
 	card: css`
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
-		padding: 10px 12px;
-		border-radius: 10px;
-		background: ${token.colorFillTertiary};
-		border: 1px solid ${token.colorBorderSecondary};
+		gap: 16px;
+		padding: 18px;
+		border-radius: 18px;
+		background: rgba(255, 255, 255, 0.98);
+		border: 1px solid rgba(15, 23, 42, 0.08);
+		box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
+		min-width: 340px;
+		max-width: min(420px, calc(100vw - 32px));
+		max-height: min(620px, calc(100vh - 120px));
+		overflow: hidden;
+		backdrop-filter: blur(20px);
 	`,
-	header: css`
+	headerRow: css`
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 12px;
+	`,
+	headerText: css`
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		min-width: 0;
+		flex: 1;
+	`,
+	titleBar: css`
 		display: flex;
 		align-items: center;
-		gap: 6px;
-		font-size: 12px;
+		gap: 10px;
+		min-width: 0;
+		padding-bottom: 10px;
+		border-bottom: 2px solid #e5e7eb;
+	`,
+	title: css`
+		font-size: 22px;
 		font-weight: 600;
-		color: ${token.colorText};
+		line-height: 1.2;
+		color: #111827;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	`,
 	message: css`
-		font-size: 12px;
-		color: ${token.colorTextSecondary};
+		font-size: 14px;
+		line-height: 1.6;
+		color: #111827;
+		white-space: pre-wrap;
+		word-break: break-word;
+	`,
+	secondaryMessage: css`
+		font-size: 13px;
+		line-height: 1.6;
+		color: #6b7280;
+		white-space: pre-wrap;
+		word-break: break-word;
+	`,
+	messageStrong: css`
+		font-weight: 700;
+	`,
+	closeButton: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		padding: 0;
+		border: 0;
+		border-radius: 999px;
+		background: transparent;
+		color: #6b7280;
+		cursor: pointer;
+		flex-shrink: 0;
+
+		&:hover {
+			background: rgba(15, 23, 42, 0.06);
+			color: #111827;
+		}
+	`,
+	formBody: css`
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		overflow-y: auto;
+		padding-right: 2px;
 	`,
 	fieldGroup: css`
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
+		gap: 8px;
 	`,
-	label: css`
-		font-size: 11px;
-		color: ${token.colorTextSecondary};
-		font-weight: 500;
-	`,
-	input: css`
-		font-size: 12px;
-		font-family: inherit;
-		border: 1px solid ${token.colorBorderSecondary};
-		border-radius: 5px;
-		padding: 4px 7px;
-		background: ${token.colorFillSecondary};
-		color: ${token.colorText};
-		width: 100%;
-		box-sizing: border-box;
-		&:focus {
-			outline: 1px solid ${token.colorPrimary};
-			border-color: ${token.colorPrimary};
+	optionLabel: css`
+		display: flex;
+		align-items: flex-start;
+		gap: 10px;
+		padding: 14px 16px;
+		border-radius: 12px;
+		border: 1px solid #e5e7eb;
+		background: #f3f4f6;
+		cursor: pointer;
+		transition: border-color 0.15s ease, background 0.15s ease,
+			box-shadow 0.15s ease;
+
+		&:hover {
+			border-color: #cbd5e1;
+			background: #eef2f7;
 		}
 	`,
-	checkbox: css`margin-right: 5px;`,
+	optionLabelSelected: css`
+		border-color: ${token.colorPrimary};
+		background: rgba(59, 130, 246, 0.08);
+		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+	`,
+	radioInput: css`
+		margin: 2px 0 0;
+		flex-shrink: 0;
+	`,
+	optionContent: css`
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		min-width: 0;
+	`,
+	optionTitle: css`
+		font-size: 16px;
+		font-weight: 600;
+		line-height: 1.35;
+		color: #111827;
+	`,
+	optionDescription: css`
+		font-size: 13px;
+		line-height: 1.55;
+		color: #6b7280;
+		white-space: pre-wrap;
+		word-break: break-word;
+	`,
+	inputLabel: css`
+		font-size: 13px;
+		font-weight: 600;
+		color: #111827;
+	`,
+	textInput: css`
+		width: 100%;
+		box-sizing: border-box;
+		padding: 12px 14px;
+		border-radius: 12px;
+		border: 1px solid #d1d5db;
+		background: #fff;
+		font-size: 14px;
+		line-height: 1.5;
+		color: #111827;
+
+		&:focus {
+			outline: none;
+			border-color: ${token.colorPrimary};
+			box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14);
+		}
+	`,
 	jsonTextarea: css`
 		width: 100%;
-		font-size: 11px;
-		font-family: monospace;
-		border: 1px solid ${token.colorBorderSecondary};
-		border-radius: 6px;
-		padding: 6px 8px;
-		background: ${token.colorFillSecondary};
-		color: ${token.colorText};
+		font-size: 13px;
+		line-height: 1.5;
+		font-family: ${token.fontFamilyCode};
+		border: 1px solid #d1d5db;
+		border-radius: 12px;
+		padding: 12px 14px;
+		background: #fff;
+		color: #111827;
 		resize: vertical;
-		min-height: 60px;
+		min-height: 112px;
 		box-sizing: border-box;
+
+		&:focus {
+			outline: none;
+			border-color: ${token.colorPrimary};
+			box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14);
+		}
 	`,
 	actions: css`
 		display: flex;
-		gap: 6px;
-		justify-content: flex-end;
+		justify-content: space-between;
+		align-items: center;
+		gap: 12px;
 	`,
-	btn: css`
-		padding: 3px 10px;
-		border-radius: 6px;
+	actionHint: css`
 		font-size: 12px;
-		font-weight: 500;
+		color: #6b7280;
+	`,
+	submitButton: css`
+		width: 100%;
+		padding: 12px 14px;
+		border: 0;
+		border-radius: 12px;
+		background: #f3f4f6;
+		color: #9ca3af;
+		font-size: 16px;
+		font-weight: 600;
+		line-height: 1.2;
+		text-align: left;
 		cursor: pointer;
-		border: 1px solid transparent;
-		transition: opacity 0.15s;
-		&:hover { opacity: 0.8; }
-	`,
-	submitBtn: css`
-		background: ${token.colorPrimary};
-		color: #fff;
-	`,
-	cancelBtn: css`
-		background: ${token.colorFillSecondary};
-		color: ${token.colorText};
-		border-color: ${token.colorBorderSecondary};
+		transition: background 0.15s ease, color 0.15s ease;
+
+		&:hover {
+			background: #e5e7eb;
+			color: #6b7280;
+		}
 	`,
 }));
 
@@ -117,33 +244,59 @@ function renderField(
 ) {
 	const label = prop.title || key;
 
-	if (prop.type === "boolean") {
+	if (prop.enum?.length) {
+		const selected = String(value ?? prop.default ?? prop.enum[0] ?? "");
 		return (
-			<label key={key} className={styles.label} style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
-				<input
-					type="checkbox"
-					className={styles.checkbox}
-					checked={Boolean(value ?? prop.default ?? false)}
-					onChange={(e) => onChange(e.target.checked)}
-				/>
-				{label}
-			</label>
+			<div key={key} className={styles.fieldGroup}>
+				{Object.keys(prop).length > 1 ? (
+					<div className={styles.inputLabel}>{label}</div>
+				) : null}
+				<div className={styles.formBody}>
+					{prop.enum.map((opt) => {
+						const isSelected = selected === opt;
+						return (
+							<label
+								key={opt}
+								className={`${styles.optionLabel} ${isSelected ? styles.optionLabelSelected : ""}`}
+							>
+								<input
+									type="radio"
+									name={key}
+									className={styles.radioInput}
+									checked={isSelected}
+									onChange={() => onChange(opt)}
+								/>
+								<div className={styles.optionContent}>
+									<div className={styles.optionTitle}>{opt}</div>
+									{prop.description ? (
+										<div className={styles.optionDescription}>{prop.description}</div>
+									) : null}
+								</div>
+							</label>
+						);
+					})}
+				</div>
+			</div>
 		);
 	}
 
-	if (prop.enum) {
+	if (prop.type === "boolean") {
 		return (
 			<div key={key} className={styles.fieldGroup}>
-				<span className={styles.label}>{label}</span>
-				<select
-					className={styles.input}
-					value={String(value ?? prop.default ?? prop.enum[0] ?? "")}
-					onChange={(e) => onChange(e.target.value)}
-				>
-					{prop.enum.map((opt) => (
-						<option key={opt} value={opt}>{opt}</option>
-					))}
-				</select>
+				<label className={styles.optionLabel}>
+					<input
+						type="checkbox"
+						className={styles.radioInput}
+						checked={Boolean(value ?? prop.default ?? false)}
+						onChange={(e) => onChange(e.target.checked)}
+					/>
+					<div className={styles.optionContent}>
+						<div className={styles.optionTitle}>{label}</div>
+						{prop.description ? (
+							<div className={styles.optionDescription}>{prop.description}</div>
+						) : null}
+					</div>
+				</label>
 			</div>
 		);
 	}
@@ -151,24 +304,35 @@ function renderField(
 	if (prop.type === "number" || prop.type === "integer") {
 		return (
 			<div key={key} className={styles.fieldGroup}>
-				<span className={styles.label}>{label}</span>
+				<div className={styles.inputLabel}>{label}</div>
+				{prop.description ? (
+					<div className={styles.optionDescription}>{prop.description}</div>
+				) : null}
 				<input
 					type="number"
-					className={styles.input}
+					className={styles.textInput}
 					value={String(value ?? prop.default ?? "")}
-					onChange={(e) => onChange(prop.type === "integer" ? parseInt(e.target.value, 10) : Number(e.target.value))}
+					onChange={(e) =>
+						onChange(
+							prop.type === "integer"
+								? parseInt(e.target.value, 10)
+								: Number(e.target.value),
+						)
+					}
 				/>
 			</div>
 		);
 	}
 
-	// string / default
 	return (
 		<div key={key} className={styles.fieldGroup}>
-			<span className={styles.label}>{label}</span>
+			<div className={styles.inputLabel}>{label}</div>
+			{prop.description ? (
+				<div className={styles.optionDescription}>{prop.description}</div>
+			) : null}
 			<input
 				type="text"
-				className={styles.input}
+				className={styles.textInput}
 				value={String(value ?? prop.default ?? "")}
 				onChange={(e) => onChange(e.target.value)}
 			/>
@@ -181,7 +345,13 @@ function buildDefaults(schema: Record<string, unknown>): Record<string, unknown>
 	if (!props) return {};
 	const result: Record<string, unknown> = {};
 	for (const [k, p] of Object.entries(props)) {
-		result[k] = p.default ?? (p.type === "boolean" ? false : p.type === "number" || p.type === "integer" ? 0 : "");
+		result[k] =
+			p.default ??
+			(p.type === "boolean"
+				? false
+				: p.type === "number" || p.type === "integer"
+					? 0
+					: p.enum?.[0] ?? "");
 	}
 	return result;
 }
@@ -189,22 +359,24 @@ function buildDefaults(schema: Record<string, unknown>): Record<string, unknown>
 function SchemaForm({
 	schema,
 	onSubmit,
-	onDecline,
 	styles,
 }: {
 	schema: Record<string, unknown>;
 	onSubmit: (data: Record<string, unknown>) => void;
-	onDecline: () => void;
 	styles: ReturnType<typeof useStyles>["styles"];
 }) {
 	const props = schema.properties as Record<string, SchemaProperty> | undefined;
-	const [values, setValues] = useState<Record<string, unknown>>(() => buildDefaults(schema));
+	const [values, setValues] = useState<Record<string, unknown>>(() =>
+		buildDefaults(schema),
+	);
 
 	if (!props || Object.keys(props).length === 0) {
 		return (
 			<div className={styles.actions}>
-				<button type="button" className={`${styles.btn} ${styles.cancelBtn}`} onClick={onDecline}>取消</button>
-				<button type="button" className={`${styles.btn} ${styles.submitBtn}`} onClick={() => onSubmit({})}>确认</button>
+				<span className={styles.actionHint}>Esc to cancel</span>
+				<button type="button" className={styles.submitButton} onClick={() => onSubmit({})}>
+					Submit answers
+				</button>
 			</div>
 		);
 	}
@@ -214,12 +386,20 @@ function SchemaForm({
 
 	return (
 		<>
-			{Object.entries(props).map(([key, prop]) =>
-				renderField(key, prop, values[key], (v) => setField(key, v), styles),
-			)}
+			<div className={styles.formBody}>
+				{Object.entries(props).map(([key, prop]) =>
+					renderField(key, prop, values[key], (v) => setField(key, v), styles),
+				)}
+			</div>
 			<div className={styles.actions}>
-				<button type="button" className={`${styles.btn} ${styles.cancelBtn}`} onClick={onDecline}>取消</button>
-				<button type="button" className={`${styles.btn} ${styles.submitBtn}`} onClick={() => onSubmit(values)}>提交</button>
+				<span className={styles.actionHint}>Esc to cancel</span>
+				<button
+					type="button"
+					className={styles.submitButton}
+					onClick={() => onSubmit(values)}
+				>
+					Submit answers
+				</button>
 			</div>
 		</>
 	);
@@ -227,11 +407,9 @@ function SchemaForm({
 
 function FallbackJsonForm({
 	onSubmit,
-	onDecline,
 	styles,
 }: {
 	onSubmit: (data: Record<string, unknown>) => void;
-	onDecline: () => void;
 	styles: ReturnType<typeof useStyles>["styles"];
 }) {
 	const [value, setValue] = useState("{}");
@@ -245,47 +423,93 @@ function FallbackJsonForm({
 
 	return (
 		<>
-			<textarea
-				className={styles.jsonTextarea}
-				value={value}
-				onChange={(e) => setValue(e.target.value)}
-			/>
+			<div className={styles.formBody}>
+				<div className={styles.inputLabel}>Answer</div>
+				<textarea
+					className={styles.jsonTextarea}
+					value={value}
+					onChange={(e) => setValue(e.target.value)}
+				/>
+			</div>
 			<div className={styles.actions}>
-				<button type="button" className={`${styles.btn} ${styles.cancelBtn}`} onClick={onDecline}>取消</button>
-				<button type="button" className={`${styles.btn} ${styles.submitBtn}`} onClick={handleSubmit}>提交</button>
+				<span className={styles.actionHint}>Esc to cancel</span>
+				<button type="button" className={styles.submitButton} onClick={handleSubmit}>
+					Submit answers
+				</button>
 			</div>
 		</>
 	);
 }
 
-export function ElicitationForm({ elicitation, onSubmit }: Props) {
+export function ElicitationForm({ elicitation, onClose, onSubmit }: Props) {
 	const { styles } = useStyles();
 	const { mcpServerName, message, requestedSchema } = elicitation;
 	const hasProperties =
-		requestedSchema &&
-		requestedSchema.properties &&
-		typeof requestedSchema.properties === "object" &&
+		typeof requestedSchema?.properties === "object" &&
+		requestedSchema.properties !== null &&
 		Object.keys(requestedSchema.properties).length > 0;
+	const fallbackMessage = useMemo(
+		() =>
+			message?.trim() ||
+			"Claude 需要你补充一个选项或输入，确认后会继续当前任务。",
+		[message],
+	);
+	const title = useMemo(() => {
+		const schemaTitle =
+			typeof requestedSchema?.title === "string"
+				? requestedSchema.title.trim()
+				: "";
+		return schemaTitle || `${mcpServerName} 需要更多信息`;
+	}, [mcpServerName, requestedSchema]);
+	const normalizedLines = useMemo(
+		() =>
+			fallbackMessage
+				.split(/\n+/)
+				.map((line) => line.trim())
+				.filter(Boolean),
+		[fallbackMessage],
+	);
+	const primaryMessage = normalizedLines[0] ?? "";
+	const secondaryMessage = normalizedLines.slice(1).join("\n\n");
+	const handleDecline = useMemo(
+		() => () => {
+			onClose?.();
+			onSubmit("decline");
+		},
+		[onClose, onSubmit],
+	);
 
 	return (
 		<div className={styles.card}>
-			<div className={styles.header}>
-				<span>🔌</span>
-				<span>MCP: {mcpServerName} 请求输入</span>
+			<div className={styles.headerRow}>
+				<div className={styles.headerText}>
+					<div className={styles.titleBar}>
+						<div className={styles.title}>{title}</div>
+					</div>
+					<div className={styles.message}>{primaryMessage || fallbackMessage}</div>
+					{secondaryMessage ? (
+						<div className={styles.secondaryMessage}>{secondaryMessage}</div>
+					) : null}
+				</div>
+				<button
+					type="button"
+					className={styles.closeButton}
+					onClick={handleDecline}
+					aria-label="关闭请求"
+				>
+					<X size={16} />
+				</button>
 			</div>
-			{message && <div className={styles.message}>{message}</div>}
 
 			{hasProperties ? (
 				<SchemaForm
 					schema={requestedSchema as Record<string, unknown>}
 					onSubmit={(data) => onSubmit("accept", data)}
-					onDecline={() => onSubmit("decline")}
 					styles={styles}
 				/>
 			) : (
 				<FallbackJsonForm
 					onSubmit={(data) => onSubmit("accept", data)}
-					onDecline={() => onSubmit("decline")}
 					styles={styles}
 				/>
 			)}

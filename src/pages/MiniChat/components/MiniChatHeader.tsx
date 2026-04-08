@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useMemo } from "react";
+import { memo, useRef, useState, useEffect, useMemo } from "react";
 import { ActionIcon } from "@lobehub/ui";
 import { OpenClaw, ClaudeCode } from "@lobehub/icons";
 import { Expand, X, RotateCcw, Clock, Wrench, Cpu, Search } from "lucide-react";
@@ -40,6 +40,42 @@ function shortModel(model: string) {
 	return model.replace(/^claude-/i, "").replace(/-\d{8}$/, "");
 }
 
+const MAX_CODE_SESSION_TITLE_LENGTH = 40;
+
+function isOpaqueSessionId(value: string): boolean {
+	const normalized = value.trim();
+	if (!normalized) return true;
+	if (/^agent:[^:]+:session-\d+(?::.*)?$/i.test(normalized)) return true;
+	if (/^session[-:_][a-z0-9-]{6,}$/i.test(normalized)) return true;
+	if (/^[0-9a-f]{24,}$/i.test(normalized)) return true;
+	if (
+		/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+			normalized,
+		)
+	)
+		return true;
+	return false;
+}
+
+function isAbsolutePathLike(value: string): boolean {
+	const normalized = value.trim();
+	if (!normalized) return false;
+	if (/^(\/|~\/)/.test(normalized)) return true;
+	if (/^[A-Za-z]:[\\/]/.test(normalized)) return true;
+	if (/^\\\\/.test(normalized)) return true;
+	return false;
+}
+
+function getCodeSessionTitle(value: string | null | undefined): string {
+	const normalized = typeof value === "string" ? value.trim() : "";
+	if (!normalized) return "CLI 会话";
+	if (isOpaqueSessionId(normalized) || isAbsolutePathLike(normalized)) {
+		return "CLI 会话";
+	}
+	if (normalized.length <= MAX_CODE_SESSION_TITLE_LENGTH) return normalized;
+	return `${normalized.slice(0, MAX_CODE_SESSION_TITLE_LENGTH)}…`;
+}
+
 function formatRelativeTime(ts: number): string {
 	const diff = Date.now() - ts;
 	const s = Math.floor(diff / 1000);
@@ -64,7 +100,7 @@ function formatRelativeTimeCompact(ts: number | null, isActive: boolean): string
 	return `${Math.floor(h / 24)} 天`;
 }
 
-export function MiniChatHeader({
+function MiniChatHeaderImpl({
 	draftTarget,
 	codeSending,
 	isGenerating,
@@ -101,7 +137,7 @@ export function MiniChatHeader({
 	const islandTitle = isCodeMode
 		? sessionInit
 			? shortModel(sessionInit.model)
-			: activeChatSession?.title ?? getCodeAgentStateLabel(codeAgentStatus?.state)
+			: getCodeAgentStateLabel(codeAgentStatus?.state)
 		: activeChatSession?.title ?? "当前会话";
 	const statusDotClass = showCodeStatus
 		? codeSending
@@ -293,11 +329,11 @@ export function MiniChatHeader({
 
 							{isCodeMode && (
 								<>
-									<div className={styles.islandDropdownDivider} />
-									<div className={styles.islandDropdownSection}>
-										<div className={styles.islandDropdownTitle}>
-											{sessionTitle ?? activeChatSession?.title ?? "当前会话"}
-										</div>
+								<div className={styles.islandDropdownDivider} />
+								<div className={styles.islandDropdownSection}>
+									<div className={styles.islandDropdownTitle}>
+										{getCodeSessionTitle(sessionTitle)}
+									</div>
 										{lastUpdatedAt && (
 											<div className={styles.islandDropdownMeta}>
 												<Clock size={10} />
@@ -309,9 +345,11 @@ export function MiniChatHeader({
 												<div className={styles.islandDropdownInfoRow}>
 													<Cpu size={10} />
 													<span>{shortModel(sessionInit.model)}</span>
-													{sessionInit.permissionMode !== "default" && (
+													{sessionInit.permissionMode && (
 														<span className={styles.islandDropdownBadge}>
-															{sessionInit.permissionMode}
+															{sessionInit.permissionMode === "default"
+																? "Claude Code default"
+																: sessionInit.permissionMode}
 														</span>
 													)}
 												</div>
@@ -384,3 +422,7 @@ export function MiniChatHeader({
 		</div>
 	);
 }
+
+MiniChatHeaderImpl.displayName = "MiniChatHeader";
+
+export const MiniChatHeader = memo(MiniChatHeaderImpl);

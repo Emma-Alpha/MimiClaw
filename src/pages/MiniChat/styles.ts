@@ -8,7 +8,6 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		flex-direction: column;
 		overflow: hidden;
 		background: transparent;
-		user-select: none;
 	`,
 	header: css`
 		height: 48px;
@@ -423,12 +422,16 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		z-index: 100;
 		width: min(94vw, 640px);
 		min-width: 320px;
+		max-height: calc(100vh - 72px);
 		border-radius: 22px;
 		border: 1px solid rgba(15, 23, 42, 0.12);
 		background: rgba(245, 245, 247, 0.96);
 		backdrop-filter: blur(18px) saturate(1.05);
 		box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18), 0 2px 12px rgba(15, 23, 42, 0.12);
 		padding: 10px 0;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
 		animation: dropdownIn 0.18s cubic-bezier(0.32, 0.72, 0, 1);
 
 		@keyframes dropdownIn {
@@ -541,7 +544,9 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
-		max-height: 360px;
+		flex: 1 1 auto;
+		min-height: 72px;
+		max-height: min(360px, calc(100vh - 300px));
 		overflow-y: auto;
 		padding: 8px 8px 6px;
 	`,
@@ -929,6 +934,34 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		padding: 10px 12px 12px;
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: 10px;
+		position: relative;
+		overflow: visible;
+		align-items: stretch;
+	`,
+	elicitationPopup: css`
+		position: absolute;
+		right: 12px;
+		bottom: calc(100% + 10px);
+		z-index: 40;
+		pointer-events: auto;
+		max-width: min(420px, calc(100% - 24px));
+		width: 100%;
+		display: flex;
+		justify-content: flex-end;
+		filter: drop-shadow(0 18px 48px rgba(15, 23, 42, 0.16));
+		animation: elicitationPopupIn 0.18s ease-out;
+		transform-origin: bottom right;
+
+		@keyframes elicitationPopupIn {
+			from {
+				opacity: 0;
+				transform: translateY(8px) scale(0.98);
+			}
+			to {
+				opacity: 1;
+				transform: translateY(0) scale(1);
+			}
+		}
 	`,
 }));
