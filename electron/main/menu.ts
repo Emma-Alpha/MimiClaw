@@ -3,6 +3,7 @@
  * Creates the native application menu for macOS/Windows/Linux
  */
 import { Menu, app, shell, BrowserWindow } from 'electron';
+import { openMiniChatDevTools } from './mini-chat-window';
 
 /**
  * Create application menu
@@ -97,6 +98,12 @@ export function createMenu(): void {
         { role: 'reload' },
         { role: 'forceReload' },
         { role: 'toggleDevTools' },
+        {
+          label: 'Open MiniChat DevTools',
+          click: () => {
+            void openMiniChatDevTools();
+          },
+        },
         { type: 'separator' },
         { role: 'resetZoom' },
         { role: 'zoomIn' },

@@ -5,6 +5,7 @@ import { basename, join, resolve } from 'node:path';
 import type {
   CodeAgentRunRequest,
   CodeAgentSessionMessage,
+  CodeAgentSessionHistoryResult,
   CodeAgentSessionSummary,
 } from '../../../shared/code-agent';
 import type { HostApiContext } from '../context';
@@ -166,17 +167,19 @@ async function loadClaudeCodeSessionHistory(
   workspaceRoot: string,
   sessionId: string,
   limit = 120,
-): Promise<CodeAgentSessionMessage[]> {
+): Promise<CodeAgentSessionHistoryResult> {
+  const empty: CodeAgentSessionHistoryResult = { messages: [], rawSdkMessages: [] };
   const projectDir = await resolveClaudeProjectDir(workspaceRoot);
-  if (!projectDir) return [];
+  if (!projectDir) return empty;
 
   const safeSessionId = basename(sessionId).replace(/\.jsonl$/i, '');
-  if (!safeSessionId) return [];
+  if (!safeSessionId) return empty;
 
   const filePath = join(projectDir, `${safeSessionId}.jsonl`);
   const raw = await fs.readFile(filePath, 'utf8');
   const lines = raw.split(/\r?\n/).filter(Boolean);
   const messages: CodeAgentSessionMessage[] = [];
+  const rawSdkMessages: Record<string, unknown>[] = [];
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
@@ -187,6 +190,9 @@ async function loadClaudeCodeSessionHistory(
       const type = typeof row.type === 'string' ? row.type : '';
       const timestamp = toTimestampMs(row.timestamp) ?? Date.now();
       const id = typeof row.uuid === 'string' ? row.uuid : `${safeSessionId}-${index}`;
+
+      // Collect all rows for rich timeline reconstruction
+      rawSdkMessages.push(row);
 
       if (type === 'user') {
         if (row.isMeta === true) continue;
@@ -206,8 +212,8 @@ async function loadClaudeCodeSessionHistory(
     }
   }
 
-  if (messages.length <= limit) return messages;
-  return messages.slice(messages.length - limit);
+  const trimmedMessages = messages.length <= limit ? messages : messages.slice(messages.length - limit);
+  return { messages: trimmedMessages, rawSdkMessages };
 }
 
 export async function handleCodeAgentRoutes(
@@ -264,12 +270,12 @@ export async function handleCodeAgentRoutes(
         return true;
       }
 
-      const messages = await loadClaudeCodeSessionHistory(
+      const result = await loadClaudeCodeSessionHistory(
         workspaceRoot,
         sessionId,
         Number.isFinite(limit) && limit > 0 ? Math.min(Math.floor(limit), 500) : 120,
       );
-      sendJson(res, 200, { success: true, messages });
+      sendJson(res, 200, { success: true, messages: result.messages, rawSdkMessages: result.rawSdkMessages });
     } catch (error) {
       sendJson(res, 500, { success: false, error: String(error) });
     }
@@ -311,6 +317,125 @@ export async function handleCodeAgentRoutes(
       const body = await parseJsonBody<CodeAgentRunRequest>(req);
       const result = await ctx.codeAgentManager.runTask(body);
       sendJson(res, 200, { success: true, result });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
+  if (url.pathname === '/api/code-agent/skills' && req.method === 'GET') {
+    try {
+      const workspaceRoot = url.searchParams.get('workspaceRoot')?.trim() || '';
+      const home = homedir();
+
+      // All global skill directories that Claude Code, Codex, or Cursor may use
+      const globalDirs = [
+        join(home, '.claude', 'skills'),
+        join(home, '.agents', 'skills'),
+        join(home, '.codex', 'skills'),
+        join(home, '.cursor', 'skills-cursor'),
+      ];
+
+      // Project-level: .claude/skills under workspace root
+      const projectDirs = workspaceRoot
+        ? [join(workspaceRoot, '.claude', 'skills')]
+        : [];
+
+      const claudeDirs = new Set([
+        join(home, '.claude', 'skills'),
+        ...(workspaceRoot ? [join(workspaceRoot, '.claude', 'skills')] : []),
+      ]);
+
+      const scanSkillDir = async (
+        dir: string,
+        scope: 'global' | 'project',
+      ): Promise<Array<{ name: string; command: string; description: string; scope: string; source: 'claude' | 'external'; skillContent: string }>> => {
+        try {
+          const entries = await fs.readdir(dir, { withFileTypes: true });
+          const results = await Promise.all(
+            entries
+              .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
+              .map(async (e) => {
+                const skillMd = join(dir, e.name, 'SKILL.md');
+                let description = '';
+                let skillContent = '';
+                try {
+                  const content = await fs.readFile(skillMd, 'utf8');
+                  skillContent = content;
+                  const lines = content.split(/\r?\n/);
+
+                  // Try YAML frontmatter first (--- delimited)
+                  if (lines[0]?.trim() === '---') {
+                    const endIdx = lines.indexOf('---', 1);
+                    if (endIdx > 0) {
+                      const fmBlock = lines.slice(1, endIdx).join('\n');
+                      const descMatch = fmBlock.match(/^description:\s*["']?(.*?)["']?\s*$/m);
+                      if (descMatch?.[1]) {
+                        const raw = descMatch[1].trim();
+                        description = raw.length > 100 ? `${raw.slice(0, 100)}…` : raw;
+                      }
+                    }
+                  }
+
+                  // Fallback: first non-empty, non-frontmatter line
+                  if (!description) {
+                    const textLine = lines.find((l) => {
+                      const t = l.trim();
+                      return t.length > 0 && t !== '---';
+                    });
+                    if (textLine) {
+                      const trimmed = textLine.replace(/^#+\s*/, '').trim();
+                      description = trimmed.length > 100 ? `${trimmed.slice(0, 100)}…` : trimmed;
+                    }
+                  }
+                } catch {
+                  // no SKILL.md or unreadable — skip silently
+                }
+                const source = claudeDirs.has(dir) ? 'claude' as const : 'external' as const;
+                return {
+                  name: e.name,
+                  command: `/${e.name}`,
+                  description,
+                  scope,
+                  source,
+                  skillContent,
+                };
+              }),
+          );
+          return results;
+        } catch {
+          return [];
+        }
+      };
+
+      const globalResults = await Promise.all(
+        globalDirs.map((dir) => scanSkillDir(dir, 'global')),
+      );
+      const projectResults = await Promise.all(
+        projectDirs.map((dir) => scanSkillDir(dir, 'project')),
+      );
+
+      // Deduplicate by name (first occurrence wins)
+      const seen = new Set<string>();
+      const dedup = (skills: Array<{ name: string; command: string; description: string; scope: string }>) => {
+        const unique: typeof skills = [];
+        for (const s of skills) {
+          if (!seen.has(s.name)) {
+            seen.add(s.name);
+            unique.push(s);
+          }
+        }
+        return unique;
+      };
+
+      const globalSkills = dedup(globalResults.flat());
+      seen.clear();
+      const projectSkills = dedup(projectResults.flat());
+
+      sendJson(res, 200, {
+        success: true,
+        skills: { global: globalSkills, project: projectSkills },
+      });
     } catch (error) {
       sendJson(res, 500, { success: false, error: String(error) });
     }

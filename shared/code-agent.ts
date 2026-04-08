@@ -129,3 +129,9 @@ export interface CodeAgentSessionMessage {
   text: string;
   timestamp: number;
 }
+
+export interface CodeAgentSessionHistoryResult {
+  messages: CodeAgentSessionMessage[];
+  /** Raw JSONL rows for rebuilding rich timeline via pushSdkMessage */
+  rawSdkMessages: Record<string, unknown>[];
+}

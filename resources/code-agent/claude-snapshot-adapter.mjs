@@ -455,6 +455,29 @@ function extractCliOutput(parsed, fallbackText) {
     }
   }
 
+  // If we parsed the output as NDJSON stream, reconstruct the text instead of dumping raw JSON
+  if (parsed && Array.isArray(parsed.messages)) {
+    const extractedTexts = [];
+    for (const msg of parsed.messages) {
+      if (msg && msg.type === 'error' && msg.error) {
+        extractedTexts.push(msg.error.message || String(msg.error));
+      }
+      if (msg && msg.type === 'assistant' && msg.message && Array.isArray(msg.message.content)) {
+        const textParts = msg.message.content
+          .filter((block) => block && block.type === 'text' && typeof block.text === 'string')
+          .map((block) => block.text);
+        if (textParts.length > 0) {
+          extractedTexts.push(textParts.join(''));
+        }
+      }
+    }
+    const combined = extractedTexts.join('\n').trim();
+    if (combined) {
+      return combined;
+    }
+    return '任务已完成 (no text output)';
+  }
+
   return fallbackText.trim();
 }
 
@@ -808,12 +831,13 @@ async function runClaudeCliTask({
     };
   }
 
-  function buildPermissionResponseLine(protocol, requestId, decision, rawInput) {
+  function buildPermissionResponseLine(protocol, requestId, decision, rawInput, feedback) {
     const normalizedDecision = decision === 'allow' ? 'allow' : 'deny';
     if (protocol === 'control') {
+      const denyMessage = feedback || 'User denied this action';
       const innerResponse = normalizedDecision === 'allow'
         ? { behavior: 'allow', updatedInput: rawInput || {} }
-        : { behavior: 'deny', message: 'User denied this action' };
+        : { behavior: 'deny', message: denyMessage };
       return (
         JSON.stringify({
           type: 'control_response',
@@ -858,8 +882,10 @@ async function runClaudeCliTask({
       const inputSummary =
         buildToolInputSummary(toolName, rawInput) ||
         String(rawInput.command || rawInput.path || '');
-      const decision = await onPermissionRequest({ requestId, toolName, inputSummary, rawInput });
-      const response = buildPermissionResponseLine(protocol, requestId, decision || 'deny', rawInput);
+      const result = await onPermissionRequest({ requestId, toolName, inputSummary, rawInput });
+      const decision = typeof result === 'object' && result !== null ? result.decision : result;
+      const feedback = typeof result === 'object' && result !== null ? result.feedback : undefined;
+      const response = buildPermissionResponseLine(protocol, requestId, decision || 'deny', rawInput, feedback);
       child?.stdin.write(response);
     } finally {
       awaitingPermission = false;

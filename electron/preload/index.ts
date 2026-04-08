@@ -54,6 +54,7 @@ const electronAPI = {
         'pet:setInputActivity',
         'pet:setUiActivity',
         'pet:setBubbleVisible',
+        'pet:updateBubbleBounds',
         'pet:recordingCommand',
         'pet:asrSessionStart',
         'pet:asrSessionChunk',
@@ -169,6 +170,7 @@ const electronAPI = {
         'openclaw:getSkillsDir',
         'openclaw:getCliCommand',
         'code-agent:respond-permission',
+        'code-agent:respond-elicitation',
       ];
 
       if (validChannels.includes(channel)) {

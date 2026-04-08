@@ -628,15 +628,22 @@ async function initialize(): Promise<void> {
 
   codeAgentManager.on('status', (status) => {
     hostEventBus.emit('code-agent:status', status);
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('code-agent:status', status);
+    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('code-agent:status', status);
+      }
     }
   });
 
   codeAgentManager.on('error', (error) => {
-    hostEventBus.emit('code-agent:error', { message: error instanceof Error ? error.message : String(error) });
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('code-agent:error', { message: error instanceof Error ? error.message : String(error) });
+    const payload = { message: error instanceof Error ? error.message : String(error) };
+    hostEventBus.emit('code-agent:error', payload);
+    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('code-agent:error', payload);
+      }
     }
   });
 
@@ -646,29 +653,41 @@ async function initialize(): Promise<void> {
 
   codeAgentManager.on('exit', (payload) => {
     hostEventBus.emit('code-agent:exit', payload);
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('code-agent:exit', payload);
+    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('code-agent:exit', payload);
+      }
     }
   });
 
   codeAgentManager.on('run:started', (payload) => {
     hostEventBus.emit('code-agent:run-started', payload);
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('code-agent:run-started', payload);
+    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('code-agent:run-started', payload);
+      }
     }
   });
 
   codeAgentManager.on('run:completed', (payload) => {
     hostEventBus.emit('code-agent:run-completed', payload);
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('code-agent:run-completed', payload);
+    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('code-agent:run-completed', payload);
+      }
     }
   });
 
   codeAgentManager.on('run:failed', (payload) => {
     hostEventBus.emit('code-agent:run-failed', payload);
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('code-agent:run-failed', payload);
+    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('code-agent:run-failed', payload);
+      }
     }
   });
 
@@ -717,8 +736,13 @@ async function initialize(): Promise<void> {
     }
   });
 
-  ipcMain.handle('code-agent:respond-permission', async (_event, payload: { requestId: string; decision: string }) => {
-    await codeAgentManager.respondPermission(payload.requestId, payload.decision);
+  ipcMain.handle('code-agent:respond-permission', async (_event, payload: { requestId: string; decision: string; feedback?: string }) => {
+    await codeAgentManager.respondPermission(payload.requestId, payload.decision, payload.feedback);
+    return { ok: true };
+  });
+
+  ipcMain.handle('code-agent:respond-elicitation', async (_event, payload: { elicitationId: string; action: string; content?: Record<string, unknown> }) => {
+    await codeAgentManager.respondElicitation(payload.elicitationId, payload.action, payload.content);
     return { ok: true };
   });
 

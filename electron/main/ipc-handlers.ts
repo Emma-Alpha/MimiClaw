@@ -113,6 +113,7 @@ import { getPetWindow } from "./pet-window";
 import {
 	setPetBubbleVisible,
 	syncPetBubbleWindowToPet,
+	updatePetBubbleWindowHeight,
 } from "./pet-bubble-window";
 import {
 	type PetMiniChatSeed,
@@ -519,6 +520,18 @@ function registerPetHandlers(): void {
 			const visible =
 				typeof payload === "boolean" ? payload : !!payload?.visible;
 			await setPetBubbleVisible(visible);
+			return { success: true };
+		},
+	);
+
+	ipcMain.handle(
+		"pet:updateBubbleBounds",
+		(_event, payload?: { height?: number }) => {
+			const height =
+				typeof payload?.height === "number"
+					? payload.height
+					: Number.NaN;
+			updatePetBubbleWindowHeight(height);
 			return { success: true };
 		},
 	);

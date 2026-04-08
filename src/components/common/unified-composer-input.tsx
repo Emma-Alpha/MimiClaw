@@ -1,6 +1,8 @@
 import {
+	forwardRef,
 	useCallback,
 	useEffect,
+	useImperativeHandle,
 	useMemo,
 	useRef,
 	useState,
@@ -12,6 +14,7 @@ import {
 	Element as SlateElement,
 	Node,
 	Path,
+	Range,
 	Transforms,
 	type Descendant,
 } from "slate";
@@ -32,6 +35,15 @@ import {
 export type UnifiedComposerInputValue = {
 	text: string;
 	paths: UnifiedComposerPath[];
+	skill?: string | null;
+	/** Full Slate editor tree for faithful message-list rendering */
+	richContent?: import("slate").Descendant[];
+};
+
+export type UnifiedComposerInputHandle = {
+	insertSkill: (command: string, replaceRange?: { start: number; end: number }) => void;
+	removeSkill: () => void;
+	focus: () => void;
 };
 
 type SlatePathElement = {
@@ -40,9 +52,15 @@ type SlatePathElement = {
 	children: [{ text: "" }];
 };
 
+type SlateSkillElement = {
+	type: "skill";
+	command: string;
+	children: [{ text: "" }];
+};
+
 type SlateParagraphElement = {
 	type: "paragraph";
-	children: Array<{ text: string } | SlatePathElement>;
+	children: Array<{ text: string } | SlatePathElement | SlateSkillElement>;
 };
 
 function isSlatePathElement(value: unknown): value is SlatePathElement {
@@ -52,10 +70,25 @@ function isSlatePathElement(value: unknown): value is SlatePathElement {
 	);
 }
 
+function isSlateSkillElement(value: unknown): value is SlateSkillElement {
+	return (
+		SlateElement.isElement(value) &&
+		(value as { type?: string }).type === "skill"
+	);
+}
+
 function createPathElement(path: UnifiedComposerPath): SlatePathElement {
 	return {
 		type: "path",
 		path,
+		children: [{ text: "" }],
+	};
+}
+
+function createSkillElement(command: string): SlateSkillElement {
+	return {
+		type: "skill",
+		command,
 		children: [{ text: "" }],
 	};
 }
@@ -102,6 +135,20 @@ function extractEditorPaths(value: Descendant[]): UnifiedComposerPath[] {
 	return found;
 }
 
+function extractEditorSkill(value: Descendant[]): string | null {
+	const visit = (nodes: Descendant[]): string | null => {
+		for (const node of nodes) {
+			if (isSlateSkillElement(node)) return node.command;
+			if (SlateElement.isElement(node)) {
+				const found = visit(node.children as Descendant[]);
+				if (found) return found;
+			}
+		}
+		return null;
+	};
+	return visit(value);
+}
+
 function samePathSet(left: Set<string> | null, right: Set<string>): boolean {
 	if (!left || left.size !== right.size) return false;
 	for (const item of left) {
@@ -110,10 +157,12 @@ function samePathSet(left: Set<string> | null, right: Set<string>): boolean {
 	return true;
 }
 
-function withPathInline(editor: ReactEditor): ReactEditor {
+function withInlineVoids(editor: ReactEditor): ReactEditor {
 	const { isInline, isVoid } = editor;
-	editor.isInline = (element) => isSlatePathElement(element) || isInline(element);
-	editor.isVoid = (element) => isSlatePathElement(element) || isVoid(element);
+	editor.isInline = (element) =>
+		isSlatePathElement(element) || isSlateSkillElement(element) || isInline(element);
+	editor.isVoid = (element) =>
+		isSlatePathElement(element) || isSlateSkillElement(element) || isVoid(element);
 	return editor;
 }
 
@@ -128,6 +177,7 @@ export interface UnifiedComposerInputProps {
 	pathChipIconClassName?: string;
 	pathChipNameClassName?: string;
 	pathChipRemoveClassName?: string;
+	skillChipClassName?: string;
 	removePathTitle?: string;
 	onKeyDown?: (event: ReactKeyboardEvent<HTMLElement>) => void;
 	onPressEnter?: (event: ReactKeyboardEvent<HTMLElement>) => void;
@@ -137,9 +187,10 @@ export interface UnifiedComposerInputProps {
 	onCaretChange?: (index: number) => void;
 	onPaste?: React.ClipboardEventHandler<HTMLDivElement>;
 	onVisualMultilineChange?: (multiline: boolean) => void;
+	maxPaths?: number;
 }
 
-export function UnifiedComposerInput({
+export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, UnifiedComposerInputProps>(function UnifiedComposerInput({
 	value,
 	onChange,
 	placeholder,
@@ -150,6 +201,7 @@ export function UnifiedComposerInput({
 	pathChipIconClassName,
 	pathChipNameClassName,
 	pathChipRemoveClassName,
+	skillChipClassName,
 	removePathTitle = "移除路径",
 	onKeyDown,
 	onPressEnter,
@@ -159,9 +211,10 @@ export function UnifiedComposerInput({
 	onCaretChange,
 	onPaste,
 	onVisualMultilineChange,
-}: UnifiedComposerInputProps) {
+	maxPaths = 20,
+}, ref) {
 	const editor = useMemo(
-		() => withPathInline(withReact(createEditor() as ReactEditor)),
+		() => withInlineVoids(withReact(createEditor() as ReactEditor)),
 		[],
 	);
 	const [editorValue, setEditorValue] = useState<Descendant[]>(() =>
@@ -238,12 +291,16 @@ export function UnifiedComposerInput({
 					(item) => item.absolutePath,
 				),
 			);
+
+			if (existing.size >= maxPaths) return;
+
 			if (!editor.selection) {
 				Transforms.select(editor, Editor.end(editor, []));
 			}
 
 			let inserted = false;
 			for (const item of paths) {
+				if (existing.size >= maxPaths) break;
 				const absolutePath = item?.absolutePath?.trim();
 				if (!absolutePath || existing.has(absolutePath)) continue;
 				existing.add(absolutePath);
@@ -268,8 +325,82 @@ export function UnifiedComposerInput({
 				});
 			}
 		},
+		[editor, maxPaths],
+	);
+
+	const removeExistingSkills = useCallback(
+		(ed: ReactEditor) => {
+			const matches = Array.from(
+				Editor.nodes(ed, {
+					at: [],
+					match: (node) => isSlateSkillElement(node),
+				}),
+			);
+			for (let i = matches.length - 1; i >= 0; i -= 1) {
+				Transforms.removeNodes(ed, { at: matches[i][1] });
+			}
+		},
+		[],
+	);
+
+	const textOffsetToSlatePoint = useCallback(
+		(targetOffset: number): { path: number[]; offset: number } | null => {
+			let remaining = targetOffset;
+			const paragraph = editor.children[0];
+			if (!paragraph || !SlateElement.isElement(paragraph)) return null;
+
+			for (let i = 0; i < paragraph.children.length; i++) {
+				const child = paragraph.children[i];
+				if ("text" in child && typeof child.text === "string") {
+					if (remaining <= child.text.length) {
+						return { path: [0, i], offset: remaining };
+					}
+					remaining -= child.text.length;
+				}
+			}
+			return Editor.end(editor, []);
+		},
 		[editor],
 	);
+
+	const pendingFocusRef = useRef(false);
+
+	const insertSkill = useCallback(
+		(command: string, replaceRange?: { start: number; end: number }) => {
+			Editor.withoutNormalizing(editor, () => {
+				removeExistingSkills(editor);
+
+				if (replaceRange) {
+					const startPoint = textOffsetToSlatePoint(replaceRange.start);
+					const endPoint = textOffsetToSlatePoint(replaceRange.end);
+					if (startPoint && endPoint) {
+						Transforms.select(editor, { anchor: startPoint, focus: endPoint });
+						Transforms.delete(editor);
+					}
+				}
+
+				if (!editor.selection) {
+					Transforms.select(editor, Editor.end(editor, []));
+				}
+				Transforms.insertNodes(editor, createSkillElement(command));
+				Transforms.insertText(editor, " ");
+			});
+
+			pendingFocusRef.current = true;
+		},
+		[editor, removeExistingSkills, textOffsetToSlatePoint],
+	);
+
+	const removeSkill = useCallback(() => {
+		removeExistingSkills(editor);
+		pendingFocusRef.current = true;
+	}, [editor, removeExistingSkills]);
+
+	useImperativeHandle(ref, () => ({
+		insertSkill,
+		removeSkill,
+		focus: () => ReactEditor.focus(editor),
+	}), [editor, insertSkill, removeSkill]);
 
 	const syncPathsFromParent = useCallback(
 		(nextPaths: UnifiedComposerPath[]) => {
@@ -313,29 +444,57 @@ export function UnifiedComposerInput({
 	const syncEditorToParent = useCallback(
 		(nextValue: Descendant[]) => {
 			const plain = extractEditorText(nextValue);
-			const nextPaths = extractEditorPaths(nextValue);
-			const nextSet = new Set(nextPaths.map((item) => item.absolutePath));
-			const parentSet = new Set(value.paths.map((item) => item.absolutePath));
+			const hasNonTextOperation = editor.operations.some(
+				(operation) =>
+					operation.type !== "set_selection"
+					&& operation.type !== "insert_text"
+					&& operation.type !== "remove_text",
+			);
+			const shouldScanInlineElements =
+				hasNonTextOperation
+				|| value.paths.length > 0
+				|| (value.skill ?? null) !== null;
+			const nextPaths = shouldScanInlineElements
+				? extractEditorPaths(nextValue)
+				: [];
+			const nextSkill = shouldScanInlineElements
+				? extractEditorSkill(nextValue)
+				: null;
+			const nextSet = shouldScanInlineElements
+				? new Set(nextPaths.map((item) => item.absolutePath))
+				: null;
+			const parentSet = shouldScanInlineElements
+				? new Set(value.paths.map((item) => item.absolutePath))
+				: null;
 			const changedText = plain !== value.text;
-			const changedPaths = !samePathSet(parentSet, nextSet);
+			const changedPaths =
+				shouldScanInlineElements
+				&& nextSet !== null
+				&& parentSet !== null
+				&& !samePathSet(parentSet, nextSet);
+			const changedSkill =
+				shouldScanInlineElements
+				&& (nextSkill ?? null) !== (value.skill ?? null);
 
-			if (!changedText && !changedPaths) {
+			if (!changedText && !changedPaths && !changedSkill) {
 				return;
 			}
 
 			if (changedText) {
 				pendingTextEchoRef.current = plain;
 			}
-			if (changedPaths) {
+			if (changedPaths && nextSet) {
 				pendingPathSetRef.current = nextSet;
 			}
 
 			onChange({
 				text: plain,
 				paths: nextPaths,
+				skill: nextSkill,
+				richContent: nextValue,
 			});
 		},
-		[onChange, value.paths, value.text],
+		[editor, onChange, value.paths, value.skill, value.text],
 	);
 
 	const updateVisualMultiline = useCallback(() => {
@@ -409,6 +568,24 @@ export function UnifiedComposerInput({
 	const renderElement = useCallback(
 		(props: RenderElementProps) => {
 			const { attributes, children, element } = props;
+
+			if (isSlateSkillElement(element)) {
+				return (
+					<span {...attributes}>
+						<span
+							contentEditable={false}
+							className={skillChipClassName}
+							onMouseDown={(event) => {
+								event.preventDefault();
+							}}
+						>
+							{element.command}
+						</span>
+						{children}
+					</span>
+				);
+			}
+
 			if (!isSlatePathElement(element)) {
 				return <div {...attributes}>{children}</div>;
 			}
@@ -462,6 +639,7 @@ export function UnifiedComposerInput({
 			placeCaretAfterPathChip,
 			removePathFromEditor,
 			removePathTitle,
+			skillChipClassName,
 		],
 	);
 
@@ -471,8 +649,29 @@ export function UnifiedComposerInput({
 			editor={editor}
 			initialValue={editorInitialValue}
 			onChange={(nextValue) => {
-				setEditorValue(nextValue);
-				syncEditorToParent(nextValue);
+				const hasContentOperation = editor.operations.some(
+					(operation) => operation.type !== "set_selection",
+				);
+
+				if (hasContentOperation) {
+					setEditorValue(nextValue);
+					syncEditorToParent(nextValue);
+				}
+
+				if (pendingFocusRef.current) {
+					pendingFocusRef.current = false;
+					requestAnimationFrame(() => {
+						try {
+							const el = editorDomRef.current;
+							if (el) el.focus({ preventScroll: true });
+							ReactEditor.focus(editor);
+							Transforms.select(editor, Editor.end(editor, []));
+						} catch {
+							// Slate DOM not yet ready
+						}
+					});
+				}
+
 				if (!onCaretChange) return;
 				if (!editor.selection) {
 					onCaretChange(extractEditorText(nextValue).length);
@@ -509,25 +708,38 @@ export function UnifiedComposerInput({
 					if (disabled || event.button !== 0) return;
 					const target = event.target as HTMLElement;
 					if (target.closest("button")) return;
-					queueMicrotask(() => {
-						const selection = editor.selection;
-						const selectionInVoid =
-							selection !== null &&
-							Editor.void(editor, { at: selection }) !== undefined;
-						if (!selection || selectionInVoid) {
-							Transforms.select(editor, Editor.end(editor, []));
-						}
-						ReactEditor.focus(editor);
-					});
 				}}
 				onClick={() => {
 					requestAnimationFrame(() => {
-						const selection = editor.selection;
-						const selectionInVoid =
-							selection !== null &&
-							Editor.void(editor, { at: selection }) !== undefined;
-						if (!selection || selectionInVoid) {
+						const sel = editor.selection;
+						if (!sel) {
 							Transforms.select(editor, Editor.end(editor, []));
+							ReactEditor.focus(editor);
+							return;
+						}
+						if (Editor.void(editor, { at: sel })) {
+							Transforms.select(editor, Editor.end(editor, []));
+							ReactEditor.focus(editor);
+							return;
+						}
+						const { anchor } = sel;
+						if (anchor.offset === 0) {
+							try {
+								const node = Node.get(editor, anchor.path);
+								if ("text" in node && node.text === "") {
+									const parentPath = anchor.path.slice(0, -1);
+									const childIdx = anchor.path[anchor.path.length - 1];
+									const parent = Node.get(editor, parentPath);
+									if (
+										SlateElement.isElement(parent) &&
+										isSlatePathElement(parent.children[childIdx + 1])
+									) {
+										Transforms.select(editor, Editor.end(editor, []));
+									}
+								}
+							} catch {
+								Transforms.select(editor, Editor.end(editor, []));
+							}
 						}
 						ReactEditor.focus(editor);
 					});
@@ -550,6 +762,52 @@ export function UnifiedComposerInput({
 					if (event.defaultPrevented) return;
 					if (event.key === "Enter") {
 						onPressEnter?.(keyEvent);
+						return;
+					}
+					if (
+						event.key === "Backspace" &&
+						!event.shiftKey &&
+						!event.metaKey &&
+						!event.ctrlKey
+					) {
+						const sel = editor.selection;
+						if (sel && Range.isCollapsed(sel)) {
+							const { anchor } = sel;
+							try {
+								const parentPath = anchor.path.slice(0, -1);
+								const childIdx = anchor.path[anchor.path.length - 1];
+								const parent = Node.get(editor, parentPath);
+								if (!SlateElement.isElement(parent) || childIdx === 0) {
+									return;
+								}
+							const prevSibling = parent.children[childIdx - 1];
+							const isPrevInlineVoid =
+								isSlatePathElement(prevSibling) || isSlateSkillElement(prevSibling);
+							if (anchor.offset === 0 && isPrevInlineVoid) {
+								event.preventDefault();
+								Transforms.removeNodes(editor, {
+									at: [...parentPath, childIdx - 1],
+								});
+								return;
+							}
+							const currentNode = parent.children[childIdx];
+							if (
+								anchor.offset <= 1 &&
+								isPrevInlineVoid &&
+								currentNode != null &&
+								"text" in currentNode &&
+								currentNode.text.trim() === "" &&
+								currentNode.text.length <= 1
+							) {
+								event.preventDefault();
+								Transforms.removeNodes(editor, {
+									at: [...parentPath, childIdx - 1],
+								});
+							}
+							} catch {
+								// fall through to default Backspace
+							}
+						}
 					}
 				}}
 				renderPlaceholder={({ attributes, children }) => (
@@ -560,4 +818,4 @@ export function UnifiedComposerInput({
 			/>
 		</Slate>
 	);
-}
+});

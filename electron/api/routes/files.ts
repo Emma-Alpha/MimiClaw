@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import { dialog, nativeImage } from 'electron';
 import crypto from 'node:crypto';
-import { extname, join } from 'node:path';
+import { extname, join, relative } from 'node:path';
 import { homedir } from 'node:os';
 import type { HostApiContext } from '../context';
 import { parseJsonBody, sendJson } from '../route-utils';
@@ -54,6 +54,79 @@ function mimeToExt(mimeType: string): string {
 }
 
 const OUTBOUND_DIR = join(homedir(), '.openclaw', 'media', 'outbound');
+const PROJECT_MENTION_SKIP_DIRS = new Set([
+  'node_modules',
+  'dist',
+  'dist-electron',
+  'build',
+  'out',
+  'coverage',
+  '.next',
+  '.nuxt',
+  '.turbo',
+  '.cache',
+  'tmp',
+  'temp',
+]);
+const MAX_PROJECT_MENTION_ENTRIES = 5000;
+
+type ProjectMentionEntry = {
+  absolutePath: string;
+  relativePath: string;
+  name: string;
+  isDirectory: boolean;
+};
+
+function shouldSkipProjectMentionEntry(name: string, isDirectory: boolean): boolean {
+  if (!name || name.startsWith('.')) return true;
+  if (isDirectory && PROJECT_MENTION_SKIP_DIRS.has(name)) return true;
+  return false;
+}
+
+export async function listProjectMentionEntries(workspaceRoot: string): Promise<ProjectMentionEntry[]> {
+  const normalizedRoot = workspaceRoot.trim();
+  if (!normalizedRoot) return [];
+
+  const fsP = await import('node:fs/promises');
+  const rootStat = await fsP.stat(normalizedRoot).catch(() => null);
+  if (!rootStat?.isDirectory()) return [];
+
+  const results: ProjectMentionEntry[] = [];
+  const queue = [normalizedRoot];
+
+  while (queue.length > 0 && results.length < MAX_PROJECT_MENTION_ENTRIES) {
+    const currentDir = queue.shift();
+    if (!currentDir) continue;
+    const entries = await fsP.readdir(currentDir, { withFileTypes: true }).catch(() => []);
+    entries.sort((left, right) => {
+      if (left.isDirectory() !== right.isDirectory()) {
+        return left.isDirectory() ? -1 : 1;
+      }
+      return left.name.localeCompare(right.name, 'en');
+    });
+
+    for (const entry of entries) {
+      const isDirectory = entry.isDirectory();
+      if (shouldSkipProjectMentionEntry(entry.name, isDirectory)) continue;
+      const absolutePath = join(currentDir, entry.name);
+      const normalizedRelative = relative(normalizedRoot, absolutePath).replace(/\\/g, '/');
+      results.push({
+        absolutePath,
+        relativePath: normalizedRelative,
+        name: entry.name,
+        isDirectory,
+      });
+      if (results.length >= MAX_PROJECT_MENTION_ENTRIES) {
+        break;
+      }
+      if (isDirectory) {
+        queue.push(absolutePath);
+      }
+    }
+  }
+
+  return results;
+}
 
 async function generateImagePreview(filePath: string, mimeType: string): Promise<string | null> {
   try {
@@ -81,6 +154,21 @@ export async function handleFileRoutes(
   url: URL,
   _ctx: HostApiContext,
 ): Promise<boolean> {
+  if (url.pathname === '/api/files/project-mentions' && req.method === 'GET') {
+    try {
+      const workspaceRoot = url.searchParams.get('workspaceRoot')?.trim() || '';
+      if (!workspaceRoot) {
+        sendJson(res, 400, { success: false, error: 'workspaceRoot is required' });
+        return true;
+      }
+      const entries = await listProjectMentionEntries(workspaceRoot);
+      sendJson(res, 200, { success: true, entries });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
   if (url.pathname === '/api/files/stage-paths' && req.method === 'POST') {
     try {
       const body = await parseJsonBody<{ filePaths: string[] }>(req);

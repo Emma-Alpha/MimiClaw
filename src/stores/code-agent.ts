@@ -34,6 +34,198 @@ export type SpinnerMode =
 	| "responding"
 	| null;
 
+export type VendorStatusSource = "vendor" | "fallback" | null;
+
+const SPINNER_VERBS = [
+	"Accomplishing",
+	"Actioning",
+	"Actualizing",
+	"Architecting",
+	"Baking",
+	"Beaming",
+	"Beboppin'",
+	"Befuddling",
+	"Billowing",
+	"Blanching",
+	"Bloviating",
+	"Boogieing",
+	"Boondoggling",
+	"Booping",
+	"Bootstrapping",
+	"Brewing",
+	"Bunning",
+	"Burrowing",
+	"Calculating",
+	"Canoodling",
+	"Caramelizing",
+	"Cascading",
+	"Catapulting",
+	"Cerebrating",
+	"Channeling",
+	"Channelling",
+	"Choreographing",
+	"Churning",
+	"Clauding",
+	"Coalescing",
+	"Cogitating",
+	"Combobulating",
+	"Composing",
+	"Computing",
+	"Concocting",
+	"Considering",
+	"Contemplating",
+	"Cooking",
+	"Crafting",
+	"Creating",
+	"Crunching",
+	"Crystallizing",
+	"Cultivating",
+	"Deciphering",
+	"Deliberating",
+	"Determining",
+	"Dilly-dallying",
+	"Discombobulating",
+	"Doing",
+	"Doodling",
+	"Drizzling",
+	"Ebbing",
+	"Effecting",
+	"Elucidating",
+	"Embellishing",
+	"Enchanting",
+	"Envisioning",
+	"Evaporating",
+	"Fermenting",
+	"Fiddle-faddling",
+	"Finagling",
+	"Flambéing",
+	"Flibbertigibbeting",
+	"Flowing",
+	"Flummoxing",
+	"Fluttering",
+	"Forging",
+	"Forming",
+	"Frolicking",
+	"Frosting",
+	"Gallivanting",
+	"Galloping",
+	"Garnishing",
+	"Generating",
+	"Gesticulating",
+	"Germinating",
+	"Gitifying",
+	"Grooving",
+	"Gusting",
+	"Harmonizing",
+	"Hashing",
+	"Hatching",
+	"Herding",
+	"Honking",
+	"Hullaballooing",
+	"Hyperspacing",
+	"Ideating",
+	"Imagining",
+	"Improvising",
+	"Incubating",
+	"Inferring",
+	"Infusing",
+	"Ionizing",
+	"Jitterbugging",
+	"Julienning",
+	"Kneading",
+	"Leavening",
+	"Levitating",
+	"Lollygagging",
+	"Manifesting",
+	"Marinating",
+	"Meandering",
+	"Metamorphosing",
+	"Misting",
+	"Moonwalking",
+	"Moseying",
+	"Mulling",
+	"Mustering",
+	"Musing",
+	"Nebulizing",
+	"Nesting",
+	"Newspapering",
+	"Noodling",
+	"Nucleating",
+	"Orbiting",
+	"Orchestrating",
+	"Osmosing",
+	"Perambulating",
+	"Percolating",
+	"Perusing",
+	"Philosophising",
+	"Photosynthesizing",
+	"Pollinating",
+	"Pondering",
+	"Pontificating",
+	"Pouncing",
+	"Precipitating",
+	"Prestidigitating",
+	"Processing",
+	"Proofing",
+	"Propagating",
+	"Puttering",
+	"Puzzling",
+	"Quantumizing",
+	"Razzle-dazzling",
+	"Razzmatazzing",
+	"Recombobulating",
+	"Reticulating",
+	"Roosting",
+	"Ruminating",
+	"Sautéing",
+	"Scampering",
+	"Schlepping",
+	"Scurrying",
+	"Seasoning",
+	"Shenaniganing",
+	"Shimmying",
+	"Simmering",
+	"Skedaddling",
+	"Sketching",
+	"Slithering",
+	"Smooshing",
+	"Sock-hopping",
+	"Spelunking",
+	"Spinning",
+	"Sprouting",
+	"Stewing",
+	"Sublimating",
+	"Swirling",
+	"Swooping",
+	"Symbioting",
+	"Synthesizing",
+	"Tempering",
+	"Thinking",
+	"Thundering",
+	"Tinkering",
+	"Tomfoolering",
+	"Topsy-turvying",
+	"Transfiguring",
+	"Transmuting",
+	"Twisting",
+	"Undulating",
+	"Unfurling",
+	"Unravelling",
+	"Vibing",
+	"Waddling",
+	"Wandering",
+	"Warping",
+	"Whatchamacalliting",
+	"Whirlpooling",
+	"Whirring",
+	"Whisking",
+	"Wibbling",
+	"Working",
+	"Wrangling",
+	"Zesting",
+	"Zigzagging",
+] as const;
+
 export type ToolStatus =
 	| "streaming-input"
 	| "executing"
@@ -149,6 +341,8 @@ export interface CodeAgentStore {
 		assistantText: string;
 		isStreaming: boolean;
 		spinnerMode: SpinnerMode;
+		vendorStatusText: string;
+		vendorStatusSource: VendorStatusSource;
 		/** Active tool uses keyed by tool_use_id */
 		toolUses: Map<string, StreamingToolUse>;
 	};
@@ -163,14 +357,22 @@ export interface CodeAgentStore {
 	// Rate limit state
 	rateLimitInfo: RateLimitInfo | null;
 
+	// Session-level auto-approved tool types (cleared on reset)
+	sessionAllowedTools: Set<string>;
+
 	// Actions
 	pushSdkMessage: (raw: unknown) => void;
+	pushUserMessage: (text: string) => void;
 	/** Append incremental text from `code-agent:token` IPC events for live streaming */
 	appendStreamingText: (text: string) => void;
 	setPendingPermission: (p: PendingPermission | null) => void;
-	resolvePermission: (requestId: string, _decision: "allow" | "deny") => void;
+	resolvePermission: (requestId: string, _decision: "allow" | "allow-session" | "deny") => void;
 	resolveElicitation: (action: "accept" | "decline", content?: Record<string, unknown>) => void;
+	addSessionAllowedTool: (toolName: string) => void;
+	/** Full reset — clears items + streaming + session state */
 	reset: () => void;
+	/** Light reset — clears only streaming state, keeps items for persistent timeline */
+	resetStreaming: () => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -288,6 +490,58 @@ function buildDiffForToolUse(
 }
 
 // ─── Initial state factory ────────────────────────────────────────────────────
+function sampleSpinnerVerb(): string {
+	return SPINNER_VERBS[Math.floor(Math.random() * SPINNER_VERBS.length)] || "Thinking";
+}
+
+function buildFallbackVendorStatus(
+	spinnerMode: SpinnerMode,
+	currentVendorStatusText = "",
+): string {
+	switch (spinnerMode) {
+		case "requesting":
+		case "thinking": {
+			const normalized = currentVendorStatusText.trim();
+			if (normalized.startsWith("✶ ") && normalized.endsWith("…")) {
+				return normalized.slice(2, -1).trim();
+			}
+			if (normalized) {
+				return normalized.replace(/[.…]+$/u, "").trim();
+			}
+			return sampleSpinnerVerb();
+		}
+		case "tool-input":
+			return "Preparing tool input";
+		case "tool-use":
+			return "Using tools";
+		case "responding":
+			return "Responding";
+		default:
+			return "";
+	}
+}
+
+function formatVendorStatusLabel(statusText: string): string {
+	const normalized = statusText.trim().replace(/[.…]+$/u, "");
+	if (!normalized) return "";
+	return `✶ ${normalized}…`;
+}
+
+function extractVendorStatus(msg: Record<string, unknown>): string {
+	const direct = typeof msg.vendorStatusText === "string" ? msg.vendorStatusText : "";
+	if (direct.trim()) return direct.trim();
+
+	const nested = msg.meta;
+	if (nested && typeof nested === "object") {
+		const metaStatus = (nested as Record<string, unknown>).vendorStatusText;
+		if (typeof metaStatus === "string" && metaStatus.trim()) {
+			return metaStatus.trim();
+		}
+	}
+
+	return "";
+}
+
 function initialStreaming() {
 	return {
 		thinkingText: "",
@@ -295,10 +549,11 @@ function initialStreaming() {
 		assistantText: "",
 		isStreaming: false,
 		spinnerMode: null as SpinnerMode,
+		vendorStatusText: "",
+		vendorStatusSource: null as VendorStatusSource,
 		toolUses: new Map<string, StreamingToolUse>(),
 	};
 }
-
 // ─── Store ────────────────────────────────────────────────────────────────────
 export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 	sessionId: null,
@@ -312,6 +567,7 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 	pendingElicitation: null,
 	activeTasks: new Map(),
 	rateLimitInfo: null,
+	sessionAllowedTools: new Set(),
 
 	reset: () => {
 		set({
@@ -326,6 +582,16 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 			pendingElicitation: null,
 			activeTasks: new Map(),
 			rateLimitInfo: null,
+			sessionAllowedTools: new Set(),
+		});
+	},
+
+	resetStreaming: () => {
+		set({
+			streaming: initialStreaming(),
+			pendingPermission: null,
+			pendingElicitation: null,
+			rateLimitInfo: null,
 		});
 	},
 
@@ -336,6 +602,12 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 				assistantText: state.streaming.assistantText + text,
 				isStreaming: true,
 				spinnerMode: "responding",
+				vendorStatusText:
+					state.streaming.vendorStatusSource === "vendor"
+						? state.streaming.vendorStatusText
+						: formatVendorStatusLabel(buildFallbackVendorStatus("responding")),
+				vendorStatusSource:
+					state.streaming.vendorStatusSource === "vendor" ? "vendor" : "fallback",
 			},
 		}));
 	},
@@ -365,11 +637,34 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 		}));
 	},
 
+	addSessionAllowedTool: (toolName) => {
+		set((state) => {
+			const next = new Set(state.sessionAllowedTools);
+			next.add(toolName.toLowerCase());
+			return { sessionAllowedTools: next };
+		});
+	},
+
+	pushUserMessage: (text) => {
+		set((state) => ({ items: [...state.items, { kind: "user", id: uid(), text }] }));
+	},
+
 	pushSdkMessage: (raw) => {
 		if (!raw || typeof raw !== "object") return;
 		const msg = raw as Record<string, unknown>;
 		const type = msg.type as string | undefined;
 		if (!type) return;
+
+		const vendorStatusText = extractVendorStatus(msg);
+		if (vendorStatusText) {
+			set((state) => ({
+				streaming: {
+					...state.streaming,
+					vendorStatusText: formatVendorStatusLabel(vendorStatusText),
+					vendorStatusSource: "vendor",
+				},
+			}));
+		}
 
 		const addItem = (item: CodeAgentTimelineItem) => {
 			set((state) => ({ items: [...state.items, item] }));
@@ -424,7 +719,25 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 				if (s === "compacting") {
 					addItem({ kind: "system-notice", id: uid(), text: "⟳ 正在压缩上下文…", variant: "info" });
 				}
-				set({ sessionState: s === null ? "idle" : "running" });
+				set((state) => ({
+					sessionState: s === null ? "idle" : "running",
+					streaming:
+						s === null
+							? initialStreaming()
+							: {
+								...state.streaming,
+								vendorStatusText:
+									state.streaming.vendorStatusSource === "vendor"
+										? state.streaming.vendorStatusText
+										: formatVendorStatusLabel(buildFallbackVendorStatus(state.streaming.spinnerMode)),
+								vendorStatusSource:
+									state.streaming.vendorStatusSource === "vendor"
+										? "vendor"
+										: state.streaming.spinnerMode
+											? "fallback"
+											: null,
+							},
+				}));
 				return;
 			}
 
@@ -623,7 +936,18 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 				const blockType = String(block.type || "");
 				if (blockType === "thinking") {
 					set((state) => ({
-						streaming: { ...state.streaming, isThinking: true, thinkingText: "", spinnerMode: "thinking" },
+						streaming: {
+							...state.streaming,
+							isThinking: true,
+							thinkingText: "",
+							spinnerMode: "thinking",
+							vendorStatusText:
+								state.streaming.vendorStatusSource === "vendor"
+									? state.streaming.vendorStatusText
+									: formatVendorStatusLabel(buildFallbackVendorStatus("thinking")),
+							vendorStatusSource:
+								state.streaming.vendorStatusSource === "vendor" ? "vendor" : "fallback",
+						},
 					}));
 				} else if (blockType === "redacted_thinking") {
 					addItem({
@@ -633,7 +957,17 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 					});
 				} else if (blockType === "text") {
 					set((state) => ({
-						streaming: { ...state.streaming, isStreaming: true, spinnerMode: "responding" },
+						streaming: {
+							...state.streaming,
+							isStreaming: true,
+							spinnerMode: "responding",
+							vendorStatusText:
+								state.streaming.vendorStatusSource === "vendor"
+									? state.streaming.vendorStatusText
+									: formatVendorStatusLabel(buildFallbackVendorStatus("responding")),
+							vendorStatusSource:
+								state.streaming.vendorStatusSource === "vendor" ? "vendor" : "fallback",
+						},
 					}));
 				} else if (blockType === "tool_use") {
 					const toolUseId = String(block.id || uid());
@@ -648,7 +982,19 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 					set((state) => {
 						const next = new Map(state.streaming.toolUses);
 						next.set(toolUseId, tu);
-						return { streaming: { ...state.streaming, toolUses: next, spinnerMode: "tool-input" } };
+						return {
+							streaming: {
+								...state.streaming,
+								toolUses: next,
+								spinnerMode: "tool-input",
+								vendorStatusText:
+									state.streaming.vendorStatusSource === "vendor"
+										? state.streaming.vendorStatusText
+										: formatVendorStatusLabel(buildFallbackVendorStatus("tool-input")),
+								vendorStatusSource:
+									state.streaming.vendorStatusSource === "vendor" ? "vendor" : "fallback",
+							},
+						};
 					});
 				}
 				return;
@@ -690,13 +1036,31 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 
 			if (evType === "message_start") {
 				set((state) => ({
-					streaming: { ...state.streaming, spinnerMode: "requesting" },
+					streaming: {
+						...state.streaming,
+						spinnerMode: "requesting",
+						vendorStatusText:
+							state.streaming.vendorStatusSource === "vendor"
+								? state.streaming.vendorStatusText
+								: formatVendorStatusLabel(buildFallbackVendorStatus("requesting")),
+						vendorStatusSource:
+							state.streaming.vendorStatusSource === "vendor" ? "vendor" : "fallback",
+					},
 				}));
 			}
 
 			if (evType === "message_delta") {
 				set((state) => ({
-					streaming: { ...state.streaming, spinnerMode: "responding" },
+					streaming: {
+						...state.streaming,
+						spinnerMode: "responding",
+						vendorStatusText:
+							state.streaming.vendorStatusSource === "vendor"
+								? state.streaming.vendorStatusText
+								: formatVendorStatusLabel(buildFallbackVendorStatus("responding")),
+						vendorStatusSource:
+							state.streaming.vendorStatusSource === "vendor" ? "vendor" : "fallback",
+					},
 				}));
 			}
 			return;
@@ -713,7 +1077,19 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 				if (existing) {
 					next.set(toolUseId, { ...existing, elapsedSeconds: elapsed, status: "executing" });
 				}
-				return { streaming: { ...state.streaming, toolUses: next } };
+				return {
+					streaming: {
+						...state.streaming,
+						toolUses: next,
+						spinnerMode: "tool-use",
+						vendorStatusText:
+							state.streaming.vendorStatusSource === "vendor"
+								? state.streaming.vendorStatusText
+								: formatVendorStatusLabel(buildFallbackVendorStatus("tool-use")),
+						vendorStatusSource:
+							state.streaming.vendorStatusSource === "vendor" ? "vendor" : "fallback",
+					},
+				};
 			});
 			return;
 		}
@@ -774,6 +1150,20 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 					set({ sessionTitle: title });
 				}
 			}
+			
+			// Also add the user message to the timeline if it is not just meta/tool_result
+			if (!msg.isMeta) {
+				const userText = extractTextContent(content);
+				if (userText.trim()) {
+					// Check if we already optimistically added this message
+					const existingUserMsgs = get().items.filter(i => i.kind === "user");
+					const lastUserMsg = existingUserMsgs[existingUserMsgs.length - 1];
+					if (!lastUserMsg || lastUserMsg.text !== userText.trim()) {
+						addItem({ kind: "user", id: String(msg.uuid || uid()), text: userText.trim() });
+					}
+				}
+			}
+
 			if (Array.isArray(content)) {
 				for (const block of content as Array<Record<string, unknown>>) {
 					if (block.type === "tool_result") {

@@ -78,15 +78,27 @@ function parseUnifiedProxyResponse<T>(
   }
 
   const data: HostApiProxyData = response.data ?? {};
+  const httpStatus = data.status ?? 200;
   trackUiEvent('hostapi.fetch', {
     path,
     method,
     source: 'ipc-proxy',
     durationMs: Date.now() - startedAt,
-    status: data.status ?? 200,
+    status: httpStatus,
   });
 
-  if (data.status === 204) return undefined as T;
+  if (httpStatus === 204) return undefined as T;
+
+  if (httpStatus >= 400) {
+    const errorBody = data.json as Record<string, unknown> | undefined;
+    const msg = typeof errorBody?.error === 'string'
+      ? errorBody.error
+      : typeof errorBody?.message === 'string'
+        ? errorBody.message
+        : `Host API returned HTTP ${httpStatus}`;
+    throw normalizeAppError(new Error(msg), { source: 'ipc-proxy', path, method, status: httpStatus });
+  }
+
   if (data.json !== undefined) return data.json as T;
   return data.text as T;
 }

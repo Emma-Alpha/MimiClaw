@@ -79,10 +79,11 @@ async function handleRequest(method, params) {
   if (method === 'run.approve') {
     const requestId = typeof params?.requestId === 'string' ? params.requestId : '';
     const decision = typeof params?.decision === 'string' ? params.decision : 'deny';
+    const feedback = typeof params?.feedback === 'string' ? params.feedback : undefined;
     const resolve = pendingPermissions.get(requestId);
     if (resolve) {
       pendingPermissions.delete(requestId);
-      resolve(decision);
+      resolve({ decision, feedback });
     }
     return { ok: true };
   }

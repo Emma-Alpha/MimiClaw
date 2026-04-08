@@ -4,6 +4,7 @@ import { EventEmitter } from 'node:events';
 import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import type {
   CodeAgentDescriptor,
   CodeAgentHealth,
@@ -202,12 +203,20 @@ export class CodeAgentManager extends EventEmitter {
     };
   }
 
+  private static readonly MAX_TIMEOUT_RETRIES = 5;
+
+  private isTimeoutResult(result: CodeAgentRunResult): boolean {
+    if (result.status !== 'failed') return false;
+    return Array.isArray(result.diagnostics) && result.diagnostics.some(d => /timed?\s*out/i.test(d));
+  }
+
   async runTask(input: CodeAgentRunRequest): Promise<CodeAgentRunResult> {
     await this.refreshRuntimeConfig(input.configOverride);
     await this.start();
-    const timeoutMs = typeof input.timeoutMs === 'number' && input.timeoutMs > 0
+    const cliTimeoutMs = typeof input.timeoutMs === 'number' && input.timeoutMs > 0
       ? input.timeoutMs
       : 120_000;
+    const rpcTimeoutMs = cliTimeoutMs + 30_000;
     const startedAt = Date.now();
     this.lastRun = {
       startedAt,
@@ -225,7 +234,7 @@ export class CodeAgentManager extends EventEmitter {
     logger.info('[code-agent] Run requested', {
       workspaceRoot: input.workspaceRoot,
       sessionId: input.sessionId || null,
-      timeoutMs,
+      timeoutMs: cliTimeoutMs,
       permissionMode: this.runtimeConfig.permissionMode,
       executionMode: this.runtimeConfig.executionMode,
       allowedTools: input.allowedTools ?? [],
@@ -234,39 +243,102 @@ export class CodeAgentManager extends EventEmitter {
     });
     this.emit('run:started', this.getLastRun());
 
-    try {
-      const result = await this.sendRequest<CodeAgentRunResult>('run.start', {
-        ...input,
-        config: this.runtimeConfig,
-      }, timeoutMs);
+    let currentInput = { ...input };
+    let lastResult: CodeAgentRunResult | undefined;
+    let trackedSessionId = input.sessionId || '';
+
+    const captureSessionId = (payload: unknown) => {
+      const msg = payload as Record<string, unknown> | undefined;
+      if (msg?.type === 'system' && msg?.subtype === 'init' && typeof msg?.session_id === 'string' && msg.session_id) {
+        trackedSessionId = msg.session_id;
+      }
+    };
+    this.on('run:sdk-message', captureSessionId);
+
+    for (let attempt = 1; attempt <= CodeAgentManager.MAX_TIMEOUT_RETRIES + 1; attempt++) {
+      try {
+        const result = await this.sendRequest<CodeAgentRunResult>('run.start', {
+          ...currentInput,
+          config: this.runtimeConfig,
+        }, rpcTimeoutMs);
+
+        if (this.isTimeoutResult(result) && attempt <= CodeAgentManager.MAX_TIMEOUT_RETRIES) {
+          lastResult = result;
+          const sessionId =
+            (result.metadata as Record<string, unknown> | undefined)?.sessionId as string | undefined
+            || trackedSessionId
+            || currentInput.sessionId
+            || '';
+          logger.info(`[code-agent] CLI timed out, retrying (attempt ${attempt}/${CodeAgentManager.MAX_TIMEOUT_RETRIES})`, {
+            sessionId,
+            durationMs: Date.now() - startedAt,
+          });
+          this.emit('run:activity', {
+            toolId: `timeout-retry-${attempt}`,
+            toolName: 'system',
+            inputSummary: `超时自动重试 (${attempt}/${CodeAgentManager.MAX_TIMEOUT_RETRIES})`,
+          });
+          currentInput = {
+            ...currentInput,
+            sessionId: sessionId || undefined,
+            prompt: 'continue',
+          };
+          continue;
+        }
+
+        this.removeListener('run:sdk-message', captureSessionId);
+        this.lastRun = {
+          ...(this.lastRun ?? { startedAt, request: this.buildRequestRecord(input) }),
+          completedAt: Date.now(),
+          result,
+        };
+        logger.info('[code-agent] Run completed', {
+          runId: result.runId,
+          status: result.status,
+          durationMs: Date.now() - startedAt,
+          summary: result.summary || null,
+          outputPreview: previewText(result.output),
+          attempts: attempt,
+        });
+        this.emit('run:completed', this.getLastRun());
+        return result;
+      } catch (error) {
+        this.removeListener('run:sdk-message', captureSessionId);
+        this.lastRun = {
+          ...(this.lastRun ?? { startedAt, request: this.buildRequestRecord(input) }),
+          completedAt: Date.now(),
+          error: error instanceof Error ? error.message : String(error),
+        };
+        logger.error('[code-agent] Run failed', {
+          durationMs: Date.now() - startedAt,
+          error: error instanceof Error ? error.message : String(error),
+          promptPreview: previewText(input.prompt),
+          attempt,
+        });
+        this.emit('run:failed', this.getLastRun());
+        throw error;
+      }
+    }
+
+    this.removeListener('run:sdk-message', captureSessionId);
+    // All retries exhausted — return the last timeout result or throw
+    if (!lastResult) {
+      const error = new Error('Code agent task failed: all timeout retries exhausted');
       this.lastRun = {
         ...(this.lastRun ?? { startedAt, request: this.buildRequestRecord(input) }),
         completedAt: Date.now(),
-        result,
+        error: error.message,
       };
-      logger.info('[code-agent] Run completed', {
-        runId: result.runId,
-        status: result.status,
-        durationMs: Date.now() - startedAt,
-        summary: result.summary || null,
-        outputPreview: previewText(result.output),
-      });
-      this.emit('run:completed', this.getLastRun());
-      return result;
-    } catch (error) {
-      this.lastRun = {
-        ...(this.lastRun ?? { startedAt, request: this.buildRequestRecord(input) }),
-        completedAt: Date.now(),
-        error: error instanceof Error ? error.message : String(error),
-      };
-      logger.error('[code-agent] Run failed', {
-        durationMs: Date.now() - startedAt,
-        error: error instanceof Error ? error.message : String(error),
-        promptPreview: previewText(input.prompt),
-      });
       this.emit('run:failed', this.getLastRun());
       throw error;
     }
+    this.lastRun = {
+      ...(this.lastRun ?? { startedAt, request: this.buildRequestRecord(input) }),
+      completedAt: Date.now(),
+      result: lastResult,
+    };
+    this.emit('run:completed', this.getLastRun());
+    return lastResult;
   }
 
   private async startInternal(): Promise<void> {
@@ -292,7 +364,7 @@ export class CodeAgentManager extends EventEmitter {
       env,
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
-      cwd: app.getAppPath(),
+      cwd: tmpdir(),
     });
     this.process = child;
 
@@ -614,8 +686,12 @@ export class CodeAgentManager extends EventEmitter {
     });
   }
 
-  async respondPermission(requestId: string, decision: string): Promise<void> {
-    await this.sendRequest<{ ok: boolean }>('run.approve', { requestId, decision }, 10_000);
+  async respondPermission(requestId: string, decision: string, feedback?: string): Promise<void> {
+    await this.sendRequest<{ ok: boolean }>('run.approve', { requestId, decision, feedback }, 10_000);
+  }
+
+  async respondElicitation(elicitationId: string, action: string, content?: Record<string, unknown>): Promise<void> {
+    await this.sendRequest<{ ok: boolean }>('run.respond-elicitation', { elicitationId, action, content }, 10_000);
   }
 
   private buildRequestRecord(input: CodeAgentRunRequest): CodeAgentRunRecord['request'] {

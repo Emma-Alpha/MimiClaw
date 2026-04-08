@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -54,7 +54,7 @@ export function CodeAgent() {
     void initSettings();
   }, [initSettings]);
 
-  const refreshCodeAgentData = async () => {
+  const refreshCodeAgentData = useCallback(async () => {
     const [statusResult, healthResult, latestRunResult] = await Promise.allSettled([
       fetchCodeAgentStatus(),
       fetchCodeAgentHealth(),
@@ -74,7 +74,7 @@ export function CodeAgent() {
     if (latestRunResult.status === 'fulfilled') {
       setCodeAgentLastRun(latestRunResult.value);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void refreshCodeAgentData();
@@ -104,7 +104,7 @@ export function CodeAgent() {
       unsubscribeRunFailed();
       unsubscribeError();
     };
-  }, []);
+  }, [refreshCodeAgentData]);
 
   useEffect(() => {
     setCodeAgentConfigDraft(codeAgent);
@@ -350,7 +350,7 @@ export function CodeAgent() {
                 <div className="space-y-1 text-xs text-muted-foreground">
                   <p>{t('settings:developer.codeAgentModel')}: {codeAgentHealth?.configuredModel || codeAgentConfigDraft.model || '-'}</p>
                   <p>{t('settings:developer.codeAgentBaseUrl')}: {codeAgentHealth?.configuredBaseUrl || codeAgentConfigDraft.baseUrl || '-'}</p>
-                  <p>{t('settings:developer.codeAgentPermissionMode')}: {codeAgentHealth?.configuredPermissionMode || codeAgentConfigDraft.permissionMode}</p>
+                  <p>{t('settings:developer.codeAgentPermissionMode')}: {codeAgentHealth?.configuredPermissionMode || codeAgentConfigDraft.permissionMode}{codeAgentConfigDraft.permissionMode === 'default' ? ' (Claude Code default)' : ''}</p>
                 </div>
               </div>
 

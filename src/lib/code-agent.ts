@@ -1,6 +1,7 @@
 import type {
   CodeAgentHealth,
   CodeAgentSessionMessage,
+  CodeAgentSessionHistoryResult,
   CodeAgentSessionSummary,
   CodeAgentRunRequest,
   CodeAgentRunRecord,
@@ -66,10 +67,13 @@ export async function restartCodeAgent(): Promise<{ success: boolean; status: Co
 }
 
 export async function runCodeAgentTask(input: CodeAgentRunRequest): Promise<CodeAgentRunResult> {
-  const response = await hostApiFetch<{ success: boolean; result: CodeAgentRunResult }>('/api/code-agent/runs', {
+  const response = await hostApiFetch<{ success: boolean; result: CodeAgentRunResult; error?: string }>('/api/code-agent/runs', {
     method: 'POST',
     body: JSON.stringify(input),
   });
+  if (!response.success || !response.result) {
+    throw new Error(response.error || 'Code agent task failed without result');
+  }
   return response.result;
 }
 
@@ -92,18 +96,68 @@ export async function fetchCodeAgentSessions(
   return Array.isArray(response.sessions) ? response.sessions : [];
 }
 
+export type ProjectMentionEntry = {
+  absolutePath: string;
+  relativePath: string;
+  name: string;
+  isDirectory: boolean;
+};
+
 export async function fetchCodeAgentSessionHistory(
   workspaceRoot: string,
   sessionId: string,
   limit = 120,
-): Promise<CodeAgentSessionMessage[]> {
+): Promise<CodeAgentSessionHistoryResult> {
   const params = new URLSearchParams({
     workspaceRoot,
     sessionId,
     limit: String(limit),
   });
-  const response = await hostApiFetch<{ success: boolean; messages: CodeAgentSessionMessage[] }>(
+  const response = await hostApiFetch<{
+    success: boolean;
+    messages: CodeAgentSessionMessage[];
+    rawSdkMessages?: Record<string, unknown>[];
+  }>(
     `/api/code-agent/session-history?${params.toString()}`,
   );
-  return Array.isArray(response.messages) ? response.messages : [];
+  return {
+    messages: Array.isArray(response.messages) ? response.messages : [],
+    rawSdkMessages: Array.isArray(response.rawSdkMessages) ? response.rawSdkMessages : [],
+  };
+}
+
+export type ClaudeCodeSkillEntry = {
+  name: string;
+  command: string;
+  description: string;
+  scope: 'global' | 'project';
+  source: 'claude' | 'external';
+  skillContent: string;
+};
+
+export type ClaudeCodeSkillsResult = {
+  global: ClaudeCodeSkillEntry[];
+  project: ClaudeCodeSkillEntry[];
+};
+
+export async function fetchClaudeCodeSkills(
+  workspaceRoot: string,
+): Promise<ClaudeCodeSkillsResult> {
+  const params = new URLSearchParams({ workspaceRoot });
+  const response = await hostApiFetch<{
+    success: boolean;
+    skills: ClaudeCodeSkillsResult;
+  }>(`/api/code-agent/skills?${params.toString()}`);
+  return response.skills ?? { global: [], project: [] };
+}
+
+export async function fetchProjectMentionEntries(
+  workspaceRoot: string,
+): Promise<ProjectMentionEntry[]> {
+  const params = new URLSearchParams({ workspaceRoot });
+  const response = await hostApiFetch<{
+    success: boolean;
+    entries: ProjectMentionEntry[];
+  }>(`/api/files/project-mentions?${params.toString()}`);
+  return Array.isArray(response.entries) ? response.entries : [];
 }

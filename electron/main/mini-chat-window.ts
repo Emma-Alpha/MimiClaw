@@ -331,6 +331,49 @@ export async function toggleMiniChatWindow(): Promise<void> {
   }
 }
 
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});
+}
+
+async function waitForMiniChatWindow(timeoutMs = 2000): Promise<BrowserWindow | null> {
+	const start = Date.now();
+	while (Date.now() - start < timeoutMs) {
+		const win = getMiniChatWindow();
+		if (win) return win;
+		if (!isCreatingMiniChat) break;
+		await sleep(50);
+	}
+	return getMiniChatWindow();
+}
+
+export async function openMiniChatDevTools(): Promise<void> {
+	let win = getMiniChatWindow();
+	if (!win) {
+		if (isCreatingMiniChat) {
+			win = await waitForMiniChatWindow();
+		} else {
+			isCreatingMiniChat = true;
+			try {
+				win = await createMiniChatWindow();
+			} finally {
+				isCreatingMiniChat = false;
+			}
+		}
+	}
+
+	if (!win || win.isDestroyed()) return;
+	if (win.isMinimized()) {
+		win.restore();
+	}
+	if (!win.isVisible()) {
+		win.show();
+	}
+	win.focus();
+	win.webContents.openDevTools({ mode: "detach", activate: true });
+}
+
 export function closeMiniChatWindow(): void {
 	if (miniChatWindow && !miniChatWindow.isDestroyed()) {
 		miniChatWindow.close();

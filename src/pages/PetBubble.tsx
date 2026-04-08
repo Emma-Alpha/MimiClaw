@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { invokeIpc } from "@/lib/api-client";
@@ -41,11 +41,14 @@ function PetBubbleContent({
 	lines,
 	showDots = false,
 	errorText,
+	onBubbleHeightChange,
 }: {
 	lines?: string[];
 	showDots?: boolean;
 	errorText?: string;
+	onBubbleHeightChange?: (height: number) => void;
 }) {
+	const bubbleRef = useRef<HTMLDivElement | null>(null);
 	const allLines = (lines ?? []).map((line) => line.trim()).filter(Boolean);
 	const errorCandidateLines = allLines
 		.filter((line) => !line.startsWith("›"))
@@ -62,12 +65,17 @@ function PetBubbleContent({
 		),
 	);
 	const hiddenChipCount = Math.max(0, chipLabels.length - BUBBLE_CHIP_MAX);
-	const chipLines = chipLabels
-		.slice(-BUBBLE_CHIP_MAX)
+	const visibleChipLabels = chipLabels.slice(-BUBBLE_CHIP_MAX);
+	const latestRunningChipIndex = visibleChipLabels
+		.reduce<number>((lastIndex, line, index) => (
+			resolveChipPhase(line) === "running" ? index : lastIndex
+		), -1);
+	const chipLines = visibleChipLabels
 		.map((line, index) => ({
 			id: `${index}-${line}`,
 			label: truncateBubbleText(line, BUBBLE_CHIP_LABEL_MAX),
 			phase: resolveChipPhase(line),
+			isAnimated: index === latestRunningChipIndex,
 		}))
 		.filter((item) => item.label.length > 0);
 	const textLines = allLines
@@ -87,6 +95,35 @@ function PetBubbleContent({
 			: [];
 	const markdownText = displayText
 		.join("\n");
+
+	useEffect(() => {
+		if (!onBubbleHeightChange) return;
+
+		const measure = () => {
+			const bubbleElement = bubbleRef.current;
+			if (!bubbleElement) return;
+			// Include tail overflow + root bottom padding to fit without the "empty cap".
+			const nextHeight = Math.ceil(
+				bubbleElement.getBoundingClientRect().height + 14,
+			);
+			onBubbleHeightChange(nextHeight);
+		};
+
+		measure();
+		const rafId = window.requestAnimationFrame(measure);
+		let resizeObserver: ResizeObserver | null = null;
+		if (typeof ResizeObserver !== "undefined" && bubbleRef.current) {
+			resizeObserver = new ResizeObserver(() => {
+				measure();
+			});
+			resizeObserver.observe(bubbleRef.current);
+		}
+
+		return () => {
+			window.cancelAnimationFrame(rafId);
+			resizeObserver?.disconnect();
+		};
+	}, [onBubbleHeightChange]);
 
 	return (
 		<>
@@ -207,11 +244,17 @@ function PetBubbleContent({
 					background: rgba(96, 165, 250, 0.1);
 					color: #60a5fa;
 					border-color: rgba(96, 165, 250, 0.18);
-					animation: chipPulse 1.4s ease-in-out infinite;
 				}
 
 				.bubble-chip.running .bubble-chip-dot {
 					background: #60a5fa;
+				}
+
+				.bubble-chip.running.bubble-chip--animated {
+					animation: chipPulse 1.4s ease-in-out infinite;
+				}
+
+				.bubble-chip.running.bubble-chip--animated .bubble-chip-dot {
 					animation: dotPulse 1.2s ease-in-out infinite;
 				}
 
@@ -332,6 +375,7 @@ function PetBubbleContent({
 			`}</style>
 			<div className="bubble-root">
 				<div
+					ref={bubbleRef}
 					className={derivedErrorText ? "bubble bubble--error" : "bubble"}
 				>
 					{derivedErrorText ? (
@@ -348,7 +392,7 @@ function PetBubbleContent({
 							{chipLines.map((chip) => (
 								<span
 									key={chip.id}
-									className={`bubble-chip ${chip.phase}`}
+									className={`bubble-chip ${chip.phase}${chip.isAnimated ? " bubble-chip--animated" : ""}`}
 								>
 									<span className="bubble-chip-dot" />
 									<span className="bubble-chip-label">{chip.label}</span>
@@ -387,6 +431,7 @@ function PetBubbleContent({
 
 export function PetBubble() {
 	const [runtimeState, setRuntimeState] = useState<PetRuntimeState>(FALLBACK_RUNTIME_STATE);
+	const lastReportedHeightRef = useRef(0);
 
 	useEffect(() => {
 		const htmlStyle = document.documentElement.style;
@@ -453,6 +498,14 @@ export function PetBubble() {
 		};
 	}, []);
 
+	const handleBubbleHeightChange = useCallback((height: number) => {
+		const roundedHeight = Math.round(height);
+		if (!Number.isFinite(roundedHeight) || roundedHeight <= 0) return;
+		if (lastReportedHeightRef.current === roundedHeight) return;
+		lastReportedHeightRef.current = roundedHeight;
+		void invokeIpc("pet:updateBubbleBounds", { height: roundedHeight }).catch(() => {});
+	}, []);
+
 	if (!showBubble) {
 		return null;
 	}
@@ -461,6 +514,7 @@ export function PetBubble() {
 		<PetBubbleContent
 			lines={runtimeState.terminalLines}
 			showDots={runtimeState.activity === "listening" || runtimeState.terminalLines.length === 0}
+			onBubbleHeightChange={handleBubbleHeightChange}
 		/>
 	);
 }

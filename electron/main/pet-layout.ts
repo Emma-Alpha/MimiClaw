@@ -3,6 +3,7 @@ export const PET_WINDOW_HEIGHT = 200;
 
 export const PET_BUBBLE_WINDOW_WIDTH = 126;
 export const PET_BUBBLE_WINDOW_HEIGHT = 112;
+export const PET_BUBBLE_WINDOW_MIN_HEIGHT = 40;
 export const PET_BUBBLE_WINDOW_GAP = 8;
 
 // Reverse-engineered from PetClaw's separate bubble window geometry:
