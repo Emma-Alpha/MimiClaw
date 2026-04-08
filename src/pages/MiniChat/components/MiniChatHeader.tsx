@@ -1,8 +1,23 @@
 import { memo, useRef, useState, useEffect, useMemo } from "react";
 import { ActionIcon } from "@lobehub/ui";
 import { OpenClaw, ClaudeCode } from "@lobehub/icons";
-import { Expand, X, RotateCcw, Clock, Wrench, Cpu, Search } from "lucide-react";
-import type { CodeAgentStatus } from "../../../../shared/code-agent";
+import {
+	Expand,
+	X,
+	RotateCcw,
+	Clock,
+	Wrench,
+	Cpu,
+	Search,
+	Check,
+	ChevronDown,
+	Shield,
+	ShieldAlert,
+} from "lucide-react";
+import type {
+	CodeAgentStatus,
+	CodeAgentPermissionMode,
+} from "../../../../shared/code-agent";
 import type { SessionInitInfo } from "@/stores/code-agent";
 import type { MiniChatTarget } from "../types";
 import { useMiniChatStyles } from "../styles";
@@ -32,9 +47,30 @@ type MiniChatHeaderProps = {
 	codeWorkspaceRoot: string;
 	onRemoveCodeMode: () => void;
 	onPickWorkspace: () => void;
+	permissionMode: CodeAgentPermissionMode;
+	onPermissionModeChange: (mode: CodeAgentPermissionMode) => void;
 	onNewConversation: () => void;
 	onSwitchSession: (key: string) => void;
 };
+
+const PERMISSION_MODE_OPTIONS: Array<{
+	value: CodeAgentPermissionMode;
+	label: string;
+}> = [
+	{ value: "default", label: "默认权限" },
+	{ value: "acceptEdits", label: "接受编辑" },
+	{ value: "auto", label: "自动模式" },
+	{ value: "plan", label: "规划模式" },
+	{ value: "dontAsk", label: "免确认" },
+	{ value: "bypassPermissions", label: "完全访问权限" },
+];
+
+function getPermissionModeLabel(mode: string | null | undefined): string {
+	if (!mode) return "默认权限";
+	return (
+		PERMISSION_MODE_OPTIONS.find((option) => option.value === mode)?.label ?? mode
+	);
+}
 
 function shortModel(model: string) {
 	return model.replace(/^claude-/i, "").replace(/-\d{8}$/, "");
@@ -118,11 +154,14 @@ function MiniChatHeaderImpl({
 	codeWorkspaceRoot,
 	onRemoveCodeMode,
 	onPickWorkspace,
+	permissionMode,
+	onPermissionModeChange,
 	onNewConversation,
 	onSwitchSession,
 }: MiniChatHeaderProps) {
 	const { styles, cx } = useMiniChatStyles();
 	const [dropdownOpen, setDropdownOpen] = useState(false);
+	const [permissionDropdownOpen, setPermissionDropdownOpen] = useState(false);
 	const [sessionQuery, setSessionQuery] = useState("");
 	const dropdownRef = useRef<HTMLDivElement>(null);
 	const iconBtnRef = useRef<HTMLButtonElement>(null);
@@ -170,6 +209,7 @@ function MiniChatHeaderImpl({
 				!iconBtnRef.current.contains(e.target as Node)
 			) {
 				setDropdownOpen(false);
+				setPermissionDropdownOpen(false);
 			}
 		};
 		document.addEventListener("mousedown", handler);
@@ -228,7 +268,10 @@ function MiniChatHeaderImpl({
 								type="button"
 								className={styles.islandIconBtn}
 								title="查看会话信息"
-								onClick={() => setDropdownOpen((v) => !v)}
+								onClick={() => {
+									setPermissionDropdownOpen(false);
+									setDropdownOpen((v) => !v);
+								}}
 							>
 								{isCodeMode ? <ClaudeCode.Color size={14} /> : <OpenClaw.Color size={14} />}
 							</button>
@@ -335,56 +378,138 @@ function MiniChatHeaderImpl({
 										{getCodeSessionTitle(sessionTitle)}
 									</div>
 										{lastUpdatedAt && (
-											<div className={styles.islandDropdownMeta}>
-												<Clock size={10} />
-												<span>{formatRelativeTime(lastUpdatedAt)}</span>
-											</div>
-										)}
-										{sessionInit ? (
-											<div className={styles.islandDropdownInfo}>
-												<div className={styles.islandDropdownInfoRow}>
-													<Cpu size={10} />
-													<span>{shortModel(sessionInit.model)}</span>
-													{sessionInit.permissionMode && (
-														<span className={styles.islandDropdownBadge}>
-															{sessionInit.permissionMode === "default"
-																? "Claude Code default"
-																: sessionInit.permissionMode}
-														</span>
-													)}
-												</div>
-												<div className={styles.islandDropdownInfoRow}>
-													<Wrench size={10} />
-													<span>{sessionInit.tools.length} tools</span>
-													{sessionInit.mcpServers.length > 0 && (
-														<span className={styles.islandDropdownBadge}>
-															{sessionInit.mcpServers.length} MCP
-														</span>
-													)}
-												</div>
-												{codeWorkspaceRoot && (
+									<div className={styles.islandDropdownMeta}>
+										<Clock size={10} />
+										<span>{formatRelativeTime(lastUpdatedAt)}</span>
+									</div>
+								)}
+								{sessionInit ? (
+									<div className={styles.islandDropdownInfo}>
+										<div className={styles.islandDropdownInfoRow}>
+											<Cpu size={10} />
+											<span>{shortModel(sessionInit.model)}</span>
+											{sessionInit.permissionMode && (
+												<span className={styles.islandDropdownBadge}>
+													会话: {getPermissionModeLabel(sessionInit.permissionMode)}
+												</span>
+											)}
+										</div>
+										<div className={styles.islandDropdownInfoRow}>
+											<Wrench size={10} />
+											<span>{sessionInit.tools.length} tools</span>
+											{sessionInit.mcpServers.length > 0 && (
+												<span className={styles.islandDropdownBadge}>
+													{sessionInit.mcpServers.length} MCP
+												</span>
+											)}
+										</div>
+									</div>
+								) : (
+									<div className={styles.islandDropdownEmpty}>
+										{getCodeAgentStateLabel(codeAgentStatus?.state)}
+									</div>
+								)}
+								<div className={styles.islandPermissionSelector}>
+									<button
+										type="button"
+										className={styles.islandPermissionSelectorTrigger}
+										onClick={(event) => {
+											event.stopPropagation();
+											setPermissionDropdownOpen((open) => !open);
+										}}
+									>
+										<span className={styles.islandPermissionSelectorTriggerLeft}>
+											{permissionMode === "bypassPermissions" ? (
+												<ShieldAlert
+													size={15}
+													className={styles.islandPermissionSelectorIcon}
+												/>
+											) : (
+												<Shield
+													size={15}
+													className={styles.islandPermissionSelectorIcon}
+												/>
+											)}
+											<span className={styles.islandPermissionSelectorTriggerLabel}>
+												{getPermissionModeLabel(permissionMode)}
+											</span>
+										</span>
+										<ChevronDown
+											size={14}
+											className={cx(
+												styles.islandPermissionSelectorChevron,
+												permissionDropdownOpen &&
+													styles.islandPermissionSelectorChevronOpen,
+											)}
+										/>
+									</button>
+									{permissionDropdownOpen && (
+										<div className={styles.islandPermissionSelectorMenu}>
+											{PERMISSION_MODE_OPTIONS.map((option) => {
+												const active = option.value === permissionMode;
+												const OptionIcon =
+													option.value === "bypassPermissions" ? ShieldAlert : Shield;
+												return (
 													<button
+														key={option.value}
 														type="button"
-														className={styles.islandDropdownPath}
-														title="点击更换工作区"
-														onClick={(e) => {
-															e.stopPropagation();
-															setDropdownOpen(false);
-															onPickWorkspace();
+														className={cx(
+															styles.islandPermissionSelectorOption,
+															active && styles.islandPermissionSelectorOptionActive,
+														)}
+														onClick={(event) => {
+															event.stopPropagation();
+															onPermissionModeChange(option.value);
+															setPermissionDropdownOpen(false);
 														}}
 													>
-														{codeWorkspaceRoot}
+														<span className={styles.islandPermissionSelectorOptionLeft}>
+															<OptionIcon
+																size={15}
+																className={styles.islandPermissionSelectorIcon}
+															/>
+															<span className={styles.islandPermissionSelectorOptionLabel}>
+																{option.label}
+															</span>
+														</span>
+														<span
+															className={cx(
+																styles.islandPermissionSelectorCheck,
+																active && styles.islandPermissionSelectorCheckActive,
+															)}
+														>
+															{active ? <Check size={14} strokeWidth={2.4} /> : null}
+														</span>
 													</button>
-												)}
-											</div>
-										) : (
-											<div className={styles.islandDropdownEmpty}>
-												{getCodeAgentStateLabel(codeAgentStatus?.state)}
-											</div>
-										)}
-									</div>
-								</>
-							)}
+												);
+											})}
+										</div>
+									)}
+								</div>
+								{sessionInit?.permissionMode &&
+									sessionInit.permissionMode !== permissionMode && (
+										<div className={styles.islandPermissionSelectorHint}>
+											当前会话仍为 {getPermissionModeLabel(sessionInit.permissionMode)}，
+											新模式将在下次发起时生效。
+										</div>
+									)}
+								{codeWorkspaceRoot && (
+									<button
+										type="button"
+										className={styles.islandDropdownPath}
+										title="点击更换工作区"
+										onClick={(e) => {
+											e.stopPropagation();
+											setDropdownOpen(false);
+											onPickWorkspace();
+										}}
+									>
+										{codeWorkspaceRoot}
+									</button>
+								)}
+							</div>
+						</>
+					)}
 
 							<div className={styles.islandDropdownDivider} />
 							<button

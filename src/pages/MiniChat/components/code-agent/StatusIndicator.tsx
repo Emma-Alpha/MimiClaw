@@ -1,4 +1,5 @@
 import { createStyles } from "antd-style";
+import type { CSSProperties } from "react";
 
 interface Props {
 	text: string;
@@ -25,17 +26,30 @@ const useStyles = createStyles(({ css, token }) => ({
 		}
 	`,
 	text: css`
+		position: relative;
+		display: inline-block;
 		font-weight: 400;
+		white-space: nowrap;
+		padding-right: 9px;
 	`,
 	cursor: css`
+		position: absolute;
+		top: 50%;
+		left: 0;
 		display: inline-block;
-		width: 7px;
-		height: 14px;
+		width: 8px;
+		height: 16px;
 		background: ${token.colorTextSecondary};
-		margin-left: 1px;
-		vertical-align: text-bottom;
 		border-radius: 1px;
-		animation: caretBlink 1s step-end infinite;
+		transform: translateY(-50%);
+		animation:
+			cursorTravel var(--status-cursor-duration, 560ms) steps(var(--status-cursor-steps, 10), end) 1 forwards,
+			caretBlink 1s step-end infinite;
+
+		@keyframes cursorTravel {
+			from { left: 0; }
+			to { left: calc(100% - 8px); }
+		}
 
 		@keyframes caretBlink {
 			0%, 100% { opacity: 1; }
@@ -46,13 +60,22 @@ const useStyles = createStyles(({ css, token }) => ({
 
 export function StatusIndicator({ text }: Props) {
 	const { styles } = useStyles();
-	const label = text.trim() || "Thinking...";
+	const normalized = text.trim().replace(/^✶\s*/u, "");
+	const label = normalized || "Thinking...";
+	const sweepDurationMs = Math.min(820, Math.max(240, label.length * 34));
+	const sweepSteps = Math.max(1, label.length);
+	const cursorStyle = {
+		"--status-cursor-duration": `${sweepDurationMs}ms`,
+		"--status-cursor-steps": String(sweepSteps),
+	} as CSSProperties;
 
 	return (
 		<div className={styles.wrap}>
 			<span className={styles.star} aria-hidden="true">✶</span>
-			<span className={styles.text}>{label}</span>
-			<span className={styles.cursor} aria-hidden="true" />
+			<span className={styles.text}>
+				{label}
+				<span key={label} className={styles.cursor} style={cursorStyle} aria-hidden="true" />
+			</span>
 		</div>
 	);
 }

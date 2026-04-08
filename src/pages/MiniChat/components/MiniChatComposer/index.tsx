@@ -547,9 +547,6 @@ export function MiniChatComposer({
 											<div className={styles.mentionResultPath}>{option.relativePath}</div>
 										</div>
 									</div>
-									<div className={styles.mentionResultBadge}>
-										{option.isDirectory ? "文件夹" : "文件"}
-									</div>
 								</button>
 							))}
 						</div>

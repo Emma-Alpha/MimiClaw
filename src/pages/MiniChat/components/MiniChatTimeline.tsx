@@ -1,4 +1,5 @@
-import { memo, type ReactNode, type RefObject } from "react";
+import { memo, useEffect, useRef, useState, type ReactNode } from "react";
+import VList, { type ListRef } from "@rc-component/virtual-list";
 import { ClaudeCode, OpenClaw } from "@lobehub/icons";
 import { Markdown } from "@lobehub/ui";
 import { ChatItem } from "@lobehub/ui/chat";
@@ -26,9 +27,13 @@ import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/code-agent";
 		isThinking: boolean;
 		isCodeStreaming: boolean;
 		codeWorkspaceRoot?: string;
-		messagesEndRef: RefObject<HTMLDivElement | null>;
 		spinnerMode?: SpinnerMode;
 	};
+
+type TimelineRenderRow = {
+	key: string;
+	node: ReactNode;
+};
 
 function normalizeUnixTimestamp(timestamp: number | null | undefined): number | null {
 	if (typeof timestamp !== "number" || !Number.isFinite(timestamp)) return null;
@@ -163,11 +168,37 @@ function MiniChatTimelineImpl({
 	isThinking,
 	isCodeStreaming,
 	codeWorkspaceRoot,
-	messagesEndRef,
 	spinnerMode,
 }: MiniChatTimelineProps) {
-	const { styles } = useMiniChatStyles();
+	const { styles, cx } = useMiniChatStyles();
+	const scrollAreaRef = useRef<HTMLDivElement | null>(null);
+	const vListRef = useRef<ListRef | null>(null);
+	const [viewportHeight, setViewportHeight] = useState(0);
 	const showChatPending = sending || !!streamingText || pendingFinal;
+	const hasActiveCodeStream =
+		isCodeStreaming
+		|| isThinking
+		|| Boolean(streamingThinkingText)
+		|| Boolean(streamingAssistantText)
+		|| Boolean(vendorStatusText)
+		|| spinnerMode != null;
+
+	useEffect(() => {
+		const node = scrollAreaRef.current;
+		if (!node) return;
+
+		const updateHeight = () => {
+			setViewportHeight(Math.max(0, Math.floor(node.clientHeight)));
+		};
+
+		updateHeight();
+
+		if (typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(updateHeight);
+		observer.observe(node);
+		return () => observer.disconnect();
+	}, []);
+
 	const renderMetaRow = ({
 		icon,
 		label,
@@ -206,6 +237,7 @@ function MiniChatTimelineImpl({
 		label: "极智",
 		streaming: true,
 	});
+
 	const renderTimelineItem = (item: TimelineItem) => {
 		if (item.kind === "chat") {
 			const message = item.message;
@@ -381,14 +413,123 @@ function MiniChatTimelineImpl({
 					}
 					showTitle={false}
 					showAvatar={false}
-				variant="bubble"
-			/>
-		);
+			variant="bubble"
+		/>
+	);
 	};
 
+	const timelineRows: TimelineRenderRow[] = timelineItems.map((item) => ({
+		key: item.key,
+		node: renderTimelineItem(item),
+	}));
+
+	if (sending && !streamingText) {
+		timelineRows.push({
+			key: "chat:typing",
+			node: <TypingIndicator />,
+		});
+	}
+
+	if (streamingText) {
+		timelineRows.push({
+			key: "chat:streaming",
+			node: (
+				<ChatItem
+					aboveMessage={chatAssistantStreamingMeta}
+					avatar={{
+						avatar: (
+							<span className={styles.assistantAvatar}>
+								<OpenClaw.Color size={20} />
+							</span>
+						),
+						backgroundColor: "transparent",
+						title: "极智",
+					}}
+					className={styles.chatItem}
+					showAvatar={false}
+					message={streamingText}
+					placement="left"
+					renderMessage={() => (
+						<CompactMessageBody
+							text={streamingText}
+							renderContent={() => (
+								<div className={styles.markdownBubble}>
+									<Markdown>{streamingText}</Markdown>
+									<span className={styles.streamCursor} />
+								</div>
+							)}
+						/>
+					)}
+					showTitle={false}
+					variant="bubble"
+				/>
+			),
+		});
+	}
+
+	if (pendingFinal && !streamingText && !sending) {
+		timelineRows.push({
+			key: "chat:pending-final",
+			node: <TypingIndicator />,
+		});
+	}
+
+	if (codeSending || codeAgentItems.length > 0 || hasActiveCodeStream) {
+		timelineRows.push({
+			key: "code:timeline",
+			node: (
+				<CodeTimeline
+					items={codeAgentItems}
+					streamingThinkingText={streamingThinkingText}
+					streamingAssistantText={streamingAssistantText}
+					vendorStatusText={vendorStatusText}
+					isThinking={isThinking}
+					isStreaming={isCodeStreaming}
+					workspaceRoot={codeWorkspaceRoot}
+					spinnerMode={spinnerMode}
+				/>
+			),
+		});
+	}
+
+	const shouldVirtualize = viewportHeight > 0 && timelineRows.length > 20;
+
+	useEffect(() => {
+		if (timelineRows.length === 0) return;
+
+		const raf = requestAnimationFrame(() => {
+			if (shouldVirtualize) {
+				vListRef.current?.scrollTo({ top: Number.MAX_SAFE_INTEGER });
+				return;
+			}
+			const node = scrollAreaRef.current;
+			if (!node) return;
+			node.scrollTop = node.scrollHeight;
+		});
+
+		return () => cancelAnimationFrame(raf);
+	}, [
+		shouldVirtualize,
+		timelineRows.length,
+		sending,
+		streamingText,
+		pendingFinal,
+		codeSending,
+		codeAgentItems,
+		streamingThinkingText,
+		streamingAssistantText,
+		vendorStatusText,
+		isThinking,
+		isCodeStreaming,
+		spinnerMode,
+	]);
+
 	return (
-		<div className={styles.scrollArea}>
-				{timelineItems.length === 0 && !showChatPending && !codeSending && codeAgentItems.length === 0 ? (
+		<div
+			ref={scrollAreaRef}
+			className={cx(styles.scrollArea, shouldVirtualize && styles.scrollAreaVirtual)}
+		>
+				{timelineItems.length === 0 && !showChatPending && !codeSending && codeAgentItems.length === 0 && !hasActiveCodeStream ? (
 					<div className={styles.emptyState}>
 						<div className={styles.emptyIcon}>
 							<OpenClaw.Color size={22} />
@@ -399,57 +540,30 @@ function MiniChatTimelineImpl({
 						</div>
 					</div>
 				) : (
-					<div className={styles.timeline}>
-					{timelineItems.map(renderTimelineItem)}
-					{sending && !streamingText ? <TypingIndicator /> : null}
-					{streamingText ? (
-						<ChatItem
-							aboveMessage={chatAssistantStreamingMeta}
-							avatar={{
-								avatar: (
-									<span className={styles.assistantAvatar}>
-										<OpenClaw.Color size={20} />
-									</span>
-								),
-								backgroundColor: "transparent",
-								title: "极智",
-							}}
-							className={styles.chatItem}
-							showAvatar={false}
-							message={streamingText}
-							placement="left"
-							renderMessage={() => (
-								<CompactMessageBody
-									text={streamingText}
-									renderContent={() => (
-										<div className={styles.markdownBubble}>
-											<Markdown>{streamingText}</Markdown>
-											<span className={styles.streamCursor} />
-										</div>
-									)}
-								/>
+					shouldVirtualize ? (
+						<VList<TimelineRenderRow>
+							ref={vListRef}
+							data={timelineRows}
+							height={viewportHeight}
+							itemHeight={72}
+							itemKey="key"
+							className={styles.timelineVirtual}
+						>
+							{(row) => (
+								<div className={styles.timelineVirtualItem}>
+									{row.node}
+								</div>
 							)}
-							showTitle={false}
-							variant="bubble"
-						/>
-					) : null}
-						{pendingFinal && !streamingText && !sending ? (
-							<TypingIndicator />
-						) : null}
-						{(codeSending || codeAgentItems.length > 0) ? (
-						<CodeTimeline
-							items={codeAgentItems}
-							streamingThinkingText={streamingThinkingText}
-							streamingAssistantText={streamingAssistantText}
-							vendorStatusText={vendorStatusText}
-							isThinking={isThinking}
-							isStreaming={isCodeStreaming}
-							workspaceRoot={codeWorkspaceRoot}
-							spinnerMode={spinnerMode}
-						/>
-					) : null}
-						<div ref={messagesEndRef} />
-					</div>
+						</VList>
+					) : (
+						<div className={styles.timeline}>
+							{timelineRows.map((row) => (
+								<div key={row.key} className={styles.timelineRow}>
+									{row.node}
+								</div>
+							))}
+						</div>
+					)
 				)}
 		</div>
 	);

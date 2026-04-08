@@ -32,6 +32,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { useSkillsStore } from "@/stores/skills";
 import type {
 	CodeAgentStatus,
+	CodeAgentPermissionMode,
 } from "../../shared/code-agent";
 import type {
 	PetMiniChatSeed,
@@ -117,7 +118,7 @@ export function MiniChat() {
 	>("idle");
 	const [codeSending, setCodeSending] = useState(false);
 	const [_codeActivities, setCodeActivities] = useState<ToolActivityItem[]>([]);
-	const [codeStreamingText, setCodeStreamingText] = useState("");
+	const [_codeStreamingText, setCodeStreamingText] = useState("");
 	// Ref keeps the latest activities accessible in callbacks without dep-array churn
 	const codeActivitiesRef = useRef<ToolActivityItem[]>([]);
 	// Snapshot taken at run-completed, before the ref is cleared, so
@@ -160,7 +161,6 @@ export function MiniChat() {
 	const activeSkillRef = useRef<SlashOption | null>(null);
 	const richContentRef = useRef<import("slate").Descendant[] | undefined>(undefined);
 
-	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const pendingAutoSend = useRef<PetMiniChatSeed | null>(null);
 	const [chatSeenAt, setChatSeenAt] = useState<Map<string, number>>(() => new Map());
 	const chatSeenCounterRef = useRef(0);
@@ -419,6 +419,19 @@ export function MiniChat() {
 			chatSubmitInFlightRef,
 		});
 
+	const handlePermissionModeChange = useCallback(
+		(mode: CodeAgentPermissionMode) => {
+			const latestConfig = useSettingsStore.getState().codeAgent;
+			if (latestConfig.permissionMode === mode) return;
+			setCodeAgentConfig({
+				...latestConfig,
+				permissionMode: mode,
+			});
+			setActiveClaudeSessionId("");
+		},
+		[setActiveClaudeSessionId, setCodeAgentConfig],
+	);
+
 	useMiniChatSeedAndAutoSend({
 		pendingAutoSendRef: pendingAutoSend,
 		setPersistentMode,
@@ -474,17 +487,6 @@ export function MiniChat() {
 			}
 		}
 	}, [streamingTools]);
-
-	useEffect(() => {
-		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-	}, [
-		messages,
-		liveStreamingText,
-		sending,
-		codeSending,
-		codeStreamingText,
-		codeAgentItems,
-	]);
 
 	const draftIntent = useMemo(() => parseSubmissionIntent(input), [input]);
 	const draftTarget = selectedMode || persistentMode || draftIntent.target;
@@ -734,7 +736,7 @@ export function MiniChat() {
 	);
 
 	const visibleMessages = useMemo(
-		() => messages.filter(isVisibleMessage).slice(-10),
+		() => messages.filter(isVisibleMessage),
 		[messages],
 	);
 
@@ -831,6 +833,8 @@ export function MiniChat() {
 				codeWorkspaceRoot={codeWorkspaceRoot}
 				onRemoveCodeMode={removeCodeMentionFromInput}
 				onPickWorkspace={handlePickWorkspaceClick}
+				permissionMode={codeAgentConfig.permissionMode}
+				onPermissionModeChange={handlePermissionModeChange}
 				onNewConversation={handleNewConversation}
 				onSwitchSession={handleSwitchSession}
 			/>
@@ -848,7 +852,6 @@ export function MiniChat() {
 				isThinking={codeStreaming.isThinking}
 				isCodeStreaming={codeStreaming.isStreaming}
 				codeWorkspaceRoot={codeWorkspaceRoot}
-				messagesEndRef={messagesEndRef}
 				spinnerMode={codeStreaming.spinnerMode}
 			/>
 

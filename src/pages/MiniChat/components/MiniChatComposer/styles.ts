@@ -368,14 +368,14 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 	mentionResultList: css`
 		display: flex;
 		flex-direction: column;
-		max-height: 280px;
+		max-height: 240px;
 		overflow-y: auto;
-		padding: 6px;
-		gap: 4px;
-		border-radius: 14px;
+		padding: 4px 0;
+		gap: 0;
+		border-radius: 8px;
 		border: 1px solid ${token.colorBorderSecondary};
 		background: ${token.colorBgElevated};
-		box-shadow: ${token.boxShadowSecondary};
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 	`,
 	mentionEmptyState: css`
 		display: flex;
@@ -416,14 +416,12 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 12px;
-		padding: 10px 12px;
-		border-radius: 10px;
+		padding: 4px 10px;
 		border: none;
 		background: transparent;
 		text-align: left;
 		cursor: pointer;
-		transition: background 0.15s ease;
+		transition: background 0.1s ease;
 
 		&:hover {
 			background: ${token.colorFillTertiary};
@@ -450,29 +448,26 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 	`,
 	mentionResultText: css`
 		display: flex;
-		flex-direction: column;
+		flex-direction: row;
+		align-items: center;
 		min-width: 0;
-		gap: 2px;
+		gap: 6px;
 	`,
 	mentionResultTitle: css`
-		font-size: 13px;
-		font-weight: 600;
+		font-size: 12px;
+		font-weight: 500;
 		color: ${token.colorText};
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	`,
 	mentionResultPath: css`
-		font-size: 12px;
-		color: ${token.colorTextSecondary};
+		font-size: 11px;
+		color: ${token.colorTextTertiary};
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-	`,
-	mentionResultBadge: css`
-		font-size: 11px;
-		color: ${token.colorTextTertiary};
-		flex-shrink: 0;
+		opacity: 0.8;
 	`,
 	claudeSlashPanel: css`
 		display: flex;

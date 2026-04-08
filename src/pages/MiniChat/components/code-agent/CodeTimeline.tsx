@@ -65,6 +65,7 @@ export function CodeTimeline({
 	spinnerMode,
 }: Props) {
 	const { styles } = useStyles();
+	const hasVendorStatusText = vendorStatusText.trim().length > 0;
 
 	const renderItem = (item: CodeAgentTimelineItem, inTask = false) => {
 		const wrap = (el: React.ReactNode) =>
@@ -196,7 +197,11 @@ export function CodeTimeline({
 		}
 	};
 
-	const isBusy = !!spinnerMode;
+	const isBusy =
+		!!spinnerMode
+		|| isThinking
+		|| isStreaming
+		|| hasVendorStatusText;
 
 	return (
 		<div className={styles.root}>

@@ -141,6 +141,7 @@ export function useMiniChatSubmissionActions({
 						effort: latestCodeAgentConfig.effort,
 						thinking: latestCodeAgentConfig.thinking,
 						fastMode: latestCodeAgentConfig.fastMode === true,
+						permissionMode: latestCodeAgentConfig.permissionMode,
 					},
 					metadata: {
 						source: "pet-mini-chat",

@@ -503,6 +503,123 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			color: ${token.colorPrimary};
 		}
 	`,
+	islandPermissionSelector: css`
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		margin-top: 4px;
+	`,
+	islandPermissionSelectorTrigger: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		width: 100%;
+		height: 36px;
+		padding: 0 10px;
+		border-radius: 11px;
+		border: 1px solid rgba(15, 23, 42, 0.14);
+		background: rgba(255, 255, 255, 0.92);
+		color: ${token.colorText};
+		transition: border-color 0.16s ease, background 0.16s ease;
+		&:hover {
+			border-color: rgba(15, 23, 42, 0.22);
+			background: rgba(255, 255, 255, 0.96);
+		}
+	`,
+	islandPermissionSelectorTriggerLeft: css`
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-width: 0;
+	`,
+	islandPermissionSelectorIcon: css`
+		flex-shrink: 0;
+		color: rgba(15, 23, 42, 0.68);
+	`,
+	islandPermissionSelectorTriggerLabel: css`
+		font-size: 14px;
+		font-weight: 600;
+		line-height: 1.1;
+		color: ${token.colorText};
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		overflow: hidden;
+	`,
+	islandPermissionSelectorChevron: css`
+		flex-shrink: 0;
+		color: rgba(15, 23, 42, 0.52);
+		transition: transform 0.16s ease;
+	`,
+	islandPermissionSelectorChevronOpen: css`
+		transform: rotate(180deg);
+	`,
+	islandPermissionSelectorMenu: css`
+		position: static;
+		width: 100%;
+		max-height: 188px;
+		overflow-y: auto;
+		padding: 5px;
+		border-radius: 12px;
+		border: 1px solid rgba(15, 23, 42, 0.1);
+		background: rgba(248, 249, 251, 0.96);
+		box-shadow: 0 6px 16px rgba(15, 23, 42, 0.1);
+		backdrop-filter: blur(12px);
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	`,
+	islandPermissionSelectorOption: css`
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		width: 100%;
+		min-height: 40px;
+		padding: 0 10px;
+		border-radius: 9px;
+		text-align: left;
+		transition: background 0.14s ease;
+		&:hover {
+			background: rgba(15, 23, 42, 0.05);
+		}
+	`,
+	islandPermissionSelectorOptionActive: css`
+		background: rgba(15, 23, 42, 0.045);
+	`,
+	islandPermissionSelectorOptionLeft: css`
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-width: 0;
+	`,
+	islandPermissionSelectorOptionLabel: css`
+		font-size: 13px;
+		line-height: 1.25;
+		font-weight: 600;
+		color: ${token.colorText};
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		overflow: hidden;
+	`,
+	islandPermissionSelectorCheck: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 16px;
+		height: 16px;
+		color: transparent;
+	`,
+	islandPermissionSelectorCheckActive: css`
+		color: rgba(15, 23, 42, 0.82);
+	`,
+	islandPermissionSelectorHint: css`
+		font-size: 11px;
+		line-height: 1.4;
+		color: ${token.colorTextTertiary};
+		margin-top: 2px;
+	`,
 	islandDropdownEmpty: css`
 		font-size: 12px;
 		color: ${token.colorTextTertiary};
@@ -838,10 +955,24 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		overflow-y: auto;
 		padding: 18px 14px;
 	`,
+	scrollAreaVirtual: css`
+		overflow: hidden;
+	`,
 	timeline: css`
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
+	`,
+	timelineRow: css`
+		width: 100%;
+	`,
+	timelineVirtual: css`
+		width: 100%;
+	`,
+	timelineVirtualItem: css`
+		width: 100%;
+		padding-bottom: 8px;
+		box-sizing: border-box;
 	`,
 	messageMetaRow: css`
 		display: inline-flex;
