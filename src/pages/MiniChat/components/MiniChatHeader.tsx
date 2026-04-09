@@ -56,6 +56,8 @@ type MiniChatHeaderProps = {
 	onPermissionModeChange: (mode: CodeAgentPermissionMode) => void;
 	onNewConversation: () => void;
 	onSwitchSession: (key: string) => void;
+	showWindowActions?: boolean;
+	canExitCodeMode?: boolean;
 };
 
 const PERMISSION_MODE_OPTIONS: Array<{
@@ -176,6 +178,8 @@ function MiniChatHeaderImpl({
 	onPermissionModeChange,
 	onNewConversation,
 	onSwitchSession,
+	showWindowActions = true,
+	canExitCodeMode = true,
 }: MiniChatHeaderProps) {
 	const { styles, cx } = useMiniChatStyles();
 	const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -416,10 +420,10 @@ function MiniChatHeaderImpl({
 								</span>
 							) : null}
 
-							{isCodeMode ? (
-								<button
-									type="button"
-									className={styles.islandAction}
+								{isCodeMode && canExitCodeMode ? (
+									<button
+										type="button"
+										className={styles.islandAction}
 									title="退出 CLI 模式"
 									onClick={(e) => {
 										e.stopPropagation();
@@ -644,23 +648,25 @@ function MiniChatHeaderImpl({
 				</div>
 			</div>
 
-			<div className={styles.headerActions}>
-				<ActionIcon
-					className={cx("no-drag", styles.actionIcon)}
-					icon={Expand}
-					onClick={onOpenFull}
-					size={"small"}
-					title="打开完整界面"
-				/>
-				<ActionIcon
-					className={cx("no-drag", styles.actionIcon)}
-					icon={X}
-					onClick={onClose}
-					size={"small"}
-					title="关闭"
-				/>
+				{showWindowActions ? (
+					<div className={styles.headerActions}>
+						<ActionIcon
+							className={cx("no-drag", styles.actionIcon)}
+							icon={Expand}
+							onClick={onOpenFull}
+							size={"small"}
+							title="打开完整界面"
+						/>
+						<ActionIcon
+							className={cx("no-drag", styles.actionIcon)}
+							icon={X}
+							onClick={onClose}
+							size={"small"}
+							title="关闭"
+						/>
+					</div>
+				) : null}
 			</div>
-		</div>
 	);
 }
 

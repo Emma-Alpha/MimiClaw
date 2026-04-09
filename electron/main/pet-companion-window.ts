@@ -5,6 +5,7 @@ import {
 	PET_WINDOW_WIDTH,
 } from "./pet-layout";
 import { getPetWindow } from "./pet-window";
+import { loadWindowRoute } from "./window-loader";
 
 let petCompanionWindow: BrowserWindow | null = null;
 let isCreatingPetCompanionWindow = false;
@@ -119,11 +120,7 @@ async function createPetCompanionWindow(): Promise<BrowserWindow> {
 	});
 
 	const route = getPetCompanionWindowUrl();
-	if (route.type === "url") {
-		await win.loadURL(route.value);
-	} else {
-		await win.loadFile(route.value, { hash: route.hash });
-	}
+	await loadWindowRoute(win, route, { windowName: "pet-companion-window" });
 
 	petCompanionWindow = win;
 	return win;

@@ -7,6 +7,7 @@ import {
 	PET_WINDOW_WIDTH,
 } from "./pet-layout";
 import { getPetWindow } from "./pet-window";
+import { loadWindowRoute } from "./window-loader";
 
 let miniChatWindow: BrowserWindow | null = null;
 let isCreatingMiniChat = false;
@@ -170,14 +171,6 @@ async function createMiniChatWindow(): Promise<BrowserWindow> {
 	win.setAlwaysOnTop(true, "floating");
 	win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
-	win.once("ready-to-show", () => {
-		if (!win.isDestroyed()) {
-			win.show();
-			win.focus();
-			flushPendingDroppedPaths(win);
-		}
-	});
-
 	win.on("closed", () => {
 		if (miniChatWindow === win) {
 			miniChatWindow = null;
@@ -245,10 +238,25 @@ async function createMiniChatWindow(): Promise<BrowserWindow> {
 		}
 	});
 
-	if (route.type === "url") {
-		await win.loadURL(route.value);
-	} else {
-		await win.loadFile(route.value, { hash: route.hash });
+	try {
+		await loadWindowRoute(win, route, {
+			windowName: "mini-chat-window",
+			maxAttempts: 10,
+			initialRetryDelayMs: 150,
+		});
+	} catch (error) {
+		// Keep UX clean when dev server is unavailable: do not leave a blank
+		// mini-chat window hanging around while retries fail.
+		if (!win.isDestroyed()) {
+			win.destroy();
+		}
+		throw error;
+	}
+
+	if (!win.isDestroyed()) {
+		win.show();
+		win.focus();
+		flushPendingDroppedPaths(win);
 	}
 
 	miniChatWindow = win;

@@ -78,6 +78,7 @@ interface SettingsState extends CloudAuthState {
 
   // UI State
   sidebarCollapsed: boolean;
+  sidebarFolderExpanded: Record<string, boolean>;
   devModeUnlocked: boolean;
 
   // Setup
@@ -110,6 +111,7 @@ interface SettingsState extends CloudAuthState {
   setAutoCheckUpdate: (value: boolean) => void;
   setAutoDownloadUpdate: (value: boolean) => void;
   setSidebarCollapsed: (value: boolean) => void;
+  setSidebarFolderExpanded: (folder: string, expanded: boolean) => void;
   setDevModeUnlocked: (value: boolean) => void;
   markSetupComplete: () => void;
   resetSettings: () => void;
@@ -151,6 +153,13 @@ const defaultSettings = {
   autoCheckUpdate: true,
   autoDownloadUpdate: false,
   sidebarCollapsed: false,
+  sidebarFolderExpanded: {
+    chat: true,
+    cli: true,
+    jizhi: true,
+    xiaojiu: true,
+    voice: true,
+  },
   devModeUnlocked: false,
   setupComplete: false,
   // Cloud auth defaults — not persisted in zustand store,
@@ -310,6 +319,12 @@ export const useSettingsStore = create<SettingsState>()(
       setAutoCheckUpdate: (autoCheckUpdate) => set({ autoCheckUpdate }),
       setAutoDownloadUpdate: (autoDownloadUpdate) => set({ autoDownloadUpdate }),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
+      setSidebarFolderExpanded: (folder, expanded) => set((state) => ({
+        sidebarFolderExpanded: {
+          ...state.sidebarFolderExpanded,
+          [folder]: expanded,
+        },
+      })),
       setDevModeUnlocked: (devModeUnlocked) => {
         set({ devModeUnlocked });
         void hostApiFetch('/api/settings/devModeUnlocked', {

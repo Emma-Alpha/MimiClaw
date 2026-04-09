@@ -2,6 +2,7 @@
     "sidebar": {
         "chat": "チャット",
         "newChat": "新しいチャット",
+        "newThread": "新しいスレッド",
         "cronTasks": "定期タスク",
         "skills": "スキル",
         "localExecutor": "ローカル実行",
@@ -12,6 +13,19 @@
         "devConsole": "開発者コンソール",
         "models": "モデル",
         "remoteWebChat": "Web チャット",
+        "management": "管理メニュー",
+        "syncFailed": "同期に失敗しました",
+        "noConversations": "会話がありません",
+        "configureWorkspace": "ワークスペースを設定",
+        "cliWorkspaceNotConfigured": "CLI ワークスペースが未設定です",
+        "cliSessionsLoadFailed": "CLI セッションの読み込みに失敗しました",
+        "folder": {
+            "chat": "チャット",
+            "cli": "CLI",
+            "jizhi": "極智",
+            "xiaojiu": "小九",
+            "voice": "音声"
+        },
         "deleteSessionConfirm": "セッション \"{{label}}\" を削除してもよろしいですか？",
         "openClawPage": "OpenClaw ページ"
     },

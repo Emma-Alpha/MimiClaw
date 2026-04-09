@@ -6,6 +6,7 @@ import {
 	useState,
 	type KeyboardEvent,
 } from "react";
+import { useLocation } from "react-router-dom";
 import {
 	type FileAttachment,
 } from "@/components/common/composer-helpers";
@@ -75,8 +76,13 @@ function getTimelineMessageKey(message: RawMessage, index: number) {
 		: `chat:${message.role}:${index}:${extractText(message.content).slice(0, 40)}`;
 }
 
-export function MiniChat() {
-	const { styles } = useMiniChatStyles();
+type MiniChatProps = {
+	embeddedCodeAssistant?: boolean;
+};
+
+export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
+	const { styles, cx } = useMiniChatStyles();
+	const location = useLocation();
 	const initSettings = useSettingsStore((state) => state.init);
 	const language = useSettingsStore((state) => state.language);
 	const codeAgentConfig = useSettingsStore((state) => state.codeAgent);
@@ -106,7 +112,7 @@ export function MiniChat() {
 	const [droppedPaths, setDroppedPaths] = useState<UnifiedComposerPath[]>([]);
 	const [selectedMode, setSelectedMode] = useState<MiniChatTarget | null>(null);
 	const [persistentMode, setPersistentMode] = useState<MiniChatTarget | null>(
-		null,
+		embeddedCodeAssistant ? "code" : null,
 	);
 	const [isComposing, setIsComposing] = useState(false);
 	const [isInputFocused, setIsInputFocused] = useState(false);
@@ -161,6 +167,11 @@ export function MiniChat() {
 		global: ClaudeCodeSkillEntry[];
 		project: ClaudeCodeSkillEntry[];
 	}>({ global: [], project: [] });
+	const requestedClaudeSessionId = useMemo(() => {
+		if (!embeddedCodeAssistant) return "";
+		const raw = new URLSearchParams(location.search).get("sessionId");
+		return raw?.trim() ?? "";
+	}, [embeddedCodeAssistant, location.search]);
 	const composerInputRef = useRef<UnifiedComposerInputHandle>(null);
 	const activeSkillRef = useRef<SlashOption | null>(null);
 	const richContentRef = useRef<import("slate").Descendant[] | undefined>(undefined);
@@ -318,8 +329,9 @@ export function MiniChat() {
 	}, [language]);
 
 	useEffect(() => {
+		if (embeddedCodeAssistant) return;
 		newSession();
-	}, [newSession]);
+	}, [embeddedCodeAssistant, newSession]);
 
 	useEffect(() => {
 		void initGateway();
@@ -515,7 +527,9 @@ export function MiniChat() {
 	}, [streamingTools]);
 
 	const draftIntent = useMemo(() => parseSubmissionIntent(input), [input]);
-	const draftTarget = selectedMode || persistentMode || draftIntent.target;
+	const draftTarget = embeddedCodeAssistant
+		? "code"
+		: selectedMode || persistentMode || draftIntent.target;
 	const isClaudeCodeCliMode = draftTarget === "code";
 	const {
 		handleNewConversation,
@@ -553,6 +567,23 @@ export function MiniChat() {
 		codeSending,
 		draftTarget,
 		hydrateClaudeSessionHistory,
+	]);
+
+	useEffect(() => {
+		if (!embeddedCodeAssistant) return;
+		if (!requestedClaudeSessionId) return;
+		if (requestedClaudeSessionId === activeClaudeSessionId) return;
+		lastHydratedClaudeSessionRef.current = "";
+		setActiveClaudeSessionId(requestedClaudeSessionId);
+		resetCodeTimelineState();
+		resetChatSeenState();
+	}, [
+		activeClaudeSessionId,
+		embeddedCodeAssistant,
+		requestedClaudeSessionId,
+		resetChatSeenState,
+		resetCodeTimelineState,
+		setActiveClaudeSessionId,
 	]);
 
 	const handleClose = useCallback(() => {
@@ -636,6 +667,7 @@ export function MiniChat() {
 	);
 
 	const removeCodeMentionFromInput = useCallback(() => {
+		if (embeddedCodeAssistant) return;
 		setSelectedMode(null);
 		setPersistentMode(null);
 		setInput((previous) => {
@@ -644,9 +676,9 @@ export function MiniChat() {
 				.replace(/\s+/g, " ")
 				.trimStart();
 			setCaretIndex(nextInput.length);
-			return nextInput;
-		});
-	}, []);
+				return nextInput;
+			});
+	}, [embeddedCodeAssistant]);
 
 	const handleKeyDown = useCallback(
 		(event: KeyboardEvent<HTMLElement>) => {
@@ -839,11 +871,12 @@ export function MiniChat() {
 		codeStreaming.isStreaming;
 
 	const handleOpenFull = useCallback(() => {
+		if (embeddedCodeAssistant) return;
 		void invokeIpc(
 			draftTarget === "code" ? "pet:openCodeAssistant" : "pet:openMainWindow",
 		);
 		void invokeIpc("pet:closeMiniChat");
-	}, [draftTarget]);
+	}, [draftTarget, embeddedCodeAssistant]);
 
 	const timelineItems = useMemo<TimelineItem[]>(() => {
 		const chatItems = visibleMessages.map((message: RawMessage, index) => {
@@ -862,7 +895,7 @@ export function MiniChat() {
 	}, [chatSeenAt, visibleMessages]);
 
 	return (
-		<div className={styles.root}>
+		<div className={cx(styles.root, embeddedCodeAssistant && styles.rootEmbedded)}>
 			<MiniChatHeader
 				draftTarget={draftTarget}
 				codeSending={codeSending}
@@ -886,6 +919,8 @@ export function MiniChat() {
 				onPermissionModeChange={handlePermissionModeChange}
 				onNewConversation={handleNewConversation}
 				onSwitchSession={handleSwitchSession}
+				showWindowActions={!embeddedCodeAssistant}
+				canExitCodeMode={!embeddedCodeAssistant}
 			/>
 
 			<MiniChatTimeline

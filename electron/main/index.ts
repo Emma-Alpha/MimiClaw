@@ -54,6 +54,7 @@ import { whatsAppLoginManager } from '../utils/whatsapp-login';
 import { syncAllProviderAuthToRuntime } from '../services/providers/provider-runtime-sync';
 import { completeXiaojiuAuthCallback } from '../utils/xiaojiu-auth';
 import type { CloudSession } from '../../shared/cloud-auth';
+import { isBenignDevWindowLoadRejection, loadWindowRoute, type WindowLoadRoute } from './window-loader';
 
 const WINDOWS_APP_USER_MODEL_ID = 'com.jizhi.gz4399';
 const APP_PROTOCOL = 'jizhi';
@@ -315,12 +316,15 @@ function createWindow(): BrowserWindow {
     return { action: 'deny' };
   });
 
-  // Load the app
+  const route: WindowLoadRoute = process.env.VITE_DEV_SERVER_URL
+    ? { type: 'url', value: process.env.VITE_DEV_SERVER_URL }
+    : { type: 'file', value: join(__dirname, '../../dist/index.html') };
+  void loadWindowRoute(win, route, { windowName: 'main-window' }).catch((error) => {
+    logger.error('[window-load] Failed to load main window route:', error);
+  });
+
   if (process.env.VITE_DEV_SERVER_URL) {
-    win.loadURL(process.env.VITE_DEV_SERVER_URL);
     win.webContents.openDevTools();
-  } else {
-    win.loadFile(join(__dirname, '../../dist/index.html'));
   }
 
   return win;
@@ -369,6 +373,40 @@ function normalizeOpenedPath(candidate: string): string | null {
 
   const resolvedPath = resolve(value);
   return existsSync(resolvedPath) ? resolvedPath : null;
+}
+
+function isInternalAppFileUrl(url: string): boolean {
+  if (!url.startsWith('file://')) {
+    return false;
+  }
+
+  try {
+    const parsed = decodeURIComponent(new URL(url).pathname);
+    if (!parsed) {
+      return false;
+    }
+
+    // Ignore app-internal files (especially packaged app.asar paths).
+    // These are legitimate app navigations and must never be rerouted as
+    // user-dropped files.
+    const appPath = app.getAppPath();
+    if (parsed === appPath || parsed.startsWith(`${appPath}/`)) {
+      return true;
+    }
+
+    const resourcesPath = process.resourcesPath;
+    if (parsed === resourcesPath || parsed.startsWith(`${resourcesPath}/`)) {
+      return true;
+    }
+
+    if (parsed.includes('/app.asar/') || parsed.endsWith('/app.asar')) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
 }
 
 function extractOpenedPaths(argv: string[]): string[] {
@@ -536,13 +574,28 @@ async function initialize(): Promise<void> {
   session.defaultSession.webRequest.onBeforeRequest(
     { urls: ['file://*/*'] },
     (details, callback) => {
+      // Restrict interception to top-level file navigations only.
+      // Subresource file:// requests are often app-internal assets.
+      if (details.resourceType !== 'mainFrame') {
+        callback({ cancel: false });
+        return;
+      }
+
+      // Never intercept app-internal packaged files.
+      if (isInternalAppFileUrl(details.url)) {
+        callback({ cancel: false });
+        return;
+      }
+
       const normalizedPath = normalizeOpenedPath(details.url);
       if (!normalizedPath) {
         callback({ cancel: false });
         return;
       }
 
-      void routePathToMiniChat(normalizedPath);
+      void routePathToMiniChat(normalizedPath).catch((error) => {
+        logger.warn(`Failed to route dropped file path "${normalizedPath}" to mini chat:`, error);
+      });
       callback({ cancel: true });
     },
   );
@@ -887,7 +940,9 @@ if (gotTheLock) {
 
   app.on('open-file', (event, filePath) => {
     event.preventDefault();
-    void routePathToMiniChat(filePath);
+    void routePathToMiniChat(filePath).catch((error) => {
+      logger.warn(`Failed to route open-file path "${filePath}" to mini chat:`, error);
+    });
   });
 
   // When a second instance is launched, focus the existing window instead.
@@ -900,7 +955,9 @@ if (gotTheLock) {
 
     const openedPaths = extractOpenedPaths(argv);
     for (const openedPath of openedPaths) {
-      void routePathToMiniChat(openedPath);
+      void routePathToMiniChat(openedPath).catch((error) => {
+        logger.warn(`Failed to route second-instance path "${openedPath}" to mini chat:`, error);
+      });
     }
 
     const focusRequest = requestSecondInstanceFocus(
@@ -929,7 +986,9 @@ if (gotTheLock) {
         if (!navigationUrl.includes('index.html')) {
           navEvent.preventDefault();
           closeNonMiniChatOwnerWindow(contents);
-          void routePathToMiniChat(navigationUrl);
+          void routePathToMiniChat(navigationUrl).catch((error) => {
+            logger.warn(`Failed to route navigation drop URL "${navigationUrl}" to mini chat:`, error);
+          });
           logger.debug(`[App] Prevented navigation to dropped file: ${navigationUrl}`);
         }
       }
@@ -939,7 +998,9 @@ if (gotTheLock) {
       console.log(`[App DEBUG] did-fail-provisional-load globally: code=${code}, url=${url}, isMainFrame=${isMainFrame}`);
       if (isMainFrame && url.startsWith('file://') && !url.includes('index.html')) {
         closeNonMiniChatOwnerWindow(contents);
-        void routePathToMiniChat(url);
+        void routePathToMiniChat(url).catch((error) => {
+          logger.warn(`Failed to recover from did-fail-provisional-load URL "${url}":`, error);
+        });
       }
     });
 
@@ -947,7 +1008,9 @@ if (gotTheLock) {
       console.log(`[App DEBUG] did-fail-load globally: code=${code}, url=${url}, isMainFrame=${isMainFrame}`);
       if (isMainFrame && url.startsWith('file://') && !url.includes('index.html')) {
         closeNonMiniChatOwnerWindow(contents);
-        void routePathToMiniChat(url);
+        void routePathToMiniChat(url).catch((error) => {
+          logger.warn(`Failed to recover from did-fail-load URL "${url}":`, error);
+        });
       }
     });
   });
@@ -1064,6 +1127,10 @@ if (gotTheLock) {
   });
 
   process.on('unhandledRejection', (reason) => {
+    if (isBenignDevWindowLoadRejection(reason)) {
+      logger.warn('Ignoring transient dev-server window load rejection:', reason);
+      return;
+    }
     emergencyGatewayCleanup('Unhandled promise rejection in main process', reason);
   });
 }

@@ -10,6 +10,7 @@ import {
   getVoiceChatWindowBounds,
   saveVoiceChatWindowBounds,
 } from '../services/voice-chat-store';
+import { loadWindowRoute } from './window-loader';
 
 let voiceChatWindow: BrowserWindow | null = null;
 let voiceDialogState: VoiceDialogWindowState = 'idle';
@@ -145,11 +146,7 @@ async function createVoiceChatWindow(): Promise<BrowserWindow> {
   });
 
   const route = getVoiceChatWindowUrl();
-  if (route.type === 'url') {
-    await win.loadURL(route.value);
-  } else {
-    await win.loadFile(route.value, { hash: route.hash });
-  }
+  await loadWindowRoute(win, route, { windowName: 'voice-chat-window' });
 
   voiceChatWindow = win;
   return win;

@@ -2,12 +2,17 @@ import { createStyles } from "antd-style";
 
 export const useMiniChatStyles = createStyles(({ token, css }) => ({
 	root: css`
+		--mini-chat-content-width: 800px;
 		height: 100vh;
 		width: 100vw;
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
 		background: transparent;
+	`,
+	rootEmbedded: css`
+		height: 100%;
+		width: 100%;
 	`,
 	header: css`
 		height: 48px;
@@ -1004,6 +1009,11 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		flex: 1;
 		overflow-y: auto;
 		padding: 18px 14px;
+	`,
+	scrollAreaInner: css`
+		width: 100%;
+		max-width: var(--mini-chat-content-width);
+		margin: 0 auto;
 	`,
 	scrollAreaVirtual: css`
 		overflow: hidden;

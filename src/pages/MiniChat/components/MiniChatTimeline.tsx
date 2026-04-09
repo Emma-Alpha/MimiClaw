@@ -529,9 +529,10 @@ function MiniChatTimelineImpl({
 			ref={scrollAreaRef}
 			className={cx(styles.scrollArea, shouldVirtualize && styles.scrollAreaVirtual)}
 		>
-				{timelineItems.length === 0 && !showChatPending && !codeSending && codeAgentItems.length === 0 && !hasActiveCodeStream ? (
-					<div className={styles.emptyState}>
-						<div className={styles.emptyIcon}>
+			<div className={styles.scrollAreaInner}>
+					{timelineItems.length === 0 && !showChatPending && !codeSending && codeAgentItems.length === 0 && !hasActiveCodeStream ? (
+						<div className={styles.emptyState}>
+							<div className={styles.emptyIcon}>
 							<OpenClaw.Color size={22} />
 						</div>
 						<div className={styles.emptyTitle}>有什么可以帮你的？</div>
@@ -563,8 +564,9 @@ function MiniChatTimelineImpl({
 								</div>
 							))}
 						</div>
-					)
-				)}
+						)
+					)}
+			</div>
 		</div>
 	);
 }

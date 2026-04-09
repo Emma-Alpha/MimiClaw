@@ -335,6 +335,10 @@ function App() {
 							<Route path="/channels" element={<Channels />} />
 							<Route path="/skills" element={<Skills />} />
 							<Route path="/cron" element={<Cron />} />
+							<Route
+								path="/code-agent/chat"
+								element={<MiniChat embeddedCodeAssistant />}
+							/>
 							<Route path="/code-agent" element={<CodeAgent />} />
 							<Route path="/settings/*" element={<Settings />} />
 						</Route>

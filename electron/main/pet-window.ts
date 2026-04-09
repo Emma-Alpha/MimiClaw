@@ -8,6 +8,7 @@ import {
 	setPetBubbleVisible,
 	syncPetBubbleWindowToPet,
 } from "./pet-bubble-window";
+import { loadWindowRoute } from "./window-loader";
 
 let petWindow: BrowserWindow | null = null;
 
@@ -89,11 +90,7 @@ async function createPetWindow(): Promise<BrowserWindow> {
 	});
 
 	const route = getPetWindowUrl();
-	if (route.type === "url") {
-		await win.loadURL(route.value);
-	} else {
-		await win.loadFile(route.value, { hash: route.hash });
-	}
+	await loadWindowRoute(win, route, { windowName: "pet-window" });
 
 	petWindow = win;
 	void ensurePetBubbleWindow().then(() => {

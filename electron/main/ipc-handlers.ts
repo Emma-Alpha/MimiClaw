@@ -350,6 +350,15 @@ async function recordPetCompanionUsage(
 }
 
 function registerPetHandlers(): void {
+	function runPetMenuAction(
+		actionName: string,
+		action: () => Promise<void>,
+	): void {
+		void action().catch((error) => {
+			logger.error(`[pet] Context menu action "${actionName}" failed:`, error);
+		});
+	}
+
 	function dispatchPetRecordingCommand(
 		action: PetRecordingCommandAction,
 	): void {
@@ -578,25 +587,29 @@ function registerPetHandlers(): void {
 			const menu = Menu.buildFromTemplate([
 				{
 					label: openMiniChatLabels[language],
-					click: async () => {
-						await toggleMiniChatWindow();
+					click: () => {
+						runPetMenuAction("open-mini-chat", async () => {
+							await toggleMiniChatWindow();
+						});
 					},
 				},
 				{
 					label: codeAssistantLabels[language],
-					click: async () => {
-						await recordPetCompanionUsage("code_assistant");
-						await openMiniChatWithPayload({
-							text: "",
-							autoSend: false,
-							target: "code",
-							persistTarget: true,
+					click: () => {
+						runPetMenuAction("open-code-assistant", async () => {
+							await recordPetCompanionUsage("code_assistant");
+							await openMiniChatWithPayload({
+								text: "",
+								autoSend: false,
+								target: "code",
+								persistTarget: true,
+							});
 						});
 					},
 				},
 				{
 					label: openFullWindowLabels[language],
-					click: async () => {
+					click: () => {
 						const mainWin = getMainAppWindow();
 						if (mainWin) {
 							if (mainWin.isMinimized()) mainWin.restore();
@@ -609,25 +622,31 @@ function registerPetHandlers(): void {
 				{ type: "separator" },
 				{
 					label: voiceDialogLabels[language],
-					click: async () => {
-						await recordPetCompanionUsage("voice_chat");
-						await openVoiceChatWindow();
+					click: () => {
+						runPetMenuAction("open-voice-chat", async () => {
+							await recordPetCompanionUsage("voice_chat");
+							await openVoiceChatWindow();
+						});
 					},
 				},
 				{
 					label: companionPanelLabels[language],
-					click: async () => {
-						await recordPetCompanionUsage("companion_panel");
-						await openPetCompanionWindow();
+					click: () => {
+						runPetMenuAction("open-companion-panel", async () => {
+							await recordPetCompanionUsage("companion_panel");
+							await openPetCompanionWindow();
+						});
 					},
 				},
 				{ type: "separator" },
 				{
 					label: hideLabels[language],
-					click: async () => {
-						await setSetting("petEnabled", false);
-						await syncPetWindowFromSettings();
-						await emitPetSettingsUpdated();
+					click: () => {
+						runPetMenuAction("hide-floating-pet", async () => {
+							await setSetting("petEnabled", false);
+							await syncPetWindowFromSettings();
+							await emitPetSettingsUpdated();
+						});
 					},
 				},
 			]);
@@ -740,7 +759,7 @@ function registerPetHandlers(): void {
 			if (mainWin.isMinimized()) mainWin.restore();
 			mainWin.show();
 			mainWin.focus();
-			mainWin.webContents.send("navigate", "/code-agent");
+			mainWin.webContents.send("navigate", "/code-agent/chat");
 		}
 		return { success: true };
 	});

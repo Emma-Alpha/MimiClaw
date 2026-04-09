@@ -2,6 +2,7 @@
     "sidebar": {
         "chat": "Chat",
         "newChat": "New Chat",
+        "newThread": "New Thread",
         "cronTasks": "Cron Tasks",
         "skills": "Skills",
         "localExecutor": "Local Exec",
@@ -12,6 +13,19 @@
         "devConsole": "Developer Console",
         "models": "Models",
         "remoteWebChat": "Web Chat",
+        "management": "Management",
+        "syncFailed": "Sync failed",
+        "noConversations": "No conversations",
+        "configureWorkspace": "Configure Workspace",
+        "cliWorkspaceNotConfigured": "CLI workspace is not configured",
+        "cliSessionsLoadFailed": "Failed to load CLI sessions",
+        "folder": {
+            "chat": "Chat",
+            "cli": "CLI",
+            "jizhi": "Jizhi",
+            "xiaojiu": "Xiaojiu",
+            "voice": "Voice"
+        },
         "deleteSessionConfirm": "Are you sure you want to delete session \"{{label}}\"?",
         "openClawPage": "OpenClaw Page"
     },

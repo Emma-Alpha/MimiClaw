@@ -9,6 +9,7 @@ import {
 	PET_BUBBLE_WINDOW_MIN_HEIGHT,
 	PET_BUBBLE_WINDOW_WIDTH,
 } from "./pet-layout";
+import { loadWindowRoute } from "./window-loader";
 
 let petBubbleWindow: BrowserWindow | null = null;
 let lastPetBounds: Rectangle | null = null;
@@ -114,11 +115,7 @@ async function createPetBubbleWindow(): Promise<BrowserWindow> {
 	});
 
 	const route = getPetBubbleWindowUrl();
-	if (route.type === "url") {
-		await win.loadURL(route.value);
-	} else {
-		await win.loadFile(route.value, { hash: route.hash });
-	}
+	await loadWindowRoute(win, route, { windowName: "pet-bubble-window" });
 
 	petBubbleWindow = win;
 	return win;

@@ -7,7 +7,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		flex-direction: column;
 		gap: 8px;
 		width: 100%;
-		max-width: 800px;
+		max-width: var(--mini-chat-content-width, 800px);
 		margin: 0 auto;
 	`,
 	pill: css`

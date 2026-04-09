@@ -4,6 +4,7 @@
  */
 import { Menu, app, shell, BrowserWindow } from 'electron';
 import { openMiniChatDevTools } from './mini-chat-window';
+import { logger } from '../utils/logger';
 
 /**
  * Create application menu
@@ -191,21 +192,27 @@ export function createMenu(): void {
       submenu: [
         {
           label: 'Documentation',
-          click: async () => {
-            await shell.openExternal('https://jizhi.gz4399.com');
+          click: () => {
+            void shell.openExternal('https://jizhi.gz4399.com').catch((error) => {
+              logger.warn('Failed to open Documentation URL:', error);
+            });
           },
         },
         {
           label: 'Report Issue',
-          click: async () => {
-            await shell.openExternal('https://jizhi.gz4399.com/issues');
+          click: () => {
+            void shell.openExternal('https://jizhi.gz4399.com/issues').catch((error) => {
+              logger.warn('Failed to open Report Issue URL:', error);
+            });
           },
         },
         { type: 'separator' },
         {
           label: 'OpenClaw Documentation',
-          click: async () => {
-            await shell.openExternal('https://docs.openclaw.ai');
+          click: () => {
+            void shell.openExternal('https://docs.openclaw.ai').catch((error) => {
+              logger.warn('Failed to open OpenClaw Documentation URL:', error);
+            });
           },
         },
       ],
