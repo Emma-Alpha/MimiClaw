@@ -10,10 +10,12 @@ import { createStyles } from 'antd-style';
 import { useChatStore, type RawMessage } from '@/stores/chat';
 import { useGatewayStore } from '@/stores/gateway';
 import { useAgentsStore } from '@/stores/agents';
+import { useLocation } from 'react-router-dom';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { ChatToolbar } from './ChatToolbar';
+import { invokeIpc } from '@/lib/api-client';
 import { extractImages, extractText, extractThinking, extractToolUse } from './message-utils';
 import { useTranslation } from 'react-i18next';
 import { useStickToBottomInstant } from '@/hooks/use-stick-to-bottom-instant';
@@ -156,6 +158,7 @@ const useStyles = createStyles(({ token, css }) => ({
 export function Chat() {
   const { t } = useTranslation('chat');
   const { styles } = useStyles();
+  const location = useLocation();
   const gatewayStatus = useGatewayStore((s) => s.status);
   const isGatewayRunning = gatewayStatus.state === 'running';
 
@@ -171,6 +174,7 @@ export function Chat() {
   const sendMessage = useChatStore((s) => s.sendMessage);
   const abortRun = useChatStore((s) => s.abortRun);
   const clearError = useChatStore((s) => s.clearError);
+  const switchSession = useChatStore((s) => s.switchSession);
   const fetchAgents = useAgentsStore((s) => s.fetchAgents);
 
   const cleanupEmptySession = useChatStore((s) => s.cleanupEmptySession);
@@ -195,6 +199,13 @@ export function Chat() {
   useEffect(() => {
     void fetchAgents();
   }, [fetchAgents]);
+
+  useEffect(() => {
+    const requestedSessionKey = new URLSearchParams(location.search).get('sessionKey')?.trim() || '';
+    if (!requestedSessionKey) return;
+    if (requestedSessionKey === currentSessionKey) return;
+    switchSession(requestedSessionKey);
+  }, [location.search, currentSessionKey, switchSession]);
 
   // Update timestamp when sending starts
   useEffect(() => {
@@ -231,7 +242,7 @@ export function Chat() {
   const isEmpty = messages.length === 0 && !sending;
 
   useEffect(() => {
-    void window.electron.ipcRenderer.invoke('pet:setUiActivity', { activity: petUiActivity }).catch(() => {});
+    void invokeIpc('pet:setUiActivity', { activity: petUiActivity }).catch(() => {});
   }, [petUiActivity]);
 
   return (

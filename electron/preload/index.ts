@@ -45,6 +45,8 @@ const electronAPI = {
         'app:quit',
         'app:relaunch',
         'app:request',
+        'tray-runtime:getState',
+        'tray-runtime:openThread',
         // Window controls
         'window:minimize',
         'window:maximize',
@@ -234,6 +236,7 @@ const electronAPI = {
         'voice:realtime-event',
         'mini-chat:initial-message',
         'mini-chat:paths-dropped',
+        'tray-runtime:state',
         'screenshot:capture',
       ];
 
@@ -300,6 +303,7 @@ const electronAPI = {
         'pet:settings-updated',
         'pet:runtime-state',
         'pet:asr-event',
+        'tray-runtime:state',
         'screenshot:capture',
       ];
 

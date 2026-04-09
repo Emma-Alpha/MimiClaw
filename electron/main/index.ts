@@ -6,11 +6,20 @@ import '../load-env';
 import { app, autoUpdater as electronAutoUpdater, BrowserWindow, globalShortcut, ipcMain, nativeImage, session, shell } from 'electron';
 import type { Server } from 'node:http';
 import { join, resolve } from 'node:path';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { CodeAgentManager } from '../code-agent/manager';
 import { GatewayManager } from '../gateway/manager';
 import { registerIpcHandlers } from './ipc-handlers';
-import { createTray } from './tray';
+import {
+  createTray,
+  recordTrayCodeActivity,
+  recordTrayCodeRunFinished,
+  recordTrayCodeRunStarted,
+  recordTrayGatewayCompleted,
+  recordTrayGatewayProgress,
+  recordTrayGatewayStarted,
+  updateTrayGatewayState,
+} from './tray';
 import { createMenu } from './menu';
 
 import { appUpdater, registerUpdateHandlers } from './updater';
@@ -58,6 +67,44 @@ import { isBenignDevWindowLoadRejection, loadWindowRoute, type WindowLoadRoute }
 
 const WINDOWS_APP_USER_MODEL_ID = 'com.jizhi.gz4399';
 const APP_PROTOCOL = 'jizhi';
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' ? value as Record<string, unknown> : {};
+}
+
+function parseAgentNotification(payload: unknown): {
+  runId?: string;
+  sessionKey?: string;
+  phase?: string;
+  state?: string;
+  message?: unknown;
+  startedAt?: unknown;
+} | null {
+  const notification = asRecord(payload);
+  if (notification.method !== 'agent') return null;
+
+  const params = asRecord(notification.params);
+  const data = asRecord(params.data);
+  const runId = params.runId ?? data.runId;
+  const sessionKey = params.sessionKey ?? data.sessionKey;
+  const phase = params.phase ?? data.phase;
+  const state = params.state ?? data.state;
+  const message = params.message ?? data.message;
+  const startedAt = params.startedAt ?? data.startedAt;
+
+  const normalizedRunId = typeof runId === 'string' ? runId.trim() : '';
+  const normalizedSessionKey = typeof sessionKey === 'string' ? sessionKey.trim() : '';
+  if (!normalizedRunId && !normalizedSessionKey) return null;
+
+  return {
+    runId: normalizedRunId || undefined,
+    sessionKey: normalizedSessionKey || undefined,
+    phase: typeof phase === 'string' ? phase.trim().toLowerCase() : undefined,
+    state: typeof state === 'string' ? state.trim().toLowerCase() : undefined,
+    message,
+    startedAt,
+  };
+}
 
 // Disable GPU hardware acceleration globally for maximum stability across
 // all GPU configurations (no GPU, integrated, discrete).
@@ -241,16 +288,63 @@ async function handleDeepLink(urlString: string): Promise<void> {
   }
 }
 
-/**
- * Resolve the icons directory path (works in both dev and packaged mode)
- */
-function getIconsDir(): string {
-  if (app.isPackaged) {
+function getIconDirCandidates(): string[] {
+  const candidates = [
     // Packaged: icons are in extraResources → process.resourcesPath/resources/icons
-    return join(process.resourcesPath, 'resources', 'icons');
+    join(process.resourcesPath, 'resources', 'icons'),
+    // Packaged fallback: app bundle resources.
+    join(process.resourcesPath, 'icons'),
+    // Development: when main is bundled into dist-electron/main/.
+    join(__dirname, '../../resources/icons'),
+    // Development fallback: repository root (works with unusual launch cwd/layout).
+    join(app.getAppPath(), 'resources', 'icons'),
+    join(process.cwd(), 'resources', 'icons'),
+  ];
+
+  return [...new Set(candidates)];
+}
+
+function loadNativeImageFromCandidates(fileCandidates: string[]): { icon: Electron.NativeImage; sourcePath: string } | null {
+  const iconDirs = getIconDirCandidates();
+  for (const iconDir of iconDirs) {
+    for (const candidate of fileCandidates) {
+      const iconPath = join(iconDir, candidate);
+      if (!existsSync(iconPath)) {
+        continue;
+      }
+
+      // Prefer loading from bytes so paths containing Unicode/symlinks remain robust.
+      try {
+        const icon = nativeImage.createFromBuffer(readFileSync(iconPath));
+        if (!icon.isEmpty()) {
+          return { icon, sourcePath: iconPath };
+        }
+      } catch {
+        // Fall through to path loader.
+      }
+
+      const icon = nativeImage.createFromPath(iconPath);
+      if (!icon.isEmpty()) {
+        return { icon, sourcePath: iconPath };
+      }
+    }
   }
-  // Development: relative to dist-electron/main/
-  return join(__dirname, '../../resources/icons');
+
+  return null;
+}
+
+function resolveIconPathsFromCandidates(fileCandidates: string[]): string[] {
+  const paths: string[] = [];
+  const iconDirs = getIconDirCandidates();
+  for (const iconDir of iconDirs) {
+    for (const candidate of fileCandidates) {
+      const iconPath = join(iconDir, candidate);
+      if (existsSync(iconPath)) {
+        paths.push(iconPath);
+      }
+    }
+  }
+  return [...new Set(paths)];
 }
 
 /**
@@ -259,27 +353,10 @@ function getIconsDir(): string {
 function getAppIcon(): Electron.NativeImage | undefined {
   if (process.platform === 'darwin') return undefined; // macOS uses the app bundle icon
 
-  const iconsDir = getIconsDir();
-  const iconPath =
-    process.platform === 'win32'
-      ? join(iconsDir, 'icon.ico')
-      : join(iconsDir, 'icon.png');
-  const icon = nativeImage.createFromPath(iconPath);
-  return icon.isEmpty() ? undefined : icon;
-}
-
-function getMacDockIcon(): Electron.NativeImage | undefined {
-  if (process.platform !== 'darwin') return undefined;
-
-  const iconsDir = getIconsDir();
-  for (const candidate of ['icon.png', 'icon.icns', '512x512.png']) {
-    const icon = nativeImage.createFromPath(join(iconsDir, candidate));
-    if (!icon.isEmpty()) {
-      return icon;
-    }
-  }
-
-  return undefined;
+  const resolved = process.platform === 'win32'
+    ? loadNativeImageFromCandidates(['icon.ico', 'icon.png'])
+    : loadNativeImageFromCandidates(['icon.png', '512x512.png']);
+  return resolved?.icon;
 }
 
 /**
@@ -461,6 +538,8 @@ function createMainWindow(): BrowserWindow {
       return;
     }
 
+    syncMacDockIcon();
+
     const action = consumeMainWindowReady(mainWindowFocusState);
     if (action === 'focus') {
       focusWindow(win);
@@ -490,15 +569,60 @@ function createMainWindow(): BrowserWindow {
 function syncMacDockIcon(): void {
   if (process.platform !== 'darwin' || !app.dock) return;
 
-  const icon = getMacDockIcon();
-  if (!icon) {
-    logger.warn('Failed to resolve macOS Dock icon from resources/icons');
+  const iconPaths = resolveIconPathsFromCandidates(['icon.png', '512x512.png', 'icon.icns']);
+  if (iconPaths.length === 0) {
+    logger.warn(`Failed to resolve macOS Dock icon. Checked: ${getIconDirCandidates().join(', ')}`);
     return;
   }
 
   app.setActivationPolicy('regular');
   app.dock.show();
-  app.dock.setIcon(icon);
+
+  let selectedPath: string | null = null;
+  for (const iconPath of iconPaths) {
+    try {
+      app.dock.setIcon(iconPath);
+      selectedPath = iconPath;
+      logger.debug(`macOS Dock icon path set to: ${iconPath}`);
+      break;
+    } catch (error) {
+      logger.warn(`Failed to set macOS Dock icon from path "${iconPath}"`, error);
+    }
+  }
+
+  // Some macOS/Electron dev-mode combinations do not refresh from path-only
+  // updates consistently. Re-apply via nativeImage as a best-effort fallback.
+  const resolved = loadNativeImageFromCandidates(['icon.png', '512x512.png', 'icon.icns']);
+  if (resolved) {
+    try {
+      app.dock.setIcon(resolved.icon);
+      logger.debug(`macOS Dock icon nativeImage fallback set from: ${resolved.sourcePath}`);
+    } catch (error) {
+      logger.warn(`Failed to set macOS Dock icon from nativeImage "${resolved.sourcePath}"`, error);
+    }
+  }
+
+  const delayedIconPath = selectedPath ?? iconPaths[0];
+  // Startup race guard: re-apply after launch ticks so Dock has a second chance
+  // to pick up the icon in development mode.
+  setTimeout(() => {
+    if (!app.isReady() || process.platform !== 'darwin' || !app.dock) return;
+    try {
+      app.dock.setIcon(delayedIconPath);
+      logger.debug(`macOS Dock icon re-applied (500ms) from path: ${delayedIconPath}`);
+    } catch (error) {
+      logger.warn(`Failed to re-apply macOS Dock icon (500ms) from "${delayedIconPath}"`, error);
+    }
+  }, 500);
+  setTimeout(() => {
+    if (!app.isReady() || process.platform !== 'darwin' || !app.dock) return;
+    try {
+      app.dock.setIcon(delayedIconPath);
+      logger.debug(`macOS Dock icon re-applied (2000ms) from path: ${delayedIconPath}`);
+    } catch (error) {
+      logger.warn(`Failed to re-apply macOS Dock icon (2000ms) from "${delayedIconPath}"`, error);
+    }
+  }, 2000);
 }
 
 function performBestEffortQuitCleanup(): void {
@@ -652,6 +776,7 @@ async function initialize(): Promise<void> {
 
   gatewayManager.on('status', (status: { state: string }) => {
     hostEventBus.emit('gateway:status', status);
+    updateTrayGatewayState(status.state);
     if (status.state === 'running') {
       void ensureMimiClawContext().catch((error) => {
         logger.warn('Failed to re-merge MimiClaw context after gateway reconnect:', error);
@@ -665,6 +790,24 @@ async function initialize(): Promise<void> {
 
   gatewayManager.on('notification', (notification) => {
     hostEventBus.emit('gateway:notification', notification);
+    const parsed = parseAgentNotification(notification);
+    if (!parsed) return;
+
+    const phase = parsed.phase || '';
+    const state = parsed.state || '';
+    if (phase === 'started') {
+      recordTrayGatewayStarted(parsed);
+      return;
+    }
+    if (phase === 'completed' || phase === 'done' || phase === 'finished' || phase === 'end') {
+      recordTrayGatewayCompleted(parsed);
+      return;
+    }
+    if (state === 'error' || state === 'aborted') {
+      recordTrayGatewayCompleted(parsed);
+      return;
+    }
+    recordTrayGatewayProgress(parsed);
   });
 
   gatewayManager.on('chat:message', (data) => {
@@ -715,6 +858,7 @@ async function initialize(): Promise<void> {
   });
 
   codeAgentManager.on('run:started', (payload) => {
+    recordTrayCodeRunStarted(payload);
     hostEventBus.emit('code-agent:run-started', payload);
     const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
     for (const win of wins) {
@@ -725,6 +869,7 @@ async function initialize(): Promise<void> {
   });
 
   codeAgentManager.on('run:completed', (payload) => {
+    recordTrayCodeRunFinished();
     hostEventBus.emit('code-agent:run-completed', payload);
     const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
     for (const win of wins) {
@@ -735,6 +880,7 @@ async function initialize(): Promise<void> {
   });
 
   codeAgentManager.on('run:failed', (payload) => {
+    recordTrayCodeRunFinished();
     hostEventBus.emit('code-agent:run-failed', payload);
     const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
     for (const win of wins) {
@@ -754,6 +900,7 @@ async function initialize(): Promise<void> {
   });
 
   codeAgentManager.on('run:activity', (payload) => {
+    recordTrayCodeActivity(payload as { toolName?: string; inputSummary?: string });
     const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
     for (const win of wins) {
       if (win && !win.isDestroyed()) {

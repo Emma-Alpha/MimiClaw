@@ -897,6 +897,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 	return (
 		<div className={cx(styles.root, embeddedCodeAssistant && styles.rootEmbedded)}>
 			<MiniChatHeader
+				embedded={embeddedCodeAssistant}
 				draftTarget={draftTarget}
 				codeSending={codeSending}
 				isGenerating={isHeaderGenerating}

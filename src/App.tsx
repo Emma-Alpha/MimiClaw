@@ -24,6 +24,7 @@ import { PetBubble } from "./pages/PetBubble";
 import { PetCompanion } from "./pages/PetCompanion";
 import { MiniChat } from "./pages/MiniChat";
 import { VoiceDialog } from "./pages/VoiceDialog";
+import { TrayRuntime } from "./pages/TrayRuntime";
 import { VoiceChatHistory } from "./pages/VoiceChatHistory";
 import { Setup } from "./pages/Setup";
 import { Login } from "./pages/Login";
@@ -128,6 +129,7 @@ function App() {
 	const isMiniChatRoute = location.pathname.startsWith("/mini-chat");
 	const isPetCompanionRoute = location.pathname.startsWith("/pet-companion");
 	const isVoiceDialogRoute = location.pathname.startsWith("/voice-dialog");
+	const isTrayRuntimeRoute = location.pathname.startsWith("/tray-runtime");
 	const isMainChatRoute = location.pathname === "/";
 
 	const petUiActivity = !chatSending
@@ -156,7 +158,8 @@ function App() {
 			!isPetBubbleRoute &&
 			!isMiniChatRoute &&
 			!isPetCompanionRoute &&
-			!isVoiceDialogRoute
+			!isVoiceDialogRoute &&
+			!isTrayRuntimeRoute
 		) {
 			initGateway();
 		}
@@ -166,6 +169,7 @@ function App() {
 		isPetCompanionRoute,
 		isPetBubbleRoute,
 		isPetRoute,
+		isTrayRuntimeRoute,
 		isVoiceDialogRoute,
 	]);
 
@@ -178,7 +182,8 @@ function App() {
 			!isPetBubbleRoute &&
 			!isMiniChatRoute &&
 			!isPetCompanionRoute &&
-			!isVoiceDialogRoute
+			!isVoiceDialogRoute &&
+			!isTrayRuntimeRoute
 		) {
 			navigate("/login", { replace: true });
 		}
@@ -188,6 +193,7 @@ function App() {
 		isPetCompanionRoute,
 		isPetBubbleRoute,
 		isPetRoute,
+		isTrayRuntimeRoute,
 		isVoiceDialogRoute,
 		location.pathname,
 		navigate,
@@ -205,7 +211,8 @@ function App() {
 			!isPetBubbleRoute &&
 			!isMiniChatRoute &&
 			!isPetCompanionRoute &&
-			!isVoiceDialogRoute
+			!isVoiceDialogRoute &&
+			!isTrayRuntimeRoute
 		) {
 			navigate("/setup", { replace: true });
 		}
@@ -215,6 +222,7 @@ function App() {
 		isPetCompanionRoute,
 		isPetBubbleRoute,
 		isPetRoute,
+		isTrayRuntimeRoute,
 		isVoiceDialogRoute,
 		setupComplete,
 		location.pathname,
@@ -281,6 +289,7 @@ function App() {
 			isMiniChatRoute ||
 			isPetCompanionRoute ||
 			isVoiceDialogRoute ||
+			isTrayRuntimeRoute ||
 			isMainChatRoute
 		)
 			return;
@@ -293,6 +302,7 @@ function App() {
 		isPetCompanionRoute,
 		isPetBubbleRoute,
 		isPetRoute,
+		isTrayRuntimeRoute,
 		isVoiceDialogRoute,
 		petUiActivity,
 	]);
@@ -305,7 +315,8 @@ function App() {
 					!isPetBubbleRoute &&
 					!isMiniChatRoute &&
 					!isPetCompanionRoute &&
-					!isVoiceDialogRoute ? (
+					!isVoiceDialogRoute &&
+					!isTrayRuntimeRoute ? (
 						<UpdateBootstrap />
 					) : null}
 					<Routes>
@@ -323,6 +334,7 @@ function App() {
 						<Route path="/mini-chat" element={<MiniChat />} />
 						<Route path="/pet-companion" element={<PetCompanion />} />
 						<Route path="/voice-dialog" element={<VoiceDialog />} />
+						<Route path="/tray-runtime" element={<TrayRuntime />} />
 
 						{/* Main application routes */}
 						<Route element={<MainLayout />}>

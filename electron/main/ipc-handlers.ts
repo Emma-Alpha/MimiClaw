@@ -94,6 +94,10 @@ import {
 } from "../services/providers/provider-runtime-sync";
 import { validateApiKeyWithProvider } from "../services/providers/provider-validation";
 import { appUpdater } from "./updater";
+import {
+	getTrayRuntimeSnapshot,
+	openTrayRuntimeThread,
+} from "./tray";
 import { syncPetWindowFromSettings } from "./pet-window";
 import {
 	getPetRuntimeState,
@@ -3369,6 +3373,14 @@ function registerAppHandlers(): void {
 	ipcMain.handle("app:relaunch", () => {
 		app.relaunch();
 		app.quit();
+	});
+
+	ipcMain.handle("tray-runtime:getState", () => {
+		return getTrayRuntimeSnapshot();
+	});
+
+	ipcMain.handle("tray-runtime:openThread", (_, threadId: string) => {
+		return { success: openTrayRuntimeThread(String(threadId || "")) };
 	});
 }
 

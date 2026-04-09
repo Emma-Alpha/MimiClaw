@@ -13,6 +13,8 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 	rootEmbedded: css`
 		height: 100%;
 		width: 100%;
+		box-sizing: border-box;
+		padding-top: 0;
 	`,
 	header: css`
 		height: 48px;
@@ -23,11 +25,23 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		padding: 10px 12px 8px;
 		-webkit-app-region: drag;
 	`,
+	headerEmbedded: css`
+		height: 40px;
+		grid-template-columns: 1fr;
+		padding: 4px 12px;
+		-webkit-app-region: no-drag;
+		pointer-events: none;
+		position: relative;
+		z-index: 120;
+	`,
 	brand: css`
 		display: flex;
 		align-items: center;
 		gap: 10px;
 		min-width: 0;
+	`,
+	brandEmbedded: css`
+		display: none;
 	`,
 	brandLogo: css`
 		width: 24px;
@@ -83,10 +97,15 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		min-width: 0;
 		overflow: visible;
 	`,
+	headerCenterEmbedded: css`
+		pointer-events: auto;
+	`,
 	headerActions: css`
 		display: flex;
 		align-items: center;
 		gap: 4px;
+		position: relative;
+		z-index: 1;
 	`,
 	actionIcon: css`
 		color: ${token.colorTextSecondary} !important;
@@ -99,7 +118,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 	dynamicIslandWrapper: css`
 		position: relative;
 		border-radius: 999px;
-		padding: 2px;
+		padding: 1px;
 		overflow: visible;
 		display: flex;
 		align-items: center;
@@ -107,14 +126,14 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		cursor: pointer;
 		transition: max-width 0.4s cubic-bezier(0.32, 0.72, 0, 1),
 			flex 0.4s cubic-bezier(0.32, 0.72, 0, 1), filter 0.3s ease;
-		filter: drop-shadow(0 8px 18px rgba(2, 6, 23, 0.32));
-		max-width: min(100%, 480px);
+		filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.16));
+		max-width: min(100%, 420px);
 		min-width: 40px;
 		will-change: max-width, flex;
 	`,
 	dynamicIslandWrapperGenerating: css`
-		filter: drop-shadow(0 0 16px rgba(37, 99, 235, 0.34));
-		animation: islandBreath 1.8s ease-in-out infinite;
+		filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.18));
+		animation: islandBreath 2.4s ease-in-out infinite;
 
 		@keyframes islandBreath {
 			0%,
@@ -122,7 +141,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 				transform: translateY(0) scale(1);
 			}
 			50% {
-				transform: translateY(-0.5px) scale(1.012);
+				transform: translateY(-0.5px) scale(1.006);
 			}
 		}
 
@@ -139,63 +158,13 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		inset: 0;
 		border-radius: inherit;
 		z-index: 0;
-		background:
-			linear-gradient(
-				180deg,
-				rgba(10, 14, 21, 0.92),
-				rgba(7, 10, 16, 0.88)
-			)
-			padding-box,
-			linear-gradient(
-				145deg,
-				rgba(255, 255, 255, 0.3),
-				rgba(148, 163, 184, 0.14),
-				rgba(15, 23, 42, 0.18)
-			)
-			border-box;
-		border: 1px solid transparent;
+		background: linear-gradient(180deg, rgba(35, 35, 37, 0.96), rgba(10, 10, 12, 0.98));
+		border: 1px solid rgba(255, 255, 255, 0.06);
 		opacity: 1;
 	`,
 	dynamicIslandGlowGenerating: css`
-		background:
-			linear-gradient(
-				180deg,
-				rgba(10, 14, 21, 0.94),
-				rgba(8, 12, 19, 0.9)
-			)
-			padding-box,
-			conic-gradient(
-				from var(--ai-angle),
-				#3b82f6,
-				#60a5fa,
-				#22d3ee,
-				#1d4ed8,
-				#3b82f6
-			)
-			border-box;
-		border: 1px solid transparent;
-		animation: aiRotate 3.2s linear infinite;
-		opacity: 1;
-		filter: saturate(1.18) brightness(1.05);
-
-		@property --ai-angle {
-			syntax: "<angle>";
-			initial-value: 0deg;
-			inherits: false;
-		}
-
-		@keyframes aiRotate {
-			0% {
-				--ai-angle: 0deg;
-			}
-			100% {
-				--ai-angle: 360deg;
-			}
-		}
-
-		@media (prefers-reduced-motion: reduce) {
-			animation: none;
-		}
+		border-color: rgba(0, 113, 227, 0.18);
+		box-shadow: none;
 	`,
 	dynamicIslandFrost: css`
 		position: absolute;
@@ -203,45 +172,39 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		border-radius: inherit;
 		z-index: 1;
 		pointer-events: none;
-		background:
-			radial-gradient(
-				140% 95% at 18% -20%,
-				rgba(255, 255, 255, 0.16),
-				rgba(255, 255, 255, 0) 58%
-			),
-			linear-gradient(
-				180deg,
-				rgba(255, 255, 255, 0.08),
-				rgba(255, 255, 255, 0.01) 45%,
-				rgba(255, 255, 255, 0.06) 100%
-			);
-		opacity: 0.9;
+		background: linear-gradient(
+			180deg,
+			rgba(255, 255, 255, 0.12),
+			rgba(255, 255, 255, 0.02) 36%,
+			rgba(255, 255, 255, 0) 100%
+		);
+		opacity: 0.72;
 	`,
 	dynamicIslandSpecular: css`
 		position: absolute;
-		top: 0;
-		left: 15%;
-		right: 15%;
+		top: 1px;
+		left: 18%;
+		right: 18%;
 		height: 1px;
 		background: linear-gradient(
 			to right,
 			transparent,
-			rgba(255, 255, 255, 0.95),
+			rgba(255, 255, 255, 0.72),
 			transparent
 		);
 		z-index: 3;
-		opacity: 0.38;
+		opacity: 0.26;
 	`,
 	dynamicIsland: css`
 		display: flex;
 		align-items: center;
-		background: rgba(7, 10, 16, 0.86);
-		backdrop-filter: blur(20px) saturate(1.1);
+		background: rgba(29, 29, 31, 0.82);
+		backdrop-filter: saturate(180%) blur(24px);
 		border-radius: 999px;
-		height: 32px;
-		padding: 0 12px;
+		height: 36px;
+		padding: 0 11px 0 6px;
 		gap: 8px;
-		color: rgba(248, 250, 252, 0.96);
+		color: #fff;
 		max-width: 100%;
 		min-width: 0;
 		position: relative;
@@ -252,22 +215,39 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		overflow: hidden;
 
 		&:hover {
-			background: rgba(10, 14, 21, 0.92);
+			background: rgba(23, 23, 25, 0.88);
 		}
 	`,
+	dynamicIslandContextMeter: css`
+		position: absolute;
+		left: 16px;
+		right: 16px;
+		bottom: 5px;
+		height: 1.5px;
+		border-radius: 999px;
+		overflow: hidden;
+		background: rgba(255, 255, 255, 0.08);
+		pointer-events: none;
+		z-index: 0;
+	`,
+	dynamicIslandContextMeterFill: css`
+		height: 100%;
+		border-radius: inherit;
+		transition: width 0.28s ease, background 0.28s ease;
+	`,
 	dynamicIslandGenerating: css`
-		background: rgba(8, 12, 20, 0.92);
+		background: rgba(24, 24, 27, 0.9);
 		animation: islandSurfacePulse 1.8s ease-in-out infinite;
 
 		@keyframes islandSurfacePulse {
 			0%,
 			100% {
-				box-shadow: inset 0 0 0 0 rgba(59, 130, 246, 0.06),
-					0 0 0 0 rgba(37, 99, 235, 0);
+					box-shadow: inset 0 0 0 1px rgba(0, 113, 227, 0.05),
+						0 0 0 0 rgba(0, 113, 227, 0);
 			}
 			50% {
-				box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.24),
-					0 0 18px 0 rgba(37, 99, 235, 0.24);
+					box-shadow: inset 0 0 0 1px rgba(0, 113, 227, 0.12),
+						0 0 10px 0 rgba(0, 113, 227, 0.08);
 			}
 		}
 
@@ -280,12 +260,15 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		background: ${token.colorFillSecondary};
 		border-color: ${token.colorBorderSecondary};
 	`,
-	islandIcon: css`
+	islandLead: css`
+		position: relative;
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		width: 22px;
+		height: 22px;
 		flex-shrink: 0;
-		color: ${token.colorPrimary};
+		z-index: 1;
 	`,
 	islandTextWrapper: css`
 		display: flex;
@@ -293,79 +276,57 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		position: relative;
 		flex: 1;
 		min-width: 0;
+		z-index: 1;
 	`,
 	islandTextLabel: css`
-		font-weight: 500;
-		font-size: 13px;
-		color: rgba(248, 250, 252, 0.95);
+		font-family:
+			"SF Pro Display",
+			"SF Pro Icons",
+			"Helvetica Neue",
+			Helvetica,
+			Arial,
+			sans-serif;
+		font-weight: 600;
+		font-size: 14px;
+		line-height: 1;
+		letter-spacing: -0.015em;
+		color: rgba(255, 255, 255, 0.98);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		display: block;
 		min-width: 0;
-		transition: flex 0.4s cubic-bezier(0.32, 0.72, 0, 1),
-			max-width 0.4s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s ease,
-			transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
-		will-change: flex, max-width, opacity, transform;
-	`,
-	islandTextLabelCollapsed: css`
-		flex: 1 1 auto;
-		max-width: 100%;
-		opacity: 1;
-		transform: translateX(0);
+		font-variant-numeric: tabular-nums;
 	`,
 	islandGeneratingBadge: css`
 		display: inline-flex;
 		align-items: center;
+		gap: 5px;
 		flex-shrink: 0;
+		min-width: 0;
+		max-width: 52%;
 		padding: 2px 7px;
 		border-radius: 999px;
-		background: rgba(15, 23, 42, 0.46);
-		border: 1px solid rgba(148, 163, 184, 0.22);
+		background: rgba(59, 130, 246, 0.14);
+		border: 1px solid rgba(59, 130, 246, 0.3);
+		position: relative;
+		z-index: 1;
 	`,
-	islandGeneratingWave: css`
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
+	islandGeneratingSpinner: css`
+		font-family: ${token.fontFamilyCode};
+		font-size: 11px;
+		line-height: 1;
+		color: rgba(191, 219, 254, 0.98);
+		flex-shrink: 0;
 	`,
-	islandGeneratingDot: css`
-		width: 6px;
-		height: 6px;
-		border-radius: 999px;
-		background: #2563eb;
-		box-shadow: 0 0 8px rgba(37, 99, 235, 0.5);
-		animation: islandDotPulse 1.15s ease-in-out infinite;
-
-		&:nth-of-type(2) {
-			animation-delay: 0.12s;
-		}
-
-		&:nth-of-type(3) {
-			animation-delay: 0.24s;
-		}
-
-		@keyframes islandDotPulse {
-			0%,
-			100% {
-				opacity: 0.32;
-				transform: scale(0.9) translateY(0);
-			}
-			50% {
-				opacity: 1;
-				transform: scale(1.15) translateY(-0.5px);
-			}
-		}
-
-		@media (prefers-reduced-motion: reduce) {
-			animation: none;
-		}
-	`,
-	islandTextLabelExpanded: css`
-		flex: 0;
-		max-width: 0px;
-		opacity: 0;
-		margin-right: 0;
-		transform: translateX(-10px);
+	islandGeneratingText: css`
+		font-size: 10.5px;
+		font-weight: 600;
+		letter-spacing: 0.01em;
+		color: rgba(219, 234, 254, 0.96);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	`,
 	islandPath: css`
 		font-family: ${token.fontFamilyCode};
@@ -404,29 +365,29 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		justify-content: center;
 		overflow: visible;
 	`,
-	islandContextBadgeWrap: css`
-		position: absolute;
-		left: 50%;
-		top: -6px;
-		transform: translate(-50%, -100%);
-		z-index: 6;
-	`,
-	islandContextBadge: css`
+	islandMetric: css`
 		display: inline-flex;
 		align-items: center;
-		gap: 6px;
-		padding: 3px 8px 3px 4px;
-		border-radius: 999px;
-		border: 1px solid rgba(15, 23, 42, 0.2);
-		background: rgba(250, 250, 252, 0.94);
-		backdrop-filter: blur(10px);
-		box-shadow: 0 7px 20px rgba(15, 23, 42, 0.16);
-		color: rgba(15, 23, 42, 0.82);
+		justify-content: flex-end;
+		flex-shrink: 0;
+		min-width: 0;
+		padding-left: 4px;
+		position: relative;
+		z-index: 1;
 	`,
-	islandContextBadgeText: css`
-		font-size: 10px;
+	islandMetricValue: css`
+		font-family:
+			"SF Pro Display",
+			"SF Pro Icons",
+			"Helvetica Neue",
+			Helvetica,
+			Arial,
+			sans-serif;
+		font-size: 12px;
 		line-height: 1;
-		font-weight: 700;
+		font-weight: 600;
+		letter-spacing: -0.01em;
+		color: rgba(255, 255, 255, 0.72);
 		font-variant-numeric: tabular-nums;
 		white-space: nowrap;
 	`,
@@ -459,14 +420,32 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
-		color: rgba(191, 219, 254, 0.98);
+		color: rgba(255, 255, 255, 0.94);
 		border-radius: 50%;
 		height: 22px;
 		width: 22px;
-		transition: background 0.2s ease, transform 0.2s ease;
+		position: relative;
+		z-index: 1;
+		background: transparent;
+		transition: opacity 0.2s ease, transform 0.2s ease;
 		&:hover {
-			background: rgba(148, 163, 184, 0.22);
+			opacity: 0.86;
 			transform: scale(1.1);
+		}
+	`,
+	islandDropdownSecondaryBtn: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		margin-top: 6px;
+		padding: 0;
+		font-size: 13px;
+		font-weight: 500;
+		color: ${token.colorTextSecondary};
+		text-align: left;
+		transition: color 0.15s ease;
+		&:hover {
+			color: ${token.colorText};
 		}
 	`,
 	islandDropdown: css`
@@ -796,29 +775,6 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		&:hover {
 			background: rgba(15, 23, 42, 0.06);
 			color: ${token.colorText};
-		}
-	`,
-	islandAction: css`
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		flex-shrink: 0;
-		color: rgba(226, 232, 240, 0.62);
-		border-radius: 50%;
-		height: 20px;
-		width: 20px;
-		transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-		&:hover {
-			color: rgba(248, 250, 252, 0.96);
-			background: rgba(148, 163, 184, 0.2);
-			transform: scale(1.1);
-		}
-	`,
-	islandActionActive: css`
-		color: ${token.colorPrimary};
-		background: ${token.colorPrimaryBg};
-		&:hover {
-			background: ${token.colorPrimaryBgHover};
 		}
 	`,
 	islandMeta: css`

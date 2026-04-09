@@ -1,7 +1,7 @@
 import { memo, useRef, useState, useEffect, useMemo } from "react";
 import { ActionIcon } from "@lobehub/ui";
 import { OpenClaw, ClaudeCode } from "@lobehub/icons";
-import { Progress, Tooltip } from "antd";
+import { Tooltip } from "antd";
 import {
 	Expand,
 	X,
@@ -34,6 +34,7 @@ type ChatSessionOption = {
 };
 
 type MiniChatHeaderProps = {
+	embedded?: boolean;
 	draftTarget: MiniChatTarget;
 	codeSending: boolean;
 	isGenerating: boolean;
@@ -84,6 +85,19 @@ function shortModel(model: string) {
 }
 
 const MAX_CODE_SESSION_TITLE_LENGTH = 40;
+const HEADER_SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
+
+function useHeaderSpinner(active: boolean): string {
+	const [frame, setFrame] = useState(0);
+	useEffect(() => {
+		if (!active) return;
+		const timer = setInterval(() => {
+			setFrame((prev) => (prev + 1) % HEADER_SPINNER_FRAMES.length);
+		}, 80);
+		return () => clearInterval(timer);
+	}, [active]);
+	return HEADER_SPINNER_FRAMES[frame] ?? HEADER_SPINNER_FRAMES[0];
+}
 
 function isOpaqueSessionId(value: string): boolean {
 	const normalized = value.trim();
@@ -117,6 +131,16 @@ function getCodeSessionTitle(value: string | null | undefined): string {
 	}
 	if (normalized.length <= MAX_CODE_SESSION_TITLE_LENGTH) return normalized;
 	return `${normalized.slice(0, MAX_CODE_SESSION_TITLE_LENGTH)}…`;
+}
+
+function getChatThreadLabel(sessionKey: string): string {
+	const normalized = sessionKey.trim();
+	if (!normalized.startsWith("agent:")) return "Agent main · main";
+	const segments = normalized.split(":");
+	const agentId = segments[1] || "main";
+	const thread = segments.slice(2).join(":") || "main";
+	const compactThread = thread.length > 18 ? `${thread.slice(0, 17)}…` : thread;
+	return `Agent ${agentId} · ${compactThread}`;
 }
 
 function formatRelativeTime(ts: number): string {
@@ -156,6 +180,7 @@ function inferContextWindowSize(model: string | null | undefined): number {
 }
 
 function MiniChatHeaderImpl({
+	embedded = false,
 	draftTarget,
 	codeSending,
 	isGenerating,
@@ -188,6 +213,7 @@ function MiniChatHeaderImpl({
 	const dropdownRef = useRef<HTMLDivElement>(null);
 	const iconBtnRef = useRef<HTMLButtonElement>(null);
 	const isCodeMode = draftTarget === "code";
+	const runSpinner = useHeaderSpinner(isGenerating);
 
 	const activeChatSession = useMemo(
 		() => chatSessions.find((session) => session.key === currentSessionKey) ?? null,
@@ -195,10 +221,20 @@ function MiniChatHeaderImpl({
 	);
 
 	const showCodeStatus = codeSending || draftTarget === "code";
+	const codeStateLabel = getCodeAgentStateLabel(codeAgentStatus?.state);
+	const selectedCodeSessionTitle = !isCodeMode
+		? ""
+		: activeChatSession?.title?.trim()
+			? activeChatSession.title.trim()
+			: sessionTitle?.trim()
+				? getCodeSessionTitle(sessionTitle)
+				: currentSessionKey?.trim()
+					? getCodeSessionTitle(currentSessionKey)
+					: "CLI 会话";
 	const islandTitle = isCodeMode
 		? sessionInit
 			? shortModel(sessionInit.model)
-			: getCodeAgentStateLabel(codeAgentStatus?.state)
+			: selectedCodeSessionTitle
 		: activeChatSession?.title ?? "当前会话";
 	const statusDotClass = showCodeStatus
 		? codeSending
@@ -264,6 +300,20 @@ function MiniChatHeaderImpl({
 			windowSource: contextUsage?.windowSource ?? "estimated",
 		};
 	}, [contextUsage, isCodeMode, sessionInit]);
+	const islandLabel = isCodeMode ? islandTitle : islandTitle;
+	const islandMetricValue = contextIndicator
+		? formatTokenCount(contextIndicator.remainingTokens)
+		: null;
+	const islandProgressPercent = contextIndicator?.usedPercentage ?? 0;
+	const islandProgressTone = contextIndicator?.ringColor ?? "#0071e3";
+	const runningThreadLabel = useMemo(() => {
+		if (!isGenerating) return "";
+		if (isCodeMode) {
+			const codeSession = getCodeSessionTitle(sessionTitle || currentSessionKey || "");
+			return `CLI · ${codeSession}`;
+		}
+		return getChatThreadLabel(currentSessionKey);
+	}, [isGenerating, isCodeMode, sessionTitle, currentSessionKey]);
 
 	useEffect(() => {
 		if (!dropdownOpen) return;
@@ -283,12 +333,12 @@ function MiniChatHeaderImpl({
 	}, [dropdownOpen]);
 
 	return (
-		<div className={cx("drag-region", styles.header)}>
-			<div className={styles.brand}>
+		<div className={cx(!embedded && "drag-region", styles.header, embedded && styles.headerEmbedded)}>
+			<div className={cx(styles.brand, embedded && styles.brandEmbedded)}>
 				<div className={styles.brandLogo}>
 					<OpenClaw.Color size={14} />
 				</div>
-				{draftTarget !== "code" ? (
+				{!embedded && draftTarget !== "code" ? (
 					<div className={styles.brandText}>
 						<span className={styles.brandTitle}>极智</span>
 						<div className={styles.status}>
@@ -307,131 +357,104 @@ function MiniChatHeaderImpl({
 				) : null}
 			</div>
 
-			<div className={styles.headerCenter}>
+			<div className={cx(styles.headerCenter, embedded && styles.headerCenterEmbedded)}>
 				<div className={cx("no-drag", styles.islandContainer)}>
-					{contextIndicator ? (
-						<div className={styles.islandContextBadgeWrap}>
-							<Tooltip
-								placement="top"
-								mouseEnterDelay={0.12}
-								title={
-									<div className={styles.islandContextTooltip}>
-										<div className={styles.islandContextTooltipTitle}>CLI 上下文</div>
-										<div className={styles.islandContextTooltipRow}>
-											<span>窗口大小</span>
-											<strong>{formatTokenCount(contextIndicator.contextWindowSize)} tokens</strong>
-										</div>
-										<div className={styles.islandContextTooltipRow}>
-											<span>当前占用</span>
-											<strong>
-												{formatTokenCount(contextIndicator.usedTokens)} tokens (
-												{contextIndicator.usedPercentage}%)
-											</strong>
-										</div>
-										<div className={styles.islandContextTooltipRow}>
-											<span>剩余可用</span>
-											<strong>
-												{formatTokenCount(contextIndicator.remainingTokens)} tokens (
-												{contextIndicator.remainingPercentage}%)
-											</strong>
-										</div>
-										{contextIndicator.windowSource === "estimated" ? (
-											<div className={styles.islandContextTooltipHint}>
-												窗口大小为本地估算值（默认 200k 或 [1m] 模型）。
-											</div>
-										) : null}
-									</div>
-								}
-							>
-								<div
-									className={styles.islandContextBadge}
-									aria-label={`上下文剩余 ${formatTokenCount(contextIndicator.remainingTokens)} tokens`}
-								>
-									<Progress
-										type="circle"
-										size={24}
-										percent={contextIndicator.usedPercentage}
-										strokeColor={contextIndicator.ringColor}
-										strokeWidth={14}
-										trailColor="rgba(148, 163, 184, 0.24)"
-										showInfo={false}
-									/>
-									<span className={styles.islandContextBadgeText}>
-										余 {formatTokenCount(contextIndicator.remainingTokens)}
-									</span>
-								</div>
-							</Tooltip>
-						</div>
-					) : null}
+					<div
+						className={cx(
+							styles.dynamicIslandWrapper,
+							isGenerating && styles.dynamicIslandWrapperGenerating,
+						)}
+					>
 						<div
 							className={cx(
-								styles.dynamicIslandWrapper,
-								isGenerating && styles.dynamicIslandWrapperGenerating,
+								styles.dynamicIslandGlow,
+								isGenerating && styles.dynamicIslandGlowGenerating,
 							)}
-						>
-							<div
-								className={cx(
-									styles.dynamicIslandGlow,
-									isGenerating && styles.dynamicIslandGlowGenerating,
-								)}
-							/>
-							<div className={styles.dynamicIslandFrost} />
-							<div className={styles.dynamicIslandSpecular} />
+						/>
+						<div className={styles.dynamicIslandFrost} />
+						<div className={styles.dynamicIslandSpecular} />
 						<div
 							className={cx(
 								styles.dynamicIsland,
 								isGenerating && styles.dynamicIslandGenerating,
 							)}
 						>
-							<button
-								ref={iconBtnRef}
-								type="button"
-								className={styles.islandIconBtn}
-								title="查看会话信息"
-								onClick={() => {
-									setPermissionDropdownOpen(false);
-									setDropdownOpen((v) => !v);
-								}}
-							>
-								{isCodeMode ? <ClaudeCode.Color size={14} /> : <OpenClaw.Color size={14} />}
-							</button>
-
-							<div className={styles.islandTextWrapper}>
-								<span
-									className={cx(
-										styles.islandTextLabel,
-										styles.islandTextLabelCollapsed,
-									)}
-								>
-									{islandTitle}
-								</span>
-							</div>
-							{isGenerating ? (
-								<span
-									className={styles.islandGeneratingBadge}
-									role="status"
-									aria-label="生成中"
-								>
-									<span className={styles.islandGeneratingWave}>
-										<span className={styles.islandGeneratingDot} />
-										<span className={styles.islandGeneratingDot} />
-										<span className={styles.islandGeneratingDot} />
-									</span>
-								</span>
+							{contextIndicator ? (
+								<div className={styles.dynamicIslandContextMeter} aria-hidden="true">
+									<div
+										className={styles.dynamicIslandContextMeterFill}
+										style={{
+											width: `${islandProgressPercent}%`,
+											background: islandProgressTone,
+										}}
+									/>
+								</div>
 							) : null}
-
-								{isCodeMode && canExitCodeMode ? (
-									<button
-										type="button"
-										className={styles.islandAction}
-									title="退出 CLI 模式"
-									onClick={(e) => {
-										e.stopPropagation();
-										onRemoveCodeMode();
+							<div className={styles.islandLead}>
+								<button
+									ref={iconBtnRef}
+									type="button"
+									className={styles.islandIconBtn}
+									title="查看会话信息"
+									onClick={() => {
+										setPermissionDropdownOpen(false);
+										setDropdownOpen((v) => !v);
 									}}
 								>
-									<X size={12} />
+									{isCodeMode ? <ClaudeCode.Color size={14} /> : <OpenClaw.Color size={14} />}
 								</button>
+							</div>
+							<div className={styles.islandTextWrapper}>
+								<span className={styles.islandTextLabel}>{islandLabel}</span>
+							</div>
+							{isGenerating ? (
+								<div className={styles.islandGeneratingBadge} role="status" aria-live="polite">
+									<span className={styles.islandGeneratingSpinner}>{runSpinner}</span>
+									<span className={styles.islandGeneratingText}>
+										{runningThreadLabel || "生成中"}
+									</span>
+								</div>
+							) : null}
+							{contextIndicator ? (
+								<Tooltip
+									placement="top"
+									mouseEnterDelay={0.12}
+									title={
+										<div className={styles.islandContextTooltip}>
+											<div className={styles.islandContextTooltipTitle}>CLI 上下文</div>
+											<div className={styles.islandContextTooltipRow}>
+												<span>窗口大小</span>
+												<strong>{formatTokenCount(contextIndicator.contextWindowSize)} tokens</strong>
+											</div>
+											<div className={styles.islandContextTooltipRow}>
+												<span>当前占用</span>
+												<strong>
+													{formatTokenCount(contextIndicator.usedTokens)} tokens (
+													{contextIndicator.usedPercentage}%)
+												</strong>
+											</div>
+											<div className={styles.islandContextTooltipRow}>
+												<span>剩余可用</span>
+												<strong>
+													{formatTokenCount(contextIndicator.remainingTokens)} tokens (
+													{contextIndicator.remainingPercentage}%)
+												</strong>
+											</div>
+											{contextIndicator.windowSource === "estimated" ? (
+												<div className={styles.islandContextTooltipHint}>
+													窗口大小为本地估算值（默认 200k 或 [1m] 模型）。
+												</div>
+											) : null}
+										</div>
+									}
+								>
+									<div
+										className={styles.islandMetric}
+										aria-label={`上下文剩余 ${formatTokenCount(contextIndicator.remainingTokens)} tokens`}
+									>
+										<span className={styles.islandMetricValue}>{islandMetricValue}</span>
+									</div>
+								</Tooltip>
 							) : null}
 						</div>
 					</div>
@@ -495,7 +518,7 @@ function MiniChatHeaderImpl({
 								<div className={styles.islandDropdownDivider} />
 								<div className={styles.islandDropdownSection}>
 									<div className={styles.islandDropdownTitle}>
-										{getCodeSessionTitle(sessionTitle)}
+										{selectedCodeSessionTitle}
 									</div>
 										{lastUpdatedAt && (
 									<div className={styles.islandDropdownMeta}>
@@ -526,7 +549,7 @@ function MiniChatHeaderImpl({
 									</div>
 								) : (
 									<div className={styles.islandDropdownEmpty}>
-										{getCodeAgentStateLabel(codeAgentStatus?.state)}
+										{selectedCodeSessionTitle} · {codeStateLabel}
 									</div>
 								)}
 								<div className={styles.islandPermissionSelector}>
@@ -627,6 +650,20 @@ function MiniChatHeaderImpl({
 										{codeWorkspaceRoot}
 									</button>
 								)}
+								{canExitCodeMode && (
+									<button
+										type="button"
+										className={styles.islandDropdownSecondaryBtn}
+										onClick={(e) => {
+											e.stopPropagation();
+											setDropdownOpen(false);
+											onRemoveCodeMode();
+										}}
+									>
+										<X size={12} />
+										<span>退出 CLI 模式</span>
+									</button>
+								)}
 							</div>
 						</>
 					)}
@@ -649,7 +686,7 @@ function MiniChatHeaderImpl({
 			</div>
 
 				{showWindowActions ? (
-					<div className={styles.headerActions}>
+					<div className={cx("no-drag", styles.headerActions)}>
 						<ActionIcon
 							className={cx("no-drag", styles.actionIcon)}
 							icon={Expand}
