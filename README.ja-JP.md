@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="#機能">機能</a> •
-  <a href="#なぜclawxなのか">なぜ极智なのか</a> •
+  <a href="#なぜmimiclawなのか">なぜ极智なのか</a> •
   <a href="#はじめに">はじめに</a> •
   <a href="#アーキテクチャ">アーキテクチャ</a> •
   <a href="#開発">開発</a> •
@@ -115,8 +115,8 @@ AIエージェントの構築にコマンドラインの習得は不要である
 AIタスクを自動的に実行するようスケジュール設定できます。トリガーを定義し、間隔を設定することで、手動介入なしにAIエージェントを24時間稼働させることができます。
 
 ### 🖥️ ローカル実行センター
-デスクトップネイティブなローカル skill を ClawX 内で直接実行できます。現在の MVP にはディレクトリレポート、バッチリネームのプレビュー、Downloads 整理、ローカルコマンド実行が含まれ、デスクトップクライアントを単なるチャット UI ではなく実行ノードへ拡張します。
-同梱ローカル skill パッケージは `resources/skills/local` から自動検出され、ユーザー定義のローカル skill パッケージは `~/.clawx/skills/local` に追加できます。最近の実行記録はローカルに永続化され、監査や再確認に利用できます。
+デスクトップネイティブなローカル skill を MimiClaw 内で直接実行できます。現在の MVP にはディレクトリレポート、バッチリネームのプレビュー、Downloads 整理、ローカルコマンド実行が含まれ、デスクトップクライアントを単なるチャット UI ではなく実行ノードへ拡張します。
+同梱ローカル skill パッケージは `resources/skills/local` から自動検出され、ユーザー定義のローカル skill パッケージは `~/.mimiclaw/skills/local` に追加できます。最近の実行記録はローカルに永続化され、監査や再確認に利用できます。
 
 ### 🧩 拡張可能なスキルシステム
 事前構築されたスキルでAIエージェントを拡張できます。統合スキルパネルからスキルの閲覧、インストール、管理が可能です。パッケージマネージャーは不要です。
@@ -214,7 +214,7 @@ Volcengine ASR、音声会話、メッセージングチャンネル、開発者
 - 极智のプロキシが無効な状態では、Gatewayの通常再起動時に既存のTelegramチャネルプロキシ設定を保持します。
 - OpenClaw設定のTelegramプロキシを明示的に消したい場合は、プロキシ無効の状態で一度「保存」を実行してください。
 - **設定 → 詳細 → 開発者** では **OpenClaw Doctor** を実行でき、`openclaw doctor --json` の診断出力をアプリ内で確認できます。
-- **設定 → 詳細 → 開発者** では、実験的な **Claude Code Agent** sidecar の状態確認に加え、ローカル `claude` CLI のパス・モデル・認証を設定し、ワークスペース実行を手動で開始できます。モデル、Base URL、API キーを空欄にした場合、ClawX はまず `~/.claude/settings.json` を参照し、その後で利用可能なら現在のデフォルト Anthropic 互換 Provider を継承します。vendored `Emma-Alpha/claude-code` スナップショットは参照・デバッグ用として保持されますが、実際の実行は Claude CLI 経由です。
+- **設定 → 詳細 → 開発者** では、実験的な **Claude Code Agent** sidecar の状態確認に加え、ローカル `claude` CLI のパス・モデル・認証を設定し、ワークスペース実行を手動で開始できます。モデル、Base URL、API キーを空欄にした場合、MimiClaw はまず `~/.claude/settings.json` を参照し、その後で利用可能なら現在のデフォルト Anthropic 互換 Provider を継承します。vendored `Emma-Alpha/claude-code` スナップショットは参照・デバッグ用として保持されますが、実際の実行は Claude CLI 経由です。
 - Windows のパッケージ版では、同梱された `openclaw` CLI/TUI は端末入力を安定させるため、同梱の `node.exe` エントリーポイント経由で実行されます。
 
 ---
@@ -234,7 +234,7 @@ Volcengine ASR、音声会話、メッセージングチャンネル、開発者
    ```
 2. 実行中の極智アプリで DevTools を開き、実行：
    ```js
-   localStorage.setItem('clawx:cloud-api-base', 'http://localhost:3000')
+   localStorage.setItem('mimiclaw:cloud-api-base', 'http://localhost:3000')
    location.reload()
    ```
 3. `admin / admin` でログイン。アプリはクラウドセッションをメインプロセスに保存し、以降の設定変更はクラウド API 経由でルーティングされます。
@@ -405,10 +405,10 @@ pnpm run package:linux:cloud:prod # OpenClaw を同梱しない cloud-only Linux
 ### 環境別パッケージング
 
 - `pnpm package`、`pnpm package:mac`、`pnpm package:win`、`pnpm package:linux` は従来どおり Vite の `production` モードでビルドします。
-- テスト環境向けのパッケージは `pnpm run package:test` または各プラットフォームの `*:test` スクリプトを使ってください。これらは [.env.test](/Users/liangpingbo/Desktop/4399/electron/ClawX/.env.test) を読みます。
-- 本番環境向けのパッケージは `pnpm run package:prod` または各プラットフォームの `*:prod` スクリプトを使ってください。これらは [.env.production](/Users/liangpingbo/Desktop/4399/electron/ClawX/.env.production) を読みます。
+- テスト環境向けのパッケージは `pnpm run package:test` または各プラットフォームの `*:test` スクリプトを使ってください。これらは [.env.test](/Users/liangpingbo/Desktop/4399/electron/MimiClaw/.env.test) を読みます。
+- 本番環境向けのパッケージは `pnpm run package:prod` または各プラットフォームの `*:prod` スクリプトを使ってください。これらは [.env.production](/Users/liangpingbo/Desktop/4399/electron/MimiClaw/.env.production) を読みます。
 - cloud-only パッケージは `pnpm run package:cloud:prod` または各プラットフォームの `*:cloud:*` スクリプトを使ってください。これらは OpenClaw、ローカル CLI、同梱プラグインミラー、ローカル実行時リソースを省略します。
-- ローカル開発は引き続き [.env.development](/Users/liangpingbo/Desktop/4399/electron/ClawX/.env.development) と `pnpm dev` を使います。
+- ローカル開発は引き続き [.env.development](/Users/liangpingbo/Desktop/4399/electron/MimiClaw/.env.development) と `pnpm dev` を使います。
 
 cloud-only パッケージのトレードオフ:
 
@@ -419,7 +419,7 @@ cloud-only パッケージのトレードオフ:
 
 内部配布向けの Snipaste 同梱:
 
-- スクリーンショットボタンで同梱済み Snipaste を優先起動したい場合は、[resources/snipaste/README.md](/Users/liangpingbo/Desktop/4399/electron/ClawX/resources/snipaste/README.md) の配置ルールに従って各プラットフォームの実行ファイルを置いてください。
+- スクリーンショットボタンで同梱済み Snipaste を優先起動したい場合は、[resources/snipaste/README.md](/Users/liangpingbo/Desktop/4399/electron/MimiClaw/resources/snipaste/README.md) の配置ルールに従って各プラットフォームの実行ファイルを置いてください。
 - パッケージ版は同梱 Snipaste を優先し、見つからない場合のみシステムにインストールされた Snipaste へフォールバックします。
 
 ### 通信回帰チェック

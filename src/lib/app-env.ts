@@ -1,4 +1,4 @@
-export type ClawXAppEnv = 'development' | 'test' | 'production';
+export type MimiClawAppEnv = 'development' | 'test' | 'production';
 
 type RuntimeEnv = Partial<ImportMetaEnv> & {
   MODE?: string;
@@ -11,7 +11,7 @@ const PROD_CLOUD_API_BASE_URL = 'https://api.jizhiai.gz4399.com';
 const DEV_REMOTE_JIZHI_CHAT_URL = 'https://local-jizhiai-main.gz4399.com/';
 const PROD_REMOTE_JIZHI_CHAT_URL = 'https://jizhiai.gz4399.com/';
 
-function normalizeEnvName(value: string | undefined): ClawXAppEnv | null {
+function normalizeEnvName(value: string | undefined): MimiClawAppEnv | null {
   const normalized = (value || '').trim().toLowerCase();
   if (normalized === 'development' || normalized === 'dev' || normalized === 'local') {
     return 'development';
@@ -51,7 +51,7 @@ function normalizeBooleanFlag(value: string | undefined): boolean {
     || normalized === 'on';
 }
 
-export function resolveClawXAppEnv(env: RuntimeEnv = import.meta.env): ClawXAppEnv {
+export function resolveMimiClawAppEnv(env: RuntimeEnv = import.meta.env): MimiClawAppEnv {
   const explicit = normalizeEnvName(env.VITE_APP_ENV);
   if (explicit) return explicit;
 
@@ -66,7 +66,7 @@ export function resolveDefaultCloudApiBase(env: RuntimeEnv = import.meta.env): s
   const explicit = normalizeBaseUrl(env.VITE_CLOUD_API_BASE_URL);
   if (explicit) return explicit;
 
-  return resolveClawXAppEnv(env) === 'development'
+  return resolveMimiClawAppEnv(env) === 'development'
     ? DEV_CLOUD_API_BASE_URL
     : PROD_CLOUD_API_BASE_URL;
 }
@@ -75,11 +75,11 @@ export function resolveRemoteJizhiChatUrl(env: RuntimeEnv = import.meta.env): st
   const explicit = normalizeAppUrl(env.VITE_REMOTE_JIZHI_CHAT_URL);
   if (explicit) return explicit;
 
-  return resolveClawXAppEnv(env) === 'development'
+  return resolveMimiClawAppEnv(env) === 'development'
     ? DEV_REMOTE_JIZHI_CHAT_URL
     : PROD_REMOTE_JIZHI_CHAT_URL;
 }
 
 export function resolveCloudOnlyMode(env: RuntimeEnv = import.meta.env): boolean {
-  return normalizeBooleanFlag(env.VITE_CLAWX_CLOUD_ONLY);
+  return normalizeBooleanFlag(env.VITE_MIMICLAW_CLOUD_ONLY);
 }

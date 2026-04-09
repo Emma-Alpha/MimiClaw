@@ -3,7 +3,7 @@
 > **版本**: v1.0  
 > **日期**: 2026-04-07  
 > **状态**: Draft  
-> **Owner**: ClawX 前端团队
+> **Owner**: MimiClaw 前端团队
 
 ---
 
@@ -11,7 +11,7 @@
 
 ### 1.1 背景
 
-ClawX 桌面端已通过 `CodeAgentManager` + `claude-sidecar.mjs` + `claude-snapshot-adapter.mjs` 管线实现了 Claude Code CLI 的基础调用能力。用户可以在 MiniChat 浮窗中通过 `@code` 提及触发 CLI 编程任务。
+MimiClaw 桌面端已通过 `CodeAgentManager` + `claude-sidecar.mjs` + `claude-snapshot-adapter.mjs` 管线实现了 Claude Code CLI 的基础调用能力。用户可以在 MiniChat 浮窗中通过 `@code` 提及触发 CLI 编程任务。
 
 然而，当前的 UI 呈现（`CodeAgentFeed` 组件）仅提供极简的工具名+摘要行和流式 Markdown 输出，与 Claude Code CLI 原生终端体验相比缺失了大量核心交互：
 

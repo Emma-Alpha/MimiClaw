@@ -104,7 +104,7 @@ import {
   hasConfiguredCredentials,
   pickPreferredAccount,
 } from '@/lib/provider-accounts';
-import clawxIcon from '@/assets/logo.png';
+import mimiclawIcon from '@/assets/logo.png';
 
 const providers = SETUP_PROVIDERS;
 
@@ -296,7 +296,7 @@ function WelcomeContent() {
       <div className="relative">
         <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full" />
         <img 
-          src={clawxIcon} 
+          src={mimiclawIcon} 
           alt="Logo" 
           className="relative h-24 w-24 rounded-[28px] object-cover shadow-2xl ring-1 ring-white/10" 
         />

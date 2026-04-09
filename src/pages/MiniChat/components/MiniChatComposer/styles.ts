@@ -428,7 +428,12 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		}
 	`,
 	mentionResultItemActive: css`
-		background: ${token.colorPrimaryBg};
+		background: ${token.colorFillSecondary};
+		box-shadow: inset 0 0 0 1px ${token.colorBorderSecondary};
+
+		&:hover {
+			background: ${token.colorFillSecondary};
+		}
 	`,
 	mentionResultMeta: css`
 		display: flex;

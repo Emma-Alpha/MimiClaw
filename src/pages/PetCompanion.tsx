@@ -285,7 +285,7 @@ export function PetCompanion() {
 
 	useEffect(() => {
 		const syncFromStorage = (event: StorageEvent) => {
-			if (event.key === "clawx-settings") void initSettings();
+			if (event.key === "mimiclaw-settings") void initSettings();
 		};
 		const unsubscribe = window.electron.ipcRenderer.on(
 			"pet:settings-updated",

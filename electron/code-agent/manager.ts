@@ -354,8 +354,8 @@ export class CodeAgentManager extends EventEmitter {
     const env = {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
-      CLAWX_CODE_AGENT_VENDOR_PATH: descriptor.vendorPath,
-      CLAWX_CODE_AGENT_ID: randomUUID(),
+      MIMICLAW_CODE_AGENT_VENDOR_PATH: descriptor.vendorPath,
+      MIMICLAW_CODE_AGENT_ID: randomUUID(),
     };
 
     this.setStatus({ state: 'starting', lastError: undefined, ...descriptor });
@@ -429,7 +429,7 @@ export class CodeAgentManager extends EventEmitter {
     const sidecarPath = app.isPackaged
       ? join(process.resourcesPath, 'resources', 'code-agent', 'claude-sidecar.mjs')
       : join(app.getAppPath(), 'resources', 'code-agent', 'claude-sidecar.mjs');
-    const vendorPath = process.env.CLAWX_CODE_AGENT_VENDOR_PATH?.trim()
+    const vendorPath = process.env.MIMICLAW_CODE_AGENT_VENDOR_PATH?.trim()
       || (app.isPackaged
         ? join(process.resourcesPath, 'vendor', 'claude-code')
         : join(app.getAppPath(), 'vendor', 'claude-code'));
@@ -546,7 +546,7 @@ export class CodeAgentManager extends EventEmitter {
   }
 
   private detectBunAvailable(): boolean {
-    const configuredPath = process.env.CLAWX_CODE_AGENT_BUN_PATH?.trim();
+    const configuredPath = process.env.MIMICLAW_CODE_AGENT_BUN_PATH?.trim();
     if (configuredPath) {
       return existsSync(configuredPath);
     }

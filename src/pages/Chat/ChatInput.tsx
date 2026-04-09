@@ -581,9 +581,9 @@ export function ChatInput({
 	}, []);
 
 	useEffect(() => {
-		const pending = window.sessionStorage.getItem("clawx:capture-screenshot");
+		const pending = window.sessionStorage.getItem("mimiclaw:capture-screenshot");
 		if (pending === "1") {
-			window.sessionStorage.removeItem("clawx:capture-screenshot");
+			window.sessionStorage.removeItem("mimiclaw:capture-screenshot");
 			void captureScreenshot();
 		}
 

@@ -16,7 +16,7 @@ const SVG_SOURCE = path.join(ICONS_DIR, 'icon.svg');
 const SOURCE_FILE = fs.existsSync(PNG_SOURCE) ? PNG_SOURCE : SVG_SOURCE;
 const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 };
 
-echo`🎨 Generating ClawX icons from ${path.basename(SOURCE_FILE)}...`;
+echo`🎨 Generating MimiClaw icons from ${path.basename(SOURCE_FILE)}...`;
 
 if (!fs.existsSync(SOURCE_FILE)) {
   echo`❌ Icon source not found: ${SOURCE_FILE}`;

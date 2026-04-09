@@ -1,4 +1,4 @@
-# ClawX CI Workflow
+# MimiClaw CI Workflow
 # Keeps the default PR path fast by running only core Linux checks.
 
 name: Check and Build

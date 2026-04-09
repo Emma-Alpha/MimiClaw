@@ -567,7 +567,7 @@ export function PetFloating() {
 
 	useEffect(() => {
 		const syncFromStorage = (event: StorageEvent) => {
-			if (event.key === "clawx-settings") void initSettings();
+			if (event.key === "mimiclaw-settings") void initSettings();
 		};
 		window.addEventListener("storage", syncFromStorage);
 		return () => window.removeEventListener("storage", syncFromStorage);

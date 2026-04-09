@@ -1,4 +1,4 @@
-# ClawX Release Workflow — GitHub Release (backup) + COS (primary update source)
+# MimiClaw Release Workflow — GitHub Release (backup) + COS (primary update source)
 #
 # Topology:
 #   build-mac → publish to GitHub Release (archive) → sync .asar + manifest to COS

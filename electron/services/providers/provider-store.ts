@@ -1,6 +1,6 @@
 import type { ProviderAccount, ProviderConfig, ProviderType } from '../../shared/providers/types';
 import { getProviderDefinition } from '../../shared/providers/registry';
-import { getClawXProviderStore } from './store-instance';
+import { getMimiClawProviderStore } from './store-instance';
 
 const PROVIDER_STORE_SCHEMA_VERSION = 1;
 
@@ -57,13 +57,13 @@ export function providerAccountToConfig(account: ProviderAccount): ProviderConfi
 }
 
 export async function listProviderAccounts(): Promise<ProviderAccount[]> {
-  const store = await getClawXProviderStore();
+  const store = await getMimiClawProviderStore();
   const accounts = store.get('providerAccounts') as Record<string, ProviderAccount> | undefined;
   return Object.values(accounts ?? {});
 }
 
 export async function getProviderAccount(accountId: string): Promise<ProviderAccount | null> {
-  const store = await getClawXProviderStore();
+  const store = await getMimiClawProviderStore();
   const accounts = store.get('providerAccounts') as Record<string, ProviderAccount> | undefined;
   return accounts?.[accountId] ?? null;
 }
@@ -74,7 +74,7 @@ function stripUndefined<T>(obj: T): T {
 }
 
 export async function saveProviderAccount(account: ProviderAccount): Promise<void> {
-  const store = await getClawXProviderStore();
+  const store = await getMimiClawProviderStore();
   const accounts = (store.get('providerAccounts') ?? {}) as Record<string, ProviderAccount>;
   accounts[account.id] = stripUndefined(account);
   store.set('providerAccounts', accounts);
@@ -82,7 +82,7 @@ export async function saveProviderAccount(account: ProviderAccount): Promise<voi
 }
 
 export async function deleteProviderAccount(accountId: string): Promise<void> {
-  const store = await getClawXProviderStore();
+  const store = await getMimiClawProviderStore();
   const accounts = (store.get('providerAccounts') ?? {}) as Record<string, ProviderAccount>;
   delete accounts[accountId];
   store.set('providerAccounts', stripUndefined(accounts));
@@ -93,7 +93,7 @@ export async function deleteProviderAccount(accountId: string): Promise<void> {
 }
 
 export async function setDefaultProviderAccount(accountId: string): Promise<void> {
-  const store = await getClawXProviderStore();
+  const store = await getMimiClawProviderStore();
   store.set('defaultProviderAccountId', accountId);
 
   const accounts = (store.get('providerAccounts') ?? {}) as Record<string, ProviderAccount>;
@@ -104,6 +104,6 @@ export async function setDefaultProviderAccount(accountId: string): Promise<void
 }
 
 export async function getDefaultProviderAccountId(): Promise<string | undefined> {
-  const store = await getClawXProviderStore();
+  const store = await getMimiClawProviderStore();
   return store.get('defaultProviderAccountId') as string | undefined;
 }

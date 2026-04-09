@@ -399,6 +399,56 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		justify-content: center;
 		overflow: visible;
 	`,
+	islandContextBadgeWrap: css`
+		position: absolute;
+		left: 50%;
+		top: -6px;
+		transform: translate(-50%, -100%);
+		z-index: 6;
+	`,
+	islandContextBadge: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 3px 8px 3px 4px;
+		border-radius: 999px;
+		border: 1px solid rgba(15, 23, 42, 0.2);
+		background: rgba(250, 250, 252, 0.94);
+		backdrop-filter: blur(10px);
+		box-shadow: 0 7px 20px rgba(15, 23, 42, 0.16);
+		color: rgba(15, 23, 42, 0.82);
+	`,
+	islandContextBadgeText: css`
+		font-size: 10px;
+		line-height: 1;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	`,
+	islandContextTooltip: css`
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		min-width: 228px;
+	`,
+	islandContextTooltipTitle: css`
+		font-size: 12px;
+		font-weight: 700;
+	`,
+	islandContextTooltipRow: css`
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		font-size: 11px;
+		font-variant-numeric: tabular-nums;
+	`,
+	islandContextTooltipHint: css`
+		margin-top: 2px;
+		font-size: 10px;
+		opacity: 0.78;
+		line-height: 1.4;
+	`,
 	islandIconBtn: css`
 		display: flex;
 		align-items: center;

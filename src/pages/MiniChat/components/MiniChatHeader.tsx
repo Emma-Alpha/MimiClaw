@@ -1,6 +1,7 @@
 import { memo, useRef, useState, useEffect, useMemo } from "react";
 import { ActionIcon } from "@lobehub/ui";
 import { OpenClaw, ClaudeCode } from "@lobehub/icons";
+import { Progress, Tooltip } from "antd";
 import {
 	Expand,
 	X,
@@ -18,7 +19,10 @@ import type {
 	CodeAgentStatus,
 	CodeAgentPermissionMode,
 } from "../../../../shared/code-agent";
-import type { SessionInitInfo } from "@/stores/code-agent";
+import type {
+	SessionInitInfo,
+	CodeAgentContextWindowUsage,
+} from "@/stores/code-agent";
 import type { MiniChatTarget } from "../types";
 import { useMiniChatStyles } from "../styles";
 import { getCodeAgentStateLabel } from "../utils";
@@ -37,6 +41,7 @@ type MiniChatHeaderProps = {
 	sessionInit: SessionInitInfo | null;
 	sessionTitle: string | null;
 	lastUpdatedAt: number | null;
+	contextUsage: CodeAgentContextWindowUsage | null;
 	chatSessions: ChatSessionOption[];
 	currentSessionKey: string;
 	isReady: boolean;
@@ -136,6 +141,18 @@ function formatRelativeTimeCompact(ts: number | null, isActive: boolean): string
 	return `${Math.floor(h / 24)} 天`;
 }
 
+function formatTokenCount(value: number): string {
+	if (!Number.isFinite(value)) return "0";
+	if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+	if (value >= 1_000) return `${(value / 1_000).toFixed(1).replace(/\.0$/, "")}k`;
+	return `${Math.round(value)}`;
+}
+
+function inferContextWindowSize(model: string | null | undefined): number {
+	if (model && /\[1m\]/i.test(model)) return 1_000_000;
+	return 200_000;
+}
+
 function MiniChatHeaderImpl({
 	draftTarget,
 	codeSending,
@@ -144,6 +161,7 @@ function MiniChatHeaderImpl({
 	sessionInit,
 	sessionTitle,
 	lastUpdatedAt,
+	contextUsage,
 	chatSessions,
 	currentSessionKey,
 	isReady,
@@ -198,6 +216,50 @@ function MiniChatHeaderImpl({
 			session.title.toLowerCase().includes(normalizedSessionQuery),
 		);
 	}, [chatSessions, normalizedSessionQuery]);
+	const contextIndicator = useMemo(() => {
+		if (!isCodeMode) return null;
+
+		const fallbackContextWindow = sessionInit?.model
+			? inferContextWindowSize(sessionInit.model)
+			: null;
+		const rawContextWindow = contextUsage?.contextWindowSize ?? fallbackContextWindow;
+		if (!rawContextWindow || !Number.isFinite(rawContextWindow)) return null;
+		const contextWindowSize = Math.max(1, Math.round(rawContextWindow));
+
+		const usedTokens = Math.max(
+			0,
+			Math.min(contextWindowSize, Math.round(contextUsage?.usedTokens ?? 0)),
+		);
+		const remainingTokens = Math.max(0, contextWindowSize - usedTokens);
+		const usedPercentage = Math.max(
+			0,
+			Math.min(
+				100,
+				Math.round(
+					contextUsage?.usedPercentage ?? (usedTokens / contextWindowSize) * 100,
+				),
+			),
+		);
+		const remainingPercentage = Math.max(
+			0,
+			Math.min(100, Math.round(contextUsage?.remainingPercentage ?? 100 - usedPercentage)),
+		);
+		const ringColor =
+			usedPercentage >= 90
+				? "#ef4444"
+				: usedPercentage >= 75
+					? "#f59e0b"
+					: "#3b82f6";
+		return {
+			contextWindowSize,
+			usedTokens,
+			remainingTokens,
+			usedPercentage,
+			remainingPercentage,
+			ringColor,
+			windowSource: contextUsage?.windowSource ?? "estimated",
+		};
+	}, [contextUsage, isCodeMode, sessionInit]);
 
 	useEffect(() => {
 		if (!dropdownOpen) return;
@@ -243,6 +305,60 @@ function MiniChatHeaderImpl({
 
 			<div className={styles.headerCenter}>
 				<div className={cx("no-drag", styles.islandContainer)}>
+					{contextIndicator ? (
+						<div className={styles.islandContextBadgeWrap}>
+							<Tooltip
+								placement="top"
+								mouseEnterDelay={0.12}
+								title={
+									<div className={styles.islandContextTooltip}>
+										<div className={styles.islandContextTooltipTitle}>CLI 上下文</div>
+										<div className={styles.islandContextTooltipRow}>
+											<span>窗口大小</span>
+											<strong>{formatTokenCount(contextIndicator.contextWindowSize)} tokens</strong>
+										</div>
+										<div className={styles.islandContextTooltipRow}>
+											<span>当前占用</span>
+											<strong>
+												{formatTokenCount(contextIndicator.usedTokens)} tokens (
+												{contextIndicator.usedPercentage}%)
+											</strong>
+										</div>
+										<div className={styles.islandContextTooltipRow}>
+											<span>剩余可用</span>
+											<strong>
+												{formatTokenCount(contextIndicator.remainingTokens)} tokens (
+												{contextIndicator.remainingPercentage}%)
+											</strong>
+										</div>
+										{contextIndicator.windowSource === "estimated" ? (
+											<div className={styles.islandContextTooltipHint}>
+												窗口大小为本地估算值（默认 200k 或 [1m] 模型）。
+											</div>
+										) : null}
+									</div>
+								}
+							>
+								<div
+									className={styles.islandContextBadge}
+									aria-label={`上下文剩余 ${formatTokenCount(contextIndicator.remainingTokens)} tokens`}
+								>
+									<Progress
+										type="circle"
+										size={24}
+										percent={contextIndicator.usedPercentage}
+										strokeColor={contextIndicator.ringColor}
+										strokeWidth={14}
+										trailColor="rgba(148, 163, 184, 0.24)"
+										showInfo={false}
+									/>
+									<span className={styles.islandContextBadgeText}>
+										余 {formatTokenCount(contextIndicator.remainingTokens)}
+									</span>
+								</div>
+							</Tooltip>
+						</div>
+					) : null}
 						<div
 							className={cx(
 								styles.dynamicIslandWrapper,

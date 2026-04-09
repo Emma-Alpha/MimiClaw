@@ -29,8 +29,8 @@ export function ResultSummary({ isError, numTurns, totalCostUsd, durationMs }: P
 	return (
 		<div className={styles.row}>
 			{isError
-				? <span className={styles.err}>✗ 任务失败</span>
-				: <span className={styles.ok}>✓ 完成</span>
+				? <span className={styles.err}>✗ 本轮失败</span>
+				: <span className={styles.ok}>✓ 本轮完成</span>
 			}
 			<span>{numTurns} 轮 · {sec}s{cost}</span>
 		</div>

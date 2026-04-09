@@ -7,13 +7,13 @@ import { buildExecutionHealth, runSnapshotAnalysis, normalizeRuntimeConfig } fro
 
 const vendorPath = resolve(
   process.argv.find((arg) => arg.startsWith('--vendor-path='))?.slice('--vendor-path='.length)
-    || process.env.CLAWX_CODE_AGENT_VENDOR_PATH
+    || process.env.MIMICLAW_CODE_AGENT_VENDOR_PATH
     || join(process.cwd(), 'vendor', 'claude-code'),
 );
 const protocolVersion = 1;
 
 function hasBun() {
-  const configuredPath = process.env.CLAWX_CODE_AGENT_BUN_PATH?.trim();
+  const configuredPath = process.env.MIMICLAW_CODE_AGENT_BUN_PATH?.trim();
   if (configuredPath) {
     return existsSync(configuredPath);
   }

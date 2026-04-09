@@ -52,7 +52,7 @@ const routeHandlers: RouteHandler[] = [
   handleUsageRoutes,
 ];
 
-export function startHostApiServer(ctx: HostApiContext, port = PORTS.CLAWX_HOST_API): Promise<Server> {
+export function startHostApiServer(ctx: HostApiContext, port = PORTS.MIMICLAW_HOST_API): Promise<Server> {
   const server = createServer(async (req, res) => {
     const requestUrl = new URL(req.url || '/', `http://127.0.0.1:${port}`);
     try {

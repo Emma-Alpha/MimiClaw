@@ -16,7 +16,7 @@ fi
 echo ""
 echo "=== Configuring .env ==="
 if [ ! -f .env ]; then
-  read -p "GitHub repo URL (e.g. https://github.com/yourname/ClawX): " REPO_URL
+  read -p "GitHub repo URL (e.g. https://github.com/yourname/MimiClaw): " REPO_URL
   read -p "GitHub PAT (ghp_xxx, needs 'repo' scope): " GITHUB_TOKEN
   cat > .env << EOF
 REPO_URL=${REPO_URL}

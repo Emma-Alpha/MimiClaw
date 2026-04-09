@@ -10,7 +10,7 @@ import type {
 } from '../../shared/code-agent';
 import { hostApiFetch } from './host-api';
 
-export const CODE_AGENT_WORKSPACE_ROOT_STORAGE_KEY = 'clawx:code-agent-workspace-root';
+export const CODE_AGENT_WORKSPACE_ROOT_STORAGE_KEY = 'mimiclaw:code-agent-workspace-root';
 
 export function readStoredCodeAgentWorkspaceRoot(): string {
   try {

@@ -6,7 +6,7 @@ import type { JwtPayload, LoginRequest, LoginResponse } from './types.js';
 
 // ─── JWT config ─────────────────────────────────────────────────────────────
 
-const JWT_SECRET_RAW = process.env.JWT_SECRET ?? 'clawx-cloud-dev-secret-change-me';
+const JWT_SECRET_RAW = process.env.JWT_SECRET ?? 'mimiclaw-cloud-dev-secret-change-me';
 const JWT_SECRET = new TextEncoder().encode(JWT_SECRET_RAW);
 const JWT_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 days
 const XIAOJIU_CLIENT_ID = process.env.XIAOJIU_CLIENT_ID ?? '1816386499001556992';

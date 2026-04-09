@@ -19,7 +19,7 @@ import { warmupNetworkOptimization } from '../utils/uv-env';
 import { initTelemetry } from '../utils/telemetry';
 
 import { ClawHubService } from '../gateway/clawhub';
-import { ensureClawXContext, repairClawXOnlyBootstrapFiles } from '../utils/openclaw-workspace';
+import { ensureMimiClawContext, repairMimiClawOnlyBootstrapFiles } from '../utils/openclaw-workspace';
 import { autoInstallCliIfNeeded, generateCompletionCache, installCompletionToProfile } from '../utils/openclaw-cli';
 import { isInstallingUpdate, isQuitting, setInstallingUpdate, setQuitting } from './app-state';
 import { applyProxySettings } from './proxy';
@@ -76,7 +76,7 @@ app.disableHardwareAcceleration();
 app.setName('极智');
 
 // On Linux, set CHROME_DESKTOP so Chromium can find the correct .desktop file.
-// On Wayland this maps the running window to clawx.desktop (→ icon + app grouping);
+// On Wayland this maps the running window to mimiclaw.desktop (→ icon + app grouping);
 // on X11 it supplements the StartupWMClass matching.
 // Must be called before app.whenReady() / before any window is created.
 if (process.platform === 'linux') {
@@ -90,7 +90,7 @@ if (process.platform === 'linux') {
 // The losing process must exit immediately so it never reaches Gateway startup.
 const gotElectronLock = app.requestSingleInstanceLock();
 if (!gotElectronLock) {
-  console.info('[ClawX] Another instance already holds the single-instance lock; exiting duplicate process');
+  console.info('[MimiClaw] Another instance already holds the single-instance lock; exiting duplicate process');
   app.exit(0);
 }
 let releaseProcessInstanceFileLock: () => void = () => {};
@@ -99,7 +99,7 @@ if (gotElectronLock) {
   try {
     const fileLock = acquireProcessInstanceFileLock({
       userDataDir: app.getPath('userData'),
-      lockName: 'clawx',
+      lockName: 'mimiclaw',
     });
     gotFileLock = fileLock.acquired;
     releaseProcessInstanceFileLock = fileLock.release;
@@ -110,12 +110,12 @@ if (gotElectronLock) {
           ? 'unknown lock format/content'
           : 'unknown owner';
       console.info(
-        `[ClawX] Another instance already holds process lock (${fileLock.lockPath}, ${ownerDescriptor}); exiting duplicate process`,
+        `[MimiClaw] Another instance already holds process lock (${fileLock.lockPath}, ${ownerDescriptor}); exiting duplicate process`,
       );
       app.exit(0);
     }
   } catch (error) {
-    console.warn('[ClawX] Failed to acquire process instance file lock; continuing with Electron single-instance lock only', error);
+    console.warn('[MimiClaw] Failed to acquire process instance file lock; continuing with Electron single-instance lock only', error);
   }
 }
 const gotTheLock = gotElectronLock && gotFileLock;
@@ -481,7 +481,7 @@ async function initialize(): Promise<void> {
   // Initialize logger first
   logger.init();
   const openclawAvailable = isOpenClawPresent();
-  logger.info('=== ClawX Application Starting ===');
+  logger.info('=== MimiClaw Application Starting ===');
   logger.debug(
     `Runtime: platform=${process.platform}/${process.arch}, electron=${process.versions.electron}, node=${process.versions.node}, packaged=${app.isPackaged}, pid=${process.pid}, ppid=${process.ppid}`
   );
@@ -567,10 +567,10 @@ async function initialize(): Promise<void> {
   // Note: Auto-check for updates is driven by the renderer (update store init)
   // so it respects the user's "Auto-check for updates" setting.
 
-  // Repair any bootstrap files that only contain ClawX markers (no OpenClaw
-  // template content). This fixes a race condition where ensureClawXContext()
+  // Repair any bootstrap files that only contain MimiClaw markers (no OpenClaw
+  // template content). This fixes a race condition where ensureMimiClawContext()
   // previously created the file before the gateway could seed the full template.
-  void repairClawXOnlyBootstrapFiles().catch((error) => {
+  void repairMimiClawOnlyBootstrapFiles().catch((error) => {
     logger.warn('Failed to repair bootstrap files:', error);
   });
 
@@ -600,8 +600,8 @@ async function initialize(): Promise<void> {
   gatewayManager.on('status', (status: { state: string }) => {
     hostEventBus.emit('gateway:status', status);
     if (status.state === 'running') {
-      void ensureClawXContext().catch((error) => {
-        logger.warn('Failed to re-merge ClawX context after gateway reconnect:', error);
+      void ensureMimiClawContext().catch((error) => {
+        logger.warn('Failed to re-merge MimiClaw context after gateway reconnect:', error);
       });
     }
   });
@@ -825,11 +825,11 @@ async function initialize(): Promise<void> {
         logger.info('Gateway auto-start disabled in settings');
       }
 
-      // Merge ClawX context snippets into the workspace bootstrap files.
+      // Merge MimiClaw context snippets into the workspace bootstrap files.
       // The gateway seeds workspace files asynchronously after its HTTP server
-      // is ready, so ensureClawXContext will retry until the target files appear.
-      void ensureClawXContext().catch((error) => {
-        logger.warn('Failed to merge ClawX context into workspace:', error);
+      // is ready, so ensureMimiClawContext will retry until the target files appear.
+      void ensureMimiClawContext().catch((error) => {
+        logger.warn('Failed to merge MimiClaw context into workspace:', error);
       });
     })();
   });
@@ -892,7 +892,7 @@ if (gotTheLock) {
 
   // When a second instance is launched, focus the existing window instead.
   app.on('second-instance', (_event, argv) => {
-    logger.info('Second ClawX instance detected; redirecting to the existing window');
+    logger.info('Second MimiClaw instance detected; redirecting to the existing window');
     const deepLinkUrl = extractProtocolUrl(argv);
     if (deepLinkUrl) {
       void handleDeepLink(deepLinkUrl);

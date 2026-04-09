@@ -3,7 +3,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { delimiter, dirname, join } from 'node:path';
-import { getClawXConfigDir } from './paths';
+import { getMimiClawConfigDir } from './paths';
 import { proxyAwareFetch } from './proxy-fetch';
 
 const CLIENT_ID_KEYS = ['OPENCLAW_GEMINI_OAUTH_CLIENT_ID', 'GEMINI_CLI_OAUTH_CLIENT_ID'];
@@ -24,7 +24,7 @@ const SCOPES = [
 const TIER_FREE = 'free-tier';
 const TIER_LEGACY = 'legacy-tier';
 const TIER_STANDARD = 'standard-tier';
-const LOCAL_GEMINI_DIR = join(getClawXConfigDir(), 'gemini-cli');
+const LOCAL_GEMINI_DIR = join(getMimiClawConfigDir(), 'gemini-cli');
 
 export type GeminiCliOAuthCredentials = {
   access: string;
@@ -512,7 +512,7 @@ async function discoverProject(accessToken: string): Promise<string> {
     Authorization: `Bearer ${accessToken}`,
     'Content-Type': 'application/json',
     'User-Agent': 'google-api-nodejs-client/9.15.1',
-    'X-Goog-Api-Client': 'gl-node/clawx',
+    'X-Goog-Api-Client': 'gl-node/mimiclaw',
   };
 
   const loadBody = {
@@ -677,7 +677,7 @@ export async function loginGeminiCliOAuth(
   ctx: GeminiCliOAuthContext,
 ): Promise<GeminiCliOAuthCredentials> {
   if (ctx.isRemote) {
-    throw new Error('Remote/manual Gemini OAuth is not implemented in ClawX yet.');
+    throw new Error('Remote/manual Gemini OAuth is not implemented in MimiClaw yet.');
   }
 
   await ctx.note(

@@ -86,7 +86,7 @@ const UNIFIED_CHANNELS = new Set<string>([
 ]);
 
 const customInvokers = new Map<Exclude<TransportKind, 'ipc'>, TransportInvoker>();
-const GATEWAY_WS_DIAG_FLAG = 'clawx:gateway-ws-diagnostic';
+const GATEWAY_WS_DIAG_FLAG = 'mimiclaw:gateway-ws-diagnostic';
 
 let transportConfig: ApiClientTransportConfig = {
   enabled: {
@@ -186,7 +186,7 @@ function mapUnifiedErrorCode(code?: string): AppErrorCode {
 
 function shouldLogApiRequests(): boolean {
   try {
-    return import.meta.env.DEV || window.localStorage.getItem('clawx:api-log') === '1';
+    return import.meta.env.DEV || window.localStorage.getItem('mimiclaw:api-log') === '1';
   } catch {
     return !!import.meta.env.DEV;
   }

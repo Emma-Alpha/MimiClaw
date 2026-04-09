@@ -86,7 +86,7 @@ import {
   type VoiceChatConfigState,
 } from '../../../shared/voice-chat';
 
-const CODE_AGENT_WORKSPACE_ROOT_STORAGE_KEY = 'clawx:code-agent-workspace-root';
+const CODE_AGENT_WORKSPACE_ROOT_STORAGE_KEY = 'mimiclaw:code-agent-workspace-root';
 
 function readStoredCodeAgentWorkspaceRoot(): string {
   try {

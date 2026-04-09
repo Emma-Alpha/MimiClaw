@@ -364,6 +364,24 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 	);
 
 	const pendingFocusRef = useRef(false);
+	const focusEditorAtEnd = useCallback(() => {
+		try {
+			const end = Editor.end(editor, []);
+			Transforms.select(editor, end);
+		} catch {
+			// Ignore selection failures while editor is remounting.
+		}
+
+		requestAnimationFrame(() => {
+			try {
+				const element = editorDomRef.current;
+				element?.focus({ preventScroll: true });
+				ReactEditor.focus(editor);
+			} catch {
+				// Slate DOM may still be stabilizing.
+			}
+		});
+	}, [editor]);
 
 	const insertSkill = useCallback(
 		(command: string, replaceRange?: { start: number; end: number }) => {
@@ -399,8 +417,8 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 	useImperativeHandle(ref, () => ({
 		insertSkill,
 		removeSkill,
-		focus: () => ReactEditor.focus(editor),
-	}), [editor, insertSkill, removeSkill]);
+		focus: focusEditorAtEnd,
+	}), [focusEditorAtEnd, insertSkill, removeSkill]);
 
 	const syncPathsFromParent = useCallback(
 		(nextPaths: UnifiedComposerPath[]) => {
@@ -454,6 +472,12 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 				hasNonTextOperation
 				|| value.paths.length > 0
 				|| (value.skill ?? null) !== null;
+			const normalizedPlain =
+				shouldScanInlineElements
+				&& plain.trim().length === 0
+				&& value.text.trim().length === 0
+					? value.text
+					: plain;
 			const nextPaths = shouldScanInlineElements
 				? extractEditorPaths(nextValue)
 				: [];
@@ -466,7 +490,7 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 			const parentSet = shouldScanInlineElements
 				? new Set(value.paths.map((item) => item.absolutePath))
 				: null;
-			const changedText = plain !== value.text;
+			const changedText = normalizedPlain !== value.text;
 			const changedPaths =
 				shouldScanInlineElements
 				&& nextSet !== null
@@ -481,14 +505,14 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 			}
 
 			if (changedText) {
-				pendingTextEchoRef.current = plain;
+				pendingTextEchoRef.current = normalizedPlain;
 			}
 			if (changedPaths && nextSet) {
 				pendingPathSetRef.current = nextSet;
 			}
 
 			onChange({
-				text: plain,
+				text: normalizedPlain,
 				paths: nextPaths,
 				skill: nextSkill,
 				richContent: nextValue,
@@ -516,19 +540,30 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 		if (pendingTextEchoRef.current !== null) {
 			if (pendingTextEchoRef.current === value.text) {
 				pendingTextEchoRef.current = null;
+				return;
 			}
-			return;
+			// Parent pushed an authoritative text value different from optimistic echo.
+			// Clear echo guard and continue syncing from props.
+			pendingTextEchoRef.current = null;
 		}
 
 		const currentText = extractEditorText(editorValue);
-		if (value.text === currentText) return;
+		const isInlineSpacerOnly =
+			(value.paths.length > 0 || (value.skill ?? null) !== null)
+			&& currentText.trim().length === 0
+			&& value.text.trim().length === 0;
+		if (value.text === currentText || isInlineSpacerOnly) return;
 
+		const shouldRestoreFocus = document.activeElement === editorDomRef.current;
 		queueMicrotask(() => {
 			// Keep external props authoritative: avoid reviving stale path chips when
 			// parent clears/overrides text and paths in the same render.
 			resetSlateValue(createEditorValue(value.text, value.paths));
+			if (shouldRestoreFocus) {
+				focusEditorAtEnd();
+			}
 		});
-	}, [editorValue, resetSlateValue, value.paths, value.text]);
+	}, [editorValue, focusEditorAtEnd, resetSlateValue, value.paths, value.text]);
 
 	useEffect(() => {
 		const propSet = new Set(value.paths.map((item) => item.absolutePath));
@@ -542,8 +577,20 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 			pendingPathSetRef.current = null;
 		}
 
+		// Text is authoritative. If editor text is still stale, wait for text-sync effect
+		// (which rebuilds from value.text + value.paths) to avoid echoing old text back up.
+		const currentText = extractEditorText(editorValue);
+		const textSynchronized =
+			currentText === value.text
+			|| (
+				(value.paths.length > 0 || (value.skill ?? null) !== null)
+				&& currentText.trim().length === 0
+				&& value.text.trim().length === 0
+			);
+		if (!textSynchronized) return;
+
 		syncPathsFromParent(value.paths);
-	}, [syncPathsFromParent, value.paths]);
+	}, [editorValue, syncPathsFromParent, value.paths, value.text]);
 
 	useEffect(() => {
 		const rafId = requestAnimationFrame(() => {

@@ -399,7 +399,7 @@ class DeviceOAuthManager extends EventEmitter {
             logger.warn(`[DeviceOAuth] Failed to configure openclaw models:`, err);
         }
 
-        // 3. Save provider record in ClawX's own store so UI shows it as configured
+        // 3. Save provider record in MimiClaw's own store so UI shows it as configured
         const existing = await getProvider(accountId);
         const nameMap: Record<OAuthProviderType, string> = {
             'minimax-portal': 'MiniMax (Global)',

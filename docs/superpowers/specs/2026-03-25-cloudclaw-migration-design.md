@@ -1,6 +1,6 @@
 ---
 name: cloudclaw-migration-design
-description: Design for migrating ClawX from local OpenClaw control to a pure cloud-managed control plane.
+description: Design for migrating MimiClaw from local OpenClaw control to a pure cloud-managed control plane.
 type: project
 ---
 
@@ -8,7 +8,7 @@ type: project
 
 ## Goal
 
-Convert the current local-first ClawX/OpenClaw setup into a **pure cloud-controlled system**:
+Convert the current local-first MimiClaw/OpenClaw setup into a **pure cloud-controlled system**:
 
 - The Electron app becomes a thin client.
 - All OpenClaw configuration moves to the cloud.

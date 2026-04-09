@@ -23,8 +23,8 @@ if (platform && !['mac', 'win', 'linux'].includes(platform)) {
 
 const env = {
   ...process.env,
-  CLAWX_CLOUD_ONLY: '1',
-  VITE_CLAWX_CLOUD_ONLY: '1',
+  MIMICLAW_CLOUD_ONLY: '1',
+  VITE_MIMICLAW_CLOUD_ONLY: '1',
 };
 
 echo(chalk.cyan(`▶ Building cloud-only package (mode=${mode}${platform ? `, platform=${platform}` : ''})`));

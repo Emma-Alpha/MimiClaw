@@ -1,7 +1,14 @@
 import type {
 	ClipboardEvent as ReactClipboardEvent,
 } from "react";
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import {
+	useState,
+	useCallback,
+	useRef,
+	useEffect,
+	useMemo,
+	createRef,
+} from "react";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 
 import {
@@ -318,6 +325,35 @@ export function MiniChatComposer({
 		return () => { unsubscribe?.(); };
 	}, []);
 
+	const mentionItemRefs = useRef<Array<React.RefObject<HTMLButtonElement | null>>>([]);
+	const mentionListRef = useRef<HTMLDivElement>(null);
+	if (mentionItemRefs.current.length !== mentionOptions.length) {
+		mentionItemRefs.current = mentionOptions.map(
+			(_, index) => mentionItemRefs.current[index] ?? createRef<HTMLButtonElement>(),
+		);
+	}
+
+	useEffect(() => {
+		if (!showMentionPicker) return;
+		const mentionList = mentionListRef.current;
+		const activeItem = mentionItemRefs.current[activeMentionIndex]?.current;
+		if (!mentionList || !activeItem) return;
+
+		const itemTop = activeItem.offsetTop;
+		const itemBottom = itemTop + activeItem.offsetHeight;
+		const visibleTop = mentionList.scrollTop;
+		const visibleBottom = visibleTop + mentionList.clientHeight;
+
+		if (itemTop < visibleTop) {
+			mentionList.scrollTop = itemTop;
+			return;
+		}
+
+		if (itemBottom > visibleBottom) {
+			mentionList.scrollTop = itemBottom - mentionList.clientHeight;
+		}
+	}, [activeMentionIndex, mentionOptions.length, showMentionPicker]);
+
 	const hasInput =
 		input.trim().length > 0 || attachments.length > 0 || droppedPaths.length > 0;
 	const sendingDisabledByRecording = isRecording || isTranscribing;
@@ -521,10 +557,11 @@ export function MiniChatComposer({
 				{/* Mention Overlay */}
 				{showMentionPanel &&
 					(showMentionPicker ? (
-						<div className={styles.mentionResultList}>
+						<div ref={mentionListRef} className={styles.mentionResultList}>
 							{mentionOptions.map((option, index) => (
 								<button
 									key={option.id}
+									ref={mentionItemRefs.current[index]}
 									type="button"
 									onMouseEnter={() => {
 										onActiveMentionIndexChange(index);

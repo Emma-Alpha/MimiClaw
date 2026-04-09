@@ -2,7 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_APP_ENV?: string;
-  readonly VITE_CLAWX_CLOUD_ONLY?: string;
+  readonly VITE_MIMICLAW_CLOUD_ONLY?: string;
   readonly VITE_CLOUD_API_BASE_URL?: string;
   readonly VITE_JIZHI_API_BASE_URL?: string;
   readonly VITE_JIZHI_APP_BASE_URL?: string;

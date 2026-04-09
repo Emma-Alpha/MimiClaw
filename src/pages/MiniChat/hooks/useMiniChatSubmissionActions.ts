@@ -50,7 +50,14 @@ type Params = {
 	setCodeSending: Dispatch<SetStateAction<boolean>>;
 	setCodeAgentStatus: Dispatch<SetStateAction<CodeAgentStatus | null>>;
 	loadClaudeSessions: () => Promise<void> | void;
-	pushUserMessage: (text: string) => void;
+	pushUserMessage: (
+		text: string,
+		options?: {
+			imagePreviews?: MiniCodeMessageImagePreview[];
+			pathTags?: MiniCodeMessagePathTag[];
+			richContent?: Descendant[];
+		},
+	) => void;
 	pushSdkMessage: (payload: unknown) => void;
 	resetCodeAgentStreaming: () => void;
 	sendMessage: (
@@ -117,7 +124,11 @@ export function useMiniChatSubmissionActions({
 			const pathTags = options?.pathTags?.length ? options.pathTags : undefined;
 			const userText = displayText || (pathTags?.length ? "" : prompt);
 
-			pushUserMessage(userText);
+			pushUserMessage(userText, {
+				imagePreviews: options?.imagePreviews,
+				pathTags: options?.pathTags,
+				richContent: options?.richContent,
+			});
 			// Reset streaming state so old spinners/text don't flash while new run starts.
 			// Items are preserved so the timeline persists across rounds within a session.
 			resetCodeAgentStreaming();

@@ -1,8 +1,8 @@
 {
-  "name": "clawx-cloud-backend",
+  "name": "mimiclaw-cloud-backend",
   "version": "0.1.0",
   "private": true,
-  "description": "ClawX Cloud Control Plane — auth, workspace, gateway lifecycle, config",
+  "description": "MimiClaw Cloud Control Plane — auth, workspace, gateway lifecycle, config",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/main.ts",

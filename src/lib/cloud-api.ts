@@ -21,7 +21,7 @@ export type { CloudSession } from "../../shared/cloud-auth";
 /** Base URL of the cloud control-plane API. Override via localStorage key for dev. */
 export function getCloudApiBase(): string {
 	try {
-		const override = window.localStorage.getItem("clawx:cloud-api-base");
+		const override = window.localStorage.getItem("mimiclaw:cloud-api-base");
 		if (override) return override.replace(/\/$/, "");
 	} catch {
 		// ignore
@@ -38,7 +38,7 @@ export interface CloudLoginResult {
 
 const DEV_LOGIN_USERNAME = "admin";
 const DEV_LOGIN_PASSWORD = "admin";
-const DEV_LOGIN_TOKEN = "clawx-dev-admin-token";
+const DEV_LOGIN_TOKEN = "mimiclaw-dev-admin-token";
 const DEV_LOGIN_EXPIRES_IN_MS = 24 * 60 * 60 * 1000;
 
 export interface XiaojiuOAuthConfig {
@@ -81,28 +81,28 @@ function getDefaultXiaojiuCallbackUrl(cloudApiBase: string): string {
 export function getXiaojiuOAuthConfig(): XiaojiuOAuthConfig {
 	const cloudApiBase = getCloudApiBase();
 	const authUrl = normalizeAbsoluteUrl(
-		getLocalStorageValue("clawx:xiaojiu-auth-url") ||
+		getLocalStorageValue("mimiclaw:xiaojiu-auth-url") ||
 			import.meta.env.VITE_XIAOJIU_AUTH_URL ||
 			"",
 		"https://im.4399om.com/oauth2/authorization",
 	);
 	const clientId = (
-		getLocalStorageValue("clawx:xiaojiu-client-id") ||
+		getLocalStorageValue("mimiclaw:xiaojiu-client-id") ||
 		import.meta.env.VITE_XIAOJIU_CLIENT_ID ||
 		"1816386499001556992"
 	).trim();
 	const appId = (
-		getLocalStorageValue("clawx:xiaojiu-app-id") ||
+		getLocalStorageValue("mimiclaw:xiaojiu-app-id") ||
 		import.meta.env.VITE_XIAOJIU_APP_ID ||
 		""
 	).trim();
 	const exchangePath = (
-		getLocalStorageValue("clawx:xiaojiu-exchange-path") ||
+		getLocalStorageValue("mimiclaw:xiaojiu-exchange-path") ||
 		import.meta.env.VITE_XIAOJIU_EXCHANGE_PATH ||
 		"/api/main/v1/gateway/om_login"
 	).trim();
 	const defaultCallbackUrl = getDefaultXiaojiuCallbackUrl(cloudApiBase);
-	const callbackOverride = getLocalStorageValue("clawx:xiaojiu-callback-url")
+	const callbackOverride = getLocalStorageValue("mimiclaw:xiaojiu-callback-url")
 		|| import.meta.env.VITE_XIAOJIU_CALLBACK_URL
 		|| "";
 	const callbackUrl = normalizeAbsoluteUrl(
@@ -124,7 +124,7 @@ export function getXiaojiuOAuthConfig(): XiaojiuOAuthConfig {
 // In-memory session store (single source during runtime)
 // ---------------------------------------------------------------------------
 
-const SESSION_KEY = "clawx:cloud-session";
+const SESSION_KEY = "mimiclaw:cloud-session";
 let _session: CloudSession | null = null;
 
 function loadPersistedSession(): CloudSession | null {

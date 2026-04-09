@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Move ClawX from local OpenClaw control to a pure cloud-managed control plane with per-user isolated runtime instances.
+**Goal:** Move MimiClaw from local OpenClaw control to a pure cloud-managed control plane with per-user isolated runtime instances.
 
 **Architecture:** Keep the Electron app as a thin client. Introduce cloud auth, cloud workspace/runtime ownership, and cloud-owned OpenClaw config. Migrate the renderer to call cloud APIs, then retire direct local `openclaw.json` mutation paths in the Electron app.
 
@@ -439,7 +439,7 @@ Expected: pass.
 
 ```bash
 git add README.md README.zh-CN.md README.ja-JP.md
-git commit -m "docs: describe cloud-managed ClawX flow"
+git commit -m "docs: describe cloud-managed MimiClaw flow"
 ```
 
 ---

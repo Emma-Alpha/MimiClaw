@@ -1002,7 +1002,7 @@ function registerHostApiProxyHandlers(): void {
 			}
 
 			const response = await proxyAwareFetch(
-				`http://127.0.0.1:${PORTS.CLAWX_HOST_API}${path}`,
+				`http://127.0.0.1:${PORTS.MIMICLAW_HOST_API}${path}`,
 				{
 					method,
 					headers,
@@ -1979,7 +1979,7 @@ function registerCronHandlers(gatewayManager: GatewayManager): void {
 	});
 
 	// Create a new cron job
-	// UI-created tasks have no delivery target — results go to the ClawX chat page.
+	// UI-created tasks have no delivery target — results go to the MimiClaw chat page.
 	// Tasks created via external channels (Feishu, Discord, etc.) are handled
 	// directly by the OpenClaw Gateway and do not pass through this IPC handler.
 	ipcMain.handle(
@@ -2001,7 +2001,7 @@ function registerCronHandlers(gatewayManager: GatewayManager): void {
 					enabled: input.enabled ?? true,
 					wakeMode: "next-heartbeat",
 					sessionTarget: "isolated",
-					// UI-created jobs deliver results via ClawX WebSocket chat events,
+					// UI-created jobs deliver results via MimiClaw WebSocket chat events,
 					// not external messaging channels.  Setting mode='none' prevents
 					// the Gateway from attempting channel delivery (which would fail
 					// with "Channel is required" when no channels are configured).
@@ -3184,7 +3184,7 @@ function registerProviderHandlers(gatewayManager: GatewayManager): void {
 				const resolvedProtocol = options?.apiProtocol || provider?.apiProtocol;
 
 				console.log(
-					`[clawx-validate] validating provider type: ${providerType}`,
+					`[mimiclaw-validate] validating provider type: ${providerType}`,
 				);
 				return await validateApiKeyWithProvider(providerType, apiKey, {
 					baseUrl: resolvedBaseUrl,

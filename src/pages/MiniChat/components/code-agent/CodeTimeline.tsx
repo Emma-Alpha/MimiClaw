@@ -1,4 +1,6 @@
 import { createStyles } from "antd-style";
+import type { Descendant } from "slate";
+import { File as FileIcon, Folder } from "lucide-react";
 import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/code-agent";
 import { StreamingText } from "./StreamingText";
 import { ThinkingBlock } from "./ThinkingBlock";
@@ -13,6 +15,7 @@ import { TaskStart, TaskEnd } from "./TaskBoundary";
 import { ResultSummary } from "./ResultSummary";
 import { StatusIndicator } from "./StatusIndicator";
 import { TodoListCard } from "./TodoListCard";
+import { ReadOnlySlateMessage } from "../ReadOnlySlateMessage";
 
 interface Props {
 	items: CodeAgentTimelineItem[];
@@ -51,8 +54,128 @@ const useStyles = createStyles(({ css, token }) => ({
 		border-radius: 12px 12px 0 12px;
 		max-width: 85%;
 		word-break: break-word;
+		white-space: pre-wrap;
+	`,
+	userImageList: css`
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-bottom: 6px;
+	`,
+	userImage: css`
+		max-width: 120px;
+		max-height: 90px;
+		border-radius: 6px;
+		object-fit: cover;
+		display: block;
+	`,
+	userImageFallback: css`
+		font-size: 11px;
+		opacity: 0.65;
+		padding: 2px 4px;
+	`,
+	userPathTagList: css`
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-bottom: 6px;
+	`,
+	userPathTag: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		max-width: 220px;
+		padding: 3px 8px;
+		border-radius: 14px;
+		font-size: 12px;
+		border: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorBgContainer};
+		color: ${token.colorText};
+	`,
+	userPathTagName: css`
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	`,
 }));
+
+type UserTimelineItem = Extract<CodeAgentTimelineItem, { kind: "user" }>;
+
+function hasInlineElements(content: Descendant[]): boolean {
+	for (const node of content) {
+		if (typeof node === "object" && node !== null) {
+			const t = (node as { type?: string }).type;
+			if (t === "path" || t === "skill") return true;
+			if ("children" in node && Array.isArray((node as { children: unknown[] }).children)) {
+				if (hasInlineElements((node as { children: Descendant[] }).children)) return true;
+			}
+		}
+	}
+	return false;
+}
+
+function UserMessageContent({
+	item,
+	styles,
+}: {
+	item: UserTimelineItem;
+	styles: ReturnType<typeof useStyles>["styles"];
+}) {
+	const richContent = item.richContent;
+	const showRichContent =
+		Array.isArray(richContent)
+		&& richContent.length > 0
+		&& hasInlineElements(richContent);
+
+	return (
+		<>
+			{item.imagePreviews && item.imagePreviews.length > 0 ? (
+				<div className={styles.userImageList}>
+					{item.imagePreviews.map((image) => (
+						image.preview ? (
+							<img
+								key={image.fileName}
+								src={image.preview}
+								alt={image.fileName}
+								title={image.fileName}
+								className={styles.userImage}
+							/>
+						) : (
+							<div key={image.fileName} className={styles.userImageFallback}>
+								{image.fileName}
+							</div>
+						)
+					))}
+				</div>
+			) : null}
+			{showRichContent ? (
+				<ReadOnlySlateMessage content={richContent} />
+			) : (
+				<>
+					{item.pathTags && item.pathTags.length > 0 ? (
+						<div className={styles.userPathTagList}>
+							{item.pathTags.map((pathTag) => (
+								<span
+									key={pathTag.absolutePath}
+									title={pathTag.absolutePath}
+									className={styles.userPathTag}
+								>
+									{pathTag.isDirectory ? (
+										<Folder size={12} style={{ flexShrink: 0 }} />
+									) : (
+										<FileIcon size={12} style={{ flexShrink: 0 }} />
+									)}
+									<span className={styles.userPathTagName}>{pathTag.name}</span>
+								</span>
+							))}
+						</div>
+					) : null}
+					{item.text ? <span>{item.text}</span> : null}
+				</>
+			)}
+		</>
+	);
+}
 
 export function CodeTimeline({
 	items,
@@ -106,7 +229,7 @@ export function CodeTimeline({
 				return (
 					<div key={item.id} className={styles.userBubbleContainer}>
 						<div className={styles.userBubble}>
-							{item.text}
+							<UserMessageContent item={item} styles={styles} />
 						</div>
 					</div>
 				);

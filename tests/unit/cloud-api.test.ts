@@ -33,7 +33,7 @@ describe('cloud api login', () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(session).toMatchObject({
-      token: 'clawx-dev-admin-token',
+      token: 'mimiclaw-dev-admin-token',
       userId: 'admin',
       workspaceId: 'admin',
     });

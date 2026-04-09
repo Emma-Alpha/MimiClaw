@@ -5,6 +5,7 @@
  * transforms them into structured UI state consumed by MiniChat components.
  */
 import { create } from "zustand";
+import type { Descendant } from "slate";
 
 // ─── SDK message shape helpers ───────────────────────────────────────────────
 // We do not import the full Zod schemas here to keep the renderer bundle lean.
@@ -258,6 +259,23 @@ export type DiffFile = {
 	patch: string;
 };
 
+export type CodeAgentUserImagePreview = {
+	preview: string | null;
+	fileName: string;
+};
+
+export type CodeAgentUserPathTag = {
+	absolutePath: string;
+	name: string;
+	isDirectory: boolean;
+};
+
+export type CodeAgentUserMessageMeta = {
+	imagePreviews?: CodeAgentUserImagePreview[];
+	pathTags?: CodeAgentUserPathTag[];
+	richContent?: Descendant[];
+};
+
 /** Items that form the visual timeline in CodeTimeline */
 export type CodeAgentTimelineItem =
 	| { kind: "init"; id: string; model: string; permissionMode: string; toolCount: number; mcpCount: number; cwd: string }
@@ -265,7 +283,14 @@ export type CodeAgentTimelineItem =
 	| { kind: "assistant-text"; id: string; text: string; isStreaming: boolean }
 	| { kind: "tool-use"; id: string; tool: StreamingToolUse }
 	| { kind: "diff"; id: string; files: DiffFile[] }
-	| { kind: "user"; id: string; text: string }
+	| {
+		kind: "user";
+		id: string;
+		text: string;
+		imagePreviews?: CodeAgentUserImagePreview[];
+		pathTags?: CodeAgentUserPathTag[];
+		richContent?: Descendant[];
+	}
 	| { kind: "system-notice"; id: string; text: string; variant?: "info" | "warning" | "error" }
 	| { kind: "compact-boundary"; id: string; preTokens: number; trigger: string }
 	| { kind: "rate-limit"; id: string; resetsAt: number | null; utilization: number | null; status: string }
@@ -320,6 +345,24 @@ export type RateLimitInfo = {
 	utilization?: number;
 };
 
+export type CodeAgentContextWindowUsage = {
+	/** Model context window size (tokens). */
+	contextWindowSize: number;
+	/** Whether window size came from SDK payload or local fallback inference. */
+	windowSource: "reported" | "estimated";
+	model: string | null;
+	inputTokens: number;
+	outputTokens: number;
+	cacheReadInputTokens: number;
+	cacheCreationInputTokens: number;
+	/** Current prompt footprint used to estimate context pressure. */
+	usedTokens: number;
+	remainingTokens: number;
+	usedPercentage: number;
+	remainingPercentage: number;
+	updatedAt: number;
+};
+
 // ─── Store interface ──────────────────────────────────────────────────────────
 export interface CodeAgentStore {
 	// Session metadata
@@ -356,13 +399,14 @@ export interface CodeAgentStore {
 
 	// Rate limit state
 	rateLimitInfo: RateLimitInfo | null;
+	contextUsage: CodeAgentContextWindowUsage | null;
 
 	// Session-level auto-approved tool types (cleared on reset)
 	sessionAllowedTools: Set<string>;
 
 	// Actions
 	pushSdkMessage: (raw: unknown) => void;
-	pushUserMessage: (text: string) => void;
+	pushUserMessage: (text: string, meta?: CodeAgentUserMessageMeta) => void;
 	/** Append incremental text from `code-agent:token` IPC events for live streaming */
 	appendStreamingText: (text: string) => void;
 	setPendingPermission: (p: PendingPermission | null) => void;
@@ -542,6 +586,123 @@ function extractVendorStatus(msg: Record<string, unknown>): string {
 	return "";
 }
 
+const DEFAULT_CONTEXT_WINDOW_TOKENS = 200_000;
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+	return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+}
+
+function toFiniteNumber(value: unknown): number | null {
+	if (typeof value === "number" && Number.isFinite(value)) return value;
+	if (typeof value === "string") {
+		const parsed = Number(value);
+		if (Number.isFinite(parsed)) return parsed;
+	}
+	return null;
+}
+
+function pickNumber(record: Record<string, unknown> | null, keys: string[]): number | null {
+	if (!record) return null;
+	for (const key of keys) {
+		const num = toFiniteNumber(record[key]);
+		if (num != null) return num;
+	}
+	return null;
+}
+
+function extractUsageShape(record: Record<string, unknown> | null): {
+	inputTokens: number;
+	outputTokens: number;
+	cacheReadInputTokens: number;
+	cacheCreationInputTokens: number;
+} | null {
+	if (!record) return null;
+	const inputTokens = pickNumber(record, ["input_tokens", "inputTokens", "input"]);
+	const outputTokens = pickNumber(record, ["output_tokens", "outputTokens", "output"]);
+	const cacheReadInputTokens =
+		pickNumber(record, ["cache_read_input_tokens", "cacheReadInputTokens", "cacheRead"]) ?? 0;
+	const cacheCreationInputTokens =
+		pickNumber(record, ["cache_creation_input_tokens", "cacheCreationInputTokens", "cacheWrite"]) ?? 0;
+
+	if (inputTokens == null && outputTokens == null) return null;
+	return {
+		inputTokens: Math.max(0, Math.round(inputTokens ?? 0)),
+		outputTokens: Math.max(0, Math.round(outputTokens ?? 0)),
+		cacheReadInputTokens: Math.max(0, Math.round(cacheReadInputTokens)),
+		cacheCreationInputTokens: Math.max(0, Math.round(cacheCreationInputTokens)),
+	};
+}
+
+function inferContextWindowFromModel(model: string | null): number {
+	if (model && /\[1m\]/i.test(model)) return 1_000_000;
+	return DEFAULT_CONTEXT_WINDOW_TOKENS;
+}
+
+function clampPercent(value: number): number {
+	if (!Number.isFinite(value)) return 0;
+	return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function extractContextUsage(
+	msg: Record<string, unknown>,
+	fallbackModel: string | null,
+): CodeAgentContextWindowUsage | null {
+	const message = asRecord(msg.message);
+	const request = asRecord(msg.request);
+	const event = asRecord(msg.event);
+	const contextWindow = asRecord(msg.context_window) ?? asRecord(message?.context_window) ?? asRecord(request?.context_window);
+	const usage =
+		extractUsageShape(asRecord(contextWindow?.current_usage))
+		?? extractUsageShape(asRecord(event?.usage))
+		?? extractUsageShape(asRecord(asRecord(event?.message)?.usage))
+		?? extractUsageShape(asRecord(message?.usage))
+		?? extractUsageShape(asRecord(msg.usage));
+
+	if (!usage) return null;
+
+	const model =
+		typeof message?.model === "string"
+			? message.model
+			: typeof msg.model === "string"
+				? (msg.model as string)
+				: fallbackModel;
+
+	const reportedWindowSize = pickNumber(contextWindow, ["context_window_size", "contextWindowSize"]);
+	const contextWindowSize = Math.max(
+		1,
+		Math.round(reportedWindowSize ?? inferContextWindowFromModel(model)),
+	);
+	const usedTokens = Math.max(
+		0,
+		usage.inputTokens + usage.cacheReadInputTokens + usage.cacheCreationInputTokens,
+	);
+	const remainingTokens = Math.max(0, contextWindowSize - usedTokens);
+
+	const usedPercentageFromPayload = pickNumber(contextWindow, ["used_percentage", "usedPercentage"]);
+	const remainingPercentageFromPayload = pickNumber(contextWindow, ["remaining_percentage", "remainingPercentage"]);
+	const usedPercentage = clampPercent(
+		usedPercentageFromPayload ?? (usedTokens / contextWindowSize) * 100,
+	);
+	const remainingPercentage = clampPercent(
+		remainingPercentageFromPayload ?? 100 - usedPercentage,
+	);
+
+	return {
+		contextWindowSize,
+		windowSource: reportedWindowSize != null ? "reported" : "estimated",
+		model: model ?? null,
+		inputTokens: usage.inputTokens,
+		outputTokens: usage.outputTokens,
+		cacheReadInputTokens: usage.cacheReadInputTokens,
+		cacheCreationInputTokens: usage.cacheCreationInputTokens,
+		usedTokens,
+		remainingTokens,
+		usedPercentage,
+		remainingPercentage,
+		updatedAt: Date.now(),
+	};
+}
+
 function initialStreaming() {
 	return {
 		thinkingText: "",
@@ -567,6 +728,7 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 	pendingElicitation: null,
 	activeTasks: new Map(),
 	rateLimitInfo: null,
+	contextUsage: null,
 	sessionAllowedTools: new Set(),
 
 	reset: () => {
@@ -580,20 +742,21 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 			streaming: initialStreaming(),
 			pendingPermission: null,
 			pendingElicitation: null,
-			activeTasks: new Map(),
-			rateLimitInfo: null,
-			sessionAllowedTools: new Set(),
-		});
-	},
+				activeTasks: new Map(),
+				rateLimitInfo: null,
+				contextUsage: null,
+				sessionAllowedTools: new Set(),
+			});
+		},
 
 	resetStreaming: () => {
-		set({
-			streaming: initialStreaming(),
-			pendingPermission: null,
-			pendingElicitation: null,
-			rateLimitInfo: null,
-		});
-	},
+			set({
+				streaming: initialStreaming(),
+				pendingPermission: null,
+				pendingElicitation: null,
+				rateLimitInfo: null,
+			});
+		},
 
 	appendStreamingText: (text) => {
 		set((state) => ({
@@ -645,8 +808,23 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 		});
 	},
 
-	pushUserMessage: (text) => {
-		set((state) => ({ items: [...state.items, { kind: "user", id: uid(), text }] }));
+	pushUserMessage: (text, meta) => {
+		const imagePreviews = meta?.imagePreviews?.length ? meta.imagePreviews : undefined;
+		const pathTags = meta?.pathTags?.length ? meta.pathTags : undefined;
+		const richContent = meta?.richContent?.length ? meta.richContent : undefined;
+		set((state) => ({
+			items: [
+				...state.items,
+				{
+					kind: "user",
+					id: uid(),
+					text,
+					imagePreviews,
+					pathTags,
+					richContent,
+				},
+			],
+		}));
 	},
 
 	pushSdkMessage: (raw) => {
@@ -655,16 +833,21 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 		const type = msg.type as string | undefined;
 		if (!type) return;
 
-		const vendorStatusText = extractVendorStatus(msg);
-		if (vendorStatusText) {
-			set((state) => ({
-				streaming: {
-					...state.streaming,
-					vendorStatusText: formatVendorStatusLabel(vendorStatusText),
-					vendorStatusSource: "vendor",
-				},
-			}));
-		}
+			const vendorStatusText = extractVendorStatus(msg);
+			if (vendorStatusText) {
+				set((state) => ({
+					streaming: {
+						...state.streaming,
+						vendorStatusText: formatVendorStatusLabel(vendorStatusText),
+						vendorStatusSource: "vendor",
+					},
+				}));
+			}
+
+			const contextUsage = extractContextUsage(msg, get().sessionInit?.model ?? null);
+			if (contextUsage) {
+				set({ contextUsage });
+			}
 
 		const addItem = (item: CodeAgentTimelineItem) => {
 			set((state) => ({ items: [...state.items, item] }));

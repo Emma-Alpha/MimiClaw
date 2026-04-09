@@ -24,6 +24,7 @@ type Params = {
 	setCodeAgentStatus: Dispatch<SetStateAction<CodeAgentStatus | null>>;
 	setCodeStreamingText: Dispatch<SetStateAction<string>>;
 	setCodeActivities: Dispatch<SetStateAction<ToolActivityItem[]>>;
+	setCodeRunActive: Dispatch<SetStateAction<boolean>>;
 	setCodeAgentPendingPermission: (permission: PendingPermission | null) => void;
 	codeActivitiesRef: MutableRefObject<ToolActivityItem[]>;
 	pendingCompletionActivitiesRef: MutableRefObject<ToolActivityItem[]>;
@@ -35,6 +36,7 @@ export function useMiniChatCodeAgentEvents({
 	setCodeAgentStatus,
 	setCodeStreamingText,
 	setCodeActivities,
+	setCodeRunActive,
 	setCodeAgentPendingPermission,
 	codeActivitiesRef,
 	pendingCompletionActivitiesRef,
@@ -99,6 +101,7 @@ export function useMiniChatCodeAgentEvents({
 		const unsubscribeRunStarted = subscribeHostEvent(
 			"code-agent:run-started",
 			() => {
+				setCodeRunActive(true);
 				setCodeStreamingText("");
 				setCodeActivities([]);
 				codeActivitiesRef.current = [];
@@ -109,6 +112,7 @@ export function useMiniChatCodeAgentEvents({
 		const unsubscribeRunDone = subscribeHostEvent(
 			"code-agent:run-completed",
 			() => {
+				setCodeRunActive(false);
 				pendingCompletionActivitiesRef.current = [...codeActivitiesRef.current];
 				setCodeStreamingText("");
 				setCodeActivities([]);
@@ -119,6 +123,7 @@ export function useMiniChatCodeAgentEvents({
 		const unsubscribeRunFailed = subscribeHostEvent(
 			"code-agent:run-failed",
 			() => {
+				setCodeRunActive(false);
 				pendingCompletionActivitiesRef.current = [...codeActivitiesRef.current];
 				setCodeStreamingText("");
 				setCodeActivities([]);
@@ -178,6 +183,7 @@ export function useMiniChatCodeAgentEvents({
 		setCodeAgentStatus,
 		setCodeStreamingText,
 		setCodeActivities,
+		setCodeRunActive,
 		codeActivitiesRef,
 		pendingCompletionActivitiesRef,
 	]);

@@ -231,7 +231,7 @@ function App() {
 		};
 
 		const handleScreenshot = () => {
-			window.sessionStorage.setItem("clawx:capture-screenshot", "1");
+			window.sessionStorage.setItem("mimiclaw:capture-screenshot", "1");
 			navigate("/");
 		};
 

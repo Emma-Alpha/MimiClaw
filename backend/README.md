@@ -1,6 +1,6 @@
-# ClawX Cloud Backend
+# MimiClaw Cloud Backend
 
-基于 **Hono + Node.js + TypeScript** 的轻量云控制平面，为 ClawX Electron 客户端提供：
+基于 **Hono + Node.js + TypeScript** 的轻量云控制平面，为 MimiClaw Electron 客户端提供：
 
 - 用户认证（JWT）
 - 工作区管理（每用户隔离）
@@ -53,10 +53,10 @@ npm run dev
 
 ## 客户端对接
 
-在 ClawX Electron 客户端的 DevTools 控制台执行，将 API base URL 切换到本地后端：
+在 MimiClaw Electron 客户端的 DevTools 控制台执行，将 API base URL 切换到本地后端：
 
 ```js
-localStorage.setItem('clawx:cloud-api-base', 'http://localhost:3000')
+localStorage.setItem('mimiclaw:cloud-api-base', 'http://localhost:3000')
 location.reload()
 ```
 
@@ -80,7 +80,7 @@ location.reload()
 | 变量                 | 默认值                           | 说明                          |
 |----------------------|----------------------------------|-------------------------------|
 | `PORT`               | `3000`                           | 监听端口                      |
-| `JWT_SECRET`         | `clawx-cloud-dev-secret-...`     | JWT 签名密钥（生产必须修改）  |
+| `JWT_SECRET`         | `mimiclaw-cloud-dev-secret-...`     | JWT 签名密钥（生产必须修改）  |
 | `DATA_DIR`           | `./data`                         | JSON 数据存储目录             |
 | `XIAOJIU_CLIENT_ID`  | `1816386499001556992`            | 4399 浏览器 OAuth client_id   |
 | `XIAOJIU_CLIENT_SECRET` | -                             | 4399 浏览器 OAuth client_secret |
@@ -92,7 +92,7 @@ location.reload()
 小九浏览器 OAuth 注意事项：
 
 - 不要把 `localhost` 或 `127.0.0.1` 配成小九白名单回调域名，企业 OAuth 通常会直接拦截。
-- ClawX 桌面端默认会优先使用当前 cloud API 对应的浏览器回调地址：
+- MimiClaw 桌面端默认会优先使用当前 cloud API 对应的浏览器回调地址：
   `https://<your-cloud-domain>/api/auth/xiaojiu/browser-callback`
 - 如需继续走联调页面，也可以显式配置 renderer 端的 `VITE_XIAOJIU_CALLBACK_URL`。
 

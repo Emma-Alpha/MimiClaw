@@ -572,7 +572,7 @@ exports.default = async function afterPack(context) {
     resignBundledMacCode(resourcesDir);
   }
 
-  if (process.env.CLAWX_CLOUD_ONLY === '1') {
+  if (process.env.MIMICLAW_CLOUD_ONLY === '1') {
     console.log('[after-pack] Cloud-only package: skipping bundled OpenClaw runtime and plugin mirrors.');
     return;
   }

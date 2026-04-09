@@ -357,7 +357,7 @@ export const useSettingsStore = create<SettingsState>()(
         // cloud-config-bridge.ts can use them for server-side API calls.
         const cloudApiBase = (() => {
           try {
-            const override = window.localStorage.getItem('clawx:cloud-api-base');
+            const override = window.localStorage.getItem('mimiclaw:cloud-api-base');
             if (override) return override.replace(/\/$/, '');
           } catch { /* ignore */ }
           return getCloudApiBase();
@@ -389,7 +389,7 @@ export const useSettingsStore = create<SettingsState>()(
       markCloudBootstrapped: () => set({ cloudBootstrapped: true }),
     }),
     {
-      name: 'clawx-settings',
+      name: 'mimiclaw-settings',
     }
   )
 );

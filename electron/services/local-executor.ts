@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { promisify } from 'node:util';
-import { ensureDir, getClawXConfigDir, getResourcesDir } from '../utils/paths';
+import { ensureDir, getMimiClawConfigDir, getResourcesDir } from '../utils/paths';
 import { logger } from '../utils/logger';
 import type {
   LocalExecutorMeta,
@@ -409,10 +409,10 @@ export class LocalExecutorService {
   private recentRuns: LocalSkillRunRecord[] = [];
 
   constructor() {
-    const clawXConfigDir = getClawXConfigDir();
-    this.userSkillsDir = path.join(clawXConfigDir, 'skills', 'local');
-    this.legacyUserSkillsDir = path.join(clawXConfigDir, 'local-skills');
-    const executorDataDir = path.join(clawXConfigDir, 'local-executor');
+    const mimiClawConfigDir = getMimiClawConfigDir();
+    this.userSkillsDir = path.join(mimiClawConfigDir, 'skills', 'local');
+    this.legacyUserSkillsDir = path.join(mimiClawConfigDir, 'local-skills');
+    const executorDataDir = path.join(mimiClawConfigDir, 'local-executor');
     ensureDir(this.userSkillsDir);
     ensureDir(executorDataDir);
 

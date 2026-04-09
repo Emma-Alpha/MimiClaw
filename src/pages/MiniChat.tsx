@@ -61,6 +61,7 @@ import type {
 } from "./MiniChat/types";
 import {
 	extractText,
+	getMentionDraft,
 	isVisibleMessage,
 	normalizeTimestampMs,
 	parseSubmissionIntent,
@@ -117,6 +118,7 @@ export function MiniChat() {
 		"idle" | "loading" | "ready" | "error"
 	>("idle");
 	const [codeSending, setCodeSending] = useState(false);
+	const [codeRunActive, setCodeRunActive] = useState(false);
 	const [_codeActivities, setCodeActivities] = useState<ToolActivityItem[]>([]);
 	const [_codeStreamingText, setCodeStreamingText] = useState("");
 	// Ref keeps the latest activities accessible in callbacks without dep-array churn
@@ -147,7 +149,9 @@ export function MiniChat() {
 	const resolveElicitation = useCodeAgentStore((s) => s.resolveElicitation);
 	const sessionInit = useCodeAgentStore((s) => s.sessionInit);
 	const sessionTitle = useCodeAgentStore((s) => s.sessionTitle);
+	const codeSessionState = useCodeAgentStore((s) => s.sessionState);
 	const lastUpdatedAt = useCodeAgentStore((s) => s.lastUpdatedAt);
+	const contextUsage = useCodeAgentStore((s) => s.contextUsage);
 	const [codeAgentStatus, setCodeAgentStatus] =
 		useState<CodeAgentStatus | null>(null);
 	const [codeWorkspaceRoot, setCodeWorkspaceRoot] = useState(() =>
@@ -164,6 +168,8 @@ export function MiniChat() {
 	const pendingAutoSend = useRef<PetMiniChatSeed | null>(null);
 	const [chatSeenAt, setChatSeenAt] = useState<Map<string, number>>(() => new Map());
 	const chatSeenCounterRef = useRef(0);
+	const inputRef = useRef(input);
+	const caretIndexRef = useRef(caretIndex);
 	const lastHydratedClaudeSessionRef = useRef("");
 	const pushedToolIdsRef = useRef<Set<string>>(new Set());
 	const chatSubmitInFlightRef = useRef(false);
@@ -172,6 +178,19 @@ export function MiniChat() {
 		gatewayState === "starting" || gatewayState === "reconnecting";
 	const isError = gatewayState === "error";
 	const isReady = gatewayState === "running";
+	const isCodeTurnInProgress =
+		codeSending
+		|| codeRunActive
+		|| codeSessionState === "running"
+		|| codeSessionState === "requires_action";
+
+	useEffect(() => {
+		inputRef.current = input;
+	}, [input]);
+
+	useEffect(() => {
+		caretIndexRef.current = caretIndex;
+	}, [caretIndex]);
 
 	useEffect(() => {
 		void loadSessions();
@@ -344,6 +363,7 @@ export function MiniChat() {
 		setCodeAgentStatus,
 		setCodeStreamingText,
 		setCodeActivities,
+		setCodeRunActive,
 		setCodeAgentPendingPermission,
 		codeActivitiesRef,
 		pendingCompletionActivitiesRef,
@@ -461,15 +481,21 @@ export function MiniChat() {
 
 	useEffect(() => {
 		const activity =
-			!sending && !codeSending
+			!sending && !isCodeTurnInProgress
 				? "idle"
-				: codeSending
+				: isCodeTurnInProgress
 					? "working"
 					: pendingFinal || liveStreamingText || streamingTools.length > 0
 						? "working"
 						: "listening";
 		void invokeIpc("pet:setUiActivity", { activity }).catch(() => {});
-	}, [codeSending, liveStreamingText, pendingFinal, sending, streamingTools]);
+	}, [
+		isCodeTurnInProgress,
+		liveStreamingText,
+		pendingFinal,
+		sending,
+		streamingTools,
+	]);
 
 	useEffect(() => {
 		if (streamingTools.length === 0) {
@@ -567,14 +593,17 @@ export function MiniChat() {
 
 	const applyMention = useCallback(
 		(option: MentionOption) => {
-			if (!mentionDraft) return;
+			const liveInput = inputRef.current;
+			const liveCaret = caretIndexRef.current;
+			const resolvedDraft = mentionDraft ?? getMentionDraft(liveInput, liveCaret);
+			if (!resolvedDraft) return;
 
 			const nextInput =
-				input.slice(0, mentionDraft.start) + input.slice(mentionDraft.end);
-			const nextCaret = mentionDraft.start;
-
+				liveInput.slice(0, resolvedDraft.start) + liveInput.slice(resolvedDraft.end);
+			// Close mention overlay immediately and keep caret at the removed-token position.
+			setActiveMentionIndex(0);
+			setCaretIndex(resolvedDraft.start);
 			setInput(nextInput);
-			setCaretIndex(nextCaret);
 			applyDroppedPaths([
 				{
 					absolutePath: option.absolutePath,
@@ -582,8 +611,15 @@ export function MiniChat() {
 					isDirectory: option.isDirectory,
 				},
 			]);
+			requestAnimationFrame(() => {
+				composerInputRef.current?.focus();
+				setIsInputFocused(true);
+				requestAnimationFrame(() => {
+					composerInputRef.current?.focus();
+				});
+			});
 		},
-		[applyDroppedPaths, input, mentionDraft],
+		[applyDroppedPaths, mentionDraft],
 	);
 
 	const applySlashOption = useCallback(
@@ -675,7 +711,13 @@ export function MiniChat() {
 
 			if (showMentionPicker && (event.key === "Enter" || event.key === "Tab")) {
 				event.preventDefault();
-				applyMention(mentionOptions[activeMentionIndex] ?? mentionOptions[0]);
+				const option = mentionOptions[activeMentionIndex] ?? mentionOptions[0];
+				if (!option) {
+					setActiveMentionIndex(0);
+					setCaretIndex(-1);
+					return;
+				}
+				applyMention(option);
 				return;
 			}
 
@@ -712,7 +754,13 @@ export function MiniChat() {
 
 			if (showMentionPicker) {
 				event.preventDefault();
-				applyMention(mentionOptions[activeMentionIndex] ?? mentionOptions[0]);
+				const option = mentionOptions[activeMentionIndex] ?? mentionOptions[0];
+				if (!option) {
+					setActiveMentionIndex(0);
+					setCaretIndex(-1);
+					return;
+				}
+				applyMention(option);
 				return;
 			}
 
@@ -760,8 +808,8 @@ export function MiniChat() {
 
 	const disableComposer =
 		draftTarget === "chat"
-			? isConnecting || isError || sending || codeSending
-			: sending || codeSending;
+			? isConnecting || isError || sending || isCodeTurnInProgress
+			: sending || isCodeTurnInProgress;
 	const composerPlaceholder =
 		draftTarget === "code"
 			? codeWorkspaceRoot.trim()
@@ -785,7 +833,7 @@ export function MiniChat() {
 		draftTarget === "code" ? activeClaudeSessionId : currentSessionKey;
 	const isHeaderGenerating =
 		sending ||
-		codeSending ||
+		isCodeTurnInProgress ||
 		pendingFinal ||
 		Boolean(liveStreamingText) ||
 		codeStreaming.isStreaming;
@@ -823,6 +871,7 @@ export function MiniChat() {
 				sessionInit={sessionInit}
 				sessionTitle={sessionTitle}
 				lastUpdatedAt={lastUpdatedAt}
+				contextUsage={contextUsage}
 				chatSessions={headerSessions}
 				currentSessionKey={headerSessionKey}
 				isReady={isReady}

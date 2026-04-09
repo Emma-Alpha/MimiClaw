@@ -42,7 +42,7 @@ PAT（Personal Access Token）用于让 Runner 容器自动向 GitHub 注册，*
 
    | 字段 | 值 |
    |------|-----|
-   | Note | `ClawX Runner` |
+   | Note | `MimiClaw Runner` |
    | Expiration | `No expiration` |
    | Scopes | ☑ `repo`（勾选后子选项自动全选） |
 

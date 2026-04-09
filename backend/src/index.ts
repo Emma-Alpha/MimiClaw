@@ -55,7 +55,7 @@ const PORT = Number(process.env.PORT ?? 3000);
 seedAdmin();
 
 serve({ fetch: app.fetch, port: PORT }, (info) => {
-  console.info(`\n🚀 ClawX Cloud Backend running at http://localhost:${info.port}`);
+  console.info(`\n🚀 MimiClaw Cloud Backend running at http://localhost:${info.port}`);
   console.info('   Default credentials: admin / admin');
   console.info('   Data directory:', process.env.DATA_DIR ?? './data');
   console.info('\nAPI Routes:');
