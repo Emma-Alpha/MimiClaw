@@ -903,10 +903,10 @@ export function Settings() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-start justify-between mb-12 shrink-0 gap-4">
           <div>
-            <h1 className="text-4xl md:text-5xl font-semibold text-foreground mb-2 tracking-tight">
+            <h1 className="text-sm md:text-sm font-semibold text-foreground mb-2 tracking-tight">
               {t('title')}
             </h1>
-            <p className="text-[15px] text-muted-foreground font-medium">
+            <p className="text-[14px] text-muted-foreground font-medium">
               {t('subtitle')}
             </p>
           </div>
@@ -917,12 +917,12 @@ export function Settings() {
 
           {/* Appearance */}
           <div>
-            <h2 className="text-2xl font-semibold text-foreground mb-6 tracking-tight">
+            <h2 className="text-sm font-semibold text-foreground mb-6 tracking-tight">
               {t('appearance.title')}
             </h2>
             <div className="space-y-8">
               <div className="flex items-center gap-8">
-                <Label className="text-[15px] font-medium text-foreground/80 min-w-[60px]">{t('appearance.theme')}</Label>
+                <Label className="text-[14px] font-medium text-foreground/80 min-w-[60px]">{t('appearance.theme')}</Label>
                 <div className="inline-flex gap-1 bg-muted/50 p-1 rounded-2xl border border-white/5 shadow-inner">
                   <button
                     type="button"
@@ -966,7 +966,7 @@ export function Settings() {
                 </div>
               </div>
               <div className="flex items-center gap-8">
-                <Label className="text-[15px] font-medium text-foreground/80 min-w-[60px]">{t('appearance.language')}</Label>
+                <Label className="text-[14px] font-medium text-foreground/80 min-w-[60px]">{t('appearance.language')}</Label>
                 <div className="inline-flex gap-1 bg-muted/50 p-1 rounded-2xl border border-white/5 shadow-inner">
                   {SUPPORTED_LANGUAGES.map((lang) => (
                     <button
@@ -987,7 +987,7 @@ export function Settings() {
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-[15px] font-medium text-foreground/80">{t('appearance.launchAtStartup')}</Label>
+                  <Label className="text-[14px] font-medium text-foreground/80">{t('appearance.launchAtStartup')}</Label>
                   <p className="text-[13px] text-muted-foreground mt-1">
                     {t('appearance.launchAtStartupDesc')}
                   </p>
@@ -1002,7 +1002,7 @@ export function Settings() {
                 <div className="flex flex-col gap-6">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <Label className="text-[15px] font-semibold text-foreground">{t('pet.title')}</Label>
+                      <Label className="text-[14px] font-semibold text-foreground">{t('pet.title')}</Label>
                       <p className="text-[13px] text-muted-foreground mt-1">
                         {t('pet.description')}
                       </p>
@@ -1069,7 +1069,7 @@ export function Settings() {
                 <div className="flex flex-col gap-6">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <Label className="text-[15px] font-semibold text-foreground">{t('speech.title')}</Label>
+                      <Label className="text-[14px] font-semibold text-foreground">{t('speech.title')}</Label>
                       <p className="text-[13px] text-muted-foreground mt-1">
                         {t('speech.description')}
                       </p>
@@ -1191,7 +1191,7 @@ export function Settings() {
                 <div className="flex flex-col gap-5">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <Label className="text-[15px] font-medium text-foreground/80">{t('voiceChat.title')}</Label>
+                      <Label className="text-[14px] font-medium text-foreground/80">{t('voiceChat.title')}</Label>
                       <p className="text-[13px] text-muted-foreground mt-1">
                         {t('voiceChat.description')}
                       </p>
@@ -1299,13 +1299,13 @@ export function Settings() {
 
           {/* Gateway */}
           <div>
-            <h2 className="text-2xl font-semibold text-foreground mb-6 tracking-tight">
+            <h2 className="text-sm font-semibold text-foreground mb-6 tracking-tight">
               {t('gateway.title')}
             </h2>
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <Label className="text-[15px] font-medium text-foreground">{t('gateway.status')}</Label>
+                  <Label className="text-[14px] font-medium text-foreground">{t('gateway.status')}</Label>
                   <p className="text-[13px] text-muted-foreground mt-1">
                     {t('gateway.port')}: {gatewayStatus.port}
                   </p>
@@ -1356,7 +1356,7 @@ export function Settings() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-[15px] font-medium text-foreground">{t('gateway.autoStart')}</Label>
+                  <Label className="text-[14px] font-medium text-foreground">{t('gateway.autoStart')}</Label>
                   <p className="text-[13px] text-muted-foreground mt-1">
                     {t('gateway.autoStartDesc')}
                   </p>
@@ -1484,7 +1484,7 @@ export function Settings() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-[15px] font-medium text-foreground">{t('advanced.devMode')}</Label>
+                  <Label className="text-[14px] font-medium text-foreground">{t('advanced.devMode')}</Label>
                   <p className="text-[13px] text-muted-foreground mt-1">
                     {t('advanced.devModeDesc')}
                   </p>
@@ -1497,7 +1497,7 @@ export function Settings() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-[15px] font-medium text-foreground">{t('advanced.telemetry')}</Label>
+                  <Label className="text-[14px] font-medium text-foreground">{t('advanced.telemetry')}</Label>
                   <p className="text-[13px] text-muted-foreground mt-1">
                     {t('advanced.telemetryDesc')}
                   </p>
@@ -1517,7 +1517,7 @@ export function Settings() {
             <>
               <Separator className="bg-black/5 dark:bg-white/5" />
               <div>
-                <h2 className="text-2xl font-semibold text-foreground mb-6 tracking-tight">
+                <h2 className="text-sm font-semibold text-foreground mb-6 tracking-tight">
                   {t('developer.title')}
                 </h2>
                 <div className="space-y-8">
@@ -1664,7 +1664,7 @@ export function Settings() {
 
                   {showCliTools && (
                     <div className="space-y-3">
-                      <Label className="text-[15px] font-medium text-foreground">{t('developer.cli')}</Label>
+                      <Label className="text-[14px] font-medium text-foreground">{t('developer.cli')}</Label>
                       <p className="text-[13px] text-muted-foreground">
                         {t('developer.cliDesc')}
                       </p>
@@ -2306,7 +2306,7 @@ export function Settings() {
 
           {/* Updates */}
           <div>
-            <h2 className="text-2xl font-semibold text-foreground mb-6 tracking-tight">
+            <h2 className="text-sm font-semibold text-foreground mb-6 tracking-tight">
               {t('updates.title')}
             </h2>
             <div className="space-y-6">
@@ -2314,7 +2314,7 @@ export function Settings() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-[15px] font-medium text-foreground">{t('updates.autoCheck')}</Label>
+                  <Label className="text-[14px] font-medium text-foreground">{t('updates.autoCheck')}</Label>
                   <p className="text-[13px] text-muted-foreground mt-1">
                     {t('updates.autoCheckDesc')}
                   </p>
@@ -2327,7 +2327,7 @@ export function Settings() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-[15px] font-medium text-foreground">{t('updates.autoDownload')}</Label>
+                  <Label className="text-[14px] font-medium text-foreground">{t('updates.autoDownload')}</Label>
                   <p className="text-[13px] text-muted-foreground mt-1">
                     {t('updates.autoDownloadDesc')}
                   </p>
@@ -2347,7 +2347,7 @@ export function Settings() {
 
           {/* About */}
           <div>
-            <h2 className="text-2xl font-semibold text-foreground mb-6 tracking-tight">
+            <h2 className="text-sm font-semibold text-foreground mb-6 tracking-tight">
               {t('about.title')}
             </h2>
             <div className="space-y-3 text-[14px] text-muted-foreground">

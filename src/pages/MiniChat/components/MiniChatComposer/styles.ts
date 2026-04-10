@@ -39,6 +39,22 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		border-radius: 12px;
 		padding: 6px 5px 5px;
 	`,
+	pillCodex: css`
+		flex-direction: column;
+		align-items: stretch;
+		border-radius: 20px;
+		padding: 8px 10px 8px;
+		min-height: 96px;
+		box-shadow: none;
+	`,
+	pillTopRow: css`
+		display: flex;
+		width: 100%;
+		gap: 0;
+	`,
+	pillTopRowCodex: css`
+		min-height: 44px;
+	`,
 	pillDragOver: css`
 		border-color: ${token.colorPrimary};
 		background: ${token.colorPrimaryBg};
@@ -75,6 +91,9 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 	inputAreaMultiline: css`
 		flex: 1;
 		align-items: flex-start;
+	`,
+	inputAreaCodex: css`
+		padding: 0 4px;
 	`,
 	editor: css`
 		width: 100%;
@@ -133,19 +152,45 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 			cursor: not-allowed;
 		}
 	`,
+	plusButtonCodex: css`
+		width: 24px;
+		height: 24px;
+		border-radius: 12px;
+		background: transparent;
+		color: ${token.colorTextQuaternary};
+
+		&:hover:not(:disabled) {
+			background: ${token.colorFillQuaternary};
+			color: ${token.colorTextSecondary};
+			transform: none;
+		}
+	`,
 	sendButton: css`
+		&& {
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		width: 28px;
+		min-width: 28px;
 		height: 28px;
+		padding: 0 !important;
 		border-radius: 14px;
-		border: none;
-		background: ${token.colorText};
-		color: ${token.colorBgLayout};
+		border: none !important;
+		background: ${token.colorText} !important;
+		color: ${token.colorBgLayout} !important;
 		cursor: pointer;
 		transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+		line-height: 1;
+		}
+
+		& .ant-btn-icon {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			margin-inline-end: 0;
+			line-height: 0;
+		}
 
 		&:hover:not(:disabled) {
 			transform: scale(1.05);
@@ -157,10 +202,184 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		}
 
 		&:disabled {
+			opacity: 0.35 !important;
+			cursor: not-allowed;
+			box-shadow: none !important;
+			background: ${token.colorText} !important;
+			color: ${token.colorBgLayout} !important;
+		}
+	`,
+	editorCodex: css`
+		font-size: 14px;
+		line-height: 1.45;
+		font-weight: 400;
+		padding: 1px 0 3px;
+	`,
+	codexModelHintButton: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		height: 22px;
+		padding: 0 0 0 2px;
+		border-radius: 6px;
+		border: none;
+		background: transparent;
+		color: ${token.colorTextTertiary};
+		font-size: 12px;
+		font-weight: 500;
+		white-space: nowrap;
+		flex-shrink: 0;
+		cursor: pointer;
+
+		&:hover {
+			color: ${token.colorTextSecondary};
+		}
+	`,
+	codexModelHintKey: css`
+		display: inline-flex;
+		align-items: center;
+		padding: 0 5px;
+		height: 18px;
+		border-radius: 5px;
+		background: ${token.colorFillQuaternary};
+		border: 1px solid ${token.colorBorderSecondary};
+		color: ${token.colorTextTertiary};
+		font-size: 11px;
+		line-height: 1;
+		font-variant-numeric: tabular-nums;
+	`,
+	bottomControlRow: css`
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+		overflow: hidden;
+		min-height: 26px;
+		padding: 0 2px;
+	`,
+	codexControlRow: css`
+		gap: 4px;
+		justify-content: flex-start;
+	`,
+	codexControlCenter: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		margin-left: 0;
+		flex: 1;
+		min-width: 0;
+	`,
+	codexControlCenterInline: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		margin-left: 4px;
+		flex-shrink: 0;
+	`,
+	codexControlIconButton: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 24px;
+		height: 24px;
+		border: none;
+		border-radius: 12px;
+		background: transparent;
+		color: ${token.colorTextTertiary};
+		cursor: pointer;
+		flex-shrink: 0;
+		transition: all 0.2s ease;
+
+		&:hover:not(:disabled) {
+			background: ${token.colorFillQuaternary};
+			color: ${token.colorTextSecondary};
+		}
+
+		&:disabled {
 			opacity: 0.35;
 			cursor: not-allowed;
-			box-shadow: none;
 		}
+	`,
+	codexControlChip: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		height: 24px;
+		padding: 0 9px;
+		border-radius: 999px;
+		border: 1px solid ${token.colorBorderSecondary};
+		background: transparent;
+		color: ${token.colorTextSecondary};
+		font-size: 12px;
+		white-space: nowrap;
+		line-height: 1;
+
+		&:is(button) {
+			cursor: pointer;
+		}
+
+		&:is(button):hover {
+			background: ${token.colorFillQuaternary};
+			color: ${token.colorText};
+		}
+	`,
+	attachmentMenuLabel: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		width: 100%;
+		min-width: 112px;
+	`,
+	attachmentMenuShortcut: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0 6px;
+		height: 18px;
+		border-radius: 5px;
+		background: ${token.colorFillQuaternary};
+		border: 1px solid ${token.colorBorderSecondary};
+		color: ${token.colorTextTertiary};
+		font-size: 11px;
+		line-height: 1;
+		font-variant-numeric: tabular-nums;
+	`,
+	screenshotTooltipTrigger: css`
+		display: inline-flex;
+		align-items: center;
+	`,
+	screenshotTooltipContent: css`
+		display: inline-flex;
+		align-items: center;
+		padding: 6px 10px;
+		border-radius: 8px;
+		border: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorBgElevated};
+		box-shadow: ${token.boxShadowSecondary};
+	`,
+	screenshotTooltipRow: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		color: ${token.colorTextSecondary};
+		font-size: 12px;
+		font-weight: 500;
+		line-height: 1;
+	`,
+	screenshotTooltipKey: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0 6px;
+		height: 18px;
+		border-radius: 5px;
+		background: ${token.colorFillQuaternary};
+		border: 1px solid ${token.colorBorderSecondary};
+		color: ${token.colorTextTertiary};
+		font-size: 11px;
+		line-height: 1;
+		font-variant-numeric: tabular-nums;
 	`,
 	micButton: css`
 		display: flex;
@@ -214,7 +433,10 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		}
 	`,
 	sendButtonSending: css`
-		background: ${token.colorTextSecondary};
+		&& {
+			background: ${token.colorTextSecondary} !important;
+			color: ${token.colorBgLayout} !important;
+		}
 	`,
 	micButtonRecording: css`
 		background: rgba(239, 68, 68, 0.12) !important;
@@ -302,67 +524,138 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 	pathChip: css`
 		display: inline-flex;
 		align-items: center;
-		gap: 5px;
-		padding: 3px 6px 3px 8px;
-		margin: 0 3px;
-		border-radius: 14px;
-		background: ${token.colorFillQuaternary};
-		border: 1px solid ${token.colorBorderSecondary};
+		gap: 4px;
+		padding: 1px 8px 1px 6px;
+		margin: 0 2px;
+		height: 22px;
+		border-radius: 11px;
+		background: linear-gradient(180deg, #f7fbff 0%, #eef6ff 100%);
+		border: none;
 		font-size: 12px;
-		color: ${token.colorText};
-		max-width: 220px;
+		color: #3d6fb2;
+		line-height: 1;
+		max-width: 240px;
 		cursor: default;
-		transition: background 0.15s, transform 0.15s ease, opacity 0.15s ease;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+		transition:
+			background 0.15s,
+			transform 0.15s ease,
+			opacity 0.15s ease;
 		vertical-align: middle;
-		animation: chipIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+		animation: chipFadeIn 0.16s ease-out;
 
-		@keyframes chipIn {
+		@keyframes chipFadeIn {
 			from {
 				opacity: 0;
-				transform: scale(0.8);
 			}
 			to {
 				opacity: 1;
-				transform: scale(1);
 			}
 		}
 
 		&:hover {
-			background: ${token.colorFillTertiary};
+			background: linear-gradient(180deg, #f3f9ff 0%, #e8f2ff 100%);
+		}
+
+		&[data-snippet-ref="true"] {
+			background: linear-gradient(180deg, #f4f9ff 0%, #e9f3ff 100%);
+		}
+
+		&[data-snippet-ref="true"]:hover {
+			background: linear-gradient(180deg, #eff7ff 0%, #e2efff 100%);
 		}
 	`,
 	pathChipIcon: css`
-		color: ${token.colorTextTertiary};
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 12px;
+		height: 12px;
+		line-height: 1;
+		border: none;
+		background: transparent;
+		color: #5e8fca;
 		flex-shrink: 0;
+
+		[data-snippet-ref="true"] & {
+			color: #6e9bc6;
+			background: transparent;
+		}
 	`,
 	pathChipName: css`
+		display: inline-flex;
+		align-items: center;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		flex: 1;
 		min-width: 0;
-		color: ${token.colorText};
+		color: #356cae;
 		font-size: 12px;
-		font-weight: 500;
+		font-weight: 600;
+		line-height: 1;
+		letter-spacing: 0;
+		text-rendering: geometricPrecision;
+
+		[data-snippet-ref="true"] & {
+			color: #5f8fc0;
+			font-weight: 600;
+		}
 	`,
 	pathChipRemove: css`
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 20px;
-		height: 20px;
-		border-radius: 10px;
+		width: 0;
+		height: 14px;
+		border-radius: 7px;
 		border: none;
 		background: transparent;
-		color: ${token.colorTextQuaternary};
+		color: #7ea7db;
 		cursor: pointer;
 		padding: 0;
 		flex-shrink: 0;
-		transition: all 0.15s;
+		opacity: 0;
+		overflow: hidden;
+		pointer-events: none;
+		transition:
+			width 0.14s ease,
+			opacity 0.14s ease,
+			background-color 0.14s ease,
+			color 0.14s ease;
 
 		&:hover {
-			background: ${token.colorFillTertiary};
-			color: ${token.colorTextSecondary};
+			background: rgba(130, 170, 225, 0.18);
+			color: #4f86ca;
+		}
+
+		span[contenteditable="false"]:hover &,
+		span[contenteditable="false"]:focus-within & {
+			width: 16px;
+			opacity: 1;
+			pointer-events: auto;
+			margin-left: 1px;
+		}
+
+		[data-snippet-ref="true"] & {
+			width: 0;
+			height: 18px;
+			opacity: 0;
+			transform: scale(0.9);
+			padding: 0;
+			overflow: hidden;
+			pointer-events: none;
+			margin-left: -1px;
+		}
+
+		[data-snippet-ref="true"]:hover &,
+		[data-snippet-ref="true"]:focus-within & {
+			width: 18px;
+			opacity: 1;
+			transform: scale(1);
+			pointer-events: auto;
+			margin-left: 0;
 		}
 	`,
 	mentionResultList: css`
@@ -537,11 +830,45 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		-webkit-box-orient: vertical;
 	`,
 	skillChip: css`
-		color: #c47a2a;
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		padding: 1px 8px 1px 6px;
+		margin: 0 2px;
+		height: 22px;
+		border-radius: 11px;
+		border: none;
+		background: linear-gradient(180deg, #fbf7ff 0%, #f2eaff 100%);
+		color: #7a4ce4;
+		font-size: 12px;
 		font-weight: 600;
+		letter-spacing: 0;
+		line-height: 1;
 		cursor: default;
 		user-select: none;
-		margin: 0 2px;
-		padding: 0 2px;
+		vertical-align: middle;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+		text-rendering: geometricPrecision;
+		transition: background 0.15s ease;
+
+		&::before {
+			content: "✦";
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 14px;
+			height: 14px;
+			border-radius: 7px;
+			background: #ecddff;
+			color: #8b5bea;
+			font-size: 9px;
+			line-height: 1;
+			flex-shrink: 0;
+		}
+
+		&:hover {
+			background: linear-gradient(180deg, #f8f0ff 0%, #efe3ff 100%);
+		}
 	`,
 }));

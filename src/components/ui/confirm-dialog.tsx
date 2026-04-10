@@ -86,7 +86,7 @@ export function ConfirmDialog({
         )}
         tabIndex={-1}
       >
-        <h2 id="confirm-dialog-title" className="text-lg font-semibold">
+        <h2 id="confirm-dialog-title" className="text-sm font-semibold">
           {title}
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">{message}</p>

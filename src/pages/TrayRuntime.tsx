@@ -23,6 +23,9 @@ type TrayRuntimeState = {
 	updatedAt: number;
 };
 
+const PRESSURE_THREAD_CAP = 8;
+const MAX_VISIBLE_THREADS = 5;
+
 const useStyles = createStyles(({ css }) => ({
 	root: css`
 		height: 100vh;
@@ -65,13 +68,27 @@ const useStyles = createStyles(({ css }) => ({
 		gap: 8px;
 	`,
 	title: css`
-		font-size: 18px;
+		font-size: 14px;
 		font-weight: 700;
 		letter-spacing: 0.01em;
+	`,
+	subtitleRow: css`
+		margin-top: 2px;
+		display: flex;
+		align-items: center;
+		gap: 8px;
 	`,
 	subtitle: css`
 		font-size: 12px;
 		color: rgba(219, 230, 255, 0.72);
+	`,
+	statusBadge: css`
+		padding: 1px 7px;
+		border-radius: 999px;
+		font-size: 10px;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
 	`,
 	closeBtn: css`
 		height: 28px;
@@ -87,6 +104,14 @@ const useStyles = createStyles(({ css }) => ({
 		&:hover {
 			background: rgba(255, 255, 255, 0.16);
 		}
+	`,
+	alertBar: css`
+		border-radius: 12px;
+		padding: 8px 10px;
+		font-size: 12px;
+		color: #ffe2e2;
+		background: rgba(255, 77, 79, 0.2);
+		border: 1px solid rgba(255, 77, 79, 0.35);
 	`,
 	topGrid: css`
 		display: grid;
@@ -122,7 +147,7 @@ const useStyles = createStyles(({ css }) => ({
 		flex-direction: column;
 	`,
 	ringValue: css`
-		font-size: 40px;
+		font-size: 14px;
 		line-height: 1;
 		font-weight: 700;
 		font-family: "DIN Alternate", "SF Mono", "Roboto Mono", monospace;
@@ -186,10 +211,21 @@ const useStyles = createStyles(({ css }) => ({
 		flex-direction: column;
 		gap: 8px;
 	`,
+	sectionHead: css`
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+	`,
 	sectionTitle: css`
 		font-size: 14px;
 		font-weight: 700;
 		color: #4cb1ff;
+	`,
+	sectionMeta: css`
+		font-size: 11px;
+		color: rgba(229, 236, 255, 0.75);
+		font-family: "SF Mono", "Roboto Mono", monospace;
 	`,
 	threadList: css`
 		display: flex;
@@ -251,6 +287,11 @@ const useStyles = createStyles(({ css }) => ({
 		color: rgba(218, 228, 255, 0.68);
 		padding: 6px 2px 8px;
 	`,
+	overflowHint: css`
+		font-size: 12px;
+		color: rgba(215, 225, 255, 0.82);
+		padding: 2px 2px 0;
+	`,
 	healthCard: css`
 		border-radius: 14px;
 		background: rgba(34, 39, 89, 0.9);
@@ -289,8 +330,6 @@ const useStyles = createStyles(({ css }) => ({
 		position: absolute;
 		inset: 0 auto 0 0;
 		border-radius: inherit;
-		background: linear-gradient(90deg, #1f88ff, #25a8ff);
-		box-shadow: 0 0 12px rgba(37, 168, 255, 0.5);
 		transition: width 0.28s ease;
 	`,
 }));
@@ -313,22 +352,51 @@ function formatRelative(ms: number): string {
 	const minutes = Math.floor(seconds / 60);
 	if (minutes < 60) return `${minutes}m`;
 	const hours = Math.floor(minutes / 60);
-	return `${hours}h`;
+	if (hours < 24) return `${hours}h`;
+	const days = Math.floor(hours / 24);
+	return `${days}d`;
 }
 
 function getThreadName(thread: TrayRuntimeThread): string {
 	if (thread.source === "code") {
 		return thread.sessionId ? `CLI ${thread.sessionId}` : "CLI 会话";
 	}
-	return thread.agentId ? `Agent ${thread.agentId}` : "Agent 线程";
+	return thread.agentId ? `Agent ${thread.agentId}` : "Agent 会话";
 }
 
 function gatewayStateText(state: TrayRuntimeState["gatewayState"]): string {
-	if (state === "running") return "Gateway Running";
-	if (state === "starting") return "Gateway Starting";
-	if (state === "reconnecting") return "Gateway Reconnecting";
-	if (state === "error") return "Gateway Error";
-	return "Gateway Stopped";
+	if (state === "running") return "网关运行中";
+	if (state === "starting") return "网关启动中";
+	if (state === "reconnecting") return "网关重连中";
+	if (state === "error") return "网关异常";
+	return "网关已停止";
+}
+
+function gatewayBadgeColors(state: TrayRuntimeState["gatewayState"]): { bg: string; color: string } {
+	if (state === "running") return { bg: "rgba(46, 192, 110, 0.22)", color: "#8ff7b6" };
+	if (state === "starting") return { bg: "rgba(245, 195, 68, 0.22)", color: "#ffe28f" };
+	if (state === "reconnecting") return { bg: "rgba(245, 195, 68, 0.22)", color: "#ffe28f" };
+	if (state === "error") return { bg: "rgba(255, 77, 79, 0.24)", color: "#ffd0d1" };
+	return { bg: "rgba(151, 166, 191, 0.24)", color: "#c8d2e6" };
+}
+
+function pressureTone(pressure: number, isError: boolean): { label: string; color: string } {
+	if (isError) return { label: "异常", color: "#ff4d4f" };
+	if (pressure >= 70) return { label: "紧张", color: "#ff4d4f" };
+	if (pressure >= 40) return { label: "关注", color: "#f5c344" };
+	return { label: "正常", color: "#2f87ff" };
+}
+
+function ringBackground(percent: number, color: string): string {
+	const normalized = clampPercent(percent);
+	const deg = Math.round(normalized * 3.6);
+	return `conic-gradient(from -90deg, ${color} 0deg ${deg}deg, rgba(173, 184, 237, 0.3) ${deg}deg 360deg)`;
+}
+
+function healthGradient(health: number): string {
+	if (health >= 70) return "linear-gradient(90deg, #21a2ff, #4cd1ff)";
+	if (health >= 40) return "linear-gradient(90deg, #f5c344, #ffd76f)";
+	return "linear-gradient(90deg, #ff5a5d, #ff8284)";
 }
 
 export function TrayRuntime() {
@@ -344,13 +412,10 @@ export function TrayRuntime() {
 			})
 			.catch(() => {});
 
-		const unsubscribe = window.electron.ipcRenderer.on(
-			"tray-runtime:state",
-			(payload) => {
-				setState(payload as TrayRuntimeState);
-				setNowTs(Date.now());
-			},
-		);
+		const unsubscribe = window.electron.ipcRenderer.on("tray-runtime:state", (payload) => {
+			setState(payload as TrayRuntimeState);
+			setNowTs(Date.now());
+		});
 
 		const poll = window.setInterval(() => {
 			void invokeIpc<TrayRuntimeState>("tray-runtime:getState")
@@ -368,58 +433,59 @@ export function TrayRuntime() {
 	}, []);
 
 	const metrics = useMemo(() => {
-		const staleCount = state.threads.filter((thread) => thread.stale).length;
-		const codeCount = state.threads.filter((thread) => thread.source === "code").length;
-		const gatewayCount = state.threads.filter((thread) => thread.source === "gateway").length;
-
-		const pressure = clampPercent(
-			state.activeCount * 20
-				+ (state.gatewayState === "running" ? 18 : 8)
-				+ staleCount * 6
-				+ (state.gatewayState === "error" ? 12 : 0),
-		);
-
-		const live = clampPercent(
-			state.activeCount * 24
-				+ (state.gatewayState === "running" ? 26 : 10)
-				+ (state.gatewayState === "error" ? -12 : 0),
-		);
-
+		const activeThreads = state.threads.filter((thread) => !thread.stale);
+		const staleThreads = state.threads.filter((thread) => thread.stale);
+		const orderedThreads = [...activeThreads, ...staleThreads];
+		const visibleThreads = orderedThreads.slice(0, MAX_VISIBLE_THREADS);
+		const hiddenThreadCount = Math.max(0, orderedThreads.length - visibleThreads.length);
+		const activeCount = activeThreads.length;
+		const staleCount = staleThreads.length;
+		const codeCount = activeThreads.filter((thread) => thread.source === "code").length;
+		const gatewayCount = activeThreads.filter((thread) => thread.source === "gateway").length;
+		const pressure = clampPercent((activeCount / PRESSURE_THREAD_CAP) * 100);
+		const activity = clampPercent((activeCount / PRESSURE_THREAD_CAP) * 100);
+		const isGatewayError = state.gatewayState === "error";
+		const tone = pressureTone(pressure, isGatewayError);
 		const health = clampPercent(
-			100
-				- staleCount * 28
-				- (state.gatewayState === "error" ? 30 : 0)
-				- Math.max(0, state.activeCount - 2) * 8,
+			100 - staleCount * 24 - (isGatewayError ? 35 : 0) - Math.max(0, activeCount - 3) * 10,
 		);
 
 		return {
-			pressure,
-			live,
-			health,
+			activeCount,
+			staleCount,
 			codeCount,
 			gatewayCount,
-			staleCount,
+			pressure,
+			pressureLabel: isGatewayError ? "ERR" : `${pressure}%`,
+			activity,
+			health,
+			tone,
+			isGatewayError,
+			visibleThreads,
+			hiddenThreadCount,
 		};
 	}, [state]);
 
 	const pressureRing = useMemo(() => {
-		const deg = Math.round(metrics.pressure * 3.6);
-		return `conic-gradient(from -90deg, #1f88ff 0deg ${deg}deg, rgba(173, 184, 237, 0.3) ${deg}deg 360deg)`;
-	}, [metrics.pressure]);
+		if (metrics.isGatewayError) {
+			return ringBackground(100, "#ff4d4f");
+		}
+		return ringBackground(metrics.pressure, metrics.tone.color);
+	}, [metrics.isGatewayError, metrics.pressure, metrics.tone.color]);
 
-	const liveRing = useMemo(() => {
-		const deg = Math.round(metrics.live * 3.6);
-		const blueEnd = Math.round(deg * 0.54);
-		const pinkEnd = Math.round(deg * 0.86);
-		return `conic-gradient(from -90deg, #1f88ff 0deg ${blueEnd}deg, #f153a8 ${blueEnd}deg ${pinkEnd}deg, #ffd138 ${pinkEnd}deg ${deg}deg, rgba(173, 184, 237, 0.3) ${deg}deg 360deg)`;
-	}, [metrics.live]);
+	const activityRing = useMemo(() => {
+		return ringBackground(metrics.activity, "#2f87ff");
+	}, [metrics.activity]);
 
 	const legendRows = [
-		{ label: "CLI 线程", value: `${metrics.codeCount}`, color: "#1f88ff" },
-		{ label: "Agent 线程", value: `${metrics.gatewayCount}`, color: "#f153a8" },
-		{ label: "待恢复", value: `${metrics.staleCount}`, color: "#ffd138" },
-		{ label: "空闲槽", value: `${Math.max(0, 8 - state.activeCount)}`, color: "#818ab8" },
+		{ label: "活跃会话", value: `${metrics.activeCount}`, color: "#2f87ff" },
+		{ label: "CLI 会话", value: `${metrics.codeCount}`, color: "#4ea5ff" },
+		{ label: "Agent 会话", value: `${metrics.gatewayCount}`, color: "#72b9ff" },
+		{ label: "待恢复会话", value: `${metrics.staleCount}`, color: "#f5c344" },
+		{ label: "空闲槽位", value: `${Math.max(0, PRESSURE_THREAD_CAP - metrics.activeCount)}`, color: "#818ab8" },
 	];
+
+	const badgeColors = gatewayBadgeColors(state.gatewayState);
 
 	return (
 		<div className={styles.root}>
@@ -428,8 +494,16 @@ export function TrayRuntime() {
 					<div className={styles.titleWrap}>
 						<Cpu size={16} />
 						<div>
-							<div className={styles.title}>线程监控</div>
-							<div className={styles.subtitle}>{gatewayStateText(state.gatewayState)}</div>
+							<div className={styles.title}>会话活跃度压力值</div>
+							<div className={styles.subtitleRow}>
+								<div className={styles.subtitle}>{gatewayStateText(state.gatewayState)}</div>
+								<span
+									className={styles.statusBadge}
+									style={{ background: badgeColors.bg, color: badgeColors.color }}
+								>
+									{metrics.tone.label}
+								</span>
+							</div>
 						</div>
 					</div>
 					<button
@@ -443,12 +517,16 @@ export function TrayRuntime() {
 					</button>
 				</div>
 
+				{metrics.isGatewayError ? (
+					<div className={styles.alertBar}>网关状态异常，当前压力值以 ERR 呈现，恢复后将自动回到百分比。</div>
+				) : null}
+
 				<div className={styles.topGrid}>
 					<div className={styles.card}>
 						<div className={styles.ringWrap}>
 							<div className={styles.ring} style={{ background: pressureRing }}>
 								<div className={styles.ringInner}>
-									<div className={styles.ringValue}>{metrics.pressure}%</div>
+									<div className={styles.ringValue}>{metrics.pressureLabel}</div>
 									<div className={styles.ringLabel}>Pressure</div>
 								</div>
 							</div>
@@ -456,10 +534,10 @@ export function TrayRuntime() {
 					</div>
 					<div className={styles.card}>
 						<div className={styles.ringWrap}>
-							<div className={styles.ring} style={{ background: liveRing }}>
+							<div className={styles.ring} style={{ background: activityRing }}>
 								<div className={styles.ringInner}>
-									<div className={styles.ringValue}>{metrics.live}%</div>
-									<div className={styles.ringLabel}>活跃线程</div>
+									<div className={styles.ringValue}>{metrics.activity}%</div>
+									<div className={styles.ringLabel}>活跃占比</div>
 								</div>
 							</div>
 						</div>
@@ -479,12 +557,15 @@ export function TrayRuntime() {
 				</div>
 
 				<div className={styles.threadCard}>
-					<div className={styles.sectionTitle}>线程</div>
+					<div className={styles.sectionHead}>
+						<div className={styles.sectionTitle}>最近活跃会话</div>
+						<div className={styles.sectionMeta}>最多显示 {MAX_VISIBLE_THREADS} 条</div>
+					</div>
 					<div className={styles.threadList}>
-						{state.threads.length === 0 ? (
-							<div className={styles.threadEmpty}>当前没有运行中的线程</div>
+						{metrics.visibleThreads.length === 0 ? (
+							<div className={styles.threadEmpty}>暂无运行中的会话</div>
 						) : (
-							state.threads.slice(0, 8).map((thread) => (
+							metrics.visibleThreads.map((thread) => (
 								<button
 									type="button"
 									key={thread.id}
@@ -503,23 +584,33 @@ export function TrayRuntime() {
 									<div className={styles.threadMain}>
 										{thread.stale ? <ShieldAlert size={12} /> : <RefreshCcw size={12} />}
 										<span className={styles.threadState}>
-											{thread.stale ? "stale" : formatRelative(nowTs - thread.updatedAt)}
+											{thread.stale ? "待恢复" : formatRelative(nowTs - thread.updatedAt)}
 										</span>
 										<ChevronRight size={12} />
 									</div>
 								</button>
 							))
 						)}
+						{metrics.hiddenThreadCount > 0 ? (
+							<div className={styles.overflowHint}>还有 {metrics.hiddenThreadCount} 条会话，请打开主窗口查看。</div>
+						) : null}
 					</div>
 				</div>
 
 				<div className={styles.healthCard}>
 					<div className={styles.healthRow}>
-						<span className={styles.healthLabel}>运行健康度</span>
+						<span className={styles.healthLabel}>会话可用度</span>
 						<span className={styles.healthValue}>{metrics.health}%</span>
 					</div>
 					<div className={styles.progressTrack}>
-						<div className={styles.progressFill} style={{ width: `${metrics.health}%` }} />
+						<div
+							className={styles.progressFill}
+							style={{
+								width: `${metrics.health}%`,
+								background: healthGradient(metrics.health),
+								boxShadow: `0 0 12px ${metrics.health >= 40 ? "rgba(37, 168, 255, 0.5)" : "rgba(255, 90, 93, 0.42)"}`,
+							}}
+						/>
 					</div>
 				</div>
 			</div>

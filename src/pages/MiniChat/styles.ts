@@ -1,7 +1,8 @@
 import { createStyles } from "antd-style";
 
-export const useMiniChatStyles = createStyles(({ token, css }) => ({
-	root: css`
+export const useMiniChatStyles = createStyles(
+	({ token, css }, props: { isCollapsed?: boolean } = {}) => ({
+		root: css`
 		--mini-chat-content-width: 800px;
 		height: 100vh;
 		width: 100vw;
@@ -11,21 +12,21 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		background: transparent;
 	`,
 	rootEmbedded: css`
+		--mini-chat-content-width: min(980px, calc(100vw - 56px));
 		height: 100%;
 		width: 100%;
 		box-sizing: border-box;
 		padding-top: 0;
 	`,
-	header: css`
+		header: css`
 		height: 48px;
 		display: grid;
 		grid-template-columns: auto 1fr auto;
 		align-items: center;
 		gap: 8px;
-		padding: 10px 12px 8px;
 		-webkit-app-region: drag;
 	`,
-	headerEmbedded: css`
+		headerEmbedded: css`
 		height: 40px;
 		grid-template-columns: 1fr;
 		padding: 4px 12px;
@@ -34,16 +35,125 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		position: relative;
 		z-index: 120;
 	`,
-	brand: css`
+		headerEmbeddedCodex: css`
+		height: 40px;
+		grid-template-columns: minmax(0, 1fr) auto;
+		column-gap: 16px;
+		padding: 10px 12px 8px;
+		margin-inline-start: ${window.electron?.platform === "darwin" && props.isCollapsed ? "128px" : "12px"};
+		transition: margin-inline-start 0.28s ease;
+		pointer-events: auto;
+		-webkit-app-region: no-drag;
+		border-bottom: none;
+		background: ${token.colorBgContainer};
+		position: relative;
+		overflow: visible;
+		z-index: 10;
+
+		&::after {
+			content: "";
+			position: absolute;
+			top: 100%;
+			left: 0;
+			right: 0;
+			height: 32px;
+			background: linear-gradient(to bottom, ${token.colorBgContainer} 0%, transparent 100%);
+			backdrop-filter: blur(12px);
+			-webkit-backdrop-filter: blur(12px);
+			mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+			-webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+			pointer-events: none;
+		}
+	`,
+		embeddedTopLeft: css`
+		display: flex;
+		align-items: center;
+		min-width: 0;
+		overflow: visible;
+		pointer-events: auto;
+		-webkit-app-region: no-drag;
+		gap: 8px;
+		font-size: 14px;
+		font-weight: 500;
+	`,
+		embeddedThreadWrap: css`
+		position: relative;
+		max-width: 320px;
+		min-width: 0;
+	`,
+		embeddedThreadBtn: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		max-width: 100%;
+		padding: 0;
+		line-height: 1.2;
+		border-radius: 0;
+		pointer-events: auto;
+		cursor: pointer;
+		-webkit-app-region: no-drag;
+		transition: opacity 0.16s ease;
+
+		&:hover {
+			opacity: 0.82;
+		}
+	`,
+		embeddedThreadIcon: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	`,
+		embeddedThreadLabel: css`
+		font-size: 13px;
+		font-weight: 500;
+		line-height: 1.2;
+		color: ${token.colorText};
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		overflow: hidden;
+		min-width: 0;
+	`,
+		embeddedThreadChevron: css`
+		flex-shrink: 0;
+		color: ${token.colorTextSecondary};
+	`,
+		embeddedTopRight: css`
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		gap: 4px;
+		min-width: 0;
+	`,
+		embeddedHeaderStatus: css`
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 20px;
+		height: 20px;
+		border-radius: 999px;
+		background: transparent;
+		color: ${token.colorTextSecondary};
+	`,
+		embeddedHeaderStatusIdle: css`
+		color: ${token.colorTextSecondary};
+	`,
+		embeddedHeaderStatusRunning: css`
+		color: ${token.colorPrimary};
+	`,
+		embeddedHeaderStatusError: css`
+		color: ${token.colorError};
+	`,
+		brand: css`
 		display: flex;
 		align-items: center;
 		gap: 10px;
 		min-width: 0;
 	`,
-	brandEmbedded: css`
+		brandEmbedded: css`
 		display: none;
 	`,
-	brandLogo: css`
+		brandLogo: css`
 		width: 24px;
 		height: 24px;
 		border-radius: 999px;
@@ -53,61 +163,61 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		background: ${token.colorBgElevated};
 		box-shadow: ${token.boxShadowSecondary};
 	`,
-	brandText: css`
+		brandText: css`
 		display: flex;
 		flex-direction: column;
 		min-width: 0;
 	`,
-	brandTitle: css`
+		brandTitle: css`
 		font-size: 12px;
 		font-weight: 700;
 		line-height: 1.1;
 		color: ${token.colorText};
 	`,
-	status: css`
+		status: css`
 		display: flex;
 		align-items: center;
 		gap: 6px;
 		font-size: 11px;
 		color: ${token.colorTextSecondary};
 	`,
-	statusDot: css`
+		statusDot: css`
 		width: 6px;
 		height: 6px;
 		border-radius: 999px;
 		flex-shrink: 0;
 	`,
-	statusDotReady: css`
+		statusDotReady: css`
 		background: ${token.colorSuccess};
 	`,
-	statusDotError: css`
+		statusDotError: css`
 		background: ${token.colorError};
 	`,
-	statusDotPending: css`
+		statusDotPending: css`
 		background: ${token.colorWarning};
 	`,
-	statusDotWorking: css`
+		statusDotWorking: css`
 		background: ${token.colorPrimary};
 		box-shadow: 0 0 0 4px ${token.colorPrimaryBg};
 	`,
-	headerCenter: css`
+		headerCenter: css`
 		display: flex;
 		justify-content: center;
 		align-items: center;
 		min-width: 0;
 		overflow: visible;
 	`,
-	headerCenterEmbedded: css`
+		headerCenterEmbedded: css`
 		pointer-events: auto;
 	`,
-	headerActions: css`
+		headerActions: css`
 		display: flex;
 		align-items: center;
 		gap: 4px;
 		position: relative;
 		z-index: 1;
 	`,
-	actionIcon: css`
+		actionIcon: css`
 		color: ${token.colorTextSecondary} !important;
 		transition: transform 0.2s ease;
 
@@ -115,7 +225,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			transform: translateY(-1px);
 		}
 	`,
-	dynamicIslandWrapper: css`
+		dynamicIslandWrapper: css`
 		position: relative;
 		border-radius: 999px;
 		padding: 1px;
@@ -131,7 +241,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		min-width: 40px;
 		will-change: max-width, flex;
 	`,
-	dynamicIslandWrapperGenerating: css`
+		dynamicIslandWrapperGenerating: css`
 		filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.18));
 		animation: islandBreath 2.4s ease-in-out infinite;
 
@@ -149,11 +259,11 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			animation: none;
 		}
 	`,
-	dynamicIslandWrapperExpanded: css`
+		dynamicIslandWrapperExpanded: css`
 		flex: 1;
 		max-width: 100%;
 	`,
-	dynamicIslandGlow: css`
+		dynamicIslandGlow: css`
 		position: absolute;
 		inset: 0;
 		border-radius: inherit;
@@ -162,11 +272,11 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		border: 1px solid rgba(255, 255, 255, 0.06);
 		opacity: 1;
 	`,
-	dynamicIslandGlowGenerating: css`
+		dynamicIslandGlowGenerating: css`
 		border-color: rgba(0, 113, 227, 0.18);
 		box-shadow: none;
 	`,
-	dynamicIslandFrost: css`
+		dynamicIslandFrost: css`
 		position: absolute;
 		inset: 1px;
 		border-radius: inherit;
@@ -180,7 +290,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		);
 		opacity: 0.72;
 	`,
-	dynamicIslandSpecular: css`
+		dynamicIslandSpecular: css`
 		position: absolute;
 		top: 1px;
 		left: 18%;
@@ -195,7 +305,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		z-index: 3;
 		opacity: 0.26;
 	`,
-	dynamicIsland: css`
+		dynamicIsland: css`
 		display: flex;
 		align-items: center;
 		background: rgba(29, 29, 31, 0.82);
@@ -218,7 +328,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			background: rgba(23, 23, 25, 0.88);
 		}
 	`,
-	dynamicIslandContextMeter: css`
+		dynamicIslandContextMeter: css`
 		position: absolute;
 		left: 16px;
 		right: 16px;
@@ -230,12 +340,12 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		pointer-events: none;
 		z-index: 0;
 	`,
-	dynamicIslandContextMeterFill: css`
+		dynamicIslandContextMeterFill: css`
 		height: 100%;
 		border-radius: inherit;
 		transition: width 0.28s ease, background 0.28s ease;
 	`,
-	dynamicIslandGenerating: css`
+		dynamicIslandGenerating: css`
 		background: rgba(24, 24, 27, 0.9);
 		animation: islandSurfacePulse 1.8s ease-in-out infinite;
 
@@ -255,12 +365,12 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			animation: none;
 		}
 	`,
-	dynamicIslandExpanded: css`
+		dynamicIslandExpanded: css`
 		padding: 0 16px;
 		background: ${token.colorFillSecondary};
 		border-color: ${token.colorBorderSecondary};
 	`,
-	islandLead: css`
+		islandLead: css`
 		position: relative;
 		display: flex;
 		align-items: center;
@@ -270,7 +380,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		flex-shrink: 0;
 		z-index: 1;
 	`,
-	islandTextWrapper: css`
+		islandTextWrapper: css`
 		display: flex;
 		align-items: center;
 		position: relative;
@@ -278,7 +388,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		min-width: 0;
 		z-index: 1;
 	`,
-	islandTextLabel: css`
+		islandTextLabel: css`
 		font-family:
 			"SF Pro Display",
 			"SF Pro Icons",
@@ -298,7 +408,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		min-width: 0;
 		font-variant-numeric: tabular-nums;
 	`,
-	islandGeneratingBadge: css`
+		islandGeneratingBadge: css`
 		display: inline-flex;
 		align-items: center;
 		gap: 5px;
@@ -312,14 +422,14 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		position: relative;
 		z-index: 1;
 	`,
-	islandGeneratingSpinner: css`
+		islandGeneratingSpinner: css`
 		font-family: ${token.fontFamilyCode};
 		font-size: 11px;
 		line-height: 1;
 		color: rgba(191, 219, 254, 0.98);
 		flex-shrink: 0;
 	`,
-	islandGeneratingText: css`
+		islandGeneratingText: css`
 		font-size: 10.5px;
 		font-weight: 600;
 		letter-spacing: 0.01em;
@@ -328,7 +438,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		overflow: hidden;
 		text-overflow: ellipsis;
 	`,
-	islandPath: css`
+		islandPath: css`
 		font-family: ${token.fontFamilyCode};
 		color: rgba(203, 213, 225, 0.78);
 		font-size: 12px;
@@ -346,26 +456,26 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			color: rgba(248, 250, 252, 0.96);
 		}
 	`,
-	islandPathCollapsed: css`
+		islandPathCollapsed: css`
 		flex: 0;
 		max-width: 0px;
 		opacity: 0;
 		transform: translateX(10px);
 	`,
-	islandPathExpanded: css`
+		islandPathExpanded: css`
 		flex: 1;
 		min-width: 0;
 		opacity: 1;
 		transform: translateX(0);
 	`,
-	islandContainer: css`
+		islandContainer: css`
 		position: relative;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		overflow: visible;
 	`,
-	islandMetric: css`
+		islandMetric: css`
 		display: inline-flex;
 		align-items: center;
 		justify-content: flex-end;
@@ -375,7 +485,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		position: relative;
 		z-index: 1;
 	`,
-	islandMetricValue: css`
+		islandMetricValue: css`
 		font-family:
 			"SF Pro Display",
 			"SF Pro Icons",
@@ -391,17 +501,17 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		font-variant-numeric: tabular-nums;
 		white-space: nowrap;
 	`,
-	islandContextTooltip: css`
+		islandContextTooltip: css`
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
 		min-width: 228px;
 	`,
-	islandContextTooltipTitle: css`
+		islandContextTooltipTitle: css`
 		font-size: 12px;
 		font-weight: 700;
 	`,
-	islandContextTooltipRow: css`
+		islandContextTooltipRow: css`
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -409,13 +519,13 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		font-size: 11px;
 		font-variant-numeric: tabular-nums;
 	`,
-	islandContextTooltipHint: css`
+		islandContextTooltipHint: css`
 		margin-top: 2px;
 		font-size: 10px;
 		opacity: 0.78;
 		line-height: 1.4;
 	`,
-	islandIconBtn: css`
+		islandIconBtn: css`
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -427,13 +537,16 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		position: relative;
 		z-index: 1;
 		background: transparent;
+		pointer-events: auto;
+		cursor: pointer;
+		-webkit-app-region: no-drag;
 		transition: opacity 0.2s ease, transform 0.2s ease;
 		&:hover {
 			opacity: 0.86;
 			transform: scale(1.1);
 		}
 	`,
-	islandDropdownSecondaryBtn: css`
+		islandDropdownSecondaryBtn: css`
 		display: inline-flex;
 		align-items: center;
 		gap: 8px;
@@ -448,7 +561,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			color: ${token.colorText};
 		}
 	`,
-	islandDropdown: css`
+		islandDropdown: css`
 		position: absolute;
 		top: calc(100% + 8px);
 		left: 50%;
@@ -479,13 +592,32 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			}
 		}
 	`,
-	islandDropdownSection: css`
+		islandDropdownEmbedded: css`
+		top: calc(100% + 10px);
+		left: 0;
+		transform: none;
+		width: min(720px, calc(100vw - 300px));
+		max-height: calc(100vh - 132px);
+		animation: dropdownInEmbedded 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+
+		@keyframes dropdownInEmbedded {
+			from {
+				opacity: 0;
+				transform: translateY(-6px) scale(0.97);
+			}
+			to {
+				opacity: 1;
+				transform: translateY(0) scale(1);
+			}
+		}
+	`,
+		islandDropdownSection: css`
 		padding: 8px 18px 10px;
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
 	`,
-	islandDropdownTitle: css`
+		islandDropdownTitle: css`
 		font-size: 14px;
 		font-weight: 600;
 		color: ${token.colorText};
@@ -493,27 +625,27 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	`,
-	islandDropdownMeta: css`
+		islandDropdownMeta: css`
 		display: flex;
 		align-items: center;
 		gap: 4px;
 		font-size: 12px;
 		color: ${token.colorTextTertiary};
 	`,
-	islandDropdownInfo: css`
+		islandDropdownInfo: css`
 		display: flex;
 		flex-direction: column;
 		gap: 3px;
 		margin-top: 4px;
 	`,
-	islandDropdownInfoRow: css`
+		islandDropdownInfoRow: css`
 		display: flex;
 		align-items: center;
 		gap: 5px;
 		font-size: 11px;
 		color: ${token.colorTextSecondary};
 	`,
-	islandDropdownBadge: css`
+		islandDropdownBadge: css`
 		font-size: 10px;
 		font-family: ${token.fontFamilyCode};
 		padding: 1px 5px;
@@ -522,7 +654,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		color: ${token.colorTextSecondary};
 		white-space: nowrap;
 	`,
-	islandDropdownPath: css`
+		islandDropdownPath: css`
 		font-family: ${token.fontFamilyCode};
 		font-size: 10px;
 		color: ${token.colorTextTertiary};
@@ -537,14 +669,14 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			color: ${token.colorPrimary};
 		}
 	`,
-	islandPermissionSelector: css`
+		islandPermissionSelector: css`
 		position: relative;
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
 		margin-top: 4px;
 	`,
-	islandPermissionSelectorTrigger: css`
+		islandPermissionSelectorTrigger: css`
 		display: inline-flex;
 		align-items: center;
 		justify-content: space-between;
@@ -562,17 +694,17 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			background: rgba(255, 255, 255, 0.96);
 		}
 	`,
-	islandPermissionSelectorTriggerLeft: css`
+		islandPermissionSelectorTriggerLeft: css`
 		display: flex;
 		align-items: center;
 		gap: 8px;
 		min-width: 0;
 	`,
-	islandPermissionSelectorIcon: css`
+		islandPermissionSelectorIcon: css`
 		flex-shrink: 0;
 		color: rgba(15, 23, 42, 0.68);
 	`,
-	islandPermissionSelectorTriggerLabel: css`
+		islandPermissionSelectorTriggerLabel: css`
 		font-size: 14px;
 		font-weight: 600;
 		line-height: 1.1;
@@ -581,15 +713,15 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		text-overflow: ellipsis;
 		overflow: hidden;
 	`,
-	islandPermissionSelectorChevron: css`
+		islandPermissionSelectorChevron: css`
 		flex-shrink: 0;
 		color: rgba(15, 23, 42, 0.52);
 		transition: transform 0.16s ease;
 	`,
-	islandPermissionSelectorChevronOpen: css`
+		islandPermissionSelectorChevronOpen: css`
 		transform: rotate(180deg);
 	`,
-	islandPermissionSelectorMenu: css`
+		islandPermissionSelectorMenu: css`
 		position: static;
 		width: 100%;
 		max-height: 188px;
@@ -604,7 +736,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		flex-direction: column;
 		gap: 2px;
 	`,
-	islandPermissionSelectorOption: css`
+		islandPermissionSelectorOption: css`
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -619,16 +751,16 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			background: rgba(15, 23, 42, 0.05);
 		}
 	`,
-	islandPermissionSelectorOptionActive: css`
+		islandPermissionSelectorOptionActive: css`
 		background: rgba(15, 23, 42, 0.045);
 	`,
-	islandPermissionSelectorOptionLeft: css`
+		islandPermissionSelectorOptionLeft: css`
 		display: flex;
 		align-items: center;
 		gap: 8px;
 		min-width: 0;
 	`,
-	islandPermissionSelectorOptionLabel: css`
+		islandPermissionSelectorOptionLabel: css`
 		font-size: 13px;
 		line-height: 1.25;
 		font-weight: 600;
@@ -637,7 +769,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		text-overflow: ellipsis;
 		overflow: hidden;
 	`,
-	islandPermissionSelectorCheck: css`
+		islandPermissionSelectorCheck: css`
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
@@ -645,39 +777,39 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		height: 16px;
 		color: transparent;
 	`,
-	islandPermissionSelectorCheckActive: css`
+		islandPermissionSelectorCheckActive: css`
 		color: rgba(15, 23, 42, 0.82);
 	`,
-	islandPermissionSelectorHint: css`
+		islandPermissionSelectorHint: css`
 		font-size: 11px;
 		line-height: 1.4;
 		color: ${token.colorTextTertiary};
 		margin-top: 2px;
 	`,
-	islandDropdownEmpty: css`
+		islandDropdownEmpty: css`
 		font-size: 12px;
 		color: ${token.colorTextTertiary};
 		margin-top: 2px;
 	`,
-	islandDropdownDivider: css`
+		islandDropdownDivider: css`
 		height: 1px;
 		background: rgba(15, 23, 42, 0.1);
 		margin: 2px 18px;
 	`,
-	islandSessionSearch: css`
+		islandSessionSearch: css`
 		display: flex;
 		align-items: center;
 		gap: 10px;
 		padding: 8px 18px 10px;
 	`,
-	islandSessionSearchIcon: css`
+		islandSessionSearchIcon: css`
 		flex-shrink: 0;
 		color: ${token.colorTextSecondary};
 		opacity: 0.9;
 	`,
-	islandSessionSearchInput: css`
+		islandSessionSearchInput: css`
 		width: 100%;
-		font-size: 16px;
+		font-size: 14px;
 		font-weight: 600;
 		line-height: 1.3;
 		background: transparent;
@@ -691,7 +823,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			opacity: 0.9;
 		}
 	`,
-	islandSessionList: css`
+		islandSessionList: css`
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
@@ -701,7 +833,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		overflow-y: auto;
 		padding: 8px 8px 6px;
 	`,
-	islandSessionItem: css`
+		islandSessionItem: css`
 		display: flex;
 		width: 100%;
 		align-items: center;
@@ -716,13 +848,13 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			background: rgba(15, 23, 42, 0.06);
 		}
 	`,
-	islandSessionItemActive: css`
+		islandSessionItemActive: css`
 		background: rgba(15, 23, 42, 0.08);
 	`,
-	islandSessionItemTitle: css`
+		islandSessionItemTitle: css`
 		flex: 1;
 		min-width: 0;
-		font-size: clamp(14px, 1.8vw, 16px);
+		font-size: 14px;
 		font-weight: 500;
 		color: ${token.colorText};
 		overflow: hidden;
@@ -730,7 +862,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		white-space: nowrap;
 		line-height: 1.25;
 	`,
-	islandSessionItemSide: css`
+		islandSessionItemSide: css`
 		display: flex;
 		align-items: center;
 		gap: 12px;
@@ -738,30 +870,30 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		min-width: 72px;
 		justify-content: flex-end;
 	`,
-	islandSessionItemMeta: css`
+		islandSessionItemMeta: css`
 		font-size: clamp(12px, 1.6vw, 14px);
 		line-height: 1;
 		color: ${token.colorTextSecondary};
 		font-weight: 500;
 		font-variant-numeric: tabular-nums;
 	`,
-	islandSessionItemIndicator: css`
+		islandSessionItemIndicator: css`
 		width: 12px;
 		height: 12px;
 		border-radius: 999px;
 		border: 2px solid rgba(15, 23, 42, 0.22);
 		flex-shrink: 0;
 	`,
-	islandSessionItemIndicatorActive: css`
+		islandSessionItemIndicatorActive: css`
 		border-color: rgba(15, 23, 42, 0.7);
 		background: rgba(15, 23, 42, 0.6);
 	`,
-	islandSessionEmpty: css`
+		islandSessionEmpty: css`
 		font-size: 14px;
 		color: ${token.colorTextSecondary};
 		padding: 14px 12px;
 	`,
-	islandDropdownNewBtn: css`
+		islandDropdownNewBtn: css`
 		display: flex;
 		width: 100%;
 		align-items: center;
@@ -777,14 +909,14 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			color: ${token.colorText};
 		}
 	`,
-	islandMeta: css`
+		islandMeta: css`
 		display: flex;
 		align-items: center;
 		gap: 3px;
 		margin-left: 2px;
 		overflow: hidden;
 	`,
-	islandBadge: css`
+		islandBadge: css`
 		font-size: 9px;
 		font-family: ${token.fontFamilyCode};
 		padding: 1px 4px;
@@ -794,7 +926,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		white-space: nowrap;
 		flex-shrink: 0;
 	`,
-	islandMetaExpanded: css`
+		islandMetaExpanded: css`
 		font-size: 10px;
 		color: rgba(255, 255, 255, 0.5);
 		font-family: ${token.fontFamilyCode};
@@ -803,7 +935,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		text-overflow: ellipsis;
 		max-width: 180px;
 	`,
-	mentionPicker: css`
+		mentionPicker: css`
 		position: absolute;
 		left: 0;
 		right: 0;
@@ -818,7 +950,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		box-shadow: ${token.boxShadowSecondary};
 		z-index: 20;
 	`,
-	mentionOption: css`
+		mentionOption: css`
 		width: 100%;
 		display: flex;
 		align-items: center;
@@ -832,38 +964,38 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			color: ${token.colorText};
 		}
 	`,
-	mentionOptionActive: css`
+		mentionOptionActive: css`
 		background: ${token.colorPrimaryBg};
 		color: ${token.colorPrimary};
 	`,
-	mentionOptionMeta: css`
+		mentionOptionMeta: css`
 		display: flex;
 		align-items: center;
 		gap: 8px;
 		min-width: 0;
 	`,
-	mentionOptionIcon: css`
+		mentionOptionIcon: css`
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
 	`,
-	mentionOptionTitle: css`
+		mentionOptionTitle: css`
 		font-size: 13px;
 		font-weight: 500;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	`,
-	messageBodyFrame: css`
+		messageBodyFrame: css`
 		width: 100%;
 		min-width: 0;
 	`,
-	messageBodyContent: css`
+		messageBodyContent: css`
 		width: 100%;
 		min-width: 0;
 	`,
-	userAvatar: css`
+		userAvatar: css`
 		width: 22px;
 		height: 22px;
 		border-radius: 999px;
@@ -876,7 +1008,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		border: 1px solid ${token.colorBorderSecondary};
 		background: ${token.colorBgElevated};
 	`,
-	assistantAvatar: css`
+		assistantAvatar: css`
 		width: 22px;
 		height: 22px;
 		border-radius: 999px;
@@ -886,7 +1018,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		border: 1px solid ${token.colorBorderSecondary};
 		background: ${token.colorBgElevated};
 	`,
-	codeAvatar: css`
+		codeAvatar: css`
 		width: 22px;
 		height: 22px;
 		border-radius: 999px;
@@ -896,14 +1028,14 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		border: 1px solid ${token.colorBorderSecondary};
 		background: ${token.colorBgElevated};
 	`,
-	userMessageText: css`
+		userMessageText: css`
 		font-size: 13px;
 		line-height: 1.5;
 		color: ${token.colorText};
 		white-space: pre-wrap;
 		word-break: break-word;
 	`,
-	systemNotice: css`
+		systemNotice: css`
 		padding: 8px 10px;
 		margin: 2px auto;
 		font-size: 12px;
@@ -911,7 +1043,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		background: ${token.colorFillTertiary};
 		border-radius: 10px;
 	`,
-	emptyState: css`
+		emptyState: css`
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -919,7 +1051,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		padding: 42px 16px 20px;
 		text-align: center;
 	`,
-	emptyIcon: css`
+		emptyIcon: css`
 		width: 34px;
 		height: 34px;
 		border-radius: 999px;
@@ -930,18 +1062,18 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		border: 1px solid ${token.colorBorderSecondary};
 		margin-bottom: 10px;
 	`,
-	emptyTitle: css`
+		emptyTitle: css`
 		font-size: 14px;
 		font-weight: 600;
 		color: ${token.colorText};
 	`,
-	emptyDesc: css`
+		emptyDesc: css`
 		margin-top: 6px;
 		font-size: 12px;
 		line-height: 1.5;
 		color: ${token.colorTextSecondary};
 	`,
-	streamCursor: css`
+		streamCursor: css`
 		display: inline-block;
 		width: 2px;
 		height: 1em;
@@ -961,43 +1093,43 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			}
 		}
 	`,
-	scrollArea: css`
+		scrollArea: css`
 		flex: 1;
 		overflow-y: auto;
 		padding: 18px 14px;
 	`,
-	scrollAreaInner: css`
+		scrollAreaInner: css`
 		width: 100%;
 		max-width: var(--mini-chat-content-width);
 		margin: 0 auto;
 	`,
-	scrollAreaVirtual: css`
+		scrollAreaVirtual: css`
 		overflow: hidden;
 	`,
-	timeline: css`
+		timeline: css`
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
 	`,
-	timelineRow: css`
+		timelineRow: css`
 		width: 100%;
 	`,
-	timelineVirtual: css`
+		timelineVirtual: css`
 		width: 100%;
 	`,
-	timelineVirtualItem: css`
+		timelineVirtualItem: css`
 		width: 100%;
 		padding-bottom: 8px;
 		box-sizing: border-box;
 	`,
-	messageMetaRow: css`
+		messageMetaRow: css`
 		display: inline-flex;
 		align-items: center;
 		gap: 5px;
 		margin: 1px 0 4px 2px;
 		min-height: 18px;
 	`,
-	messageMetaAvatar: css`
+		messageMetaAvatar: css`
 		width: 18px;
 		height: 18px;
 		border-radius: 999px;
@@ -1008,22 +1140,22 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		background: rgba(255, 255, 255, 0.92);
 		box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 	`,
-	messageMetaLabel: css`
+		messageMetaLabel: css`
 		font-size: 11px;
 		font-weight: 600;
 		letter-spacing: 0.01em;
 		color: rgba(15, 23, 42, 0.78);
 	`,
-	messageMetaDot: css`
+		messageMetaDot: css`
 		font-size: 10px;
 		color: rgba(15, 23, 42, 0.38);
 	`,
-	messageMetaTime: css`
+		messageMetaTime: css`
 		font-size: 11px;
 		color: rgba(15, 23, 42, 0.52);
 		font-variant-numeric: tabular-nums;
 	`,
-	messageMetaStreaming: css`
+		messageMetaStreaming: css`
 		font-size: 10px;
 		font-weight: 500;
 		padding: 1px 6px;
@@ -1031,7 +1163,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		color: rgba(37, 99, 235, 0.9);
 		background: rgba(37, 99, 235, 0.12);
 	`,
-	chatItem: css`
+		chatItem: css`
 		width: 100%;
 		animation: chatSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 		transform-origin: bottom center;
@@ -1065,7 +1197,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			}
 		}
 	`,
-	markdownBubble: css`
+		markdownBubble: css`
 		font-size: 13px;
 		line-height: 1.5 !important;
 		color: ${token.colorText};
@@ -1077,7 +1209,7 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			margin: 0 !important;
 		}
 	`,
-	inputDock: css`
+		inputDock: css`
 		padding: 10px 12px 12px;
 		display: flex;
 		flex-direction: column;
@@ -1086,7 +1218,64 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 		overflow: visible;
 		align-items: stretch;
 	`,
-	elicitationPopup: css`
+		composerStatusRow: css`
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		min-height: 20px;
+		padding: 1px 4px 0;
+		color: ${token.colorTextSecondary};
+		font-size: 11px;
+		line-height: 1;
+		max-width: var(--mini-chat-content-width, 800px);
+		margin: 0 auto;
+		width: 100%;
+	`,
+		composerStatusLeft: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 12px;
+		min-width: 0;
+	`,
+		composerStatusRight: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 12px;
+		min-width: 0;
+	`,
+		composerStatusItem: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		min-width: 0;
+		white-space: nowrap;
+		font-variant-numeric: tabular-nums;
+	`,
+		composerStatusItemButton: css`
+		padding: 0;
+		border: 0;
+		background: transparent;
+		color: inherit;
+		cursor: pointer;
+	`,
+		composerStatusPermission: css`
+		color: #dd5a1f;
+	`,
+		composerStatusSpin: css`
+		color: ${token.colorTextTertiary};
+		animation: codexStatusSpin 1.2s linear infinite;
+
+		@keyframes codexStatusSpin {
+			from {
+				transform: rotate(0deg);
+			}
+			to {
+				transform: rotate(360deg);
+			}
+		}
+	`,
+		elicitationPopup: css`
 		position: absolute;
 		right: 12px;
 		bottom: calc(100% + 10px);
@@ -1111,4 +1300,5 @@ export const useMiniChatStyles = createStyles(({ token, css }) => ({
 			}
 		}
 	`,
-}));
+	}),
+);

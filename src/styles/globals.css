@@ -25,6 +25,7 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
+    --app-font-size-max: 14px;
   }
 
   /* Neutral deep-gray dark palette */
@@ -59,6 +60,16 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  [style*="--lobe-markdown-font-size"] {
+    --lobe-markdown-font-size: var(--app-font-size-max) !important;
+    --lobe-markdown-header-multiple: 1 !important;
+  }
+
+  [data-slate-editor="true"],
+  [role="textbox"][contenteditable="true"] {
+    font-size: var(--app-font-size-max) !important;
   }
 }
 

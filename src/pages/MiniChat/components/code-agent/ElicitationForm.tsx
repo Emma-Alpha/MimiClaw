@@ -53,7 +53,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		border-bottom: 2px solid #e5e7eb;
 	`,
 	title: css`
-		font-size: 22px;
+		font-size: 14px;
 		font-weight: 600;
 		line-height: 1.2;
 		color: #111827;
@@ -142,7 +142,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		min-width: 0;
 	`,
 	optionTitle: css`
-		font-size: 16px;
+		font-size: 14px;
 		font-weight: 600;
 		line-height: 1.35;
 		color: #111827;
@@ -213,7 +213,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		border-radius: 12px;
 		background: #f3f4f6;
 		color: #9ca3af;
-		font-size: 16px;
+		font-size: 14px;
 		font-weight: 600;
 		line-height: 1.2;
 		text-align: left;

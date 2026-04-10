@@ -19,6 +19,7 @@ export type MiniChatComposerProps = {
 	disabled: boolean;
 	sendDisabled: boolean;
 	isClaudeCodeCliMode: boolean;
+	isMiniChatMode: boolean;
 	placeholder: string;
 	attachments: FileAttachment[];
 	droppedPaths: DroppedPathChip[];
@@ -44,12 +45,15 @@ export type MiniChatComposerProps = {
 	onActiveSlashIndexChange: (value: number) => void;
 	onApplySlashOption: (option: SlashOption) => void;
 	composerInputRef: RefObject<UnifiedComposerInputHandle | null>;
-	onSkillChange: (skill: string | null) => void;
+	onSkillsChange: (skills: string[]) => void;
 	onRichContentChange?: (content: Descendant[]) => void;
 	onCaretChange: (value: number) => void;
 	onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => void;
 	onPressEnter: (event: ReactKeyboardEvent<HTMLElement>) => void;
+	modelOptions: ReadonlyArray<{ key: string; label: string }>;
+	modelValue: string;
 	modelLabel: string;
+	onSelectModel: (model: string) => void;
 	onCycleModel: () => void;
 	effortEnabled: boolean;
 	thinkingEnabled: boolean;

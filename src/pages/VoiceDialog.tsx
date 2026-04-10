@@ -781,7 +781,7 @@ export function VoiceDialog() {
         style={{ WebkitAppRegion: 'drag' } as CSSProperties}
       >
         <div className="flex-1 flex justify-center">
-          <h1 className="text-[17px] font-medium text-[#111111] dark:text-[#E5E5E5]">语音通话</h1>
+          <h1 className="text-[14px] font-medium text-[#111111] dark:text-[#E5E5E5]">语音通话</h1>
         </div>
         <button
           type="button"
@@ -855,11 +855,11 @@ export function VoiceDialog() {
               <div className="mx-auto flex h-full max-h-[160px] w-full max-w-[280px] items-start justify-center overflow-y-auto px-2 text-center">
                 <div className="my-auto w-full break-words">
               {assistantLiveText || assistantStableText ? (
-                    <div className="text-[15px] font-medium leading-relaxed text-[#111111] dark:text-[#E5E5E5]">
+                    <div className="text-[14px] font-medium leading-relaxed text-[#111111] dark:text-[#E5E5E5]">
                   {assistantLiveText || assistantStableText}
                 </div>
               ) : userLiveText || userStableText ? (
-                    <div className="text-[15px] leading-relaxed text-[#111111]/70 dark:text-[#E5E5E5]/70">
+                    <div className="text-[14px] leading-relaxed text-[#111111]/70 dark:text-[#E5E5E5]/70">
                   {userLiveText || userStableText}
                 </div>
               ) : null}

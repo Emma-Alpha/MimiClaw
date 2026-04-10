@@ -70,7 +70,7 @@ export function VoiceChatHistory() {
               <Mic className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <h1 className="truncate text-2xl font-semibold text-slate-900">
+              <h1 className="truncate text-sm font-semibold text-slate-900">
                 {activeSession?.title ?? 'Voice Chat'}
               </h1>
               <p className="mt-1 text-sm text-slate-500">
@@ -154,7 +154,7 @@ export function VoiceChatHistory() {
                           {formatDateTime(message.createdAt)}
                         </span>
                       </div>
-                      <p className="whitespace-pre-wrap text-[15px] leading-7">
+                      <p className="whitespace-pre-wrap text-[14px] leading-7">
                         {message.text}
                       </p>
                     </article>

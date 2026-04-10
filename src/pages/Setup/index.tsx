@@ -181,7 +181,7 @@ export function Setup() {
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
 
-      <TitleBar />
+      <TitleBar hideSidebarToggle />
       <div className="flex-1 flex flex-col items-center justify-center p-4 z-10">
         
         {/* Sleek Progress Indicator */}
@@ -303,7 +303,7 @@ function WelcomeContent() {
       </div>
 
       <div className="space-y-3">
-        <h2 className="text-3xl font-semibold tracking-tight">{t('welcome.title')}</h2>
+        <h2 className="text-sm font-semibold tracking-tight">{t('welcome.title')}</h2>
         <p className="text-muted-foreground text-sm max-w-[280px] mx-auto leading-relaxed">
           {t('welcome.description')}
         </p>
@@ -462,7 +462,7 @@ function RuntimeContent({ onStatusChange, isRemoteMode, isCloudOnlyBuild }: Runt
   return (
     <div className="flex flex-col h-full space-y-6 flex-1 justify-center">
       <div className="text-center space-y-2 mb-4">
-        <h2 className="text-2xl font-semibold tracking-tight">{t('runtime.title')}</h2>
+        <h2 className="text-sm font-semibold tracking-tight">{t('runtime.title')}</h2>
         <p className="text-muted-foreground text-sm">{t('steps.runtime.description')}</p>
       </div>
 
@@ -710,7 +710,7 @@ function ProviderContent({
     return (
       <div className="flex flex-col h-full justify-center space-y-6">
         <div className="text-center space-y-2 mb-4">
-          <h2 className="text-2xl font-semibold tracking-tight">{t('provider.title')}</h2>
+          <h2 className="text-sm font-semibold tracking-tight">{t('provider.title')}</h2>
         </div>
         <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6 text-center space-y-3">
           <CheckCircle2 className="w-8 h-8 text-primary mx-auto mb-2" />
@@ -724,7 +724,7 @@ function ProviderContent({
   return (
     <div className="flex flex-col h-full flex-1">
       <div className="text-center space-y-2 mb-6">
-        <h2 className="text-2xl font-semibold tracking-tight">{t('provider.title')}</h2>
+        <h2 className="text-sm font-semibold tracking-tight">{t('provider.title')}</h2>
         <p className="text-muted-foreground text-sm">{t('provider.description')}</p>
       </div>
 
@@ -880,7 +880,7 @@ function InstallingContent({ skills, onComplete, isCloudOnlyBuild }: InstallingC
         </div>
       </div>
       <div className="space-y-2">
-        <h2 className="text-xl font-semibold">{t('installing.title')}</h2>
+        <h2 className="text-sm font-semibold">{t('installing.title')}</h2>
         <p className="text-muted-foreground text-sm">{t('installing.subtitle')}</p>
       </div>
     </div>
@@ -908,7 +908,7 @@ function CompleteContent({ selectedProvider, installedSkills, isCloudOnlyBuild }
         <CheckCircle2 className="w-10 h-10" />
       </motion.div>
       <div className="space-y-2">
-        <h2 className="text-3xl font-semibold tracking-tight">{t('complete.title')}</h2>
+        <h2 className="text-sm font-semibold tracking-tight">{t('complete.title')}</h2>
         <p className="text-muted-foreground">{t('complete.subtitle')}</p>
       </div>
       

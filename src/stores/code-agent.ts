@@ -610,6 +610,27 @@ function pickNumber(record: Record<string, unknown> | null, keys: string[]): num
 	return null;
 }
 
+function extractLastIterationUsage(record: Record<string, unknown> | null): {
+	inputTokens: number;
+	outputTokens: number;
+} | null {
+	if (!record || !Array.isArray(record.iterations) || record.iterations.length === 0) {
+		return null;
+	}
+	for (let index = record.iterations.length - 1; index >= 0; index -= 1) {
+		const iteration = asRecord(record.iterations[index]);
+		if (!iteration) continue;
+		const inputTokens = pickNumber(iteration, ["input_tokens", "inputTokens", "input"]);
+		const outputTokens = pickNumber(iteration, ["output_tokens", "outputTokens", "output"]);
+		if (inputTokens == null && outputTokens == null) continue;
+		return {
+			inputTokens: Math.max(0, Math.round(inputTokens ?? 0)),
+			outputTokens: Math.max(0, Math.round(outputTokens ?? 0)),
+		};
+	}
+	return null;
+}
+
 function extractUsageShape(record: Record<string, unknown> | null): {
 	inputTokens: number;
 	outputTokens: number;
@@ -619,15 +640,24 @@ function extractUsageShape(record: Record<string, unknown> | null): {
 	if (!record) return null;
 	const inputTokens = pickNumber(record, ["input_tokens", "inputTokens", "input"]);
 	const outputTokens = pickNumber(record, ["output_tokens", "outputTokens", "output"]);
+	const iterationUsage = extractLastIterationUsage(record);
+	const resolvedInputTokens =
+		(inputTokens != null && inputTokens > 0)
+			? inputTokens
+			: iterationUsage?.inputTokens ?? inputTokens;
+	const resolvedOutputTokens =
+		(outputTokens != null && outputTokens > 0)
+			? outputTokens
+			: iterationUsage?.outputTokens ?? outputTokens;
 	const cacheReadInputTokens =
 		pickNumber(record, ["cache_read_input_tokens", "cacheReadInputTokens", "cacheRead"]) ?? 0;
 	const cacheCreationInputTokens =
 		pickNumber(record, ["cache_creation_input_tokens", "cacheCreationInputTokens", "cacheWrite"]) ?? 0;
 
-	if (inputTokens == null && outputTokens == null) return null;
+	if (resolvedInputTokens == null && resolvedOutputTokens == null) return null;
 	return {
-		inputTokens: Math.max(0, Math.round(inputTokens ?? 0)),
-		outputTokens: Math.max(0, Math.round(outputTokens ?? 0)),
+		inputTokens: Math.max(0, Math.round(resolvedInputTokens ?? 0)),
+		outputTokens: Math.max(0, Math.round(resolvedOutputTokens ?? 0)),
 		cacheReadInputTokens: Math.max(0, Math.round(cacheReadInputTokens)),
 		cacheCreationInputTokens: Math.max(0, Math.round(cacheCreationInputTokens)),
 	};
@@ -646,6 +676,7 @@ function clampPercent(value: number): number {
 function extractContextUsage(
 	msg: Record<string, unknown>,
 	fallbackModel: string | null,
+	previousUsage: CodeAgentContextWindowUsage | null,
 ): CodeAgentContextWindowUsage | null {
 	const message = asRecord(msg.message);
 	const request = asRecord(msg.request);
@@ -686,6 +717,23 @@ function extractContextUsage(
 	const remainingPercentage = clampPercent(
 		remainingPercentageFromPayload ?? 100 - usedPercentage,
 	);
+	const hasExplicitContextWindowUsage = Boolean(
+		contextWindow && (
+			asRecord(contextWindow.current_usage)
+			|| pickNumber(contextWindow, ["used_percentage", "usedPercentage"]) != null
+			|| pickNumber(contextWindow, ["remaining_percentage", "remainingPercentage"]) != null
+			|| pickNumber(contextWindow, ["total_input_tokens", "totalInputTokens"]) != null
+			|| pickNumber(contextWindow, ["total_output_tokens", "totalOutputTokens"]) != null
+		),
+	);
+
+	// Some providers emit output-only usage records (input/cache = 0) for
+	// assistant turns. If we overwrite with these records, the UI jumps back to
+	// "200k remaining". Keep the previous session footprint unless payload gives
+	// explicit context-window metrics.
+	if (usedTokens === 0 && !hasExplicitContextWindowUsage && previousUsage) {
+		return null;
+	}
 
 	return {
 		contextWindowSize,
@@ -844,7 +892,11 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 				}));
 			}
 
-			const contextUsage = extractContextUsage(msg, get().sessionInit?.model ?? null);
+			const contextUsage = extractContextUsage(
+				msg,
+				get().sessionInit?.model ?? null,
+				get().contextUsage,
+			);
 			if (contextUsage) {
 				set({ contextUsage });
 			}

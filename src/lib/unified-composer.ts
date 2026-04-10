@@ -12,6 +12,12 @@ export type UnifiedComposerDraft<TAttachment = FileAttachment> = {
 	paths: UnifiedComposerPath[];
 };
 
+const SNIPPET_REFERENCE_PATTERNS = [
+	/^\s*(?:[-*]\s+)?`?(?<path>[^()\n\r`]+?\.[A-Za-z0-9][^()\n\r`]*)`?\s*\(\s*(?<start>\d{1,7})\s*[-~–—]\s*(?<end>\d{1,7})\s*\)\s*`?\s*$/,
+	/^\s*(?:[-*]\s+)?`?(?<path>[^:\n\r`]+?\.[A-Za-z0-9][^:\n\r`]*)`?\s*:\s*(?<start>\d{1,7})\s*[-~–—]\s*(?<end>\d{1,7})\s*`?\s*$/,
+	/^\s*(?:[-*]\s+)?`?(?<path>[^#\n\r`]+?\.[A-Za-z0-9][^#\n\r`]*)`?\s*#L(?<start>\d{1,7})(?:\s*-\s*L?(?<end>\d{1,7}))?\s*`?\s*$/,
+] as const;
+
 function parseAbsolutePath(raw: string): string | null {
 	const value = raw.trim().replace(/^["']|["']$/g, "");
 	if (!value) return null;
@@ -37,6 +43,34 @@ function parseAbsolutePath(raw: string): string | null {
 	if (/^[A-Za-z]:[\\/]/.test(value)) return value;
 
 	return null;
+}
+
+function normalizeSnippetRange(
+	startRaw: string,
+	endRaw?: string,
+): { start: number; end: number } | null {
+	const parsedStart = Number.parseInt(startRaw, 10);
+	const parsedEnd = Number.parseInt(endRaw ?? startRaw, 10);
+	if (!Number.isFinite(parsedStart) || !Number.isFinite(parsedEnd)) return null;
+	if (parsedStart <= 0 || parsedEnd <= 0) return null;
+	const start = Math.min(parsedStart, parsedEnd);
+	const end = Math.max(parsedStart, parsedEnd);
+	return { start, end };
+}
+
+function normalizeSnippetPathCandidate(raw: string): string | null {
+	const trimmed = raw.trim().replace(/^["'`]|["'`]$/g, "");
+	if (!trimmed) return null;
+
+	const absolutePath = parseAbsolutePath(trimmed);
+	if (absolutePath) return absolutePath;
+
+	const candidate = trimmed.replace(/^\.\/+/, "").trim();
+	if (!candidate) return null;
+	if (!/\.[A-Za-z0-9]{1,12}(?:\.[A-Za-z0-9]{1,12})?$/.test(candidate)) {
+		return null;
+	}
+	return candidate;
 }
 
 function resolveAbsolutePathFromFile(file: globalThis.File | null): string | undefined {
@@ -121,6 +155,47 @@ export function extractDroppedPathsFromTransfer(dataTransfer: DataTransfer | nul
 				const name = absPath.split(/[\\/]/).filter(Boolean).pop() || absPath;
 				pushPath(absPath, name, false);
 			}
+		}
+	}
+
+	return paths;
+}
+
+export function extractSnippetReferencePathsFromText(rawText: string): UnifiedComposerPath[] {
+	if (!rawText.trim()) return [];
+
+	const lines = rawText.split(/\r?\n/).slice(0, 80);
+	const paths: UnifiedComposerPath[] = [];
+	const seen = new Set<string>();
+
+	for (const rawLine of lines) {
+		const line = rawLine.trim();
+		if (!line) continue;
+
+		for (const pattern of SNIPPET_REFERENCE_PATTERNS) {
+			const match = line.match(pattern);
+			const groups = match?.groups as
+				| { path?: string; start?: string; end?: string }
+				| undefined;
+			if (!groups?.path || !groups.start) continue;
+
+			const normalizedPath = normalizeSnippetPathCandidate(groups.path);
+			const range = normalizeSnippetRange(groups.start, groups.end);
+			if (!normalizedPath || !range) continue;
+
+			const rangeLabel = `${range.start}-${range.end}`;
+			const refPath = `${normalizedPath} (${rangeLabel})`;
+			if (seen.has(refPath)) break;
+			seen.add(refPath);
+
+			const fileName =
+				normalizedPath.split(/[\\/]/).filter(Boolean).pop() || normalizedPath;
+			paths.push({
+				absolutePath: refPath,
+				name: `${fileName} (${rangeLabel})`,
+				isDirectory: false,
+			});
+			break;
 		}
 	}
 

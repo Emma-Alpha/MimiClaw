@@ -158,7 +158,7 @@ export function UpdateSettings() {
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <p className="text-sm font-medium">{t('updates.currentVersion')}</p>
-          <p className="text-2xl font-bold">v{currentVersion}</p>
+          <p className="text-sm font-bold">v{currentVersion}</p>
         </div>
         {renderStatusIcon()}
       </div>

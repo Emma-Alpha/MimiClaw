@@ -8,6 +8,7 @@ import {
 	type ReactNode,
 } from "react";
 import { createStyles } from "antd-style";
+import { Button } from "antd";
 import { Loader2, Send, Square, X, FileText, Film, Music, FileArchive, File as FileIcon } from "lucide-react";
 import type { UnifiedComposerPath } from "@/lib/unified-composer";
 import { UnifiedComposerInput } from "./unified-composer-input";
@@ -83,24 +84,36 @@ const useStyles = createStyles(({ token, css }) => ({
 		flex-direction: column;
 		gap: 4px;
 		border-radius: 20px;
-		background: ${token.colorBgContainer};
-		border: 1px solid ${token.colorBorderSecondary};
-		box-shadow:
-			0 2px 6px rgba(0, 0, 0, 0.04);
 		overflow: visible;
 		transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+	`,
+	shellDesktop: css`
+		padding: 8px 10px 8px;
+		background: ${token.colorBgContainer};
+		border: 0.5px solid ${token.colorBorderSecondary};
+		box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.08);
+		backdrop-filter: blur(16px);
+
+		@supports (color: color-mix(in srgb, white 50%, black)) {
+			background: color-mix(in srgb, ${token.colorBgContainer} 90%, transparent);
+		}
+
+		&:focus-within {
+			border-color: ${token.colorBorderSecondary};
+			box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.12);
+		}
+	`,
+	shellCompact: css`
+		border-radius: 16px;
+		padding: 8px 10px 8px;
+		background: ${token.colorBgContainer};
+		border: 1px solid ${token.colorBorderSecondary};
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 
 		&:focus-within {
 			border-color: ${token.colorBorder};
 			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 		}
-	`,
-	shellDesktop: css`
-		padding: 8px 10px 8px;
-	`,
-	shellCompact: css`
-		border-radius: 16px;
-		padding: 8px 10px 8px;
 	`,
 	shellDragOver: css`
 		border-color: ${token.colorPrimary};
@@ -121,8 +134,8 @@ const useStyles = createStyles(({ token, css }) => ({
 	inputEditor: css`
 		width: 100%;
 		padding: 0;
-		line-height: 1.6;
-		font-size: 14px;
+		line-height: 1.5;
+		font-size: 13px;
 		box-shadow: none !important;
 		background: transparent;
 		white-space: pre-wrap;
@@ -135,6 +148,8 @@ const useStyles = createStyles(({ token, css }) => ({
 	inputEditorDesktop: css`
 		min-height: 24px;
 		max-height: 200px;
+		font-size: 13px;
+		line-height: 1.5;
 	`,
 	inputEditorCompact: css`
 		min-height: 24px;
@@ -196,8 +211,8 @@ const useStyles = createStyles(({ token, css }) => ({
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 8px;
-		margin-top: 6px;
+		gap: 5px;
+		margin-top: 5px;
 		padding: 0 2px;
 	`,
 	topActionsRow: css`
@@ -214,14 +229,14 @@ const useStyles = createStyles(({ token, css }) => ({
 		flex: 1;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 6px;
+		gap: 5px;
 		min-width: 0;
 	`,
 	rightActions: css`
 		display: flex;
 		flex-shrink: 0;
 		align-items: center;
-		gap: 6px;
+		gap: 5px;
 
 		& > * {
 			margin: 0 !important;
@@ -240,6 +255,9 @@ const useStyles = createStyles(({ token, css }) => ({
 
 		&:hover:not(:disabled) {
 			background: ${token.colorFillTertiary};
+			@supports (color: color-mix(in srgb, white 50%, black)) {
+				background: color-mix(in srgb, ${token.colorText} 6%, transparent);
+			}
 			color: ${token.colorText};
 		}
 
@@ -320,32 +338,53 @@ const useStyles = createStyles(({ token, css }) => ({
 		}
 	`,
 	compactSendButton: css`
+		&& {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
 		width: 28px;
+		min-width: 28px;
 		height: 28px;
-		border: none;
-		border-radius: 14px;
-		background: ${token.colorText};
-		color: ${token.colorBgLayout};
+		padding: 0 !important;
+		border: none !important;
+		border-radius: 999px;
+		background: ${token.colorText} !important;
+		color: ${token.colorBgContainer} !important;
 		cursor: pointer;
-		transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+		transition: background 0.16s ease, opacity 0.16s ease;
+		line-height: 1;
+		box-shadow: none;
+		}
+
+		& .ant-btn-icon {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			margin-inline-end: 0;
+			line-height: 0;
+		}
 
 		&:hover:not(:disabled) {
-			transform: scale(1.05);
-			box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+			opacity: 0.92;
+		}
+
+		&:focus-visible {
+			outline: 2px solid ${token.colorText};
+			outline-offset: 2px;
 		}
 
 		&:disabled {
-			opacity: 0.35;
+			opacity: 0.5 !important;
 			cursor: not-allowed;
-			box-shadow: none;
+			background: ${token.colorText} !important;
+			color: ${token.colorBgContainer} !important;
 		}
 	`,
 	sendButtonSending: css`
-		background: ${token.colorTextSecondary};
+		&& {
+			background: ${token.colorTextSecondary} !important;
+			color: ${token.colorBgContainer} !important;
+		}
 	`,
 	previewCard: css`
 		position: relative;
@@ -842,8 +881,8 @@ export function ComposerBase({
 					<div className={styles.leftActions}>{leftActions}</div>
 					<div className={styles.rightActions}>
 						{rightActions}
-						<button
-							type="button"
+						<Button
+							htmlType="button"
 							className={cx(
 								styles.compactSendButton,
 								loading && styles.sendButtonSending,
@@ -851,15 +890,22 @@ export function ComposerBase({
 							onClick={canStop ? onStop : onSend}
 							disabled={compactSendDisabled}
 							title={sendButtonTitle}
-						>
-							{canStop ? (
-								<Square style={{ width: 12, height: 12 }} fill="currentColor" />
-							) : loading ? (
-								<Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />
-							) : (
-								<Send style={{ width: compact ? 14 : 15, height: compact ? 14 : 15 }} />
-							)}
-						</button>
+							icon={
+								canStop ? (
+									<Square style={{ width: 12, height: 12 }} fill="currentColor" />
+								) : loading ? (
+									<Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />
+								) : (
+									<Send
+										style={{
+											width: compact ? 14 : 15,
+											height: compact ? 14 : 15,
+											transform: "translateX(-0.4px) translateY(0.35px)",
+										}}
+									/>
+								)
+							}
+						/>
 					</div>
 				</div>
 			</div>

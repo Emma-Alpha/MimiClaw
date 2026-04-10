@@ -614,7 +614,7 @@ export function JizhiChat() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[22px] bg-[#EDF4FF] text-[#2667D8] dark:bg-white/10 dark:text-white">
             <MessageSquare className="h-7 w-7" />
           </div>
-          <div className="text-lg font-semibold">选择一个极智会话</div>
+          <div className="text-sm font-semibold">选择一个极智会话</div>
           <p className="mt-2 text-sm leading-6 text-foreground/55">
             左侧 Session list 里的 `极智` 会话会在这里直接渲染。
           </p>
@@ -633,7 +633,7 @@ export function JizhiChat() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="truncate text-base font-semibold tracking-[0.01em]">{currentSession.name}</h1>
+                <h1 className="truncate text-sm font-semibold tracking-[0.01em]">{currentSession.name}</h1>
                 <span className="rounded-full bg-[#E8F2FF] px-2.5 py-1 text-[11px] font-medium text-[#2667D8] dark:bg-white/10 dark:text-white">
                   极智
                 </span>

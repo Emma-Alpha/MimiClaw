@@ -12,14 +12,16 @@ import { GatewayManager } from '../gateway/manager';
 import { registerIpcHandlers } from './ipc-handlers';
 import {
   createTray,
-  recordTrayCodeActivity,
-  recordTrayCodeRunFinished,
-  recordTrayCodeRunStarted,
-  recordTrayGatewayCompleted,
-  recordTrayGatewayProgress,
-  recordTrayGatewayStarted,
-  updateTrayGatewayState,
 } from './tray';
+import {
+  recordUnifiedCodeActivity,
+  recordUnifiedCodeRunFinished,
+  recordUnifiedCodeRunStarted,
+  recordUnifiedGatewayCompleted,
+  recordUnifiedGatewayProgress,
+  recordUnifiedGatewayStarted,
+  setUnifiedGatewayLifecycleState,
+} from './session-state-center';
 import { createMenu } from './menu';
 
 import { appUpdater, registerUpdateHandlers } from './updater';
@@ -776,7 +778,7 @@ async function initialize(): Promise<void> {
 
   gatewayManager.on('status', (status: { state: string }) => {
     hostEventBus.emit('gateway:status', status);
-    updateTrayGatewayState(status.state);
+    setUnifiedGatewayLifecycleState(status.state);
     if (status.state === 'running') {
       void ensureMimiClawContext().catch((error) => {
         logger.warn('Failed to re-merge MimiClaw context after gateway reconnect:', error);
@@ -796,18 +798,18 @@ async function initialize(): Promise<void> {
     const phase = parsed.phase || '';
     const state = parsed.state || '';
     if (phase === 'started') {
-      recordTrayGatewayStarted(parsed);
+      recordUnifiedGatewayStarted(parsed);
       return;
     }
     if (phase === 'completed' || phase === 'done' || phase === 'finished' || phase === 'end') {
-      recordTrayGatewayCompleted(parsed);
+      recordUnifiedGatewayCompleted(parsed);
       return;
     }
     if (state === 'error' || state === 'aborted') {
-      recordTrayGatewayCompleted(parsed);
+      recordUnifiedGatewayCompleted(parsed);
       return;
     }
-    recordTrayGatewayProgress(parsed);
+    recordUnifiedGatewayProgress(parsed);
   });
 
   gatewayManager.on('chat:message', (data) => {
@@ -858,7 +860,7 @@ async function initialize(): Promise<void> {
   });
 
   codeAgentManager.on('run:started', (payload) => {
-    recordTrayCodeRunStarted(payload);
+    recordUnifiedCodeRunStarted(payload);
     hostEventBus.emit('code-agent:run-started', payload);
     const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
     for (const win of wins) {
@@ -869,7 +871,7 @@ async function initialize(): Promise<void> {
   });
 
   codeAgentManager.on('run:completed', (payload) => {
-    recordTrayCodeRunFinished();
+    recordUnifiedCodeRunFinished();
     hostEventBus.emit('code-agent:run-completed', payload);
     const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
     for (const win of wins) {
@@ -880,7 +882,7 @@ async function initialize(): Promise<void> {
   });
 
   codeAgentManager.on('run:failed', (payload) => {
-    recordTrayCodeRunFinished();
+    recordUnifiedCodeRunFinished();
     hostEventBus.emit('code-agent:run-failed', payload);
     const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
     for (const win of wins) {
@@ -900,7 +902,7 @@ async function initialize(): Promise<void> {
   });
 
   codeAgentManager.on('run:activity', (payload) => {
-    recordTrayCodeActivity(payload as { toolName?: string; inputSummary?: string });
+    recordUnifiedCodeActivity(payload as { toolName?: string; inputSummary?: string });
     const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
     for (const win of wins) {
       if (win && !win.isDestroyed()) {

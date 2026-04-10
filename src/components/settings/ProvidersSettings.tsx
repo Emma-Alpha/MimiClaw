@@ -203,7 +203,7 @@ export function ProvidersSettings() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-serif text-foreground font-normal tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
+        <h2 className="text-sm font-serif text-foreground font-normal tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
           {t('aiProviders.title', 'AI Providers')}
         </h2>
         <Button onClick={() => setShowAddDialog(true)} className="rounded-full px-5 h-9 shadow-none font-medium text-[13px]">
@@ -219,7 +219,7 @@ export function ProvidersSettings() {
       ) : displayProviders.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-black/5 dark:bg-white/5 rounded-3xl border border-transparent border-dashed">
           <Key className="h-12 w-12 mb-4 opacity-50" />
-          <h3 className="text-[15px] font-medium mb-1 text-foreground">{t('aiProviders.empty.title')}</h3>
+          <h3 className="text-[14px] font-medium mb-1 text-foreground">{t('aiProviders.empty.title')}</h3>
           <p className="text-[13px] text-center mb-6 max-w-sm">
             {t('aiProviders.empty.desc')}
           </p>
@@ -470,12 +470,12 @@ function ProviderCard({
             {getProviderIconUrl(account.vendorId) ? (
               <img src={getProviderIconUrl(account.vendorId)} alt={typeInfo?.name || account.vendorId} className={cn('h-5 w-5', shouldInvertInDark(account.vendorId) && 'dark:invert')} />
             ) : (
-              <span className="text-xl">{vendor?.icon || typeInfo?.icon || '⚙️'}</span>
+              <span className="text-sm">{vendor?.icon || typeInfo?.icon || '⚙️'}</span>
             )}
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-[15px]">{account.label}</span>
+              <span className="font-semibold text-[14px]">{account.label}</span>
               {isDefault && (
                 <span className="flex items-center gap-1 font-mono text-[10px] font-medium px-2 py-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.08] border-0 shadow-none text-foreground/70">
                   <Check className="h-3 w-3" />
@@ -1139,8 +1139,8 @@ function AddProviderDialog({
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl border-0 shadow-2xl bg-[#f3f1e9] dark:bg-card overflow-hidden">
         <CardHeader className="relative pb-2 shrink-0">
-          <CardTitle className="text-2xl font-serif font-normal">{t('aiProviders.dialog.title')}</CardTitle>
-          <CardDescription className="text-[15px] mt-1 text-foreground/70">
+          <CardTitle className="text-sm font-serif font-normal">{t('aiProviders.dialog.title')}</CardTitle>
+          <CardDescription className="text-[14px] mt-1 text-foreground/70">
             {t('aiProviders.dialog.desc')}
           </CardDescription>
           <Button
@@ -1171,7 +1171,7 @@ function AddProviderDialog({
                     {getProviderIconUrl(type.id) ? (
                       <img src={getProviderIconUrl(type.id)} alt={type.name} className={cn('h-6 w-6', shouldInvertInDark(type.id) && 'dark:invert')} />
                     ) : (
-                      <span className="text-2xl">{type.icon}</span>
+                      <span className="text-sm">{type.icon}</span>
                     )}
                   </div>
                   <p className="font-medium text-[13px]">{type.id === 'custom' ? t('aiProviders.custom') : type.name}</p>
@@ -1185,11 +1185,11 @@ function AddProviderDialog({
                   {getProviderIconUrl(selectedType!) ? (
                     <img src={getProviderIconUrl(selectedType!)} alt={typeInfo?.name} className={cn('h-6 w-6', shouldInvertInDark(selectedType!) && 'dark:invert')} />
                   ) : (
-                    <span className="text-xl">{typeInfo?.icon}</span>
+                    <span className="text-sm">{typeInfo?.icon}</span>
                   )}
                 </div>
                 <div>
-                  <p className="font-semibold text-[15px]">{typeInfo?.id === 'custom' ? t('aiProviders.custom') : typeInfo?.name}</p>
+                  <p className="font-semibold text-[14px]">{typeInfo?.id === 'custom' ? t('aiProviders.custom') : typeInfo?.name}</p>
                   <button
                     onClick={() => {
                       setSelectedType(null);
@@ -1439,7 +1439,7 @@ function AddProviderDialog({
                           {oauthError ? (
                             <div className="text-red-500 space-y-3">
                               <XCircle className="h-10 w-10 mx-auto" />
-                              <p className="font-semibold text-[15px]">{t('aiProviders.oauth.authFailed')}</p>
+                              <p className="font-semibold text-[14px]">{t('aiProviders.oauth.authFailed')}</p>
                               <p className="text-[13px] opacity-80">{oauthError}</p>
                               <Button variant="outline" size="sm" onClick={handleCancelOAuth} className="mt-2 rounded-full px-6 h-9">
                                 Try Again
@@ -1453,7 +1453,7 @@ function AddProviderDialog({
                           ) : oauthData.mode === 'manual' ? (
                             <div className="space-y-4 w-full">
                               <div className="space-y-2">
-                                <h3 className="font-semibold text-[16px] text-foreground">Complete OpenAI Login</h3>
+                                <h3 className="font-semibold text-[14px] text-foreground">Complete OpenAI Login</h3>
                                 <p className="text-[13px] text-muted-foreground text-left bg-black/5 dark:bg-white/5 p-4 rounded-xl">
                                   {oauthData.message || 'Open the authorization page, complete login, then paste the callback URL or code below.'}
                                 </p>
@@ -1490,7 +1490,7 @@ function AddProviderDialog({
                           ) : (
                             <div className="space-y-5 w-full">
                               <div className="space-y-2">
-                                <h3 className="font-semibold text-[16px] text-foreground">{t('aiProviders.oauth.approveLogin')}</h3>
+                                <h3 className="font-semibold text-[14px] text-foreground">{t('aiProviders.oauth.approveLogin')}</h3>
                                 <div className="text-[13px] text-muted-foreground text-left mt-2 space-y-1.5 bg-black/5 dark:bg-white/5 p-4 rounded-xl">
                                   <p>1. {t('aiProviders.oauth.step1')}</p>
                                   <p>2. {t('aiProviders.oauth.step2')}</p>
@@ -1499,7 +1499,7 @@ function AddProviderDialog({
                               </div>
 
                               <div className="flex items-center justify-center gap-3 p-4 bg-[#eeece3] dark:bg-muted border border-black/5 dark:border-white/5 rounded-xl shadow-inner">
-                                <code className="text-3xl font-mono tracking-[0.2em] font-bold text-foreground">
+                                <code className="text-sm font-mono tracking-[0.2em] font-bold text-foreground">
                                   {oauthData.userCode}
                                 </code>
                                 <Button

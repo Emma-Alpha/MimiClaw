@@ -283,7 +283,7 @@ export function XiaojiuChat() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[22px] bg-[#EDF4FF] text-[#2667D8] dark:bg-white/10 dark:text-white">
             <MessageSquare className="h-7 w-7" />
           </div>
-          <div className="text-lg font-semibold">选择一个小九会话</div>
+          <div className="text-sm font-semibold">选择一个小九会话</div>
           <p className="mt-2 text-sm leading-6 text-foreground/55">
             左侧 Session list 里的 `小九` 会话会在这里直接渲染消息，不再打开远程 webview。
           </p>
@@ -309,7 +309,7 @@ export function XiaojiuChat() {
           )}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h1 className="truncate text-base font-semibold">{currentSession.name}</h1>
+              <h1 className="truncate text-sm font-semibold">{currentSession.name}</h1>
               <span className="rounded-full bg-[#E8F2FF] px-2 py-0.5 text-[11px] font-medium text-[#2667D8] dark:bg-white/10 dark:text-white">
                 小九
               </span>

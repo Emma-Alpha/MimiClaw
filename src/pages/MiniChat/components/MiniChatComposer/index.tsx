@@ -17,15 +17,18 @@ import {
 	FolderOpen,
 	Paperclip,
 	Mic,
-	ArrowUp,
+	Send,
 	Square,
 	X,
 	File,
 	Folder,
 	Sparkles,
+	ChevronDown,
 } from "lucide-react";
-import { Dropdown } from "antd";
+import { Button, type MenuProps } from "antd";
 import { ComposerAttachmentPreview, ImageLightbox } from "@/components/common/composer";
+import { StyledDropdown } from "@/components/common/StyledDropdown";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
 	type UnifiedComposerInputValue,
 	UnifiedComposerInput,
@@ -52,7 +55,8 @@ export function MiniChatComposer({
 	loading,
 	disabled,
 	sendDisabled,
-	isClaudeCodeCliMode: _isClaudeCodeCliMode,
+	isClaudeCodeCliMode,
+	isMiniChatMode,
 	placeholder,
 	attachments,
 	droppedPaths,
@@ -77,17 +81,20 @@ export function MiniChatComposer({
 	onActiveSlashIndexChange,
 	onApplySlashOption,
 	composerInputRef,
-	onSkillChange,
+	onSkillsChange,
 	onRichContentChange,
 	onCaretChange,
 	onKeyDown,
 	onPressEnter,
+	modelOptions,
+	modelValue,
 	modelLabel,
+	onSelectModel,
 	onCycleModel,
-	effortEnabled: _effortEnabled,
+	effortEnabled,
 	thinkingEnabled: _thinkingEnabled,
 	fastModeEnabled: _fastModeEnabled,
-	onToggleEffort: _onToggleEffort,
+	onToggleEffort,
 	onToggleThinking: _onToggleThinking,
 	onToggleFastMode: _onToggleFastMode,
 	onOpenAccountUsage: _onOpenAccountUsage,
@@ -169,7 +176,7 @@ export function MiniChatComposer({
 		onDropPathsRef.current = onDropPaths;
 	}, [onDropPaths]);
 
-	const prevSkillRef = useRef<string | null | undefined>(undefined);
+	const prevSkillsRef = useRef<string[]>([]);
 	const onRichContentChangeRef = useRef(onRichContentChange);
 	useEffect(() => {
 		onRichContentChangeRef.current = onRichContentChange;
@@ -199,13 +206,17 @@ export function MiniChatComposer({
 				onPathsChangeRef.current(next.paths);
 			}
 
-			const nextSkill = next.skill ?? null;
-			if (prevSkillRef.current !== nextSkill) {
-				prevSkillRef.current = nextSkill;
-				onSkillChange(nextSkill);
+			const nextSkills = next.skills ?? [];
+			const prev = prevSkillsRef.current;
+			const sameSkills =
+				nextSkills.length === prev.length
+				&& nextSkills.every((cmd, i) => cmd === prev[i]);
+			if (!sameSkills) {
+				prevSkillsRef.current = nextSkills;
+				onSkillsChange(nextSkills);
 			}
 		},
-		[droppedPaths, input, onInputChange, onSkillChange],
+		[droppedPaths, input, onInputChange, onSkillsChange],
 	);
 
 	const handlePaste = useCallback(
@@ -357,8 +368,240 @@ export function MiniChatComposer({
 	const hasInput =
 		input.trim().length > 0 || attachments.length > 0 || droppedPaths.length > 0;
 	const sendingDisabledByRecording = isRecording || isTranscribing;
+	const useCodexExpandedLayout = isClaudeCodeCliMode && !isMiniChatMode;
+	const showBottomControls = isMultiline || useCodexExpandedLayout;
+	const effortLabel = effortEnabled ? "超高" : "标准";
+	const modelShortcut = "⌘M";
+	const useFullComposerControls = !isMiniChatMode;
+	const showCodexExpandedControls = useCodexExpandedLayout;
+	const showStandaloneScreenshot =
+		isClaudeCodeCliMode
+		&& useFullComposerControls
+		&& (!showBottomControls || showCodexExpandedControls);
+	const screenshotShortcutLabel = useMemo(
+		() => (/(Mac|iPhone|iPad|iPod)/i.test(window.navigator.platform) ? "⌘⇧S" : "Ctrl+Shift+S"),
+		[],
+	);
+	const defaultModelMenuKey = "__default_model";
+	const standardEffortMenuKey = "effort_standard";
+	const highEffortMenuKey = "effort_high";
+	const topRowAlign = useCodexExpandedLayout
+		? "flex-start"
+		: isMultiline
+			? "flex-start"
+			: "center";
+
+	const attachmentMenuItems = [
+		{
+			key: "file",
+			label: "上传文件",
+			icon: <Paperclip className="h-3.5 w-3.5" />,
+			onClick: onUploadFile,
+			disabled,
+		},
+		{
+			key: "folder",
+			label: "上传文件夹",
+			icon: <FolderOpen className="h-3.5 w-3.5" />,
+			onClick: onUploadFolder,
+			disabled,
+		},
+	];
+	if (!showStandaloneScreenshot) {
+		attachmentMenuItems.push({
+			key: "screenshot",
+			label: (
+				<span className={styles.attachmentMenuLabel}>
+					<span>截图</span>
+					<span className={styles.attachmentMenuShortcut}>{screenshotShortcutLabel}</span>
+				</span>
+			),
+			icon: <Camera className="h-3.5 w-3.5" />,
+			onClick: onScreenshot,
+			disabled,
+		});
+	}
+
+	const modelMenuItems = useMemo<NonNullable<MenuProps["items"]>>(
+		() =>
+			modelOptions.map((option) => ({
+				key: option.key || defaultModelMenuKey,
+				label: option.label,
+			})),
+		[defaultModelMenuKey, modelOptions],
+	);
+
+	const modelDropdownMenu = useMemo<MenuProps>(
+		() => ({
+			items: [
+				{
+					type: "group",
+					label: "选择模型",
+					children: modelMenuItems,
+				},
+			],
+			selectable: true,
+			selectedKeys: [modelValue || defaultModelMenuKey],
+			onClick: ({ key }) => {
+				onSelectModel(key === defaultModelMenuKey ? "" : String(key));
+			},
+		}),
+		[defaultModelMenuKey, modelMenuItems, modelValue, onSelectModel],
+	);
+
+	const effortDropdownMenu = useMemo<MenuProps>(
+		() => ({
+			items: [
+				{
+					type: "group",
+					label: "思考模式",
+					children: [
+						{ key: standardEffortMenuKey, label: "标准" },
+						{ key: highEffortMenuKey, label: "超高" },
+					],
+				},
+			],
+			selectable: true,
+			selectedKeys: [effortEnabled ? highEffortMenuKey : standardEffortMenuKey],
+			onClick: ({ key }) => {
+				const nextEffortEnabled = key === highEffortMenuKey;
+				if (nextEffortEnabled === effortEnabled) return;
+				onToggleEffort();
+			},
+		}),
+		[effortEnabled, highEffortMenuKey, onToggleEffort, standardEffortMenuKey],
+	);
+
+	const renderModelControl = () => (
+		<StyledDropdown
+			menu={modelDropdownMenu}
+			placement="topLeft"
+			trigger={["click"]}
+		>
+			<button
+				type="button"
+				className={styles.codexControlChip}
+				title={`切换模型 (${modelShortcut})`}
+			>
+				<span>{modelLabel}</span>
+				<ChevronDown size={12} />
+			</button>
+		</StyledDropdown>
+	);
+
+	const renderEffortControl = () => (
+		<StyledDropdown
+			menu={effortDropdownMenu}
+			placement="topLeft"
+			trigger={["click"]}
+		>
+			<button
+				type="button"
+				className={styles.codexControlChip}
+			>
+				<span>{effortLabel}</span>
+				<ChevronDown size={12} />
+			</button>
+		</StyledDropdown>
+	);
+
+	const renderPlusButton = () => (
+		<StyledDropdown
+			menu={{ items: attachmentMenuItems }}
+			placement="top"
+			trigger={["click"]}
+			disabled={disabled}
+			variant="default"
+		>
+			<button
+				type="button"
+				className={cx(
+					styles.plusButton,
+					useCodexExpandedLayout && styles.plusButtonCodex,
+				)}
+				disabled={disabled}
+				title="添加附件"
+			>
+				<Plus style={{ width: 15, height: 15 }} />
+			</button>
+		</StyledDropdown>
+	);
+
+	const renderScreenshotButton = () => (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<span className={styles.screenshotTooltipTrigger}>
+					<button
+						type="button"
+						className={styles.codexControlIconButton}
+						onClick={onScreenshot}
+						disabled={disabled}
+						title="截图"
+					>
+						<Camera size={13} />
+					</button>
+				</span>
+			</TooltipTrigger>
+			<TooltipContent
+				side="top"
+				sideOffset={8}
+				className={styles.screenshotTooltipContent}
+			>
+				<span className={styles.screenshotTooltipRow}>
+					<span>截屏</span>
+					<span className={styles.screenshotTooltipKey}>{screenshotShortcutLabel}</span>
+				</span>
+			</TooltipContent>
+		</Tooltip>
+	);
 
 	const renderActions = () => {
+		if (isClaudeCodeCliMode) {
+			const micAction = useFullComposerControls ? (
+				<button
+					type="button"
+					className={cx(styles.micIconBtn, isRecording && styles.micButtonRecording)}
+					onClick={() => {
+						void handleToggleRecording();
+					}}
+					disabled={isTranscribing}
+					title={isRecording ? "停止录音" : "语音输入"}
+				>
+					<Mic style={{ width: 14, height: 14 }} />
+				</button>
+			) : null;
+
+			if (loading) {
+				return (
+					<>
+						{micAction}
+						<button
+							type="button"
+							className={cx(styles.sendButton, styles.sendButtonSending)}
+							disabled={false}
+							onClick={onSend}
+							title="停止生成"
+						>
+							<Square style={{ width: 12, height: 12 }} fill="currentColor" />
+						</button>
+					</>
+				);
+			}
+			return (
+				<>
+					{micAction}
+						<Button
+							htmlType="button"
+							className={styles.sendButton}
+							disabled={sendDisabled || sendingDisabledByRecording}
+							onClick={onSend}
+							title={sendingDisabledByRecording ? (isTranscribing ? "正在转写" : "请先停止录音") : "发送"}
+							icon={<Send style={{ width: 15, height: 15, transform: "translateX(-0.4px) translateY(0.35px)" }} />}
+						/>
+					</>
+				);
+			}
+
 		if (loading) {
 			return (
 				<>
@@ -371,15 +614,14 @@ export function MiniChatComposer({
 					>
 						<Mic style={{ width: 14, height: 14 }} />
 					</button>
-					<button
-						type="button"
+					<Button
+						htmlType="button"
 						className={cx(styles.sendButton, styles.sendButtonSending)}
 						disabled={false}
 						onClick={onSend}
 						title="停止生成"
-					>
-						<Square style={{ width: 12, height: 12 }} fill="currentColor" />
-					</button>
+						icon={<Square style={{ width: 12, height: 12 }} fill="currentColor" />}
+					/>
 				</>
 			);
 		}
@@ -396,15 +638,14 @@ export function MiniChatComposer({
 					>
 						<Mic style={{ width: 14, height: 14 }} />
 					</button>
-					<button
-						type="button"
+					<Button
+						htmlType="button"
 						className={styles.sendButton}
 						disabled={sendDisabled || sendingDisabledByRecording}
 						onClick={onSend}
 						title={sendingDisabledByRecording ? (isTranscribing ? '正在转写' : '请先停止录音') : '发送'}
-					>
-						<ArrowUp style={{ width: 15, height: 15 }} />
-					</button>
+						icon={<Send style={{ width: 15, height: 15, transform: "translateX(-0.4px) translateY(0.35px)" }} />}
+					/>
 				</>
 			);
 		}
@@ -673,74 +914,43 @@ export function MiniChatComposer({
 
 			{/* Input Pill */}
 			<LayoutGroup id="composer-pill">
-				<motion.div 
+				<motion.div
 					layout={isMultiline}
 					transition={isMultiline ? { duration: 0.3, ease: [0.32, 0.72, 0, 1] } : undefined}
 					className={cx(
 						styles.pill,
-						isMultiline && styles.pillMultiline,
+						isMultiline && !useCodexExpandedLayout && styles.pillMultiline,
+						useCodexExpandedLayout && styles.pillCodex,
 						isDragOver && styles.pillDragOver,
 					)}
 				>
-					{/* Top Area: Inline Actions or just Input */}
-					<div 
-						style={{ 
-							display: 'flex', 
-							alignItems: isMultiline ? 'flex-start' : 'center', 
-							width: '100%',
-							gap: 0 
-						}}
+					<div
+						className={cx(
+							styles.pillTopRow,
+							useCodexExpandedLayout && styles.pillTopRowCodex,
+						)}
+						style={{ alignItems: topRowAlign }}
 					>
-						{/* Inline Plus */}
-						{!isMultiline && (
-							<motion.div 
+						{!showBottomControls && (
+							<motion.div
 								layoutId="plus-btn"
 								className={styles.plusWrapper}
-								style={{ marginRight: 4 }}
+								style={{ marginRight: 2 }}
 								transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
 							>
-								<Dropdown
-									menu={{
-										items: [
-											{
-												key: 'file',
-												label: '上传文件',
-												icon: <Paperclip className="h-3.5 w-3.5" />,
-												onClick: onUploadFile,
-												disabled,
-											},
-											{
-												key: 'folder',
-												label: '上传文件夹',
-												icon: <FolderOpen className="h-3.5 w-3.5" />,
-												onClick: onUploadFolder,
-												disabled,
-											},
-											{
-												key: 'screenshot',
-												label: '截图',
-												icon: <Camera className="h-3.5 w-3.5" />,
-												onClick: onScreenshot,
-												disabled,
-											},
-										]
-									}}
-									placement="top"
-									trigger={['click']}
-									disabled={disabled}
-								>
-									<button type="button" className={styles.plusButton} disabled={disabled} title="添加附件">
-										<Plus style={{ width: 15, height: 15 }} />
-									</button>
-								</Dropdown>
+								{renderPlusButton()}
 							</motion.div>
 						)}
+						{!showBottomControls && showStandaloneScreenshot ? renderScreenshotButton() : null}
 
-						{/* Input Area */}
-						<motion.div 
+						<motion.div
 							layout={isMultiline ? "position" : false}
 							transition={isMultiline ? { duration: 0.3, ease: [0.32, 0.72, 0, 1] } : undefined}
-							className={cx(styles.inputArea, isMultiline && styles.inputAreaMultiline)}
+							className={cx(
+								styles.inputArea,
+								isMultiline && styles.inputAreaMultiline,
+								useCodexExpandedLayout && styles.inputAreaCodex,
+							)}
 							style={{ flex: 1, minWidth: 0 }}
 						>
 							<div className={styles.inputTextWrap}>
@@ -750,7 +960,7 @@ export function MiniChatComposer({
 									onChange={handleComposerChange}
 									placeholder={placeholder || (isMultiline ? "输入描述或指令..." : "输入消息...")}
 									disabled={disabled}
-									className={styles.editor}
+									className={cx(styles.editor, useCodexExpandedLayout && styles.editorCodex)}
 									placeholderClassName={styles.editorPlaceholder}
 									pathChipClassName={styles.pathChip}
 									pathChipIconClassName={styles.pathChipIcon}
@@ -766,12 +976,18 @@ export function MiniChatComposer({
 									onPaste={handlePaste}
 									onVisualMultilineChange={updateIsMultiline}
 								/>
-							</div>
-						</motion.div>
+								</div>
+							</motion.div>
 
-						{/* Inline Send */}
-						{!isMultiline && (
-							<motion.div 
+							{!showBottomControls && isClaudeCodeCliMode && useFullComposerControls ? (
+								<div className={styles.codexControlCenterInline}>
+									{renderModelControl()}
+									{renderEffortControl()}
+								</div>
+							) : null}
+
+							{!showBottomControls && (
+								<motion.div
 								layoutId="actions-area"
 								className={styles.actionsWrapper}
 								style={{ marginLeft: 4 }}
@@ -793,68 +1009,37 @@ export function MiniChatComposer({
 						)}
 					</div>
 
-					{/* Bottom Area: Only for Multiline */}
 					<AnimatePresence>
-						{isMultiline && (
-							<motion.div 
-								initial={{ opacity: 0, height: 0, marginTop: 0 }}
-								animate={{ opacity: 1, height: 'auto', marginTop: 8 }}
-								exit={{ opacity: 0, height: 0, marginTop: 0 }}
-								transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-								style={{ 
-									display: 'flex', 
-									alignItems: 'center', 
-									justifyContent: 'space-between', 
-									width: '100%',
-									overflow: 'hidden',
-									padding: '0 4px 2px'
-								}}
+						{showBottomControls && (
+								<motion.div
+									initial={{ opacity: 0, height: 0, marginTop: 0 }}
+									animate={{ opacity: 1, height: "auto", marginTop: 5 }}
+									exit={{ opacity: 0, height: 0, marginTop: 0 }}
+									transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+								className={cx(
+									styles.bottomControlRow,
+									isClaudeCodeCliMode && styles.codexControlRow,
+								)}
 							>
-								<motion.div layoutId="plus-btn" transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}>
-									<Dropdown
-										menu={{
-											items: [
-												{
-													key: 'file',
-													label: '上传文件',
-													icon: <Paperclip className="h-3.5 w-3.5" />,
-													onClick: onUploadFile,
-													disabled,
-												},
-												{
-													key: 'folder',
-													label: '上传文件夹',
-													icon: <FolderOpen className="h-3.5 w-3.5" />,
-													onClick: onUploadFolder,
-													disabled,
-												},
-												{
-													key: 'screenshot',
-													label: '截图',
-													icon: <Camera className="h-3.5 w-3.5" />,
-													onClick: onScreenshot,
-													disabled,
-												},
-											]
-										}}
-										placement="top"
-										trigger={['click']}
-										disabled={disabled}
-									>
-										<button type="button" className={styles.plusButton} disabled={disabled} title="添加附件">
-											<Plus style={{ width: 15, height: 15 }} />
-										</button>
-									</Dropdown>
-								</motion.div>
+									<motion.div layoutId="plus-btn" transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}>
+										{renderPlusButton()}
+									</motion.div>
+									{isClaudeCodeCliMode ? (
+										<div className={styles.codexControlCenter}>
+											{showBottomControls && showStandaloneScreenshot ? renderScreenshotButton() : null}
+											{renderModelControl()}
+											{renderEffortControl()}
+										</div>
+									) : null}
 								<motion.div layoutId="actions-area" transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}>
 									<AnimatePresence mode="wait">
 										<motion.div
-											key={loading ? 'loading' : hasInput ? 'send' : 'mic'}
+											key={loading ? "loading" : hasInput || isClaudeCodeCliMode ? "send" : "mic"}
 											initial={{ opacity: 0 }}
 											animate={{ opacity: 1 }}
 											exit={{ opacity: 0 }}
 											transition={{ duration: 0.15 }}
-											style={{ display: 'flex', gap: 8, alignItems: 'center' }}
+											style={{ display: "flex", gap: 8, alignItems: "center" }}
 										>
 											{renderActions()}
 										</motion.div>
@@ -865,8 +1050,7 @@ export function MiniChatComposer({
 					</AnimatePresence>
 				</motion.div>
 			</LayoutGroup>
-
-			</div>
+		</div>
 
 			{previewImage && (
 				<ImageLightbox

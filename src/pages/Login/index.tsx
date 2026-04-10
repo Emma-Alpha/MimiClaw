@@ -134,14 +134,14 @@ export function Login() {
 
   return (
     <div className="min-h-screen max-h-screen overflow-hidden grid lg:grid-cols-[55%_45%] bg-white text-slate-900">
-      <TitleBar className="absolute top-0 left-0 right-0 z-50 bg-transparent" />
+      <TitleBar className="absolute top-0 left-0 right-0 z-50 bg-transparent" hideSidebarToggle hideManagementMenu />
 
       {/* Left Content Section with Animated Characters */}
       <div className="relative hidden lg:flex flex-col bg-[linear-gradient(180deg,#f7f1e7_0%,#f4efe5_34%,#eef6f1_100%)] p-12 pt-20">
         {/* Logo */}
         <div className="relative z-20 flex items-center gap-3.5">
           <img src={logoPng} alt="极智" className="h-12 w-12 object-contain" />
-          <span className="text-3xl font-bold tracking-tight text-slate-900">极智</span>
+          <span className="text-sm font-bold tracking-tight text-slate-900">极智</span>
         </div>
 
         {/* Characters — centered in remaining space */}
@@ -164,12 +164,12 @@ export function Login() {
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center justify-center gap-3.5 mb-10">
             <img src={logoPng} alt="极智" className="h-12 w-12 object-contain" />
-            <span className="text-3xl font-bold tracking-tight text-slate-900">极智</span>
+            <span className="text-sm font-bold tracking-tight text-slate-900">极智</span>
           </div>
 
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-[28px] font-bold tracking-tight text-slate-900 mb-2">
+            <h1 className="text-[14px] font-bold tracking-tight text-slate-900 mb-2">
               欢迎使用极智
             </h1>
           </div>
@@ -178,7 +178,7 @@ export function Login() {
           <div className="flex gap-6 border-b border-slate-200 mb-8">
             <button
               type="button"
-              className={`pb-3 text-base font-medium transition-colors relative ${
+              className={`pb-3 text-sm font-medium transition-colors relative ${
                 activeTab === 'xiaojiu' ? 'text-[#3478f6]' : 'text-slate-500 hover:text-slate-800'
               }`}
               onClick={() => {
@@ -194,7 +194,7 @@ export function Login() {
             </button>
             <button
               type="button"
-              className={`pb-3 text-base font-medium transition-colors relative ${
+              className={`pb-3 text-sm font-medium transition-colors relative ${
                 activeTab === 'password' ? 'text-[#3478f6]' : 'text-slate-500 hover:text-slate-800'
               }`}
               onClick={() => {
@@ -223,7 +223,7 @@ export function Login() {
                 >
                   <Button
                     type="button"
-                    className="w-full h-12 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-[16px] font-medium rounded-lg shadow-sm transition-all flex items-center justify-center gap-2"
+                    className="w-full h-12 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-[14px] font-medium rounded-lg shadow-sm transition-all flex items-center justify-center gap-2"
                     onClick={handleXiaojiuLogin}
                     disabled={busy}
                   >
@@ -273,7 +273,7 @@ export function Login() {
                         onFocus={() => setActiveField('username')}
                         onBlur={() => setActiveField(null)}
                         disabled={busy}
-                        className="h-12 rounded-lg border-slate-300 text-[15px] px-4 focus-visible:ring-[#3478f6] focus-visible:border-[#3478f6]"
+                        className="h-12 rounded-lg border-slate-300 text-[14px] px-4 focus-visible:ring-[#3478f6] focus-visible:border-[#3478f6]"
                       />
 
                       <div className="relative">
@@ -290,7 +290,7 @@ export function Login() {
                           onFocus={() => setActiveField('password')}
                           onBlur={() => setActiveField(null)}
                           disabled={busy}
-                          className="h-12 rounded-lg border-slate-300 text-[15px] px-4 pr-12 focus-visible:ring-[#3478f6] focus-visible:border-[#3478f6]"
+                          className="h-12 rounded-lg border-slate-300 text-[14px] px-4 pr-12 focus-visible:ring-[#3478f6] focus-visible:border-[#3478f6]"
                         />
                         <button
                           type="button"
@@ -313,7 +313,7 @@ export function Login() {
 
                     <Button
                       type="submit"
-                      className="w-full h-12 bg-[#3478f6] hover:bg-[#2b66d3] text-white text-[16px] font-medium rounded-lg shadow-sm transition-all"
+                      className="w-full h-12 bg-[#3478f6] hover:bg-[#2b66d3] text-white text-[14px] font-medium rounded-lg shadow-sm transition-all"
                       disabled={busy || !username.trim() || !password.trim()}
                     >
                       {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}

@@ -4,11 +4,9 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import {
-  Search,
   Puzzle,
   Lock,
   Package,
-  X,
   AlertCircle,
   Plus,
   Key,
@@ -27,6 +25,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useSkillsStore } from '@/stores/skills';
 import { useGatewayStore } from '@/stores/gateway';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { SearchInput } from '@/components/common/SearchInput';
 import { cn } from '@/lib/utils';
 import { invokeIpc } from '@/lib/api-client';
 import { hostApiFetch } from '@/lib/host-api';
@@ -193,14 +192,14 @@ function SkillDetailDialog({ skill, isOpen, onClose, onToggle, onUninstall, onOp
         <div className="flex-1 overflow-y-auto px-8 py-10">
           <div className="flex flex-col items-center mb-8">
             <div className="w-16 h-16 flex items-center justify-center rounded-full bg-white dark:bg-accent border border-black/5 dark:border-white/5 shrink-0 mb-4 relative shadow-sm">
-              <span className="text-3xl">{skill.icon || '🔧'}</span>
+              <span className="text-sm">{skill.icon || '🔧'}</span>
               {skill.isCore && (
                 <div className="absolute -bottom-1 -right-1 bg-[#f3f1e9] dark:bg-card rounded-full p-1 shadow-sm border border-black/5 dark:border-white/5">
                   <Lock className="h-3 w-3 text-muted-foreground shrink-0" />
                 </div>
               )}
             </div>
-            <h2 className="text-[28px] font-serif text-foreground font-normal mb-3 text-center tracking-tight">
+            <h2 className="text-[14px] font-serif text-foreground font-normal mb-3 text-center tracking-tight">
               {skill.name}
             </h2>
             <div className="flex items-center justify-center gap-2.5 mb-6 opacity-80">
@@ -617,10 +616,10 @@ export function Skills() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-start justify-between mb-6 shrink-0 gap-4">
           <div>
-            <h1 className="text-5xl md:text-6xl font-serif text-foreground mb-3 font-normal tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
+            <h1 className="text-sm md:text-sm font-serif text-foreground mb-3 font-normal tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
               {t('title')}
             </h1>
-            <p className="text-[17px] text-foreground/70 font-medium">
+            <p className="text-[14px] text-foreground/70 font-medium">
               {t('subtitle')}
             </p>
           </div>
@@ -651,24 +650,17 @@ export function Skills() {
         {/* Sub Navigation and Actions */}
         <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-black/10 dark:border-white/10 pb-4 mb-4 shrink-0 gap-4">
           <div className="flex items-center flex-wrap gap-4 text-[14px]">
-            <div className="relative group flex items-center bg-black/5 dark:bg-white/5 rounded-full px-3 py-1.5 focus-within:bg-black/10 transition-colors border border-transparent focus-within:border-black/10 dark:focus-within:border-white/10 mr-2">
-              <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <input
-                placeholder={t('search')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="ml-2 bg-transparent outline-none w-28 md:w-40 font-normal placeholder:text-foreground/50 text-[13px] text-foreground"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="text-foreground/50 hover:text-foreground shrink-0 ml-1"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
+            <SearchInput
+              placeholder={t('search')}
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+              clearable
+              className="group mr-2 items-center rounded-full border border-transparent bg-black/5 px-3 py-1.5 transition-colors focus-within:border-black/10 focus-within:bg-black/10 dark:bg-white/5 dark:focus-within:border-white/10"
+              inputClassName="w-28 bg-transparent text-[13px] font-normal text-foreground placeholder:text-foreground/50 md:w-40"
+              iconClassName="h-4 w-4 shrink-0 text-muted-foreground"
+              clearButtonClassName="ml-1 shrink-0 text-foreground/50 hover:text-foreground"
+              clearIconClassName="h-3.5 w-3.5"
+            />
 
             <div className="flex items-center gap-6">
               <button
@@ -760,12 +752,12 @@ export function Skills() {
                   onClick={() => setSelectedSkill(skill)}
                 >
                   <div className="flex items-start gap-4 flex-1 overflow-hidden pr-4">
-                    <div className="h-10 w-10 shrink-0 flex items-center justify-center text-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-xl overflow-hidden">
+                    <div className="h-10 w-10 shrink-0 flex items-center justify-center text-sm bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-xl overflow-hidden">
                       {skill.icon || '🧩'}
                     </div>
                     <div className="flex flex-col overflow-hidden">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-[15px] font-semibold text-foreground truncate">{skill.name}</h3>
+                        <h3 className="text-[14px] font-semibold text-foreground truncate">{skill.name}</h3>
                         {skill.isCore ? (
                           <Lock className="h-3 w-3 text-muted-foreground" />
                         ) : skill.isBundled ? (
@@ -815,27 +807,20 @@ export function Skills() {
           side="right"
         >
           <div className="px-7 py-6 border-b border-black/10 dark:border-white/10">
-            <h2 className="text-[24px] font-serif text-foreground font-normal tracking-tight">{t('marketplace.installDialogTitle')}</h2>
+            <h2 className="text-[14px] font-serif text-foreground font-normal tracking-tight">{t('marketplace.installDialogTitle')}</h2>
             <p className="mt-1 text-[13px] text-foreground/70">{t('marketplace.installDialogSubtitle')}</p>
             <div className="mt-4 flex flex-col md:flex-row gap-2">
-              <div className="relative flex items-center bg-black/5 dark:bg-white/5 rounded-xl px-3 py-2 border border-black/10 dark:border-white/10 flex-1">
-                <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <Input
-                  placeholder={t('searchMarketplace')}
-                  value={installQuery}
-                  onChange={(e) => setInstallQuery(e.target.value)}
-                  className="ml-2 h-auto border-0 bg-transparent p-0 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-[13px]"
-                />
-                {installQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setInstallQuery('')}
-                    className="text-foreground/50 hover:text-foreground shrink-0 ml-1"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
+              <SearchInput
+                placeholder={t('searchMarketplace')}
+                value={installQuery}
+                onValueChange={setInstallQuery}
+                clearable
+                className="flex-1 items-center rounded-xl border border-black/10 bg-black/5 px-3 py-2 dark:border-white/10 dark:bg-white/5"
+                inputClassName="h-auto bg-transparent p-0 text-[13px] shadow-none placeholder:text-muted-foreground"
+                iconClassName="h-4 w-4 shrink-0 text-muted-foreground"
+                clearButtonClassName="ml-1 shrink-0 text-foreground/50 hover:text-foreground"
+                clearIconClassName="h-3.5 w-3.5"
+              />
               <Button
                 variant="outline"
                 disabled
@@ -878,12 +863,12 @@ export function Skills() {
                       onClick={() => invokeIpc('shell:openExternal', `https://clawhub.ai/s/${skill.slug}`)}
                     >
                       <div className="flex items-start gap-4 flex-1 overflow-hidden pr-4">
-                        <div className="h-10 w-10 shrink-0 flex items-center justify-center text-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-xl overflow-hidden">
+                        <div className="h-10 w-10 shrink-0 flex items-center justify-center text-sm bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-xl overflow-hidden">
                           📦
                         </div>
                         <div className="flex flex-col overflow-hidden">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-[15px] font-semibold text-foreground truncate">{skill.name}</h3>
+                            <h3 className="text-[14px] font-semibold text-foreground truncate">{skill.name}</h3>
                             {skill.author && (
                               <span className="text-xs text-muted-foreground">• {skill.author}</span>
                             )}

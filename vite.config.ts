@@ -58,8 +58,6 @@ export default defineConfig({
     watch: {
       ignored: [
         '**/.claude/**',
-        '**/Users/**',
-        '**/home/**',
       ],
     },
   },

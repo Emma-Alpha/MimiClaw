@@ -237,8 +237,8 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
       <Card className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-3xl border-0 shadow-2xl bg-[#f3f1e9] dark:bg-card overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <CardHeader className="flex flex-row items-start justify-between pb-2 shrink-0">
           <div>
-            <CardTitle className="text-2xl font-serif font-normal">{job ? t('dialog.editTitle') : t('dialog.createTitle')}</CardTitle>
-            <CardDescription className="text-[15px] mt-1 text-foreground/70">{t('dialog.description')}</CardDescription>
+            <CardTitle className="text-sm font-serif font-normal">{job ? t('dialog.editTitle') : t('dialog.createTitle')}</CardTitle>
+            <CardDescription className="text-[14px] mt-1 text-foreground/70">{t('dialog.description')}</CardDescription>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-8 w-8 -mr-2 -mt-2 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5">
             <X className="h-4 w-4" />
@@ -398,7 +398,7 @@ function CronJobCard({ job, onToggle, onEdit, onDelete, onTrigger }: CronJobCard
           </div>
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-[16px] font-semibold text-foreground truncate">{job.name}</h3>
+              <h3 className="text-[14px] font-semibold text-foreground truncate">{job.name}</h3>
               <div
                 className={cn(
                   "w-2 h-2 rounded-full shrink-0",
@@ -554,10 +554,10 @@ export function Cron() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-start justify-between mb-12 shrink-0 gap-4">
           <div>
-            <h1 className="text-5xl md:text-6xl font-serif text-foreground mb-3 font-normal tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
+            <h1 className="text-sm md:text-sm font-serif text-foreground mb-3 font-normal tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
               {t('title')}
             </h1>
-            <p className="text-[17px] text-foreground/70 font-medium">
+            <p className="text-[14px] text-foreground/70 font-medium">
               {t('subtitle')}
             </p>
           </div>
@@ -616,7 +616,7 @@ export function Cron() {
                 </div>
               </div>
               <div className="mt-4 flex items-baseline gap-3">
-                <p className="text-[40px] leading-none font-serif text-foreground">{safeJobs.length}</p>
+                <p className="text-[14px] leading-none font-serif text-foreground">{safeJobs.length}</p>
                 <p className="text-[14px] font-medium text-muted-foreground">{t('stats.total')}</p>
               </div>
             </div>
@@ -628,7 +628,7 @@ export function Cron() {
                 </div>
               </div>
               <div className="mt-4 flex items-baseline gap-3">
-                <p className="text-[40px] leading-none font-serif text-foreground">{activeJobs.length}</p>
+                <p className="text-[14px] leading-none font-serif text-foreground">{activeJobs.length}</p>
                 <p className="text-[14px] font-medium text-muted-foreground">{t('stats.active')}</p>
               </div>
             </div>
@@ -640,7 +640,7 @@ export function Cron() {
                 </div>
               </div>
               <div className="mt-4 flex items-baseline gap-3">
-                <p className="text-[40px] leading-none font-serif text-foreground">{pausedJobs.length}</p>
+                <p className="text-[14px] leading-none font-serif text-foreground">{pausedJobs.length}</p>
                 <p className="text-[14px] font-medium text-muted-foreground">{t('stats.paused')}</p>
               </div>
             </div>
@@ -652,7 +652,7 @@ export function Cron() {
                 </div>
               </div>
               <div className="mt-4 flex items-baseline gap-3">
-                <p className="text-[40px] leading-none font-serif text-foreground">{failedJobs.length}</p>
+                <p className="text-[14px] leading-none font-serif text-foreground">{failedJobs.length}</p>
                 <p className="text-[14px] font-medium text-muted-foreground">{t('stats.failed')}</p>
               </div>
             </div>
@@ -662,7 +662,7 @@ export function Cron() {
           {safeJobs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-black/5 dark:bg-white/5 rounded-3xl border border-transparent border-dashed">
               <Clock className="h-10 w-10 mb-4 opacity-50" />
-              <h3 className="text-lg font-medium mb-2 text-foreground">{t('empty.title')}</h3>
+              <h3 className="text-sm font-medium mb-2 text-foreground">{t('empty.title')}</h3>
               <p className="text-[14px] text-center mb-6 max-w-md">
                 {t('empty.description')}
               </p>

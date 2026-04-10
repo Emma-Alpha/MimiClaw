@@ -9,12 +9,12 @@ import {
 	Clock,
 	Wrench,
 	Cpu,
-	Search,
 	Check,
 	ChevronDown,
 	Shield,
 	ShieldAlert,
 } from "lucide-react";
+import { useSettingsStore } from "@/stores/settings";
 import type {
 	CodeAgentStatus,
 	CodeAgentPermissionMode,
@@ -23,6 +23,7 @@ import type {
 	SessionInitInfo,
 	CodeAgentContextWindowUsage,
 } from "@/stores/code-agent";
+import { SearchInput } from "@/components/common/SearchInput";
 import type { MiniChatTarget } from "../types";
 import { useMiniChatStyles } from "../styles";
 import { getCodeAgentStateLabel } from "../utils";
@@ -206,7 +207,8 @@ function MiniChatHeaderImpl({
 	showWindowActions = true,
 	canExitCodeMode = true,
 }: MiniChatHeaderProps) {
-	const { styles, cx } = useMiniChatStyles();
+	const sidebarCollapsed = useSettingsStore((state) => state.sidebarCollapsed);
+	const { styles, cx } = useMiniChatStyles({ isCollapsed: sidebarCollapsed });
 	const [dropdownOpen, setDropdownOpen] = useState(false);
 	const [permissionDropdownOpen, setPermissionDropdownOpen] = useState(false);
 	const [sessionQuery, setSessionQuery] = useState("");
@@ -332,8 +334,259 @@ function MiniChatHeaderImpl({
 		return () => document.removeEventListener("mousedown", handler);
 	}, [dropdownOpen]);
 
+	const useCodexHeader = embedded && !showWindowActions;
+	const embeddedHeaderTitle = (
+		(isCodeMode ? selectedCodeSessionTitle : activeChatSession?.title) || "新线程"
+	).trim();
+	const embeddedStatusLabel = isGenerating
+		? runningThreadLabel || "运行中"
+		: isConnecting
+			? "连接中…"
+			: isError
+				? "连接断开"
+				: "就绪";
+	const EmbeddedStatusIcon = isGenerating
+		? Clock
+		: isConnecting
+			? Cpu
+			: isError
+				? ShieldAlert
+				: Wrench;
+	const sessionDropdown = (
+		<div
+			ref={dropdownRef}
+			className={cx(styles.islandDropdown, useCodexHeader && styles.islandDropdownEmbedded)}
+		>
+			<SearchInput
+				value={sessionQuery}
+				onValueChange={setSessionQuery}
+				placeholder="搜索最近任务"
+				aria-label="搜索最近任务"
+				iconSize={18}
+				className={styles.islandSessionSearch}
+				iconClassName={styles.islandSessionSearchIcon}
+				inputClassName={styles.islandSessionSearchInput}
+			/>
+
+			<div className={styles.islandDropdownDivider} />
+			<div className={styles.islandSessionList}>
+				{visibleChatSessions.length > 0 ? (
+					visibleChatSessions.map((session) => {
+						const isActive = session.key === currentSessionKey;
+						return (
+							<button
+								key={session.key}
+								type="button"
+								className={cx(
+									styles.islandSessionItem,
+									isActive && styles.islandSessionItemActive,
+								)}
+								onClick={() => {
+									setDropdownOpen(false);
+									if (!isActive) onSwitchSession(session.key);
+								}}
+							>
+								<span className={styles.islandSessionItemTitle}>{session.title}</span>
+								<span className={styles.islandSessionItemSide}>
+									<span className={styles.islandSessionItemMeta}>
+										{formatRelativeTimeCompact(session.updatedAt, isActive)}
+									</span>
+									<span
+										className={cx(
+											styles.islandSessionItemIndicator,
+											isActive && styles.islandSessionItemIndicatorActive,
+										)}
+									/>
+								</span>
+							</button>
+						);
+					})
+				) : (
+					<div className={styles.islandSessionEmpty}>
+						{chatSessions.length === 0 ? "暂无会话" : "未找到匹配会话"}
+					</div>
+				)}
+			</div>
+
+			{isCodeMode && (
+				<>
+					<div className={styles.islandDropdownDivider} />
+					<div className={styles.islandDropdownSection}>
+						<div className={styles.islandDropdownTitle}>
+							{selectedCodeSessionTitle}
+						</div>
+						{lastUpdatedAt && (
+							<div className={styles.islandDropdownMeta}>
+								<Clock size={10} />
+								<span>{formatRelativeTime(lastUpdatedAt)}</span>
+							</div>
+						)}
+						{sessionInit ? (
+							<div className={styles.islandDropdownInfo}>
+								<div className={styles.islandDropdownInfoRow}>
+									<Cpu size={10} />
+									<span>{shortModel(sessionInit.model)}</span>
+									{sessionInit.permissionMode && (
+										<span className={styles.islandDropdownBadge}>
+											会话: {getPermissionModeLabel(sessionInit.permissionMode)}
+										</span>
+									)}
+								</div>
+								<div className={styles.islandDropdownInfoRow}>
+									<Wrench size={10} />
+									<span>{sessionInit.tools.length} tools</span>
+									{sessionInit.mcpServers.length > 0 && (
+										<span className={styles.islandDropdownBadge}>
+											{sessionInit.mcpServers.length} MCP
+										</span>
+									)}
+								</div>
+							</div>
+						) : (
+							<div className={styles.islandDropdownEmpty}>
+								{selectedCodeSessionTitle} · {codeStateLabel}
+							</div>
+						)}
+						<div className={styles.islandPermissionSelector}>
+							<button
+								type="button"
+								className={styles.islandPermissionSelectorTrigger}
+								onClick={(event) => {
+									event.stopPropagation();
+									setPermissionDropdownOpen((open) => !open);
+								}}
+							>
+								<span className={styles.islandPermissionSelectorTriggerLeft}>
+									{permissionMode === "bypassPermissions" ? (
+										<ShieldAlert
+											size={15}
+											className={styles.islandPermissionSelectorIcon}
+										/>
+									) : (
+										<Shield
+											size={15}
+											className={styles.islandPermissionSelectorIcon}
+										/>
+									)}
+									<span className={styles.islandPermissionSelectorTriggerLabel}>
+										{getPermissionModeLabel(permissionMode)}
+									</span>
+								</span>
+								<ChevronDown
+									size={14}
+									className={cx(
+										styles.islandPermissionSelectorChevron,
+										permissionDropdownOpen &&
+											styles.islandPermissionSelectorChevronOpen,
+									)}
+								/>
+							</button>
+							{permissionDropdownOpen && (
+								<div className={styles.islandPermissionSelectorMenu}>
+									{PERMISSION_MODE_OPTIONS.map((option) => {
+										const active = option.value === permissionMode;
+										const OptionIcon =
+											option.value === "bypassPermissions" ? ShieldAlert : Shield;
+										return (
+											<button
+												key={option.value}
+												type="button"
+												className={cx(
+													styles.islandPermissionSelectorOption,
+													active && styles.islandPermissionSelectorOptionActive,
+												)}
+												onClick={(event) => {
+													event.stopPropagation();
+													onPermissionModeChange(option.value);
+													setPermissionDropdownOpen(false);
+												}}
+											>
+												<span className={styles.islandPermissionSelectorOptionLeft}>
+													<OptionIcon
+														size={15}
+														className={styles.islandPermissionSelectorIcon}
+													/>
+													<span className={styles.islandPermissionSelectorOptionLabel}>
+														{option.label}
+													</span>
+												</span>
+												<span
+													className={cx(
+														styles.islandPermissionSelectorCheck,
+														active && styles.islandPermissionSelectorCheckActive,
+													)}
+												>
+													{active ? <Check size={14} strokeWidth={2.4} /> : null}
+												</span>
+											</button>
+										);
+									})}
+								</div>
+							)}
+						</div>
+						{sessionInit?.permissionMode &&
+							sessionInit.permissionMode !== permissionMode && (
+								<div className={styles.islandPermissionSelectorHint}>
+									当前会话仍为 {getPermissionModeLabel(sessionInit.permissionMode)}，
+									新模式将在下次发起时生效。
+								</div>
+							)}
+						{codeWorkspaceRoot && (
+							<button
+								type="button"
+								className={styles.islandDropdownPath}
+								title="点击更换工作区"
+								onClick={(e) => {
+									e.stopPropagation();
+									setDropdownOpen(false);
+									onPickWorkspace();
+								}}
+							>
+								{codeWorkspaceRoot}
+							</button>
+						)}
+						{canExitCodeMode && (
+							<button
+								type="button"
+								className={styles.islandDropdownSecondaryBtn}
+								onClick={(e) => {
+									e.stopPropagation();
+									setDropdownOpen(false);
+									onRemoveCodeMode();
+								}}
+							>
+								<X size={12} />
+								<span>退出 CLI 模式</span>
+							</button>
+						)}
+					</div>
+				</>
+			)}
+
+			<div className={styles.islandDropdownDivider} />
+			<button
+				type="button"
+				className={styles.islandDropdownNewBtn}
+				onClick={() => {
+					setDropdownOpen(false);
+					onNewConversation();
+				}}
+			>
+				<RotateCcw size={12} />
+				<span>新对话</span>
+			</button>
+		</div>
+	);
+
 	return (
-		<div className={cx(!embedded && "drag-region", styles.header, embedded && styles.headerEmbedded)}>
+		<div
+			className={cx(
+				!embedded && "drag-region",
+				styles.header,
+				embedded && styles.headerEmbedded,
+				useCodexHeader && styles.headerEmbeddedCodex,
+			)}
+		>
 			<div className={cx(styles.brand, embedded && styles.brandEmbedded)}>
 				<div className={styles.brandLogo}>
 					<OpenClaw.Color size={14} />
@@ -354,336 +607,167 @@ function MiniChatHeaderImpl({
 							</span>
 						</div>
 					</div>
-				) : null}
+					) : null}
 			</div>
 
-			<div className={cx(styles.headerCenter, embedded && styles.headerCenterEmbedded)}>
-				<div className={cx("no-drag", styles.islandContainer)}>
-					<div
-						className={cx(
-							styles.dynamicIslandWrapper,
-							isGenerating && styles.dynamicIslandWrapperGenerating,
-						)}
-					>
-						<div
-							className={cx(
-								styles.dynamicIslandGlow,
-								isGenerating && styles.dynamicIslandGlowGenerating,
-							)}
-						/>
-						<div className={styles.dynamicIslandFrost} />
-						<div className={styles.dynamicIslandSpecular} />
-						<div
-							className={cx(
-								styles.dynamicIsland,
-								isGenerating && styles.dynamicIslandGenerating,
-							)}
-						>
-							{contextIndicator ? (
-								<div className={styles.dynamicIslandContextMeter} aria-hidden="true">
-									<div
-										className={styles.dynamicIslandContextMeterFill}
-										style={{
-											width: `${islandProgressPercent}%`,
-											background: islandProgressTone,
-										}}
-									/>
-								</div>
-							) : null}
-							<div className={styles.islandLead}>
-								<button
-									ref={iconBtnRef}
-									type="button"
-									className={styles.islandIconBtn}
-									title="查看会话信息"
-									onClick={() => {
-										setPermissionDropdownOpen(false);
-										setDropdownOpen((v) => !v);
-									}}
-								>
-									{isCodeMode ? <ClaudeCode.Color size={14} /> : <OpenClaw.Color size={14} />}
-								</button>
-							</div>
-							<div className={styles.islandTextWrapper}>
-								<span className={styles.islandTextLabel}>{islandLabel}</span>
-							</div>
-							{isGenerating ? (
-								<div className={styles.islandGeneratingBadge} role="status" aria-live="polite">
-									<span className={styles.islandGeneratingSpinner}>{runSpinner}</span>
-									<span className={styles.islandGeneratingText}>
-										{runningThreadLabel || "生成中"}
-									</span>
-								</div>
-							) : null}
-							{contextIndicator ? (
-								<Tooltip
-									placement="top"
-									mouseEnterDelay={0.12}
-									title={
-										<div className={styles.islandContextTooltip}>
-											<div className={styles.islandContextTooltipTitle}>CLI 上下文</div>
-											<div className={styles.islandContextTooltipRow}>
-												<span>窗口大小</span>
-												<strong>{formatTokenCount(contextIndicator.contextWindowSize)} tokens</strong>
-											</div>
-											<div className={styles.islandContextTooltipRow}>
-												<span>当前占用</span>
-												<strong>
-													{formatTokenCount(contextIndicator.usedTokens)} tokens (
-													{contextIndicator.usedPercentage}%)
-												</strong>
-											</div>
-											<div className={styles.islandContextTooltipRow}>
-												<span>剩余可用</span>
-												<strong>
-													{formatTokenCount(contextIndicator.remainingTokens)} tokens (
-													{contextIndicator.remainingPercentage}%)
-												</strong>
-											</div>
-											{contextIndicator.windowSource === "estimated" ? (
-												<div className={styles.islandContextTooltipHint}>
-													窗口大小为本地估算值（默认 200k 或 [1m] 模型）。
-												</div>
-											) : null}
-										</div>
-									}
-								>
-									<div
-										className={styles.islandMetric}
-										aria-label={`上下文剩余 ${formatTokenCount(contextIndicator.remainingTokens)} tokens`}
-									>
-										<span className={styles.islandMetricValue}>{islandMetricValue}</span>
-									</div>
-								</Tooltip>
-							) : null}
+			{useCodexHeader ? (
+				<>
+					<div className={cx("no-drag", styles.embeddedTopLeft)}>
+						<div className={styles.embeddedThreadWrap}>
+							<button
+								ref={iconBtnRef}
+								type="button"
+								className={styles.embeddedThreadBtn}
+								onMouseDown={(event) => {
+									event.stopPropagation();
+								}}
+								onClick={(event) => {
+									event.stopPropagation();
+									setPermissionDropdownOpen(false);
+									setDropdownOpen((v) => !v);
+								}}
+								title="查看会话信息"
+							>
+								<span className={styles.embeddedThreadIcon}>
+									{isCodeMode ? <ClaudeCode.Color size={12} /> : <OpenClaw.Color size={12} />}
+								</span>
+								<span className={styles.embeddedThreadLabel}>{embeddedHeaderTitle}</span>
+								<ChevronDown className={styles.embeddedThreadChevron} size={12} />
+							</button>
+							{dropdownOpen ? sessionDropdown : null}
 						</div>
 					</div>
-
-					{dropdownOpen && (
-						<div ref={dropdownRef} className={styles.islandDropdown}>
-							<div className={styles.islandSessionSearch}>
-								<Search className={styles.islandSessionSearchIcon} size={18} />
-								<input
-									type="text"
-									value={sessionQuery}
-									onChange={(event) => setSessionQuery(event.target.value)}
-									placeholder="搜索最近任务"
-									aria-label="搜索最近任务"
-									className={styles.islandSessionSearchInput}
-								/>
-							</div>
-
-							<div className={styles.islandDropdownDivider} />
-							<div className={styles.islandSessionList}>
-								{visibleChatSessions.length > 0 ? (
-									visibleChatSessions.map((session) => {
-										const isActive = session.key === currentSessionKey;
-										return (
-											<button
-												key={session.key}
-												type="button"
-												className={cx(
-													styles.islandSessionItem,
-													isActive && styles.islandSessionItemActive,
-												)}
-												onClick={() => {
-													setDropdownOpen(false);
-													if (!isActive) onSwitchSession(session.key);
-												}}
-											>
-												<span className={styles.islandSessionItemTitle}>{session.title}</span>
-												<span className={styles.islandSessionItemSide}>
-													<span className={styles.islandSessionItemMeta}>
-														{formatRelativeTimeCompact(session.updatedAt, isActive)}
-													</span>
-													<span
-														className={cx(
-															styles.islandSessionItemIndicator,
-															isActive && styles.islandSessionItemIndicatorActive,
-														)}
-													/>
-												</span>
-											</button>
-										);
-									})
-								) : (
-									<div className={styles.islandSessionEmpty}>
-										{chatSessions.length === 0 ? "暂无会话" : "未找到匹配会话"}
-									</div>
+					{!isCodeMode ? (
+						<div className={cx("no-drag", styles.embeddedTopRight)}>
+							<Tooltip placement="bottom" title={embeddedStatusLabel}>
+								<span
+									className={cx(
+										styles.embeddedHeaderStatus,
+										isGenerating
+											? styles.embeddedHeaderStatusRunning
+											: isError
+												? styles.embeddedHeaderStatusError
+												: styles.embeddedHeaderStatusIdle,
+									)}
+									aria-label={embeddedStatusLabel}
+								>
+									<EmbeddedStatusIcon size={13} />
+								</span>
+							</Tooltip>
+						</div>
+					) : null}
+				</>
+			) : (
+				<div className={cx(styles.headerCenter, embedded && styles.headerCenterEmbedded)}>
+					<div className={cx("no-drag", styles.islandContainer)}>
+						<div
+							className={cx(
+								styles.dynamicIslandWrapper,
+								isGenerating && styles.dynamicIslandWrapperGenerating,
+							)}
+						>
+							<div
+								className={cx(
+									styles.dynamicIslandGlow,
+									isGenerating && styles.dynamicIslandGlowGenerating,
 								)}
-							</div>
-
-							{isCodeMode && (
-								<>
-								<div className={styles.islandDropdownDivider} />
-								<div className={styles.islandDropdownSection}>
-									<div className={styles.islandDropdownTitle}>
-										{selectedCodeSessionTitle}
-									</div>
-										{lastUpdatedAt && (
-									<div className={styles.islandDropdownMeta}>
-										<Clock size={10} />
-										<span>{formatRelativeTime(lastUpdatedAt)}</span>
-									</div>
+							/>
+							<div className={styles.dynamicIslandFrost} />
+							<div className={styles.dynamicIslandSpecular} />
+							<div
+								className={cx(
+									styles.dynamicIsland,
+									isGenerating && styles.dynamicIslandGenerating,
 								)}
-								{sessionInit ? (
-									<div className={styles.islandDropdownInfo}>
-										<div className={styles.islandDropdownInfoRow}>
-											<Cpu size={10} />
-											<span>{shortModel(sessionInit.model)}</span>
-											{sessionInit.permissionMode && (
-												<span className={styles.islandDropdownBadge}>
-													会话: {getPermissionModeLabel(sessionInit.permissionMode)}
-												</span>
-											)}
-										</div>
-										<div className={styles.islandDropdownInfoRow}>
-											<Wrench size={10} />
-											<span>{sessionInit.tools.length} tools</span>
-											{sessionInit.mcpServers.length > 0 && (
-												<span className={styles.islandDropdownBadge}>
-													{sessionInit.mcpServers.length} MCP
-												</span>
-											)}
-										</div>
+							>
+								{contextIndicator ? (
+									<div className={styles.dynamicIslandContextMeter} aria-hidden="true">
+										<div
+											className={styles.dynamicIslandContextMeterFill}
+											style={{
+												width: `${islandProgressPercent}%`,
+												background: islandProgressTone,
+											}}
+										/>
 									</div>
-								) : (
-									<div className={styles.islandDropdownEmpty}>
-										{selectedCodeSessionTitle} · {codeStateLabel}
-									</div>
-								)}
-								<div className={styles.islandPermissionSelector}>
+								) : null}
+								<div className={styles.islandLead}>
 									<button
+										ref={iconBtnRef}
 										type="button"
-										className={styles.islandPermissionSelectorTrigger}
+										className={styles.islandIconBtn}
+										title="查看会话信息"
+										onMouseDown={(event) => {
+											event.stopPropagation();
+										}}
 										onClick={(event) => {
 											event.stopPropagation();
-											setPermissionDropdownOpen((open) => !open);
+											setPermissionDropdownOpen(false);
+											setDropdownOpen((v) => !v);
 										}}
 									>
-										<span className={styles.islandPermissionSelectorTriggerLeft}>
-											{permissionMode === "bypassPermissions" ? (
-												<ShieldAlert
-													size={15}
-													className={styles.islandPermissionSelectorIcon}
-												/>
-											) : (
-												<Shield
-													size={15}
-													className={styles.islandPermissionSelectorIcon}
-												/>
-											)}
-											<span className={styles.islandPermissionSelectorTriggerLabel}>
-												{getPermissionModeLabel(permissionMode)}
-											</span>
-										</span>
-										<ChevronDown
-											size={14}
-											className={cx(
-												styles.islandPermissionSelectorChevron,
-												permissionDropdownOpen &&
-													styles.islandPermissionSelectorChevronOpen,
-											)}
-										/>
+										{isCodeMode ? <ClaudeCode.Color size={14} /> : <OpenClaw.Color size={14} />}
 									</button>
-									{permissionDropdownOpen && (
-										<div className={styles.islandPermissionSelectorMenu}>
-											{PERMISSION_MODE_OPTIONS.map((option) => {
-												const active = option.value === permissionMode;
-												const OptionIcon =
-													option.value === "bypassPermissions" ? ShieldAlert : Shield;
-												return (
-													<button
-														key={option.value}
-														type="button"
-														className={cx(
-															styles.islandPermissionSelectorOption,
-															active && styles.islandPermissionSelectorOptionActive,
-														)}
-														onClick={(event) => {
-															event.stopPropagation();
-															onPermissionModeChange(option.value);
-															setPermissionDropdownOpen(false);
-														}}
-													>
-														<span className={styles.islandPermissionSelectorOptionLeft}>
-															<OptionIcon
-																size={15}
-																className={styles.islandPermissionSelectorIcon}
-															/>
-															<span className={styles.islandPermissionSelectorOptionLabel}>
-																{option.label}
-															</span>
-														</span>
-														<span
-															className={cx(
-																styles.islandPermissionSelectorCheck,
-																active && styles.islandPermissionSelectorCheckActive,
-															)}
-														>
-															{active ? <Check size={14} strokeWidth={2.4} /> : null}
-														</span>
-													</button>
-												);
-											})}
-										</div>
-									)}
 								</div>
-								{sessionInit?.permissionMode &&
-									sessionInit.permissionMode !== permissionMode && (
-										<div className={styles.islandPermissionSelectorHint}>
-											当前会话仍为 {getPermissionModeLabel(sessionInit.permissionMode)}，
-											新模式将在下次发起时生效。
+								<div className={styles.islandTextWrapper}>
+									<span className={styles.islandTextLabel}>{islandLabel}</span>
+								</div>
+								{isGenerating ? (
+									<div className={styles.islandGeneratingBadge} role="status" aria-live="polite">
+										<span className={styles.islandGeneratingSpinner}>{runSpinner}</span>
+										<span className={styles.islandGeneratingText}>
+											{runningThreadLabel || "生成中"}
+										</span>
+									</div>
+								) : null}
+								{contextIndicator ? (
+									<Tooltip
+										placement="top"
+										mouseEnterDelay={0.12}
+										title={
+											<div className={styles.islandContextTooltip}>
+												<div className={styles.islandContextTooltipTitle}>CLI 上下文</div>
+												<div className={styles.islandContextTooltipRow}>
+													<span>窗口大小</span>
+													<strong>{formatTokenCount(contextIndicator.contextWindowSize)} tokens</strong>
+												</div>
+												<div className={styles.islandContextTooltipRow}>
+													<span>当前占用</span>
+													<strong>
+														{formatTokenCount(contextIndicator.usedTokens)} tokens (
+														{contextIndicator.usedPercentage}%)
+													</strong>
+												</div>
+												<div className={styles.islandContextTooltipRow}>
+													<span>剩余可用</span>
+													<strong>
+														{formatTokenCount(contextIndicator.remainingTokens)} tokens (
+														{contextIndicator.remainingPercentage}%)
+													</strong>
+												</div>
+												{contextIndicator.windowSource === "estimated" ? (
+													<div className={styles.islandContextTooltipHint}>
+														窗口大小为本地估算值（默认 200k 或 [1m] 模型）。
+													</div>
+												) : null}
+											</div>
+										}
+									>
+										<div
+											className={styles.islandMetric}
+											aria-label={`上下文剩余 ${formatTokenCount(contextIndicator.remainingTokens)} tokens`}
+										>
+											<span className={styles.islandMetricValue}>{islandMetricValue}</span>
 										</div>
-									)}
-								{codeWorkspaceRoot && (
-									<button
-										type="button"
-										className={styles.islandDropdownPath}
-										title="点击更换工作区"
-										onClick={(e) => {
-											e.stopPropagation();
-											setDropdownOpen(false);
-											onPickWorkspace();
-										}}
-									>
-										{codeWorkspaceRoot}
-									</button>
-								)}
-								{canExitCodeMode && (
-									<button
-										type="button"
-										className={styles.islandDropdownSecondaryBtn}
-										onClick={(e) => {
-											e.stopPropagation();
-											setDropdownOpen(false);
-											onRemoveCodeMode();
-										}}
-									>
-										<X size={12} />
-										<span>退出 CLI 模式</span>
-									</button>
-								)}
+									</Tooltip>
+								) : null}
 							</div>
-						</>
-					)}
-
-							<div className={styles.islandDropdownDivider} />
-							<button
-								type="button"
-								className={styles.islandDropdownNewBtn}
-								onClick={() => {
-									setDropdownOpen(false);
-									onNewConversation();
-								}}
-							>
-								<RotateCcw size={12} />
-								<span>新对话</span>
-							</button>
 						</div>
-					)}
+
+						{dropdownOpen ? sessionDropdown : null}
+					</div>
 				</div>
-			</div>
+			)}
 
 				{showWindowActions ? (
 					<div className={cx("no-drag", styles.headerActions)}>

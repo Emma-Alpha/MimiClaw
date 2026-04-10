@@ -48,7 +48,7 @@ const TOGGLE_DEBOUNCE_MS = 400;
 function PetThinkingBubble({ label }: { label: string }) {
 	return (
 		<div
-			className="pointer-events-none absolute top-[16%] left-1/2 z-20 flex h-[34px] min-w-[120px] -translate-x-1/2 scale-[0.65] items-center justify-center overflow-hidden rounded-full border border-white/[0.08] px-4 text-[16px] font-medium text-white/60 shadow-[0_6px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[24px]"
+			className="pointer-events-none absolute top-[16%] left-1/2 z-20 flex h-[34px] min-w-[120px] -translate-x-1/2 scale-[0.65] items-center justify-center overflow-hidden rounded-full border border-white/[0.08] px-4 text-[14px] font-medium text-white/60 shadow-[0_6px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[24px]"
 			style={{
 				background: "rgba(10, 10, 10, 0.94)",
 				transformOrigin: "center bottom",

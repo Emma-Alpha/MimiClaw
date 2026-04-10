@@ -106,7 +106,7 @@ const useStyles = createStyles(({ token, css }) => ({
     height: 60vh;
   `,
   welcomeTitle: css`
-    font-size: clamp(32px, 5vw, 40px);
+    font-size: 14px;
     font-family: Georgia, Cambria, "Times New Roman", Times, serif;
     color: ${token.colorTextSecondary};
     margin-bottom: 32px;

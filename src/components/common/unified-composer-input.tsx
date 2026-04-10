@@ -25,8 +25,9 @@ import {
 	withReact,
 	type RenderElementProps,
 } from "slate-react";
-import { File as FileIcon, Folder, X } from "lucide-react";
+import { File as FileIcon, Folder, Link2, X } from "lucide-react";
 import {
+	extractSnippetReferencePathsFromText,
 	extractDroppedPathsFromTransfer,
 	isPathDrag,
 	type UnifiedComposerPath,
@@ -35,7 +36,7 @@ import {
 export type UnifiedComposerInputValue = {
 	text: string;
 	paths: UnifiedComposerPath[];
-	skill?: string | null;
+	skills?: string[];
 	/** Full Slate editor tree for faithful message-list rendering */
 	richContent?: import("slate").Descendant[];
 };
@@ -43,6 +44,7 @@ export type UnifiedComposerInputValue = {
 export type UnifiedComposerInputHandle = {
 	insertSkill: (command: string, replaceRange?: { start: number; end: number }) => void;
 	removeSkill: () => void;
+	insertMention: (path: UnifiedComposerPath, replaceRange: { start: number; end: number }) => void;
 	focus: () => void;
 };
 
@@ -93,8 +95,18 @@ function createSkillElement(command: string): SlateSkillElement {
 	};
 }
 
-function createEditorValue(text: string, paths: UnifiedComposerPath[]): Descendant[] {
+function createEditorValue(
+	text: string,
+	paths: UnifiedComposerPath[],
+	skills?: string[],
+): Descendant[] {
 	const children: SlateParagraphElement["children"] = [];
+	if (skills) {
+		for (const cmd of skills) {
+			children.push(createSkillElement(cmd));
+			children.push({ text: " " });
+		}
+	}
 	if (text) {
 		children.push({ text });
 	}
@@ -106,6 +118,20 @@ function createEditorValue(text: string, paths: UnifiedComposerPath[]): Descenda
 		children.push({ text: "" });
 	}
 	return [{ type: "paragraph", children } as SlateParagraphElement];
+}
+
+const SNIPPET_RANGE_SUFFIX_PATTERN = /\(\s*\d+\s*-\s*\d+\s*\)\s*$/;
+
+function getPathChipLabel(path: UnifiedComposerPath): string {
+	const label = path.name?.trim();
+	if (label) return label;
+	const absolutePath = path.absolutePath?.trim();
+	if (!absolutePath) return "";
+	return absolutePath.split(/[\\/]/).pop() || absolutePath;
+}
+
+function isSnippetReferenceLabel(label: string): boolean {
+	return SNIPPET_RANGE_SUFFIX_PATTERN.test(label.trim());
 }
 
 function extractEditorText(value: Descendant[]): string {
@@ -135,18 +161,21 @@ function extractEditorPaths(value: Descendant[]): UnifiedComposerPath[] {
 	return found;
 }
 
-function extractEditorSkill(value: Descendant[]): string | null {
-	const visit = (nodes: Descendant[]): string | null => {
+function extractEditorSkills(value: Descendant[]): string[] {
+	const found: string[] = [];
+	const visit = (nodes: Descendant[]) => {
 		for (const node of nodes) {
-			if (isSlateSkillElement(node)) return node.command;
+			if (isSlateSkillElement(node)) {
+				found.push(node.command);
+				continue;
+			}
 			if (SlateElement.isElement(node)) {
-				const found = visit(node.children as Descendant[]);
-				if (found) return found;
+				visit(node.children as Descendant[]);
 			}
 		}
-		return null;
 	};
-	return visit(value);
+	visit(value);
+	return found;
 }
 
 function samePathSet(left: Set<string> | null, right: Set<string>): boolean {
@@ -164,6 +193,45 @@ function withInlineVoids(editor: ReactEditor): ReactEditor {
 	editor.isVoid = (element) =>
 		isSlatePathElement(element) || isSlateSkillElement(element) || isVoid(element);
 	return editor;
+}
+
+function deleteTrailingTokenAtSelection(
+	editor: ReactEditor,
+	trigger: "@" | "/",
+): boolean {
+	const selection = editor.selection;
+	if (!selection || !Range.isCollapsed(selection)) return false;
+
+	const anchor = selection.anchor;
+	let node: Node;
+	try {
+		node = Node.get(editor, anchor.path);
+	} catch {
+		return false;
+	}
+	if (!("text" in node) || typeof node.text !== "string") return false;
+
+	const beforeCaret = node.text.slice(0, anchor.offset);
+	const pattern =
+		trigger === "@"
+			? /(^|\s)@([^\s@]*)$/
+			: /(^|\s)\/([a-z0-9-]*)$/i;
+	const match = beforeCaret.match(pattern);
+	if (!match) return false;
+
+	const token = match[0] ?? "";
+	const triggerOffset = token.lastIndexOf(trigger);
+	if (triggerOffset < 0) return false;
+
+	const startOffset = anchor.offset - token.length + triggerOffset;
+	if (startOffset < 0 || startOffset > anchor.offset) return false;
+
+	Transforms.select(editor, {
+		anchor: { path: anchor.path, offset: startOffset },
+		focus: anchor,
+	});
+	Transforms.delete(editor);
+	return true;
 }
 
 export interface UnifiedComposerInputProps {
@@ -348,15 +416,26 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 			let remaining = targetOffset;
 			const paragraph = editor.children[0];
 			if (!paragraph || !SlateElement.isElement(paragraph)) return null;
+			let fallbackTextPath: number[] | null = null;
 
 			for (let i = 0; i < paragraph.children.length; i++) {
 				const child = paragraph.children[i];
 				if ("text" in child && typeof child.text === "string") {
+					if (!fallbackTextPath) {
+						fallbackTextPath = [0, i];
+					}
+					// Skip zero-length text nodes so offset 0 does not map before inline voids.
+					if (child.text.length === 0) {
+						continue;
+					}
 					if (remaining <= child.text.length) {
 						return { path: [0, i], offset: remaining };
 					}
 					remaining -= child.text.length;
 				}
+			}
+			if (remaining <= 0 && fallbackTextPath) {
+				return { path: fallbackTextPath, offset: 0 };
 			}
 			return Editor.end(editor, []);
 		},
@@ -385,10 +464,14 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 
 	const insertSkill = useCallback(
 		(command: string, replaceRange?: { start: number; end: number }) => {
-			Editor.withoutNormalizing(editor, () => {
-				removeExistingSkills(editor);
+			const existing = new Set(
+				extractEditorSkills(editor.children as Descendant[]),
+			);
+			if (existing.has(command)) return;
 
-				if (replaceRange) {
+			Editor.withoutNormalizing(editor, () => {
+				const removedBySelection = deleteTrailingTokenAtSelection(editor, "/");
+				if (!removedBySelection && replaceRange) {
 					const startPoint = textOffsetToSlatePoint(replaceRange.start);
 					const endPoint = textOffsetToSlatePoint(replaceRange.end);
 					if (startPoint && endPoint) {
@@ -406,7 +489,7 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 
 			pendingFocusRef.current = true;
 		},
-		[editor, removeExistingSkills, textOffsetToSlatePoint],
+		[editor, textOffsetToSlatePoint],
 	);
 
 	const removeSkill = useCallback(() => {
@@ -414,11 +497,44 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 		pendingFocusRef.current = true;
 	}, [editor, removeExistingSkills]);
 
+	const insertMention = useCallback(
+		(path: UnifiedComposerPath, replaceRange: { start: number; end: number }) => {
+			const existing = new Set(
+				extractEditorPaths(editor.children as Descendant[]).map(
+					(item) => item.absolutePath,
+				),
+			);
+			if (existing.has(path.absolutePath)) return;
+
+			Editor.withoutNormalizing(editor, () => {
+				const removedBySelection = deleteTrailingTokenAtSelection(editor, "@");
+				if (!removedBySelection) {
+					const startPoint = textOffsetToSlatePoint(replaceRange.start);
+					const endPoint = textOffsetToSlatePoint(replaceRange.end);
+					if (startPoint && endPoint) {
+						Transforms.select(editor, { anchor: startPoint, focus: endPoint });
+						Transforms.delete(editor);
+					}
+				}
+
+				if (!editor.selection) {
+					Transforms.select(editor, Editor.end(editor, []));
+				}
+				Transforms.insertNodes(editor, createPathElement(path));
+				Transforms.insertText(editor, " ");
+			});
+
+			pendingFocusRef.current = true;
+		},
+		[editor, textOffsetToSlatePoint],
+	);
+
 	useImperativeHandle(ref, () => ({
 		insertSkill,
 		removeSkill,
+		insertMention,
 		focus: focusEditorAtEnd,
-	}), [focusEditorAtEnd, insertSkill, removeSkill]);
+	}), [focusEditorAtEnd, insertMention, insertSkill, removeSkill]);
 
 	const syncPathsFromParent = useCallback(
 		(nextPaths: UnifiedComposerPath[]) => {
@@ -468,10 +584,24 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 					&& operation.type !== "insert_text"
 					&& operation.type !== "remove_text",
 			);
+			const parentSkills = value.skills ?? [];
+			const editorHasInlineVoids =
+				!hasNonTextOperation
+				&& value.paths.length === 0
+				&& parentSkills.length === 0
+				&& nextValue.some(
+					(node) =>
+						SlateElement.isElement(node)
+						&& node.children.some(
+							(child) =>
+								isSlatePathElement(child) || isSlateSkillElement(child),
+						),
+				);
 			const shouldScanInlineElements =
 				hasNonTextOperation
 				|| value.paths.length > 0
-				|| (value.skill ?? null) !== null;
+				|| parentSkills.length > 0
+				|| editorHasInlineVoids;
 			const normalizedPlain =
 				shouldScanInlineElements
 				&& plain.trim().length === 0
@@ -481,9 +611,9 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 			const nextPaths = shouldScanInlineElements
 				? extractEditorPaths(nextValue)
 				: [];
-			const nextSkill = shouldScanInlineElements
-				? extractEditorSkill(nextValue)
-				: null;
+			const nextSkills = shouldScanInlineElements
+				? extractEditorSkills(nextValue)
+				: [];
 			const nextSet = shouldScanInlineElements
 				? new Set(nextPaths.map((item) => item.absolutePath))
 				: null;
@@ -496,11 +626,12 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 				&& nextSet !== null
 				&& parentSet !== null
 				&& !samePathSet(parentSet, nextSet);
-			const changedSkill =
+			const changedSkills =
 				shouldScanInlineElements
-				&& (nextSkill ?? null) !== (value.skill ?? null);
+				&& (nextSkills.length !== parentSkills.length
+					|| nextSkills.some((cmd, i) => cmd !== parentSkills[i]));
 
-			if (!changedText && !changedPaths && !changedSkill) {
+			if (!changedText && !changedPaths && !changedSkills) {
 				return;
 			}
 
@@ -514,11 +645,11 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 			onChange({
 				text: normalizedPlain,
 				paths: nextPaths,
-				skill: nextSkill,
+				skills: nextSkills,
 				richContent: nextValue,
 			});
 		},
-		[editor, onChange, value.paths, value.skill, value.text],
+		[editor, onChange, value.paths, value.skills, value.text],
 	);
 
 	const updateVisualMultiline = useCallback(() => {
@@ -542,28 +673,34 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 				pendingTextEchoRef.current = null;
 				return;
 			}
-			// Parent pushed an authoritative text value different from optimistic echo.
-			// Clear echo guard and continue syncing from props.
 			pendingTextEchoRef.current = null;
 		}
 
 		const currentText = extractEditorText(editorValue);
+		const currentSkills = extractEditorSkills(editorValue);
+		const parentSkills = value.skills ?? [];
+		const hasInlineElements = value.paths.length > 0 || currentSkills.length > 0 || parentSkills.length > 0;
 		const isInlineSpacerOnly =
-			(value.paths.length > 0 || (value.skill ?? null) !== null)
+			hasInlineElements
 			&& currentText.trim().length === 0
 			&& value.text.trim().length === 0;
-		if (value.text === currentText || isInlineSpacerOnly) return;
+		const expectedWithSpacers =
+			" ".repeat(currentSkills.length) + value.text + " ".repeat(value.paths.length);
+		const isInlineSpacerDiff =
+			hasInlineElements
+			&& currentText !== value.text
+			&& currentText === expectedWithSpacers;
+		if (value.text === currentText || isInlineSpacerOnly || isInlineSpacerDiff) return;
 
 		const shouldRestoreFocus = document.activeElement === editorDomRef.current;
+		const preservedSkills = currentSkills.length > 0 ? currentSkills : parentSkills;
 		queueMicrotask(() => {
-			// Keep external props authoritative: avoid reviving stale path chips when
-			// parent clears/overrides text and paths in the same render.
-			resetSlateValue(createEditorValue(value.text, value.paths));
+			resetSlateValue(createEditorValue(value.text, value.paths, preservedSkills));
 			if (shouldRestoreFocus) {
 				focusEditorAtEnd();
 			}
 		});
-	}, [editorValue, focusEditorAtEnd, resetSlateValue, value.paths, value.text]);
+	}, [editorValue, focusEditorAtEnd, resetSlateValue, value.paths, value.skills, value.text]);
 
 	useEffect(() => {
 		const propSet = new Set(value.paths.map((item) => item.absolutePath));
@@ -572,25 +709,26 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 				pendingPathSetRef.current = null;
 				return;
 			}
-			// Parent pushed a path set that differs from the optimistic local echo.
-			// Treat it as authoritative and sync editor state accordingly.
 			pendingPathSetRef.current = null;
 		}
 
-		// Text is authoritative. If editor text is still stale, wait for text-sync effect
-		// (which rebuilds from value.text + value.paths) to avoid echoing old text back up.
 		const currentText = extractEditorText(editorValue);
+		const currentSkills = extractEditorSkills(editorValue);
+		const hasInline = value.paths.length > 0 || currentSkills.length > 0 || (value.skills ?? []).length > 0;
+		const expectedWithSpacers =
+			" ".repeat(currentSkills.length) + value.text + " ".repeat(value.paths.length);
 		const textSynchronized =
 			currentText === value.text
+			|| (hasInline && currentText === expectedWithSpacers)
 			|| (
-				(value.paths.length > 0 || (value.skill ?? null) !== null)
+				hasInline
 				&& currentText.trim().length === 0
 				&& value.text.trim().length === 0
 			);
 		if (!textSynchronized) return;
 
 		syncPathsFromParent(value.paths);
-	}, [editorValue, syncPathsFromParent, value.paths, value.text]);
+	}, [editorValue, syncPathsFromParent, value.paths, value.skills, value.text]);
 
 	useEffect(() => {
 		const rafId = requestAnimationFrame(() => {
@@ -637,12 +775,16 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 				return <div {...attributes}>{children}</div>;
 			}
 
+			const label = getPathChipLabel(element.path);
+			const isSnippetReference = isSnippetReferenceLabel(label);
+
 			return (
 				<span {...attributes}>
 					<span
 						contentEditable={false}
 						className={pathChipClassName}
 						title={element.path.absolutePath}
+						data-snippet-ref={isSnippetReference ? "true" : undefined}
 						onMouseDown={(event) => {
 							event.preventDefault();
 						}}
@@ -654,13 +796,15 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 						}}
 					>
 						<span className={pathChipIconClassName}>
-							{element.path.isDirectory ? (
+							{isSnippetReference ? (
+								<Link2 style={{ width: 12, height: 12 }} />
+							) : element.path.isDirectory ? (
 								<Folder style={{ width: 12, height: 12 }} />
 							) : (
 								<FileIcon style={{ width: 12, height: 12 }} />
 							)}
 						</span>
-						<span className={pathChipNameClassName}>{element.path.name}</span>
+						<span className={pathChipNameClassName}>{label}</span>
 						<button
 							type="button"
 							className={pathChipRemoveClassName}
@@ -737,7 +881,24 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 				readOnly={disabled}
 				renderElement={renderElement}
 				placeholder={placeholder}
-				onPaste={onPaste}
+				onPaste={(event) => {
+					if (!disabled) {
+						const dataTransfer = event.clipboardData ?? null;
+						const hasFileItem = Array.from(dataTransfer?.items ?? []).some(
+							(item) => item.kind === "file",
+						);
+						if (!hasFileItem) {
+							const text = dataTransfer?.getData("text/plain") ?? "";
+							const snippetPaths = extractSnippetReferencePathsFromText(text);
+							if (snippetPaths.length > 0) {
+								requestAnimationFrame(() => {
+									insertDroppedPathsAtCaret(snippetPaths);
+								});
+							}
+						}
+					}
+					onPaste?.(event);
+				}}
 				onDragOverCapture={(event) => {
 					if (!isPathDrag(event.dataTransfer ?? null)) return;
 					event.preventDefault();

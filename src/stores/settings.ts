@@ -25,6 +25,11 @@ import {
 
 type Theme = 'light' | 'dark' | 'system';
 type UpdateChannel = 'stable' | 'beta' | 'dev';
+export type SidebarProject = {
+  id: string;
+  name: string;
+  createdAt: number;
+};
 
 // ---------------------------------------------------------------------------
 // Cloud auth / bootstrap state — kept separate from local UI preferences so
@@ -79,6 +84,12 @@ interface SettingsState extends CloudAuthState {
   // UI State
   sidebarCollapsed: boolean;
   sidebarFolderExpanded: Record<string, boolean>;
+  sidebarBetaEnabled: boolean;
+  sidebarWidth: number;
+  sidebarProjects: SidebarProject[];
+  sidebarProjectExpanded: Record<string, boolean>;
+  sidebarThreadProjectMap: Record<string, string>;
+  sidebarThreadFirstSeenAt: Record<string, number>;
   devModeUnlocked: boolean;
 
   // Setup
@@ -112,6 +123,14 @@ interface SettingsState extends CloudAuthState {
   setAutoDownloadUpdate: (value: boolean) => void;
   setSidebarCollapsed: (value: boolean) => void;
   setSidebarFolderExpanded: (folder: string, expanded: boolean) => void;
+  setSidebarBetaEnabled: (value: boolean) => void;
+  setSidebarWidth: (value: number) => void;
+  addSidebarProject: (name: string) => string;
+  renameSidebarProject: (projectId: string, name: string) => void;
+  removeSidebarProject: (projectId: string) => void;
+  setSidebarProjectExpanded: (projectId: string, expanded: boolean) => void;
+  setSidebarThreadProject: (threadId: string, projectId: string) => void;
+  rememberSidebarThreadFirstSeen: (threadIds: string[], now?: number) => void;
   setDevModeUnlocked: (value: boolean) => void;
   markSetupComplete: () => void;
   resetSettings: () => void;
@@ -160,6 +179,14 @@ const defaultSettings = {
     xiaojiu: true,
     voice: true,
   },
+  sidebarBetaEnabled: false,
+  sidebarWidth: 268,
+  sidebarProjects: [],
+  sidebarProjectExpanded: {
+    'system-inbox': true,
+  },
+  sidebarThreadProjectMap: {},
+  sidebarThreadFirstSeenAt: {},
   devModeUnlocked: false,
   setupComplete: false,
   // Cloud auth defaults — not persisted in zustand store,
@@ -325,6 +352,87 @@ export const useSettingsStore = create<SettingsState>()(
           [folder]: expanded,
         },
       })),
+      setSidebarBetaEnabled: (sidebarBetaEnabled) => set({ sidebarBetaEnabled }),
+      setSidebarWidth: (sidebarWidth) => set({
+        sidebarWidth: Math.max(220, Math.min(480, Math.round(sidebarWidth))),
+      }),
+      addSidebarProject: (name) => {
+        const trimmed = name.trim();
+        if (!trimmed) return '';
+        const id = `project-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        set((state) => ({
+          sidebarProjects: [
+            ...state.sidebarProjects,
+            {
+              id,
+              name: trimmed,
+              createdAt: Date.now(),
+            },
+          ],
+          sidebarProjectExpanded: {
+            ...state.sidebarProjectExpanded,
+            [id]: true,
+          },
+        }));
+        return id;
+      },
+      renameSidebarProject: (projectId, name) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        set((state) => ({
+          sidebarProjects: state.sidebarProjects.map((project) =>
+            project.id === projectId ? { ...project, name: trimmed } : project
+          ),
+        }));
+      },
+      removeSidebarProject: (projectId) => {
+        if (!projectId || projectId === 'system-inbox') return;
+        set((state) => {
+          const nextThreadProjectMap = Object.fromEntries(
+            Object.entries(state.sidebarThreadProjectMap).map(([threadId, mappedProjectId]) => [
+              threadId,
+              mappedProjectId === projectId ? 'system-inbox' : mappedProjectId,
+            ]),
+          );
+          const { [projectId]: _removedProjectExpanded, ...remainingProjectExpanded } = state.sidebarProjectExpanded;
+          void _removedProjectExpanded;
+          return {
+            sidebarProjects: state.sidebarProjects.filter((project) => project.id !== projectId),
+            sidebarThreadProjectMap: nextThreadProjectMap,
+            sidebarProjectExpanded: remainingProjectExpanded,
+          };
+        });
+      },
+      setSidebarProjectExpanded: (projectId, expanded) => set((state) => ({
+        sidebarProjectExpanded: {
+          ...state.sidebarProjectExpanded,
+          [projectId]: expanded,
+        },
+      })),
+      setSidebarThreadProject: (threadId, projectId) => {
+        if (!threadId) return;
+        set((state) => ({
+          sidebarThreadProjectMap: {
+            ...state.sidebarThreadProjectMap,
+            [threadId]: projectId || 'system-inbox',
+          },
+        }));
+      },
+      rememberSidebarThreadFirstSeen: (threadIds, now = Date.now()) => {
+        if (!Array.isArray(threadIds) || threadIds.length === 0) return;
+        set((state) => {
+          let changed = false;
+          const next = { ...state.sidebarThreadFirstSeenAt };
+          for (const threadId of threadIds) {
+            if (!threadId) continue;
+            if (!Object.prototype.hasOwnProperty.call(next, threadId)) {
+              next[threadId] = now;
+              changed = true;
+            }
+          }
+          return changed ? { sidebarThreadFirstSeenAt: next } : {};
+        });
+      },
       setDevModeUnlocked: (devModeUnlocked) => {
         set({ devModeUnlocked });
         void hostApiFetch('/api/settings/devModeUnlocked', {

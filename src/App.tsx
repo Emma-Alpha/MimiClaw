@@ -67,7 +67,7 @@ class ErrorBoundary extends Component<
 						fontFamily: "monospace",
 					}}
 				>
-					<h1 style={{ fontSize: "24px", marginBottom: "16px" }}>
+					<h1 style={{ fontSize: "14px", marginBottom: "16px" }}>
 						Something went wrong
 					</h1>
 					<pre

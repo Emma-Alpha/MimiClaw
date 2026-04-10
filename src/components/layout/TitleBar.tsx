@@ -4,7 +4,7 @@
  * Windows: drag region with custom controls + management menu.
  * Linux: keep native frame, but still expose overlay controls for consistency.
  */
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
 	Minus,
@@ -12,6 +12,7 @@ import {
 	X,
 	Copy,
 	PanelLeft,
+	PanelLeftClose,
 	Ellipsis,
 	Cpu,
 	Bot,
@@ -23,10 +24,81 @@ import { useTranslation } from "react-i18next";
 import { invokeIpc } from "@/lib/api-client";
 import { useSettingsStore } from "@/stores/settings";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type TitleBarProps = {
 	className?: string;
+	hideManagementMenu?: boolean;
+	hideSidebarToggle?: boolean;
 };
+
+type SidebarToggleButtonProps = {
+	sidebarCollapsed: boolean;
+	onToggle: () => void;
+	ariaLabel: string;
+	tooltipLabel: string;
+	shortcutLabel: string;
+};
+
+function isEditableTarget(target: EventTarget | null): boolean {
+	if (!(target instanceof HTMLElement)) {
+		return false;
+	}
+	if (target.isContentEditable) {
+		return true;
+	}
+	const tagName = target.tagName;
+	if (tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT") {
+		return true;
+	}
+	return target.getAttribute("role") === "textbox";
+}
+
+function TooltipLabel({
+	label,
+	shortcut,
+}: {
+	label: string;
+	shortcut?: string;
+}) {
+	return (
+		<div className="flex items-center gap-2 whitespace-nowrap">
+			<span>{label}</span>
+			{shortcut ? (
+				<span className="rounded-[4px] bg-white/18 px-1.5 py-[1px] text-[11px] font-medium tracking-wide text-white/95">
+					{shortcut}
+				</span>
+			) : null}
+		</div>
+	);
+}
+
+function SidebarToggleButton({
+	sidebarCollapsed,
+	onToggle,
+	ariaLabel,
+}: SidebarToggleButtonProps) {
+	return (
+		<button
+			type="button"
+			onClick={(e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				onToggle();
+			}}
+			style={{ WebkitAppRegion: 'no-drag' } as any}
+			className="no-drag pointer-events-auto flex h-7 w-7 items-center justify-center rounded-md text-foreground/75 transition-all duration-150 hover:bg-black/[0.07] hover:text-foreground dark:hover:bg-white/[0.12]"
+			aria-label={ariaLabel}
+			title={ariaLabel}
+		>
+			{sidebarCollapsed ? (
+				<PanelLeft className="h-[16px] w-[16px]" />
+			) : (
+				<PanelLeftClose className="h-[16px] w-[16px]" />
+			)}
+		</button>
+	);
+}
 
 function ManagementMenu({
 	className = "",
@@ -85,14 +157,27 @@ function ManagementMenu({
 
 	return (
 		<div ref={menuRef} className={cn("relative", className)}>
-			<button
-				type="button"
-				onClick={() => setOpen((state) => !state)}
-				className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-black/5 hover:text-foreground dark:hover:bg-white/10"
-				aria-label={t("sidebar.management", { defaultValue: "管理入口" })}
-			>
-				<Ellipsis className="h-4.5 w-4.5" />
-			</button>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<button
+						type="button"
+						onClick={() => setOpen((state) => !state)}
+						className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-black/5 hover:text-foreground dark:hover:bg-white/10"
+						aria-label={t("sidebar.management", { defaultValue: "管理入口" })}
+					>
+						<Ellipsis className="h-4.5 w-4.5" />
+					</button>
+				</TooltipTrigger>
+				<TooltipContent
+					side="bottom"
+					align="end"
+					className="border-none bg-black/90 px-2.5 py-1.5 text-[12px] text-white shadow-lg dark:bg-black/90"
+				>
+					<TooltipLabel
+						label={t("sidebar.management", { defaultValue: "管理入口" })}
+					/>
+				</TooltipContent>
+			</Tooltip>
 			{open ? (
 				<div className="absolute right-0 top-full z-[140] mt-2 w-48 rounded-xl border border-black/[0.08] bg-white/95 p-1 shadow-xl backdrop-blur dark:border-white/[0.1] dark:bg-[#202329]/95">
 					{items.map((item) => {
@@ -124,33 +209,76 @@ function ManagementMenu({
 	);
 }
 
-export function TitleBar({ className = "" }: TitleBarProps) {
+export function TitleBar({
+	className = "",
+	hideManagementMenu = false,
+	hideSidebarToggle = false,
+}: TitleBarProps) {
 	const platform = window.electron?.platform;
+	const { t } = useTranslation("common");
 	const sidebarCollapsed = useSettingsStore((state) => state.sidebarCollapsed);
 	const setSidebarCollapsed = useSettingsStore(
 		(state) => state.setSidebarCollapsed,
+	);
+	const sidebarShortcutLabel = platform === "darwin" ? "⌘B" : "Ctrl+B";
+	const sidebarToggleTooltipLabel = t("sidebar.toggleSidebar", {
+		defaultValue: "切换边栏",
+	});
+	const sidebarToggleAriaLabel = sidebarCollapsed
+		? t("sidebar.expandSidebar", { defaultValue: "展开侧边栏" })
+		: t("sidebar.collapseSidebar", { defaultValue: "收起侧边栏" });
+
+	const toggleSidebar = useCallback(() => {
+		const nextCollapsed = !useSettingsStore.getState().sidebarCollapsed;
+		setSidebarCollapsed(nextCollapsed);
+	}, [setSidebarCollapsed]);
+
+	useEffect(() => {
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.repeat) return;
+			const normalized = event.key.toLowerCase();
+			if (normalized !== "b" || event.altKey || event.shiftKey) return;
+			const hasShortcutModifier = platform === "darwin"
+				? event.metaKey
+				: event.ctrlKey;
+			if (!hasShortcutModifier || isEditableTarget(event.target)) return;
+			event.preventDefault();
+			toggleSidebar();
+		};
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [platform, toggleSidebar]);
+
+	const sidebarToggleControl = (
+		<SidebarToggleButton
+			sidebarCollapsed={sidebarCollapsed}
+			onToggle={toggleSidebar}
+			ariaLabel={sidebarToggleAriaLabel}
+			tooltipLabel={sidebarToggleTooltipLabel}
+			shortcutLabel={sidebarShortcutLabel}
+		/>
 	);
 
 	if (platform === "darwin") {
 		return (
 			<div
-				className={`drag-region h-10 w-full shrink-0 bg-transparent absolute top-0 left-0 z-[100] ${className}`.trim()}
+				className={`${
+					hideManagementMenu ? "pointer-events-none" : "drag-region"
+				} h-10 w-full shrink-0 bg-transparent absolute top-0 left-0 z-[100] ${className}`.trim()}
 			>
-				{sidebarCollapsed ? (
-					<div className="no-drag absolute left-[74px] top-1/2 -translate-y-1/2">
-						<button
-							type="button"
-							onClick={() => setSidebarCollapsed(false)}
-							className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-black/5 hover:text-foreground dark:hover:bg-white/10"
-							aria-label="Show sidebar"
-						>
-							<PanelLeft className="h-4.5 w-4.5" />
-						</button>
+				{hideSidebarToggle ? null : (
+					<div
+						className="absolute left-[80px] top-[10px] pointer-events-auto"
+						style={{ WebkitAppRegion: 'no-drag' } as any}
+					>
+						{sidebarToggleControl}
 					</div>
-				) : null}
-				<div className="no-drag absolute right-3 top-1/2 -translate-y-1/2">
-					<ManagementMenu />
-				</div>
+				)}
+				{hideManagementMenu ? null : (
+					<div className="no-drag pointer-events-auto absolute right-3 top-1/2 -translate-y-1/2">
+						<ManagementMenu />
+					</div>
+				)}
 			</div>
 		);
 	}
@@ -160,21 +288,19 @@ export function TitleBar({ className = "" }: TitleBarProps) {
 			<div
 				className={`pointer-events-none h-10 w-full shrink-0 bg-transparent absolute top-0 left-0 z-[100] ${className}`.trim()}
 			>
-				{sidebarCollapsed ? (
-					<div className="pointer-events-auto absolute left-3 top-1/2 -translate-y-1/2">
-						<button
-							type="button"
-							onClick={() => setSidebarCollapsed(false)}
-							className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-black/5 hover:text-foreground dark:hover:bg-white/10"
-							aria-label="Show sidebar"
-						>
-							<PanelLeft className="h-4.5 w-4.5" />
-						</button>
+				{hideSidebarToggle ? null : (
+					<div
+						className="pointer-events-auto absolute left-3 top-[10px]"
+						style={{ WebkitAppRegion: 'no-drag' } as any}
+					>
+						{sidebarToggleControl}
 					</div>
-				) : null}
-				<div className="pointer-events-auto absolute right-3 top-1/2 -translate-y-1/2">
-					<ManagementMenu />
-				</div>
+				)}
+				{hideManagementMenu ? null : (
+					<div className="pointer-events-auto absolute right-3 top-1/2 -translate-y-1/2">
+						<ManagementMenu />
+					</div>
+				)}
 			</div>
 		);
 	}
@@ -183,7 +309,12 @@ export function TitleBar({ className = "" }: TitleBarProps) {
 		<WindowsTitleBar
 			className={className}
 			sidebarCollapsed={sidebarCollapsed}
-			onShowSidebar={() => setSidebarCollapsed(false)}
+			onToggleSidebar={toggleSidebar}
+			sidebarToggleAriaLabel={sidebarToggleAriaLabel}
+			sidebarToggleTooltipLabel={sidebarToggleTooltipLabel}
+			sidebarShortcutLabel={sidebarShortcutLabel}
+			hideManagementMenu={hideManagementMenu}
+			hideSidebarToggle={hideSidebarToggle}
 		/>
 	);
 }
@@ -191,10 +322,20 @@ export function TitleBar({ className = "" }: TitleBarProps) {
 function WindowsTitleBar({
 	className = "",
 	sidebarCollapsed,
-	onShowSidebar,
+	onToggleSidebar,
+	sidebarToggleAriaLabel,
+	sidebarToggleTooltipLabel,
+	sidebarShortcutLabel,
+	hideManagementMenu,
+	hideSidebarToggle,
 }: TitleBarProps & {
 	sidebarCollapsed: boolean;
-	onShowSidebar: () => void;
+	onToggleSidebar: () => void;
+	sidebarToggleAriaLabel: string;
+	sidebarToggleTooltipLabel: string;
+	sidebarShortcutLabel: string;
+	hideManagementMenu: boolean;
+	hideSidebarToggle?: boolean;
 }) {
 	const [maximized, setMaximized] = useState(false);
 
@@ -225,20 +366,19 @@ function WindowsTitleBar({
 			className={`drag-region flex h-10 w-full shrink-0 items-center justify-between bg-transparent absolute top-0 left-0 z-[100] ${className}`.trim()}
 		>
 			<div className="no-drag flex h-full items-center pl-2">
-				{sidebarCollapsed ? (
-					<button
-						type="button"
-						onClick={onShowSidebar}
-						className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-black/5 hover:text-foreground dark:hover:bg-white/10"
-						aria-label="Show sidebar"
-					>
-						<PanelLeft className="h-4.5 w-4.5" />
-					</button>
-				) : null}
+				{hideSidebarToggle ? null : (
+					<SidebarToggleButton
+						sidebarCollapsed={sidebarCollapsed}
+						onToggle={onToggleSidebar}
+						ariaLabel={sidebarToggleAriaLabel}
+						tooltipLabel={sidebarToggleTooltipLabel}
+						shortcutLabel={sidebarShortcutLabel}
+					/>
+				)}
 			</div>
 
 			<div className="no-drag flex h-full items-center gap-1 pr-1 pointer-events-auto">
-				<ManagementMenu />
+				{hideManagementMenu ? null : <ManagementMenu />}
 				<button
 					onClick={handleMinimize}
 					className="flex h-full w-11 items-center justify-center text-muted-foreground transition-colors hover:bg-accent"

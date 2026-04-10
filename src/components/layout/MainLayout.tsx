@@ -15,6 +15,7 @@ const FULL_BLEED_PATHS = new Set(['/jizhi-chat']);
 export function MainLayout() {
   const { pathname } = useLocation();
   const fullBleed = FULL_BLEED_PATHS.has(pathname);
+  const hideTitleBarManagementMenu = pathname === '/code-agent/chat';
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background relative">
@@ -22,7 +23,7 @@ export function MainLayout() {
       <RemoteMessengerSessionBridge />
       <VoiceChatSessionBridge />
       {/* Global Title Bar for dragging */}
-      <TitleBar />
+      <TitleBar hideManagementMenu={hideTitleBarManagementMenu} />
       <div className="flex h-full flex-1 overflow-hidden">
         <Sidebar />
         <main

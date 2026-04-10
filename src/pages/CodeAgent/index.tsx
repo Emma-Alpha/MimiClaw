@@ -262,7 +262,7 @@ export function CodeAgent() {
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-6">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            <h1 className="text-sm font-semibold tracking-tight text-foreground">
               {t('settings:developer.codeAgent')}
             </h1>
             <Badge variant="outline" className="rounded-full px-3 py-1">

@@ -3,6 +3,17 @@ import { invokeIpc } from "@/lib/api-client";
 import { useSettingsStore } from "@/stores/settings";
 
 type CodeAgentConfig = ReturnType<typeof useSettingsStore.getState>["codeAgent"];
+const CODEX_MODEL_OPTIONS = [
+	{ key: "", label: "Default" },
+	{ key: "sonnet", label: "Sonnet" },
+	{ key: "opus", label: "Opus" },
+] as const;
+type CodexModelValue = (typeof CODEX_MODEL_OPTIONS)[number]["key"];
+
+function normalizeCodexModel(value: string): CodexModelValue {
+	if (value === "sonnet" || value === "opus") return value;
+	return "";
+}
 
 type Params = {
 	codeAgentConfig: CodeAgentConfig;
@@ -16,10 +27,14 @@ export function useMiniChatCodeAgentControls({
 	const effortEnabled = codeAgentConfig.effort !== "";
 	const thinkingEnabled = codeAgentConfig.thinking !== "disabled";
 	const fastModeEnabled = codeAgentConfig.fastMode === true;
+	const selectedModel = useMemo(
+		() => normalizeCodexModel((codeAgentConfig.model || "").trim()),
+		[codeAgentConfig.model],
+	);
 
 	const modelLabel = useMemo(() => {
 		const model = (codeAgentConfig.model || "").trim();
-		if (!model) return "Default (recommended)";
+		if (!model) return "Default";
 		if (model === "sonnet") return "Sonnet";
 		if (model === "opus") return "Opus";
 		return model;
@@ -36,18 +51,30 @@ export function useMiniChatCodeAgentControls({
 		[setCodeAgentConfig],
 	);
 
+	const handleSelectModel = useCallback(
+		(nextModel: string) => {
+			const normalizedModel = normalizeCodexModel((nextModel || "").trim());
+			const current = (useSettingsStore.getState().codeAgent.model || "").trim();
+			if (current === normalizedModel) return;
+
+			updateCodeAgentConfig({ model: normalizedModel });
+			void invokeIpc(
+				"pet:pushTerminalLine",
+				`› Model 已切换为 ${normalizedModel || "Default"}`,
+			).catch(() => {});
+		},
+		[updateCodeAgentConfig],
+	);
+
 	const handleCycleModel = useCallback(() => {
-		const cycle: Array<"" | "sonnet" | "opus"> = ["", "sonnet", "opus"];
-		const current = (useSettingsStore.getState().codeAgent.model || "").trim();
-		const currentIndex = cycle.indexOf(current as (typeof cycle)[number]);
-		const nextModel =
-			currentIndex === -1 ? "sonnet" : cycle[(currentIndex + 1) % cycle.length];
-		updateCodeAgentConfig({ model: nextModel });
-		void invokeIpc(
-			"pet:pushTerminalLine",
-			`› Model 已切换为 ${nextModel || "Default (recommended)"}`,
-		).catch(() => {});
-	}, [updateCodeAgentConfig]);
+		const cycle: CodexModelValue[] = ["", "sonnet", "opus"];
+		const current = normalizeCodexModel(
+			(useSettingsStore.getState().codeAgent.model || "").trim(),
+		);
+		const currentIndex = cycle.indexOf(current);
+		const nextModel = cycle[(currentIndex + 1) % cycle.length];
+		handleSelectModel(nextModel);
+	}, [handleSelectModel]);
 
 	const handleToggleEffort = useCallback(() => {
 		const nextEffort = useSettingsStore.getState().codeAgent.effort ? "" : "high";
@@ -83,7 +110,10 @@ export function useMiniChatCodeAgentControls({
 		effortEnabled,
 		thinkingEnabled,
 		fastModeEnabled,
+		modelOptions: CODEX_MODEL_OPTIONS,
+		selectedModel,
 		modelLabel,
+		handleSelectModel,
 		handleCycleModel,
 		handleToggleEffort,
 		handleToggleThinking,

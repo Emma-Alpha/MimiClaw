@@ -113,11 +113,11 @@ export function ForceUpdateModal() {
 					<div className="px-8 pb-8 pt-0 flex flex-col items-center text-center">
 						<h2
 							id="force-update-title"
-							className="text-[26px] font-bold tracking-tight text-foreground"
+							className="text-[14px] font-bold tracking-tight text-foreground"
 						>
 							{title}
 						</h2>
-						<p className="mt-3 text-[15px] text-muted-foreground whitespace-pre-wrap leading-relaxed px-2 max-w-[400px]">
+						<p className="mt-3 text-[14px] text-muted-foreground whitespace-pre-wrap leading-relaxed px-2 max-w-[400px]">
 							{message}
 						</p>
 						{updateInfo?.version && (
@@ -136,7 +136,7 @@ export function ForceUpdateModal() {
 									<span className="font-medium">
 										{t("updates.action.downloading")}
 									</span>
-									<span className="font-bold text-[16px]">
+									<span className="font-bold text-[14px]">
 										{Math.round(progress.percent)}%
 									</span>
 								</div>
@@ -150,7 +150,7 @@ export function ForceUpdateModal() {
 						<div className="w-full mt-8 flex flex-col gap-3">
 							<Button
 								type="button"
-								className="w-full h-[52px] text-[16px] shadow-sm rounded-2xl font-medium"
+								className="w-full h-[52px] text-[14px] shadow-sm rounded-2xl font-medium"
 								onClick={primaryAction}
 								disabled={status === "checking" || status === "downloading"}
 							>

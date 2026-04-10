@@ -72,7 +72,7 @@ type Params = {
 		targetAgentId?: string | null,
 	) => Promise<void>;
 	clearComposer: () => void;
-	activeSkillRef: MutableRefObject<SlashOption | null>;
+	activeSkillsRef: MutableRefObject<SlashOption[]>;
 	richContentRef: MutableRefObject<Descendant[] | undefined>;
 	pendingCompletionActivitiesRef: MutableRefObject<ToolActivityItem[]>;
 	chatSubmitInFlightRef: MutableRefObject<boolean>;
@@ -98,7 +98,7 @@ export function useMiniChatSubmissionActions({
 	resetCodeAgentStreaming,
 	sendMessage,
 	clearComposer,
-	activeSkillRef,
+	activeSkillsRef,
 	richContentRef,
 	pendingCompletionActivitiesRef,
 	chatSubmitInFlightRef,
@@ -285,16 +285,26 @@ export function useMiniChatSubmissionActions({
 			);
 
 			const hasNonImageAttachments = codeAttachmentPaths.length > 0;
-			const activeSkill = activeSkillRef.current;
+			const activeSkills = activeSkillsRef.current;
 			const codeText = (() => {
 				const base = hasNonImageAttachments
 					? `${cleanText}\n\n请优先读取并分析已附带的文件路径。`
 					: cleanText;
-				if (!activeSkill) return base;
-				if (activeSkill.source === "external" && activeSkill.skillContent) {
-					return `${base}\n\n<skill name="${activeSkill.title}">\n${activeSkill.skillContent}\n</skill>`;
+				if (activeSkills.length === 0) return base;
+
+				let result = base;
+				const cliCommands: string[] = [];
+				for (const skill of activeSkills) {
+					if (skill.source === "external" && skill.skillContent) {
+						result = `${result}\n\n<skill name="${skill.title}">\n${skill.skillContent}\n</skill>`;
+					} else {
+						cliCommands.push(skill.command);
+					}
 				}
-				return `${activeSkill.command} ${base}`;
+				if (cliCommands.length > 0) {
+					result = `${cliCommands.join(" ")} ${result}`;
+				}
+				return result;
 			})();
 			const prompt =
 				target === "code"
@@ -347,7 +357,7 @@ export function useMiniChatSubmissionActions({
 			});
 		},
 		[
-			activeSkillRef,
+			activeSkillsRef,
 			attachments,
 			chatSubmitInFlightRef,
 			clearComposer,

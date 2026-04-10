@@ -30,7 +30,7 @@ export function UpdateAvailablePopup() {
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6 animate-in fade-in duration-200">
       <div className="w-full max-w-[420px] rounded-2xl border border-border bg-card shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between px-6 py-4 border-b">
-          <h2 className="text-lg font-bold text-foreground">
+          <h2 className="text-sm font-bold text-foreground">
             发现新版本
           </h2>
           <div className="flex items-center gap-3">

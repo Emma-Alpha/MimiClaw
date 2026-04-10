@@ -7,9 +7,20 @@ import {
 	type KeyboardEvent,
 } from "react";
 import { useLocation } from "react-router-dom";
+import type { MenuProps } from "antd";
+import {
+	ChevronDown,
+	GitBranch,
+	LoaderCircle,
+	Monitor,
+	Shield,
+	ShieldAlert,
+} from "lucide-react";
 import {
 	type FileAttachment,
 } from "@/components/common/composer-helpers";
+import { ContextUsageTooltip } from "@/components/ui/context-usage-tooltip";
+import { StyledDropdown } from "@/components/ui/styled-dropdown";
 import {
 	fetchClaudeCodeSkills,
 	fetchCodeAgentStatus,
@@ -34,39 +45,41 @@ import { useSkillsStore } from "@/stores/skills";
 import type {
 	CodeAgentStatus,
 	CodeAgentPermissionMode,
-} from "../../shared/code-agent";
+} from "../../../shared/code-agent";
 import type {
 	PetMiniChatSeed,
-} from "../../shared/pet";
-import { MiniChatComposer } from "./MiniChat/components/MiniChatComposer";
-import { MiniChatHeader } from "./MiniChat/components/MiniChatHeader";
-import { MiniChatTimeline } from "./MiniChat/components/MiniChatTimeline";
-import { ElicitationForm } from "./MiniChat/components/code-agent/ElicitationForm";
-import { PermissionDispatcher } from "./MiniChat/components/code-agent/permissions/PermissionDispatcher";
-import { useMiniChatAttachmentActions } from "./MiniChat/hooks/useMiniChatAttachmentActions";
-import { useMiniChatCodeAgentControls } from "./MiniChat/hooks/useMiniChatCodeAgentControls";
-import { useMiniChatClaudeSessions } from "./MiniChat/hooks/useMiniChatClaudeSessions";
-import { useMiniChatCodeAgentEvents } from "./MiniChat/hooks/useMiniChatCodeAgentEvents";
-import { useMiniChatMentionsAndSlash } from "./MiniChat/hooks/useMiniChatMentionsAndSlash";
-import { useMiniChatSeedAndAutoSend } from "./MiniChat/hooks/useMiniChatSeedAndAutoSend";
-import { useMiniChatSessionActions } from "./MiniChat/hooks/useMiniChatSessionActions";
-import { useMiniChatSubmissionActions } from "./MiniChat/hooks/useMiniChatSubmissionActions";
-import { getChatSessionTitle } from "./MiniChat/session-title";
-import { useMiniChatStyles } from "./MiniChat/styles";
+} from "../../../shared/pet";
+import { MiniChatComposer } from "./components/MiniChatComposer";
+import { MiniChatHeader } from "./components/MiniChatHeader";
+import { MiniChatTimeline } from "./components/MiniChatTimeline";
+import { ElicitationForm } from "./components/code-agent/ElicitationForm";
+import { PermissionDispatcher } from "./components/code-agent/permissions/PermissionDispatcher";
+import { useMiniChatAttachmentActions } from "./hooks/useMiniChatAttachmentActions";
+import { useMiniChatCodeAgentControls } from "./hooks/useMiniChatCodeAgentControls";
+import { useMiniChatClaudeSessions } from "./hooks/useMiniChatClaudeSessions";
+import { useMiniChatCodeAgentEvents } from "./hooks/useMiniChatCodeAgentEvents";
+import { useMiniChatMentionsAndSlash } from "./hooks/useMiniChatMentionsAndSlash";
+import { useMiniChatMode } from "./hooks/useMiniChatMode";
+import { useMiniChatSeedAndAutoSend } from "./hooks/useMiniChatSeedAndAutoSend";
+import { useMiniChatSessionActions } from "./hooks/useMiniChatSessionActions";
+import { useMiniChatSubmissionActions } from "./hooks/useMiniChatSubmissionActions";
+import { getChatSessionTitle } from "./session-title";
+import { useMiniChatStyles } from "./styles";
 import type {
 	MentionOption,
 	MiniChatTarget,
 	SlashOption,
 	TimelineItem,
 	ToolActivityItem,
-} from "./MiniChat/types";
+} from "./types";
 import {
 	extractText,
 	getMentionDraft,
+	getSlashDraft,
 	isVisibleMessage,
 	normalizeTimestampMs,
 	parseSubmissionIntent,
-} from "./MiniChat/utils";
+} from "./utils";
 
 const MINI_CHAT_RUNTIME_TIMESTAMP = Date.now();
 
@@ -76,6 +89,29 @@ function getTimelineMessageKey(message: RawMessage, index: number) {
 		: `chat:${message.role}:${index}:${extractText(message.content).slice(0, 40)}`;
 }
 
+const CODE_PERMISSION_MODE_LABELS: Record<CodeAgentPermissionMode, string> = {
+	default: "默认权限",
+	acceptEdits: "接受编辑",
+	auto: "自动模式",
+	plan: "规划模式",
+	dontAsk: "免确认",
+	bypassPermissions: "完全访问权限",
+};
+const CODE_PERMISSION_MODE_OPTIONS = (
+	Object.entries(CODE_PERMISSION_MODE_LABELS) as Array<[CodeAgentPermissionMode, string]>
+).map(([value, label]) => ({ value, label }));
+
+function getPermissionModeLabel(mode: CodeAgentPermissionMode): string {
+	return CODE_PERMISSION_MODE_LABELS[mode] ?? mode;
+}
+
+function formatTokenCount(value: number): string {
+	if (!Number.isFinite(value)) return "0";
+	if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+	if (value >= 1_000) return `${(value / 1_000).toFixed(1).replace(/\.0$/, "")}k`;
+	return `${Math.round(value)}`;
+}
+
 type MiniChatProps = {
 	embeddedCodeAssistant?: boolean;
 };
@@ -83,6 +119,7 @@ type MiniChatProps = {
 export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 	const { styles, cx } = useMiniChatStyles();
 	const location = useLocation();
+	const isMiniChatMode = useMiniChatMode();
 	const initSettings = useSettingsStore((state) => state.init);
 	const language = useSettingsStore((state) => state.language);
 	const codeAgentConfig = useSettingsStore((state) => state.codeAgent);
@@ -173,7 +210,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 		return raw?.trim() ?? "";
 	}, [embeddedCodeAssistant, location.search]);
 	const composerInputRef = useRef<UnifiedComposerInputHandle>(null);
-	const activeSkillRef = useRef<SlashOption | null>(null);
+	const activeSkillsRef = useRef<SlashOption[]>([]);
 	const richContentRef = useRef<import("slate").Descendant[] | undefined>(undefined);
 
 	const pendingAutoSend = useRef<PetMiniChatSeed | null>(null);
@@ -397,7 +434,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 		setSelectedMode(null);
 		setAttachments([]);
 		setDroppedPaths([]);
-		activeSkillRef.current = null;
+		activeSkillsRef.current = [];
 		richContentRef.current = undefined;
 	}, []);
 	const {
@@ -415,7 +452,10 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 		effortEnabled,
 		thinkingEnabled,
 		fastModeEnabled,
+		modelOptions,
+		selectedModel,
 		modelLabel,
+		handleSelectModel,
 		handleCycleModel,
 		handleToggleEffort,
 		handleToggleThinking,
@@ -445,7 +485,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 			resetCodeAgentStreaming,
 			sendMessage,
 			clearComposer,
-			activeSkillRef,
+			activeSkillsRef,
 			richContentRef,
 			pendingCompletionActivitiesRef,
 			chatSubmitInFlightRef,
@@ -629,39 +669,43 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 			const resolvedDraft = mentionDraft ?? getMentionDraft(liveInput, liveCaret);
 			if (!resolvedDraft) return;
 
-			const nextInput =
-				liveInput.slice(0, resolvedDraft.start) + liveInput.slice(resolvedDraft.end);
-			// Close mention overlay immediately and keep caret at the removed-token position.
 			setActiveMentionIndex(0);
-			setCaretIndex(resolvedDraft.start);
-			setInput(nextInput);
-			applyDroppedPaths([
+			composerInputRef.current?.insertMention(
 				{
 					absolutePath: option.absolutePath,
 					name: option.label,
 					isDirectory: option.isDirectory,
 				},
-			]);
+				{ start: resolvedDraft.start, end: resolvedDraft.end },
+			);
 			requestAnimationFrame(() => {
 				composerInputRef.current?.focus();
 				setIsInputFocused(true);
-				requestAnimationFrame(() => {
-					composerInputRef.current?.focus();
-				});
 			});
 		},
-		[applyDroppedPaths, mentionDraft],
+		[mentionDraft],
 	);
 
 	const applySlashOption = useCallback(
 		(option: SlashOption) => {
-			if (!slashDraft) return;
+			const liveInput = inputRef.current;
+			const liveCaret = caretIndexRef.current;
+			const liveDraft = getSlashDraft(liveInput, liveCaret);
+			const resolvedDraft = liveDraft ?? slashDraft;
+
 			setActiveSlashIndex(0);
-			activeSkillRef.current = option;
-			composerInputRef.current?.insertSkill(option.command, {
-				start: slashDraft.start,
-				end: slashDraft.end,
-			});
+			const already = activeSkillsRef.current.some((s) => s.command === option.command);
+			if (!already) {
+				activeSkillsRef.current = [...activeSkillsRef.current, option];
+			}
+			if (resolvedDraft) {
+				composerInputRef.current?.insertSkill(option.command, {
+					start: resolvedDraft.start,
+					end: resolvedDraft.end,
+				});
+				return;
+			}
+			composerInputRef.current?.insertSkill(option.command);
 		},
 		[slashDraft],
 	);
@@ -869,6 +913,83 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 		pendingFinal ||
 		Boolean(liveStreamingText) ||
 		codeStreaming.isStreaming;
+	const showEmbeddedComposerMeta = embeddedCodeAssistant && draftTarget === "code";
+	const embeddedPermissionLabel = useMemo(
+		() => getPermissionModeLabel(codeAgentConfig.permissionMode),
+		[codeAgentConfig.permissionMode],
+	);
+	const permissionDropdownMenu = useMemo<MenuProps>(
+		() => ({
+			items: [
+				{
+					type: "group",
+					label: "权限模式",
+					children: CODE_PERMISSION_MODE_OPTIONS.map((option) => ({
+						key: option.value,
+						label: option.label,
+						icon:
+							option.value === "bypassPermissions" ? (
+								<ShieldAlert size={14} />
+							) : (
+								<Shield size={14} />
+							),
+					})),
+				},
+			],
+			selectable: true,
+			selectedKeys: [codeAgentConfig.permissionMode],
+			onClick: ({ key }) => {
+				handlePermissionModeChange(key as CodeAgentPermissionMode);
+			},
+		}),
+		[codeAgentConfig.permissionMode, handlePermissionModeChange],
+	);
+	const embeddedFallbackContextWindow =
+		sessionInit?.model && /\[1m\]/i.test(sessionInit.model)
+			? 1_000_000
+			: 200_000;
+	const embeddedContextSummary = useMemo(() => {
+		const contextWindowSize = contextUsage?.contextWindowSize
+			&& Number.isFinite(contextUsage.contextWindowSize)
+			? Math.max(1, Math.round(contextUsage.contextWindowSize))
+			: embeddedFallbackContextWindow;
+		const usedTokens = Math.max(
+			0,
+			Math.min(contextWindowSize, Math.round(contextUsage?.usedTokens ?? 0)),
+		);
+		const remainingTokens = Math.max(0, contextWindowSize - usedTokens);
+		const usedPercentage = Math.max(
+			0,
+			Math.min(
+				100,
+				Math.round(
+					contextUsage?.usedPercentage ?? (usedTokens / contextWindowSize) * 100,
+				),
+			),
+		);
+		const remainingPercentage = Math.max(
+			0,
+			Math.min(
+				100,
+				Math.round(contextUsage?.remainingPercentage ?? 100 - usedPercentage),
+			),
+		);
+		const ringColor =
+			usedPercentage >= 90
+				? "#ef4444"
+				: usedPercentage >= 75
+					? "#f59e0b"
+					: "#3b82f6";
+		return {
+			contextWindowSize,
+			usedTokens,
+			remainingTokens,
+			usedPercentage,
+			remainingPercentage,
+			ringColor,
+		};
+	}, [contextUsage, embeddedFallbackContextWindow]);
+	const embeddedBranchLabel = "main";
 
 	const handleOpenFull = useCallback(() => {
 		if (embeddedCodeAssistant) return;
@@ -978,19 +1099,20 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 						/>
 					</div>
 				)}
-				<MiniChatComposer
-					input={input}
-					onInputChange={setInput}
-					onSend={() => {
-						void handleSend();
-					}}
-					loading={sending || codeSending}
-					disabled={disableComposer}
-					sendDisabled={sendDisabled}
-					isClaudeCodeCliMode={draftTarget === "code"}
-					placeholder={composerPlaceholder}
-					attachments={attachments}
-					droppedPaths={droppedPaths}
+					<MiniChatComposer
+						input={input}
+						onInputChange={setInput}
+						onSend={() => {
+							void handleSend();
+						}}
+						loading={sending || codeSending}
+						disabled={disableComposer}
+						sendDisabled={sendDisabled}
+						isClaudeCodeCliMode={draftTarget === "code"}
+						isMiniChatMode={isMiniChatMode}
+						placeholder={composerPlaceholder}
+						attachments={attachments}
+						droppedPaths={droppedPaths}
 					onRemoveAttachment={(id) => {
 						setAttachments((previous) =>
 							previous.filter((attachment) => attachment.id !== id),
@@ -1025,12 +1147,19 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 					onActiveSlashIndexChange={setActiveSlashIndex}
 					onApplySlashOption={applySlashOption}
 					composerInputRef={composerInputRef}
-					onSkillChange={(skill) => { if (!skill) activeSkillRef.current = null; }}
+					onSkillsChange={(skills) => {
+						activeSkillsRef.current = activeSkillsRef.current.filter(
+							(opt) => skills.includes(opt.command),
+						);
+					}}
 					onRichContentChange={(content) => { richContentRef.current = content; }}
 					onCaretChange={setCaretIndex}
 					onKeyDown={handleKeyDown}
 					onPressEnter={handlePressEnter}
+					modelOptions={modelOptions}
+					modelValue={selectedModel}
 					modelLabel={modelLabel}
+					onSelectModel={handleSelectModel}
 					onCycleModel={handleCycleModel}
 					effortEnabled={effortEnabled}
 					thinkingEnabled={thinkingEnabled}
@@ -1045,6 +1174,56 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 					onCompositionEnd={() => setIsComposing(false)}
 					onFocusChange={setIsInputFocused}
 				/>
+				{showEmbeddedComposerMeta ? (
+					<div className={styles.composerStatusRow}>
+						<div className={styles.composerStatusLeft}>
+							<span className={styles.composerStatusItem}>
+								<Monitor size={12} />
+								<span>本地</span>
+								<ChevronDown size={12} />
+							</span>
+							<StyledDropdown
+								menu={permissionDropdownMenu}
+								placement="topLeft"
+								trigger={["click"]}
+							>
+								<button
+									type="button"
+									className={cx(
+										styles.composerStatusItem,
+										styles.composerStatusItemButton,
+										styles.composerStatusPermission,
+									)}
+									title="切换权限模式"
+								>
+									{codeAgentConfig.permissionMode === "bypassPermissions" ? (
+										<ShieldAlert size={12} />
+									) : (
+										<Shield size={12} />
+									)}
+									<span>{embeddedPermissionLabel}</span>
+									<ChevronDown size={12} />
+								</button>
+							</StyledDropdown>
+						</div>
+						<div className={styles.composerStatusRight}>
+							<ContextUsageTooltip
+								usedPercentage={embeddedContextSummary.usedPercentage}
+								remainingPercentage={embeddedContextSummary.remainingPercentage}
+								usedTokensLabel={formatTokenCount(embeddedContextSummary.usedTokens)}
+								totalTokensLabel={formatTokenCount(embeddedContextSummary.contextWindowSize)}
+								ringColor={embeddedContextSummary.ringColor}
+								size={14}
+							/>
+							<span className={styles.composerStatusItem}>
+								<GitBranch size={12} />
+								<span>{embeddedBranchLabel}</span>
+								<ChevronDown size={12} />
+							</span>
+							<LoaderCircle size={14} className={styles.composerStatusSpin} />
+						</div>
+					</div>
+				) : null}
 			</div>
 		</div>
 	);

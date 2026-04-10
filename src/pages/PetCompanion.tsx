@@ -384,7 +384,7 @@ export function PetCompanion() {
 
 			{/* Header (Draggable Region) */}
 			<div className={`relative z-20 flex shrink-0 items-center justify-center h-10 shadow-sm [-webkit-app-region:drag] transition-colors duration-1000 ${isSpecialRarity ? 'bg-white/40 backdrop-blur-md border-b border-white/50' : 'bg-white border-b border-slate-200'}`}>
-				<h1 className={`text-[15px] flex items-center gap-1.5 font-black tracking-widest transition-all duration-1000 ${isSpecialRarity && currentCompanion ? globalRarityColors[currentCompanion.rarity].text : 'text-[#1e293b] drop-shadow-sm'}`}>
+				<h1 className={`text-[14px] flex items-center gap-1.5 font-black tracking-widest transition-all duration-1000 ${isSpecialRarity && currentCompanion ? globalRarityColors[currentCompanion.rarity].text : 'text-[#1e293b] drop-shadow-sm'}`}>
 					{copy.title}
 					{currentCompanion && (
 						<span className={`text-[10px] font-mono font-black relative top-px tracking-normal px-1 rounded transition-colors duration-1000 ${isSpecialRarity ? 'text-white/90 drop-shadow-md bg-black/5' : 'text-slate-300 bg-slate-50'}`}>
@@ -418,7 +418,7 @@ export function PetCompanion() {
 										<img src={IconLevel} className="h-3.5 w-3.5 drop-shadow-sm" />
 										<span>{copy.level}</span>
 									</div>
-									<div className="mt-0.5 text-[20px] font-black text-slate-800 relative z-10 leading-none">
+									<div className="mt-0.5 text-[14px] font-black text-slate-800 relative z-10 leading-none">
 										Lv.{progress.level}
 									</div>
 									<div className="mt-2 h-1.5 rounded-full bg-slate-100 relative z-10">
@@ -488,7 +488,7 @@ export function PetCompanion() {
 										<img src={IconTier} className="h-3.5 w-3.5 drop-shadow-sm" />
 										<span>{copy.tier}</span>
 									</div>
-									<div className="mt-0.5 text-[16px] font-black text-slate-800 relative z-10 leading-none">
+									<div className="mt-0.5 text-[14px] font-black text-slate-800 relative z-10 leading-none">
 										{tierLabel}
 									</div>
 									<div className="mt-2 flex items-center gap-1 text-[9.5px] font-bold text-amber-500 relative z-10 bg-amber-50 px-2 py-0.5 rounded-full w-fit">
@@ -504,7 +504,7 @@ export function PetCompanion() {
 										<img src={IconIntimacy} className="h-3.5 w-3.5 drop-shadow-sm" />
 										<span>{copy.intimacy}</span>
 									</div>
-									<div className="mt-0.5 text-[20px] font-black text-slate-800 relative z-10 leading-none">
+									<div className="mt-0.5 text-[14px] font-black text-slate-800 relative z-10 leading-none">
 										{progress.intimacy}
 									</div>
 									<div className="mt-0.5 text-[9px] font-bold text-slate-400 relative z-10 truncate">
@@ -522,7 +522,7 @@ export function PetCompanion() {
 										<img src={IconExp} className="h-3.5 w-3.5 drop-shadow-sm" />
 										<span>{copy.totalExp}</span>
 									</div>
-									<div className="mt-0.5 text-[20px] font-black text-slate-800 relative z-10 leading-none">
+									<div className="mt-0.5 text-[14px] font-black text-slate-800 relative z-10 leading-none">
 										{progress.totalExp}
 									</div>
 									<div className="mt-2 h-1.5 rounded-full bg-slate-100 relative z-10">
