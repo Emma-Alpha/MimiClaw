@@ -11,8 +11,11 @@ import {
   createGlobalStyle,
   type GetAntdTheme,
 } from 'antd-style';
-import { createThemeConfig } from '@4399ywkf/theme-system';
 import { useSettingsStore } from '@/stores/settings';
+import {
+  createMimiThemeConfig,
+  typographyCssVarDeclarations,
+} from '@/styles/typography-tokens';
 
 type ResolvedAppearance = 'light' | 'dark';
 
@@ -62,6 +65,12 @@ const LobeUiCompatGlobalStyle = createGlobalStyle`
   }
 `;
 
+const TypographyTokenGlobalStyle = createGlobalStyle`
+  :root {
+    ${typographyCssVarDeclarations}
+  }
+`;
+
 export function ThemeWrapper({ children }: ThemeWrapperProps) {
   const theme = useSettingsStore((s) => s.theme);
   const popupContainerRef = useRef<HTMLDivElement>(null);
@@ -78,9 +87,8 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
 
   const getAntdTheme = useCallback<GetAntdTheme>(
     (appearance) =>
-      createThemeConfig({
+      createMimiThemeConfig({
         appearance: appearance as ResolvedAppearance,
-        primaryColor: 'blue',
         neutralColor: 'slate',
       }),
     [],
@@ -100,6 +108,7 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
           theme={getAntdTheme}
           customToken={{ cssVar: true }}
         >
+          <TypographyTokenGlobalStyle />
           <LobeUiCompatGlobalStyle />
           <ConfigProvider getPopupContainer={getPopupContainer}>
             {children}

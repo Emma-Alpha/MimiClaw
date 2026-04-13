@@ -56,12 +56,12 @@ const useStyles = createStyles(({ token, css }) => ({
     }
   `,
 	recordingTime: css`
-    font-size: 13px;
-    color: #ef4444;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    min-width: 36px;
-  `,
+	    font-size: var(--mimi-font-size-md);
+	    color: #ef4444;
+	    font-weight: var(--mimi-font-weight-semibold);
+	    font-variant-numeric: tabular-nums;
+	    min-width: 36px;
+	  `,
 	recordingDot: css`
     width: 8px;
     height: 8px;
@@ -89,11 +89,11 @@ const useStyles = createStyles(({ token, css }) => ({
     box-shadow: ${token.boxShadowSecondary};
   `,
 	agentPickerLabel: css`
-    padding: 6px 12px 4px;
-    font-size: 11px;
-    font-weight: 500;
-    color: ${token.colorTextQuaternary};
-  `,
+	    padding: 6px 12px 4px;
+	    font-size: var(--mimi-font-size-xs);
+	    font-weight: var(--mimi-font-weight-medium);
+	    color: ${token.colorTextQuaternary};
+	  `,
 	agentPickerList: css`
     max-height: 240px;
     overflow-y: auto;
@@ -117,14 +117,14 @@ const useStyles = createStyles(({ token, css }) => ({
     background: ${token.colorPrimaryBg};
   `,
 	footer: css`
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    font-size: 11px;
-    color: ${token.colorTextQuaternary};
-    padding: 4px 8px 0;
-  `,
+	    display: flex;
+	    align-items: center;
+	    justify-content: space-between;
+	    gap: 8px;
+	    font-size: var(--mimi-font-size-xs);
+	    color: ${token.colorTextQuaternary};
+	    padding: 4px 8px 0;
+	  `,
 	statusDot: css`
     display: inline-block;
     width: 6px;
@@ -868,7 +868,7 @@ export function ChatInput({
 					<button
 						type="button"
 						style={{
-							fontSize: 11,
+							fontSize: "var(--mimi-font-size-xs)",
 							cursor: "pointer",
 							textDecoration: "underline",
 							background: "none",
@@ -912,8 +912,17 @@ function AgentPickerItem({
 				selected && styles.agentPickerItemActive,
 			)}
 		>
-			<span style={{ fontSize: 13, fontWeight: 500 }}>{agent.name}</span>
-			<span style={{ fontSize: 11, opacity: 0.5 }}>{agent.modelDisplay}</span>
+			<span
+				style={{
+					fontSize: "var(--mimi-font-size-md)",
+					fontWeight: "var(--mimi-font-weight-medium)",
+				}}
+			>
+				{agent.name}
+			</span>
+			<span style={{ fontSize: "var(--mimi-font-size-xs)", opacity: 0.5 }}>
+				{agent.modelDisplay}
+			</span>
 		</button>
 	);
 }

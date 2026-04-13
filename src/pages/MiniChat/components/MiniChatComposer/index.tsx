@@ -391,7 +391,7 @@ export function MiniChatComposer({
 			? "flex-start"
 			: "center";
 
-	const attachmentMenuItems = [
+	const attachmentMenuItems: NonNullable<MenuProps["items"]> = [
 		{
 			key: "file",
 			label: "上传文件",

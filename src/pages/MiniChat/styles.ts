@@ -90,13 +90,8 @@ export const useMiniChatStyles = createStyles(
 		line-height: 1.2;
 		border-radius: 0;
 		pointer-events: auto;
-		cursor: pointer;
+		cursor: default;
 		-webkit-app-region: no-drag;
-		transition: opacity 0.16s ease;
-
-		&:hover {
-			opacity: 0.82;
-		}
 	`,
 		embeddedThreadIcon: css`
 		display: inline-flex;
@@ -562,19 +557,13 @@ export const useMiniChatStyles = createStyles(
 		}
 	`,
 		islandDropdown: css`
-		position: absolute;
-		top: calc(100% + 8px);
-		left: 50%;
-		transform: translateX(-50%);
-		z-index: 100;
 		width: min(94vw, 640px);
 		min-width: 320px;
 		max-height: calc(100vh - 72px);
-		border-radius: 22px;
-		border: 1px solid rgba(15, 23, 42, 0.12);
-		background: rgba(245, 245, 247, 0.96);
-		backdrop-filter: blur(18px) saturate(1.05);
-		box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18), 0 2px 12px rgba(15, 23, 42, 0.12);
+		border-radius: 24px;
+		border: 1px solid #eaecef;
+		background: #ffffff;
+		box-shadow: 0 16px 40px rgba(16, 24, 40, 0.12);
 		padding: 10px 0;
 		display: flex;
 		flex-direction: column;
@@ -584,25 +573,6 @@ export const useMiniChatStyles = createStyles(
 		@keyframes dropdownIn {
 			from {
 				opacity: 0;
-				transform: translateX(-50%) translateY(-6px) scale(0.97);
-			}
-			to {
-				opacity: 1;
-				transform: translateX(-50%) translateY(0) scale(1);
-			}
-		}
-	`,
-		islandDropdownEmbedded: css`
-		top: calc(100% + 10px);
-		left: 0;
-		transform: none;
-		width: min(720px, calc(100vw - 300px));
-		max-height: calc(100vh - 132px);
-		animation: dropdownInEmbedded 0.18s cubic-bezier(0.32, 0.72, 0, 1);
-
-		@keyframes dropdownInEmbedded {
-			from {
-				opacity: 0;
 				transform: translateY(-6px) scale(0.97);
 			}
 			to {
@@ -610,6 +580,10 @@ export const useMiniChatStyles = createStyles(
 				transform: translateY(0) scale(1);
 			}
 		}
+	`,
+		islandDropdownEmbedded: css`
+		width: min(720px, calc(100vw - 300px));
+		max-height: calc(100vh - 132px);
 	`,
 		islandDropdownSection: css`
 		padding: 8px 18px 10px;
@@ -810,7 +784,7 @@ export const useMiniChatStyles = createStyles(
 		islandSessionSearchInput: css`
 		width: 100%;
 		font-size: 14px;
-		font-weight: 600;
+		font-weight: 400;
 		line-height: 1.3;
 		background: transparent;
 		border: 0;
@@ -826,12 +800,14 @@ export const useMiniChatStyles = createStyles(
 		islandSessionList: css`
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
+		gap: 4px;
 		flex: 1 1 auto;
 		min-height: 72px;
 		max-height: min(360px, calc(100vh - 300px));
 		overflow-y: auto;
-		padding: 8px 8px 6px;
+		padding: 8px;
+		background: transparent;
+		border-radius: 0;
 	`,
 		islandSessionItem: css`
 		display: flex;
@@ -839,24 +815,30 @@ export const useMiniChatStyles = createStyles(
 		align-items: center;
 		justify-content: space-between;
 		gap: 10px;
-		padding: 10px 12px;
-		border-radius: 14px;
+		min-height: 40px;
+		padding: 8px 12px;
+		border-radius: 8px;
+		border: 1px solid transparent;
+		background: transparent;
+		color: #475467;
+		font-weight: 400;
 		text-align: left;
-		transition: background 0.16s ease, color 0.16s ease;
+		transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
 
 		&:hover {
-			background: rgba(15, 23, 42, 0.06);
+			background: #f3f4f6;
 		}
 	`,
 		islandSessionItemActive: css`
-		background: rgba(15, 23, 42, 0.08);
+		background: ${token.colorPrimaryBg};
+		border-color: ${token.colorPrimaryBorder};
 	`,
 		islandSessionItemTitle: css`
 		flex: 1;
 		min-width: 0;
 		font-size: 14px;
-		font-weight: 500;
-		color: ${token.colorText};
+		font-weight: 400;
+		color: #111827;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -865,28 +847,41 @@ export const useMiniChatStyles = createStyles(
 		islandSessionItemSide: css`
 		display: flex;
 		align-items: center;
-		gap: 12px;
+		gap: 10px;
 		flex-shrink: 0;
 		min-width: 72px;
 		justify-content: flex-end;
 	`,
 		islandSessionItemMeta: css`
-		font-size: clamp(12px, 1.6vw, 14px);
+		font-size: 12px;
 		line-height: 1;
-		color: ${token.colorTextSecondary};
-		font-weight: 500;
+		color: #98a2b3;
+		font-weight: 400;
 		font-variant-numeric: tabular-nums;
+	`,
+		islandSessionItemMetaActive: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0 6px;
+		height: 18px;
+		border-radius: 999px;
+		background: ${token.colorPrimaryBg};
+		color: ${token.colorPrimaryText};
+		font-size: 11px;
+		font-weight: 500;
+		line-height: 1;
 	`,
 		islandSessionItemIndicator: css`
 		width: 12px;
 		height: 12px;
 		border-radius: 999px;
-		border: 2px solid rgba(15, 23, 42, 0.22);
+		border: 2px solid #d0d5dd;
 		flex-shrink: 0;
 	`,
 		islandSessionItemIndicatorActive: css`
-		border-color: rgba(15, 23, 42, 0.7);
-		background: rgba(15, 23, 42, 0.6);
+		border-color: ${token.colorPrimary};
+		background: ${token.colorPrimary};
 	`,
 		islandSessionEmpty: css`
 		font-size: 14px;
@@ -895,17 +890,19 @@ export const useMiniChatStyles = createStyles(
 	`,
 		islandDropdownNewBtn: css`
 		display: flex;
-		width: 100%;
+		width: calc(100% - 16px);
+		margin: 2px 8px 4px;
 		align-items: center;
 		gap: 8px;
-		padding: 10px 18px;
+		padding: 8px 12px;
 		font-size: 14px;
+		font-weight: 400;
 		color: ${token.colorTextSecondary};
-		border-radius: 0;
+		border-radius: 8px;
 		transition: background 0.15s ease, color 0.15s ease;
 		text-align: left;
 		&:hover {
-			background: rgba(15, 23, 42, 0.06);
+			background: #f3f4f6;
 			color: ${token.colorText};
 		}
 	`,
@@ -1262,17 +1259,167 @@ export const useMiniChatStyles = createStyles(
 		composerStatusPermission: css`
 		color: #dd5a1f;
 	`,
-		composerStatusSpin: css`
-		color: ${token.colorTextTertiary};
-		animation: codexStatusSpin 1.2s linear infinite;
+		branchDropdownOverlay: css`
+		.ant-dropdown-menu {
+			display: none;
+		}
+	`,
+		branchDropdownPanel: css`
+		width: 300px;
+		max-width: min(300px, calc(100vw - 20px));
+		border-radius: 14px;
+		border: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorBgContainer};
+		box-shadow:
+			0 14px 30px rgba(15, 23, 42, 0.12),
+			0 2px 8px rgba(15, 23, 42, 0.08);
+		overflow: hidden;
+	`,
+		branchDropdownSearchRow: css`
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 0 10px;
+		height: 34px;
+		border-radius: 8px;
+		border: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorBgElevated};
+		margin: 8px 8px 2px;
+	`,
+		branchDropdownSearchIcon: css`
+		flex-shrink: 0;
+		color: ${token.colorTextQuaternary};
+	`,
+		branchDropdownSearchInput: css`
+		flex: 1;
+		min-width: 0;
+		border: 0;
+		outline: 0;
+		background: transparent;
+		color: ${token.colorText};
+		font-size: 12px;
+		line-height: 1.2;
+		font-weight: 400;
+		padding: 0;
 
-		@keyframes codexStatusSpin {
-			from {
-				transform: rotate(0deg);
-			}
-			to {
-				transform: rotate(360deg);
-			}
+		&::placeholder {
+			color: ${token.colorTextQuaternary};
+		}
+	`,
+		branchDropdownSectionLabel: css`
+		padding: 6px 12px 4px;
+		font-size: 12px;
+		line-height: 1.3;
+		font-weight: 400;
+		color: ${token.colorTextTertiary};
+	`,
+		branchDropdownMenuWrap: css`
+		max-height: 246px;
+		overflow-y: auto;
+		padding: 0 6px 6px;
+
+		&::-webkit-scrollbar {
+			width: 6px;
+		}
+
+		&::-webkit-scrollbar-thumb {
+			background: ${token.colorBorder};
+			border-radius: 999px;
+		}
+
+		&::-webkit-scrollbar-track {
+			background: transparent;
+		}
+	`,
+		branchDropdownItem: css`
+		width: 100%;
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 10px;
+		padding: 7px 8px;
+		border: 0;
+		border-radius: 8px;
+		background: transparent;
+		text-align: left;
+		cursor: pointer;
+		transition: background-color 0.14s ease;
+
+		&:hover {
+			background: ${token.colorFillTertiary};
+		}
+	`,
+		branchDropdownItemActive: css`
+		background: ${token.colorFillQuaternary};
+	`,
+		branchDropdownItemMain: css`
+		display: inline-flex;
+		align-items: flex-start;
+		gap: 8px;
+		min-width: 0;
+	`,
+		branchDropdownItemIcon: css`
+		flex-shrink: 0;
+		margin-top: 2px;
+		color: ${token.colorTextSecondary};
+	`,
+		branchDropdownItemTextWrap: css`
+		display: inline-flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+	`,
+		branchDropdownItemName: css`
+		font-size: 15px;
+		line-height: 1.2;
+		font-weight: 400;
+		color: ${token.colorText};
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	`,
+		branchDropdownItemDetail: css`
+		font-size: 12px;
+		line-height: 1.3;
+		color: ${token.colorTextTertiary};
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	`,
+		branchDropdownItemCheck: css`
+		flex-shrink: 0;
+		margin-top: 2px;
+		color: transparent;
+	`,
+		branchDropdownItemCheckVisible: css`
+		color: ${token.colorTextSecondary};
+	`,
+		branchDropdownEmptyState: css`
+		padding: 8px 8px 10px;
+		font-size: 12px;
+		line-height: 1.3;
+		color: ${token.colorTextTertiary};
+	`,
+		branchDropdownCreateButton: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		width: 100%;
+		padding: 10px 12px;
+		margin-top: 2px;
+		border: 0;
+		border-top: 1px solid ${token.colorBorderSecondary};
+		background: transparent;
+		color: ${token.colorText};
+		font-size: 13px;
+		line-height: 1.2;
+		font-weight: 400;
+		cursor: pointer;
+		border-radius: 0;
+		transition: background-color 0.16s ease;
+
+		&:hover {
+			background: ${token.colorFillTertiary};
 		}
 	`,
 		elicitationPopup: css`

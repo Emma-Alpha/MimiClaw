@@ -27,7 +27,7 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     flex-shrink: 0;
   `,
   topBlock: css`
-    padding: 0 0.75rem;
+    padding: 0 0.5rem;
   `,
   actionStack: css`
     display: flex;
@@ -179,7 +179,7 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
   `,
   folderSection: css`
     border-radius: 0.75rem;
-    padding: 0.125rem 0.25rem;
+    padding: 0.125rem 0;
   `,
   folderHeader: css`
     display: flex;

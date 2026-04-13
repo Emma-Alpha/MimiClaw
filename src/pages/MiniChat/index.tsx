@@ -9,10 +9,12 @@ import {
 import { useLocation } from "react-router-dom";
 import type { MenuProps } from "antd";
 import {
+	Check,
 	ChevronDown,
 	GitBranch,
-	LoaderCircle,
 	Monitor,
+	Plus,
+	Search,
 	Shield,
 	ShieldAlert,
 } from "lucide-react";
@@ -100,6 +102,15 @@ const CODE_PERMISSION_MODE_LABELS: Record<CodeAgentPermissionMode, string> = {
 const CODE_PERMISSION_MODE_OPTIONS = (
 	Object.entries(CODE_PERMISSION_MODE_LABELS) as Array<[CodeAgentPermissionMode, string]>
 ).map(([value, label]) => ({ value, label }));
+
+const EMBEDDED_BRANCH_PRESETS: Array<{ name: string; detail?: string }> = [
+	{ name: "main", detail: "未提交的更改：2 个文件" },
+	{ name: "worktree-agent-a10af9c8" },
+	{ name: "worktree-agent-a1778ed1" },
+	{ name: "worktree-agent-a450b97c" },
+	{ name: "worktree-agent-a56b06f4" },
+	{ name: "worktree-agent-a707cbfa" },
+];
 
 function getPermissionModeLabel(mode: CodeAgentPermissionMode): string {
 	return CODE_PERMISSION_MODE_LABELS[mode] ?? mode;
@@ -200,6 +211,13 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 	const [codeWorkspaceRoot, setCodeWorkspaceRoot] = useState(() =>
 		readStoredCodeAgentWorkspaceRoot(),
 	);
+	const [embeddedBranchLabel, setEmbeddedBranchLabel] = useState("main");
+	const [embeddedBranchNames, setEmbeddedBranchNames] = useState<string[]>(() =>
+		EMBEDDED_BRANCH_PRESETS.map((item) => item.name),
+	);
+	const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
+	const [branchSearchValue, setBranchSearchValue] = useState("");
+	const branchSearchInputRef = useRef<HTMLInputElement>(null);
 	const [claudeCodeSkills, setClaudeCodeSkills] = useState<{
 		global: ClaudeCodeSkillEntry[];
 		project: ClaudeCodeSkillEntry[];
@@ -231,6 +249,14 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 		|| codeRunActive
 		|| codeSessionState === "running"
 		|| codeSessionState === "requires_action";
+
+	useEffect(() => {
+		if (!branchDropdownOpen) return;
+		const timer = window.setTimeout(() => {
+			branchSearchInputRef.current?.focus();
+		}, 0);
+		return () => window.clearTimeout(timer);
+	}, [branchDropdownOpen]);
 
 	useEffect(() => {
 		inputRef.current = input;
@@ -989,7 +1015,50 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 			ringColor,
 		};
 	}, [contextUsage, embeddedFallbackContextWindow]);
-	const embeddedBranchLabel = "main";
+	const normalizedBranchSearch = branchSearchValue.trim().toLowerCase();
+	const embeddedBranchDetailMap = useMemo(() => {
+		const detailEntries = EMBEDDED_BRANCH_PRESETS
+			.filter((item) => item.detail)
+			.map((item) => [item.name, item.detail] as const);
+		return new Map(detailEntries);
+	}, []);
+	const filteredEmbeddedBranches = useMemo(() => {
+		const matchedBranchNames = embeddedBranchNames.filter((branchName) =>
+			branchName.toLowerCase().includes(normalizedBranchSearch),
+		);
+		const branchNamesWithCurrent = matchedBranchNames.includes(embeddedBranchLabel)
+			? matchedBranchNames
+			: [embeddedBranchLabel, ...matchedBranchNames];
+		const deduplicatedBranchNames = Array.from(new Set(branchNamesWithCurrent));
+
+		return deduplicatedBranchNames.map((name) => ({
+			name,
+			detail: embeddedBranchDetailMap.get(name),
+		}));
+	}, [
+		embeddedBranchDetailMap,
+		embeddedBranchLabel,
+		embeddedBranchNames,
+		normalizedBranchSearch,
+	]);
+	const handleSelectEmbeddedBranch = useCallback((branchName: string) => {
+		const normalized = branchName.trim();
+		if (!normalized) return;
+		setEmbeddedBranchLabel(normalized);
+		setEmbeddedBranchNames((previous) => (
+			previous.includes(normalized) ? previous : [normalized, ...previous]
+		));
+		setBranchDropdownOpen(false);
+		setBranchSearchValue("");
+	}, []);
+	const handleCreateEmbeddedBranch = useCallback(() => {
+		const nextBranch = branchSearchValue.trim();
+		if (!nextBranch) {
+			branchSearchInputRef.current?.focus();
+			return;
+		}
+		handleSelectEmbeddedBranch(nextBranch);
+	}, [branchSearchValue, handleSelectEmbeddedBranch]);
 
 	const handleOpenFull = useCallback(() => {
 		if (embeddedCodeAssistant) return;
@@ -1215,12 +1284,123 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 								ringColor={embeddedContextSummary.ringColor}
 								size={14}
 							/>
-							<span className={styles.composerStatusItem}>
-								<GitBranch size={12} />
-								<span>{embeddedBranchLabel}</span>
-								<ChevronDown size={12} />
-							</span>
-							<LoaderCircle size={14} className={styles.composerStatusSpin} />
+							<StyledDropdown
+								menu={{
+									items: [
+										{
+											key: "__branch-dropdown-anchor",
+											label: "",
+											disabled: true,
+										},
+									],
+								}}
+								variant="default"
+								overlayClassName={styles.branchDropdownOverlay}
+								placement="topRight"
+								trigger={["click"]}
+								onOpenChange={(nextOpen) => {
+									setBranchDropdownOpen(nextOpen);
+									if (!nextOpen) {
+										setBranchSearchValue("");
+									}
+								}}
+								dropdownRender={() => (
+									<div
+										className={styles.branchDropdownPanel}
+										onMouseDown={(event) => event.stopPropagation()}
+										onClick={(event) => event.stopPropagation()}
+									>
+										<div className={styles.branchDropdownSearchRow}>
+											<Search size={12} className={styles.branchDropdownSearchIcon} />
+											<input
+												ref={branchSearchInputRef}
+												type="text"
+												className={styles.branchDropdownSearchInput}
+												placeholder="搜索分支"
+												value={branchSearchValue}
+												onChange={(event) => {
+													setBranchSearchValue(event.target.value);
+												}}
+												onKeyDown={(event) => {
+													event.stopPropagation();
+													if (event.key !== "Enter") return;
+													event.preventDefault();
+													handleCreateEmbeddedBranch();
+												}}
+											/>
+										</div>
+										<div className={styles.branchDropdownSectionLabel}>分支</div>
+										<div className={styles.branchDropdownMenuWrap}>
+											{filteredEmbeddedBranches.length > 0 ? (
+												filteredEmbeddedBranches.map((branch) => {
+													const isActive = branch.name === embeddedBranchLabel;
+													return (
+														<button
+															key={branch.name}
+															type="button"
+															className={cx(
+																styles.branchDropdownItem,
+																isActive && styles.branchDropdownItemActive,
+															)}
+															onClick={() => {
+																handleSelectEmbeddedBranch(branch.name);
+															}}
+														>
+															<span className={styles.branchDropdownItemMain}>
+																<GitBranch size={12} className={styles.branchDropdownItemIcon} />
+																<span className={styles.branchDropdownItemTextWrap}>
+																	<span className={styles.branchDropdownItemName}>{branch.name}</span>
+																	{branch.detail ? (
+																		<span className={styles.branchDropdownItemDetail}>
+																			{branch.detail}
+																		</span>
+																	) : null}
+																</span>
+															</span>
+															<Check
+																size={13}
+																className={cx(
+																	styles.branchDropdownItemCheck,
+																	isActive && styles.branchDropdownItemCheckVisible,
+																)}
+															/>
+														</button>
+													);
+												})
+											) : (
+												<div className={styles.branchDropdownEmptyState}>未找到匹配分支</div>
+											)}
+										</div>
+										<button
+											type="button"
+											className={styles.branchDropdownCreateButton}
+											onClick={() => {
+												handleCreateEmbeddedBranch();
+											}}
+										>
+											<Plus size={12} />
+											<span>
+												{branchSearchValue.trim()
+													? `创建并检出 "${branchSearchValue.trim()}"`
+													: "创建并检出新分支..."}
+											</span>
+										</button>
+									</div>
+								)}
+							>
+								<button
+									type="button"
+									className={cx(
+										styles.composerStatusItem,
+										styles.composerStatusItemButton,
+									)}
+									title="切换分支"
+								>
+									<GitBranch size={12} />
+									<span>{embeddedBranchLabel}</span>
+									<ChevronDown size={12} />
+								</button>
+							</StyledDropdown>
 						</div>
 					</div>
 				) : null}

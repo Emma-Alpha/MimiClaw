@@ -25,7 +25,7 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
-    --app-font-size-max: 14px;
+    --app-font-size-max: var(--mimi-font-size-base, 14px);
   }
 
   /* Neutral deep-gray dark palette */

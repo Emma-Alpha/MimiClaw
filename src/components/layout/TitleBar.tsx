@@ -262,9 +262,7 @@ export function TitleBar({
 	if (platform === "darwin") {
 		return (
 			<div
-				className={`${
-					hideManagementMenu ? "pointer-events-none" : "drag-region"
-				} h-10 w-full shrink-0 bg-transparent absolute top-0 left-0 z-[100] ${className}`.trim()}
+				className={`drag-region h-10 w-full shrink-0 bg-transparent absolute top-0 left-0 z-[100] ${className}`.trim()}
 			>
 				{hideSidebarToggle ? null : (
 					<div

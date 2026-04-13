@@ -62,14 +62,14 @@ const useStyles = createStyles(({ token, css }) => ({
     justify-content: space-between;
   `,
   errorText: css`
-    font-size: 14px;
+    font-size: var(--mimi-font-size-base);
     color: ${token.colorError};
     display: flex;
     align-items: center;
     gap: 8px;
   `,
   dismissBtn: css`
-    font-size: 12px;
+    font-size: var(--mimi-font-size-sm);
     color: ${token.colorError};
     opacity: 0.6;
     cursor: pointer;
@@ -106,11 +106,11 @@ const useStyles = createStyles(({ token, css }) => ({
     height: 60vh;
   `,
   welcomeTitle: css`
-    font-size: 14px;
+    font-size: var(--mimi-font-size-base);
     font-family: Georgia, Cambria, "Times New Roman", Times, serif;
     color: ${token.colorTextSecondary};
     margin-bottom: 32px;
-    font-weight: 400;
+    font-weight: var(--mimi-font-weight-regular);
     letter-spacing: -0.02em;
   `,
   welcomeActions: css`
@@ -126,8 +126,8 @@ const useStyles = createStyles(({ token, css }) => ({
     padding: 6px 16px;
     border-radius: 9999px;
     border: 1px solid ${token.colorBorderSecondary};
-    font-size: 13px;
-    font-weight: 500;
+    font-size: var(--mimi-font-size-md);
+    font-weight: var(--mimi-font-weight-medium);
     color: ${token.colorTextSecondary};
     background: ${token.colorFillQuaternary};
     cursor: default;
@@ -147,7 +147,7 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 14px;
+    font-size: var(--mimi-font-size-base);
     color: ${token.colorTextSecondary};
     background: ${token.colorFillSecondary};
     border-radius: ${token.borderRadiusLG}px;

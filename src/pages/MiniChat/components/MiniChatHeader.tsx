@@ -1,7 +1,7 @@
-import { memo, useRef, useState, useEffect, useMemo } from "react";
+import { memo, useState, useEffect, useMemo } from "react";
 import { ActionIcon } from "@lobehub/ui";
 import { OpenClaw, ClaudeCode } from "@lobehub/icons";
-import { Tooltip } from "antd";
+import { Dropdown, Tooltip } from "antd";
 import {
 	Expand,
 	X,
@@ -9,9 +9,6 @@ import {
 	Clock,
 	Wrench,
 	Cpu,
-	Check,
-	ChevronDown,
-	Shield,
 	ShieldAlert,
 } from "lucide-react";
 import { useSettingsStore } from "@/stores/settings";
@@ -26,7 +23,6 @@ import type {
 import { SearchInput } from "@/components/common/SearchInput";
 import type { MiniChatTarget } from "../types";
 import { useMiniChatStyles } from "../styles";
-import { getCodeAgentStateLabel } from "../utils";
 
 type ChatSessionOption = {
 	key: string;
@@ -61,25 +57,6 @@ type MiniChatHeaderProps = {
 	showWindowActions?: boolean;
 	canExitCodeMode?: boolean;
 };
-
-const PERMISSION_MODE_OPTIONS: Array<{
-	value: CodeAgentPermissionMode;
-	label: string;
-}> = [
-	{ value: "default", label: "默认权限" },
-	{ value: "acceptEdits", label: "接受编辑" },
-	{ value: "auto", label: "自动模式" },
-	{ value: "plan", label: "规划模式" },
-	{ value: "dontAsk", label: "免确认" },
-	{ value: "bypassPermissions", label: "完全访问权限" },
-];
-
-function getPermissionModeLabel(mode: string | null | undefined): string {
-	if (!mode) return "默认权限";
-	return (
-		PERMISSION_MODE_OPTIONS.find((option) => option.value === mode)?.label ?? mode
-	);
-}
 
 function shortModel(model: string) {
 	return model.replace(/^claude-/i, "").replace(/-\d{8}$/, "");
@@ -144,17 +121,6 @@ function getChatThreadLabel(sessionKey: string): string {
 	return `Agent ${agentId} · ${compactThread}`;
 }
 
-function formatRelativeTime(ts: number): string {
-	const diff = Date.now() - ts;
-	const s = Math.floor(diff / 1000);
-	if (s < 60) return "刚刚";
-	const m = Math.floor(s / 60);
-	if (m < 60) return `${m} 分钟前`;
-	const h = Math.floor(m / 60);
-	if (h < 24) return `${h} 小时前`;
-	return `${Math.floor(h / 24)} 天前`;
-}
-
 function formatRelativeTimeCompact(ts: number | null, isActive: boolean): string {
 	if (isActive) return "当前";
 	if (!ts) return "历史";
@@ -188,7 +154,6 @@ function MiniChatHeaderImpl({
 	codeAgentStatus,
 	sessionInit,
 	sessionTitle,
-	lastUpdatedAt,
 	contextUsage,
 	chatSessions,
 	currentSessionKey,
@@ -197,23 +162,14 @@ function MiniChatHeaderImpl({
 	isConnecting,
 	onOpenFull,
 	onClose,
-	codeWorkspaceRoot,
-	onRemoveCodeMode,
-	onPickWorkspace,
-	permissionMode,
-	onPermissionModeChange,
 	onNewConversation,
 	onSwitchSession,
 	showWindowActions = true,
-	canExitCodeMode = true,
 }: MiniChatHeaderProps) {
 	const sidebarCollapsed = useSettingsStore((state) => state.sidebarCollapsed);
 	const { styles, cx } = useMiniChatStyles({ isCollapsed: sidebarCollapsed });
 	const [dropdownOpen, setDropdownOpen] = useState(false);
-	const [permissionDropdownOpen, setPermissionDropdownOpen] = useState(false);
 	const [sessionQuery, setSessionQuery] = useState("");
-	const dropdownRef = useRef<HTMLDivElement>(null);
-	const iconBtnRef = useRef<HTMLButtonElement>(null);
 	const isCodeMode = draftTarget === "code";
 	const runSpinner = useHeaderSpinner(isGenerating);
 
@@ -223,7 +179,6 @@ function MiniChatHeaderImpl({
 	);
 
 	const showCodeStatus = codeSending || draftTarget === "code";
-	const codeStateLabel = getCodeAgentStateLabel(codeAgentStatus?.state);
 	const selectedCodeSessionTitle = !isCodeMode
 		? ""
 		: activeChatSession?.title?.trim()
@@ -317,23 +272,6 @@ function MiniChatHeaderImpl({
 		return getChatThreadLabel(currentSessionKey);
 	}, [isGenerating, isCodeMode, sessionTitle, currentSessionKey]);
 
-	useEffect(() => {
-		if (!dropdownOpen) return;
-		const handler = (e: MouseEvent) => {
-			if (
-				dropdownRef.current &&
-				!dropdownRef.current.contains(e.target as Node) &&
-				iconBtnRef.current &&
-				!iconBtnRef.current.contains(e.target as Node)
-			) {
-				setDropdownOpen(false);
-				setPermissionDropdownOpen(false);
-			}
-		};
-		document.addEventListener("mousedown", handler);
-		return () => document.removeEventListener("mousedown", handler);
-	}, [dropdownOpen]);
-
 	const useCodexHeader = embedded && !showWindowActions;
 	const embeddedHeaderTitle = (
 		(isCodeMode ? selectedCodeSessionTitle : activeChatSession?.title) || "新线程"
@@ -354,7 +292,6 @@ function MiniChatHeaderImpl({
 				: Wrench;
 	const sessionDropdown = (
 		<div
-			ref={dropdownRef}
 			className={cx(styles.islandDropdown, useCodexHeader && styles.islandDropdownEmbedded)}
 		>
 			<SearchInput
@@ -386,11 +323,16 @@ function MiniChatHeaderImpl({
 									if (!isActive) onSwitchSession(session.key);
 								}}
 							>
-								<span className={styles.islandSessionItemTitle}>{session.title}</span>
-								<span className={styles.islandSessionItemSide}>
-									<span className={styles.islandSessionItemMeta}>
-										{formatRelativeTimeCompact(session.updatedAt, isActive)}
-									</span>
+									<span className={styles.islandSessionItemTitle}>{session.title}</span>
+									<span className={styles.islandSessionItemSide}>
+										<span
+											className={cx(
+												styles.islandSessionItemMeta,
+												isActive && styles.islandSessionItemMetaActive,
+											)}
+										>
+											{formatRelativeTimeCompact(session.updatedAt, isActive)}
+										</span>
 									<span
 										className={cx(
 											styles.islandSessionItemIndicator,
@@ -408,164 +350,9 @@ function MiniChatHeaderImpl({
 				)}
 			</div>
 
-			{isCodeMode && (
-				<>
-					<div className={styles.islandDropdownDivider} />
-					<div className={styles.islandDropdownSection}>
-						<div className={styles.islandDropdownTitle}>
-							{selectedCodeSessionTitle}
-						</div>
-						{lastUpdatedAt && (
-							<div className={styles.islandDropdownMeta}>
-								<Clock size={10} />
-								<span>{formatRelativeTime(lastUpdatedAt)}</span>
-							</div>
-						)}
-						{sessionInit ? (
-							<div className={styles.islandDropdownInfo}>
-								<div className={styles.islandDropdownInfoRow}>
-									<Cpu size={10} />
-									<span>{shortModel(sessionInit.model)}</span>
-									{sessionInit.permissionMode && (
-										<span className={styles.islandDropdownBadge}>
-											会话: {getPermissionModeLabel(sessionInit.permissionMode)}
-										</span>
-									)}
-								</div>
-								<div className={styles.islandDropdownInfoRow}>
-									<Wrench size={10} />
-									<span>{sessionInit.tools.length} tools</span>
-									{sessionInit.mcpServers.length > 0 && (
-										<span className={styles.islandDropdownBadge}>
-											{sessionInit.mcpServers.length} MCP
-										</span>
-									)}
-								</div>
-							</div>
-						) : (
-							<div className={styles.islandDropdownEmpty}>
-								{selectedCodeSessionTitle} · {codeStateLabel}
-							</div>
-						)}
-						<div className={styles.islandPermissionSelector}>
-							<button
-								type="button"
-								className={styles.islandPermissionSelectorTrigger}
-								onClick={(event) => {
-									event.stopPropagation();
-									setPermissionDropdownOpen((open) => !open);
-								}}
-							>
-								<span className={styles.islandPermissionSelectorTriggerLeft}>
-									{permissionMode === "bypassPermissions" ? (
-										<ShieldAlert
-											size={15}
-											className={styles.islandPermissionSelectorIcon}
-										/>
-									) : (
-										<Shield
-											size={15}
-											className={styles.islandPermissionSelectorIcon}
-										/>
-									)}
-									<span className={styles.islandPermissionSelectorTriggerLabel}>
-										{getPermissionModeLabel(permissionMode)}
-									</span>
-								</span>
-								<ChevronDown
-									size={14}
-									className={cx(
-										styles.islandPermissionSelectorChevron,
-										permissionDropdownOpen &&
-											styles.islandPermissionSelectorChevronOpen,
-									)}
-								/>
-							</button>
-							{permissionDropdownOpen && (
-								<div className={styles.islandPermissionSelectorMenu}>
-									{PERMISSION_MODE_OPTIONS.map((option) => {
-										const active = option.value === permissionMode;
-										const OptionIcon =
-											option.value === "bypassPermissions" ? ShieldAlert : Shield;
-										return (
-											<button
-												key={option.value}
-												type="button"
-												className={cx(
-													styles.islandPermissionSelectorOption,
-													active && styles.islandPermissionSelectorOptionActive,
-												)}
-												onClick={(event) => {
-													event.stopPropagation();
-													onPermissionModeChange(option.value);
-													setPermissionDropdownOpen(false);
-												}}
-											>
-												<span className={styles.islandPermissionSelectorOptionLeft}>
-													<OptionIcon
-														size={15}
-														className={styles.islandPermissionSelectorIcon}
-													/>
-													<span className={styles.islandPermissionSelectorOptionLabel}>
-														{option.label}
-													</span>
-												</span>
-												<span
-													className={cx(
-														styles.islandPermissionSelectorCheck,
-														active && styles.islandPermissionSelectorCheckActive,
-													)}
-												>
-													{active ? <Check size={14} strokeWidth={2.4} /> : null}
-												</span>
-											</button>
-										);
-									})}
-								</div>
-							)}
-						</div>
-						{sessionInit?.permissionMode &&
-							sessionInit.permissionMode !== permissionMode && (
-								<div className={styles.islandPermissionSelectorHint}>
-									当前会话仍为 {getPermissionModeLabel(sessionInit.permissionMode)}，
-									新模式将在下次发起时生效。
-								</div>
-							)}
-						{codeWorkspaceRoot && (
-							<button
-								type="button"
-								className={styles.islandDropdownPath}
-								title="点击更换工作区"
-								onClick={(e) => {
-									e.stopPropagation();
-									setDropdownOpen(false);
-									onPickWorkspace();
-								}}
-							>
-								{codeWorkspaceRoot}
-							</button>
-						)}
-						{canExitCodeMode && (
-							<button
-								type="button"
-								className={styles.islandDropdownSecondaryBtn}
-								onClick={(e) => {
-									e.stopPropagation();
-									setDropdownOpen(false);
-									onRemoveCodeMode();
-								}}
-							>
-								<X size={12} />
-								<span>退出 CLI 模式</span>
-							</button>
-						)}
-					</div>
-				</>
-			)}
-
-			<div className={styles.islandDropdownDivider} />
-			<button
-				type="button"
+				<div className={styles.islandDropdownDivider} />
+				<button
+					type="button"
 				className={styles.islandDropdownNewBtn}
 				onClick={() => {
 					setDropdownOpen(false);
@@ -574,9 +361,10 @@ function MiniChatHeaderImpl({
 			>
 				<RotateCcw size={12} />
 				<span>新对话</span>
-			</button>
-		</div>
-	);
+				</button>
+			</div>
+		);
+	const sessionDropdownPlacement = useCodexHeader ? "bottomLeft" : "bottom";
 
 	return (
 		<div
@@ -610,33 +398,18 @@ function MiniChatHeaderImpl({
 					) : null}
 			</div>
 
-			{useCodexHeader ? (
-				<>
-					<div className={cx("no-drag", styles.embeddedTopLeft)}>
-						<div className={styles.embeddedThreadWrap}>
-							<button
-								ref={iconBtnRef}
-								type="button"
-								className={styles.embeddedThreadBtn}
-								onMouseDown={(event) => {
-									event.stopPropagation();
-								}}
-								onClick={(event) => {
-									event.stopPropagation();
-									setPermissionDropdownOpen(false);
-									setDropdownOpen((v) => !v);
-								}}
-								title="查看会话信息"
-							>
-								<span className={styles.embeddedThreadIcon}>
-									{isCodeMode ? <ClaudeCode.Color size={12} /> : <OpenClaw.Color size={12} />}
-								</span>
-								<span className={styles.embeddedThreadLabel}>{embeddedHeaderTitle}</span>
-								<ChevronDown className={styles.embeddedThreadChevron} size={12} />
-							</button>
-							{dropdownOpen ? sessionDropdown : null}
+				{useCodexHeader ? (
+					<>
+						<div className={cx("no-drag", styles.embeddedTopLeft)}>
+							<div className={styles.embeddedThreadWrap}>
+								<div className={styles.embeddedThreadBtn}>
+									<span className={styles.embeddedThreadIcon}>
+										{isCodeMode ? <ClaudeCode.Color size={12} /> : <OpenClaw.Color size={12} />}
+									</span>
+									<span className={styles.embeddedThreadLabel}>{embeddedHeaderTitle}</span>
+								</div>
+							</div>
 						</div>
-					</div>
 					{!isCodeMode ? (
 						<div className={cx("no-drag", styles.embeddedTopRight)}>
 							<Tooltip placement="bottom" title={embeddedStatusLabel}>
@@ -690,25 +463,29 @@ function MiniChatHeaderImpl({
 											}}
 										/>
 									</div>
-								) : null}
-								<div className={styles.islandLead}>
-									<button
-										ref={iconBtnRef}
-										type="button"
-										className={styles.islandIconBtn}
-										title="查看会话信息"
-										onMouseDown={(event) => {
-											event.stopPropagation();
-										}}
-										onClick={(event) => {
-											event.stopPropagation();
-											setPermissionDropdownOpen(false);
-											setDropdownOpen((v) => !v);
-										}}
-									>
-										{isCodeMode ? <ClaudeCode.Color size={14} /> : <OpenClaw.Color size={14} />}
-									</button>
-								</div>
+									) : null}
+									<div className={styles.islandLead}>
+										<Dropdown
+											trigger={["click"]}
+											open={dropdownOpen}
+											onOpenChange={(open) => setDropdownOpen(open)}
+											placement={sessionDropdownPlacement}
+											popupRender={() => sessionDropdown}
+											arrow={false}
+											styles={{ root: { paddingTop: 8 } }}
+										>
+											<button
+												type="button"
+												className={styles.islandIconBtn}
+												title="查看会话信息"
+												onMouseDown={(event) => {
+													event.stopPropagation();
+												}}
+											>
+												{isCodeMode ? <ClaudeCode.Color size={14} /> : <OpenClaw.Color size={14} />}
+											</button>
+										</Dropdown>
+									</div>
 								<div className={styles.islandTextWrapper}>
 									<span className={styles.islandTextLabel}>{islandLabel}</span>
 								</div>
@@ -763,11 +540,9 @@ function MiniChatHeaderImpl({
 								) : null}
 							</div>
 						</div>
-
-						{dropdownOpen ? sessionDropdown : null}
+						</div>
 					</div>
-				</div>
-			)}
+				)}
 
 				{showWindowActions ? (
 					<div className={cx("no-drag", styles.headerActions)}>

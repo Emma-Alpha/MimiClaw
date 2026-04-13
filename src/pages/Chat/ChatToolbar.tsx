@@ -26,8 +26,8 @@ const useStyles = createStyles(({ token, css }) => ({
     border: 1px solid ${token.colorBorderSecondary};
     background: ${token.colorBgContainer};
     padding: 4px 12px;
-    font-size: 12px;
-    font-weight: 500;
+    font-size: var(--mimi-font-size-sm);
+    font-weight: var(--mimi-font-weight-medium);
     color: ${token.colorTextSecondary};
 
     @media (min-width: 640px) {

@@ -64,7 +64,7 @@ const useStyles = createStyles(({ token, css }) => ({
     background: #F3F4F6;
     color: ${token.colorText};
     word-break: break-word;
-    font-size: 14px;
+    font-size: var(--mimi-font-size-base);
     white-space: pre-wrap;
     box-shadow: 0 2px 8px rgba(0,0,0,0.02);
   `,
@@ -76,7 +76,7 @@ const useStyles = createStyles(({ token, css }) => ({
     color: ${token.colorText};
     width: 100%;
     word-break: break-word;
-    font-size: 14px;
+    font-size: var(--mimi-font-size-base);
     box-shadow: 0 2px 8px rgba(0,0,0,0.02);
     border: 1px solid rgba(0,0,0,0.04);
   `,
@@ -85,7 +85,7 @@ const useStyles = createStyles(({ token, css }) => ({
     border-radius: ${token.borderRadiusLG}px;
     border: 1px solid ${token.colorBorderSecondary};
     background: ${token.colorFillQuaternary};
-    font-size: 14px;
+    font-size: var(--mimi-font-size-base);
     overflow: hidden;
   `,
   thinkingHeader: css`
@@ -113,7 +113,7 @@ const useStyles = createStyles(({ token, css }) => ({
     border-radius: ${token.borderRadiusLG}px;
     border: 1px solid ${token.colorBorderSecondary};
     background: ${token.colorFillQuaternary};
-    font-size: 14px;
+    font-size: var(--mimi-font-size-base);
     overflow: hidden;
   `,
   toolCardHeader: css`
@@ -134,7 +134,7 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
   toolCardBody: css`
     padding: 0 12px 8px;
-    font-size: 12px;
+    font-size: var(--mimi-font-size-sm);
     color: ${token.colorTextSecondary};
     overflow-x: auto;
   `,
@@ -151,7 +151,7 @@ const useStyles = createStyles(({ token, css }) => ({
     border-radius: ${token.borderRadius}px;
     border: 1px solid ${token.colorBorderSecondary};
     padding: 6px 12px;
-    font-size: 12px;
+    font-size: var(--mimi-font-size-sm);
     transition: background 0.2s;
   `,
   toolStatusRunning: css`
@@ -469,7 +469,7 @@ export const ChatMessage = memo(function ChatMessage({
 
         {/* User timestamp */}
         {isUser && message.timestamp && (
-          <span style={{ fontSize: 12, color: 'var(--ant-color-text-quaternary)' }}>{formatTimestamp(message.timestamp)}</span>
+          <span style={{ fontSize: 'var(--mimi-font-size-sm)', color: 'var(--ant-color-text-quaternary)' }}>{formatTimestamp(message.timestamp)}</span>
         )}
       </div>
 
@@ -519,7 +519,7 @@ function ThinkingBlock({ content }: { content: string }) {
     <div className={styles.thinkingBlock}>
       <button type="button" className={styles.thinkingHeader} onClick={() => setExpanded(!expanded)}>
         {expanded ? <ChevronDown style={{ width: 14, height: 14 }} /> : <ChevronRight style={{ width: 14, height: 14 }} />}
-        <span style={{ fontWeight: 500 }}>Thinking</span>
+        <span style={{ fontWeight: 'var(--mimi-font-weight-medium)' }}>Thinking</span>
       </button>
       {expanded && (
         <div className={styles.thinkingBody}>
@@ -541,7 +541,7 @@ function ToolCard({ name, input }: { name: string; input: unknown }) {
       <button type="button" className={styles.toolCardHeader} onClick={() => setExpanded(!expanded)}>
         <CheckCircle2 style={{ width: 14, height: 14, color: '#22c55e', flexShrink: 0 }} />
         <Wrench style={{ width: 12, height: 12, flexShrink: 0, opacity: 0.6 }} />
-        <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{name}</span>
+        <span style={{ fontFamily: 'monospace', fontSize: 'var(--mimi-font-size-sm)' }}>{name}</span>
         {expanded ? <ChevronDown style={{ width: 12, height: 12, marginLeft: 'auto' }} /> : <ChevronRight style={{ width: 12, height: 12, marginLeft: 'auto' }} />}
       </button>
       {expanded && input != null && (
@@ -595,9 +595,9 @@ function ToolStatusBar({
             {!isRunning && !isError && <CheckCircle2 style={{ width: 14, height: 14, color: '#22c55e', flexShrink: 0 }} />}
             {isError && <AlertCircle style={{ width: 14, height: 14, flexShrink: 0 }} />}
             <Wrench style={{ width: 12, height: 12, flexShrink: 0, opacity: 0.6 }} />
-            <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 500 }}>{tool.name}</span>
-            {duration && <span style={{ fontSize: 11, opacity: 0.6 }}>{tool.summary ? `(${duration})` : duration}</span>}
-            {tool.summary && <span style={{ fontSize: 11, opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tool.summary}</span>}
+            <span style={{ fontFamily: 'monospace', fontSize: 'var(--mimi-font-size-sm)', fontWeight: 'var(--mimi-font-weight-medium)' }}>{tool.name}</span>
+            {duration && <span style={{ fontSize: 'var(--mimi-font-size-xs)', opacity: 0.6 }}>{tool.summary ? `(${duration})` : duration}</span>}
+            {tool.summary && <span style={{ fontSize: 'var(--mimi-font-size-xs)', opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tool.summary}</span>}
           </div>
         );
       })}
@@ -662,8 +662,8 @@ function FileCard({ file }: { file: AttachedFileMeta }) {
     >
       <FileIconComp mimeType={file.mimeType} style={{ width: 20, height: 20, flexShrink: 0, opacity: 0.6 }} />
       <div style={{ minWidth: 0, overflow: 'hidden' }}>
-        <p style={{ fontSize: 12, fontWeight: 500, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.fileName}</p>
-        <p style={{ fontSize: 10, margin: 0, opacity: 0.6 }}>
+        <p style={{ fontSize: 'var(--mimi-font-size-sm)', fontWeight: 'var(--mimi-font-weight-medium)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.fileName}</p>
+        <p style={{ fontSize: 'var(--mimi-font-size-2xs)', margin: 0, opacity: 0.6 }}>
           {file.fileSize > 0 ? formatFileSize(file.fileSize) : 'File'}
         </p>
       </div>
