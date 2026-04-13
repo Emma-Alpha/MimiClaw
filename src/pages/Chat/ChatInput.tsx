@@ -35,9 +35,9 @@ const useStyles = createStyles(({ token, css }) => ({
 	wrapper: css`
     box-sizing: border-box;
     width: 100%;
-    max-width: 800px;
+    max-width: var(--chat-window-content-width, 800px);
     margin: 0 auto;
-    padding: 0 24px 24px;
+    padding: 0 0 24px;
   `,
 	recordingPill: css`
     display: flex;
@@ -121,9 +121,27 @@ const useStyles = createStyles(({ token, css }) => ({
 	    align-items: center;
 	    justify-content: space-between;
 	    gap: 8px;
+	    min-height: 20px;
 	    font-size: var(--mimi-font-size-xs);
 	    color: ${token.colorTextQuaternary};
 	    padding: 4px 8px 0;
+	  `,
+	footerStatus: css`
+	    display: inline-flex;
+	    align-items: center;
+	    gap: 6px;
+	    min-width: 0;
+	    flex: 1;
+	    overflow: hidden;
+	  `,
+	footerStatusText: css`
+	    min-width: 0;
+	    overflow: hidden;
+	    text-overflow: ellipsis;
+	    white-space: nowrap;
+	  `,
+	footerAction: css`
+	    flex-shrink: 0;
 	  `,
 	statusDot: css`
     display: inline-block;
@@ -842,7 +860,7 @@ export function ChatInput({
 
 			{/* Footer status */}
 			<div className={styles.footer}>
-				<div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+				<div className={styles.footerStatus}>
 					<span
 						className={cx(
 							styles.statusDot,
@@ -851,7 +869,7 @@ export function ChatInput({
 								: styles.statusDotInactive,
 						)}
 					/>
-					<span>
+					<span className={styles.footerStatusText}>
 						{remoteGatewayUrl?.trim()
 							? `🌐 ${gatewayStatus.state === "running" ? t("composer.gatewayConnected") : gatewayStatus.state} (${t("composer.remoteMode", "远程")}) | ${remoteGatewayUrl.trim()}`
 							: t("composer.gatewayStatus", {
@@ -867,6 +885,7 @@ export function ChatInput({
 				{hasFailedAttachments && (
 					<button
 						type="button"
+						className={styles.footerAction}
 						style={{
 							fontSize: "var(--mimi-font-size-xs)",
 							cursor: "pointer",

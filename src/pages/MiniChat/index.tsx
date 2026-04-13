@@ -34,7 +34,7 @@ import {
 	type ClaudeCodeSkillEntry,
 } from "@/lib/code-agent";
 import { invokeIpc } from "@/lib/api-client";
-import { useCodeAgentStore } from "@/stores/code-agent";
+import { useCodeAgentStore, type StreamingToolUse } from "@/stores/code-agent";
 import {
 	type UnifiedComposerPath,
 } from "@/lib/unified-composer";
@@ -247,8 +247,15 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 	const richContentRef = useRef<import("slate").Descendant[] | undefined>(undefined);
 
 	const pendingAutoSend = useRef<PetMiniChatSeed | null>(null);
+	const floatingTodoRef = useRef<HTMLDivElement | null>(null);
 	const [chatSeenAt, setChatSeenAt] = useState<Map<string, number>>(() => new Map());
+	const [floatingTodoHeight, setFloatingTodoHeight] = useState(0);
+	const [floatingTodoTool, setFloatingTodoTool] = useState<StreamingToolUse | null>(null);
+	const [todoPanelArmed, setTodoPanelArmed] = useState(false);
+	const [todoRunStartCursor, setTodoRunStartCursor] = useState<number | null>(null);
 	const chatSeenCounterRef = useRef(0);
+	const prevCodeSendingRef = useRef(codeSending);
+	const prevTodoSessionKeyRef = useRef("");
 	const inputRef = useRef(input);
 	const caretIndexRef = useRef(caretIndex);
 	const lastHydratedClaudeSessionRef = useRef("");
@@ -1084,8 +1091,11 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 			return left.sortAt - right.sortAt;
 		});
 	}, [chatSeenAt, visibleMessages]);
-	const latestTodoTool = useMemo(() => {
-		for (let index = codeAgentItems.length - 1; index >= 0; index -= 1) {
+	const latestTodoToolInCurrentRun = useMemo(() => {
+		if (!todoPanelArmed) return null;
+		if (todoRunStartCursor == null) return null;
+		const scanStart = Math.max(0, todoRunStartCursor);
+		for (let index = codeAgentItems.length - 1; index >= scanStart; index -= 1) {
 			const item = codeAgentItems[index];
 			if (item.kind !== "tool-use") continue;
 			if (!isTodoWriteToolName(item.tool.toolName)) continue;
@@ -1093,7 +1103,69 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 			return item.tool;
 		}
 		return null;
-	}, [codeAgentItems]);
+	}, [codeAgentItems, todoPanelArmed, todoRunStartCursor]);
+	const todoSessionKey =
+		draftTarget === "code"
+			? activeClaudeSessionId.trim() || "__code_pending__"
+			: "__not_code__";
+
+	useEffect(() => {
+		const previous = prevTodoSessionKeyRef.current;
+		const isPendingToActiveSession =
+			previous === "__code_pending__"
+			&& todoSessionKey !== "__not_code__"
+			&& isCodeTurnInProgress;
+		if (previous && previous !== todoSessionKey && !isPendingToActiveSession) {
+			setFloatingTodoTool(null);
+			setTodoPanelArmed(false);
+			setTodoRunStartCursor(null);
+			setFloatingTodoHeight(0);
+		}
+		prevTodoSessionKeyRef.current = todoSessionKey;
+	}, [isCodeTurnInProgress, todoSessionKey]);
+
+	useEffect(() => {
+		const wasSending = prevCodeSendingRef.current;
+		if (draftTarget === "code" && codeSending && !wasSending) {
+			setTodoPanelArmed(true);
+			setTodoRunStartCursor(codeAgentItems.length);
+			setFloatingTodoTool(null);
+			setFloatingTodoHeight(0);
+		}
+		prevCodeSendingRef.current = codeSending;
+	}, [codeAgentItems.length, codeSending, draftTarget]);
+
+	useEffect(() => {
+		if (draftTarget !== "code") return;
+		if (!todoPanelArmed) return;
+		if (!latestTodoToolInCurrentRun) return;
+		setFloatingTodoTool(latestTodoToolInCurrentRun);
+	}, [draftTarget, latestTodoToolInCurrentRun, todoPanelArmed]);
+
+	const floatingTodoOverlap = 18;
+	const timelineBottomReservedHeight = floatingTodoTool
+		? Math.max(0, floatingTodoHeight - floatingTodoOverlap + 12)
+		: 0;
+
+	useEffect(() => {
+		if (!floatingTodoTool) {
+			setFloatingTodoHeight(0);
+			return;
+		}
+
+		const node = floatingTodoRef.current;
+		if (!node) return;
+
+		const updateHeight = () => {
+			setFloatingTodoHeight(Math.ceil(node.getBoundingClientRect().height));
+		};
+		updateHeight();
+
+		if (typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(updateHeight);
+		observer.observe(node);
+		return () => observer.disconnect();
+	}, [floatingTodoTool]);
 
 	return (
 		<div className={cx(styles.root, embeddedCodeAssistant && styles.rootEmbedded)}>
@@ -1119,6 +1191,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 				/>
 
 			<MiniChatTimeline
+				embedded={embeddedCodeAssistant}
 				timelineItems={timelineItems}
 				sending={sending}
 				streamingText={liveStreamingText}
@@ -1132,9 +1205,10 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 				isCodeStreaming={codeStreaming.isStreaming}
 				codeWorkspaceRoot={codeWorkspaceRoot}
 				spinnerMode={codeStreaming.spinnerMode}
+				bottomReservedHeight={timelineBottomReservedHeight}
 			/>
 
-			<div className={styles.inputDock}>
+			<div className={cx(styles.inputDock, embeddedCodeAssistant && styles.inputDockEmbedded)}>
 				{/* New SDK-driven permission dispatcher (tool-specific UI) */}
 				{codeAgentPendingPermission && (
 					<PermissionDispatcher
@@ -1172,17 +1246,25 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 						/>
 					</div>
 				)}
-				{latestTodoTool ? (
-					<div className={cx(styles.todoDock, styles.todoDockFused)}>
+				{floatingTodoTool ? (
+					<div
+						ref={floatingTodoRef}
+						className={cx(
+							styles.todoDock,
+							styles.todoDockInset,
+							styles.todoDockFloating,
+							styles.todoDockFused,
+						)}
+					>
 						<TodoListCard
-							tool={latestTodoTool}
+							tool={floatingTodoTool}
 							variant="dock"
 							fusedWithComposer
 						/>
 					</div>
 				) : null}
 					<MiniChatComposer
-						fusedWithTodo={Boolean(latestTodoTool)}
+						fusedWithTodo={Boolean(floatingTodoTool)}
 						input={input}
 						onInputChange={setInput}
 						onSend={() => {

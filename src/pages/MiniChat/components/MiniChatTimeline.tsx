@@ -14,6 +14,7 @@ import { useFileReferenceMarkdownProps } from "./file-reference-markdown";
 import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/code-agent";
 
 	type MiniChatTimelineProps = {
+		embedded?: boolean;
 		timelineItems: TimelineItem[];
 		sending: boolean;
 		streamingText: string;
@@ -29,6 +30,7 @@ import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/code-agent";
 		isCodeStreaming: boolean;
 		codeWorkspaceRoot?: string;
 		spinnerMode?: SpinnerMode;
+		bottomReservedHeight?: number;
 	};
 
 type TimelineRenderRow = {
@@ -157,6 +159,7 @@ function UserMessageContent({ message }: { message: MiniCodeMessage }) {
 }
 
 function MiniChatTimelineImpl({
+	embedded = false,
 	timelineItems,
 	sending,
 	streamingText,
@@ -170,6 +173,7 @@ function MiniChatTimelineImpl({
 	isCodeStreaming,
 	codeWorkspaceRoot,
 	spinnerMode,
+	bottomReservedHeight = 0,
 }: MiniChatTimelineProps) {
 	const { styles, cx } = useMiniChatStyles();
 	const markdownProps = useFileReferenceMarkdownProps(codeWorkspaceRoot);
@@ -428,6 +432,8 @@ function MiniChatTimelineImpl({
 		node: renderTimelineItem(item),
 	}));
 
+	const timelineBottomReserve = Math.max(0, Math.round(bottomReservedHeight));
+
 	if (sending && !streamingText) {
 		timelineRows.push({
 			key: "chat:typing",
@@ -497,7 +503,17 @@ function MiniChatTimelineImpl({
 		});
 	}
 
-	const shouldVirtualize = viewportHeight > 0 && timelineRows.length > 20;
+	if (timelineBottomReserve > 0) {
+		timelineRows.push({
+			key: "timeline:bottom-reserve",
+			node: <div aria-hidden="true" style={{ height: timelineBottomReserve }} />,
+		});
+	}
+
+	const shouldVirtualize =
+		viewportHeight > 0
+		&& timelineRows.length > 20
+		&& timelineBottomReserve === 0;
 
 	useEffect(() => {
 		if (timelineRows.length === 0) return;
@@ -527,12 +543,17 @@ function MiniChatTimelineImpl({
 			isThinking,
 			isCodeStreaming,
 			spinnerMode,
+			timelineBottomReserve,
 		]);
 
 	return (
 		<div
 			ref={scrollAreaRef}
-			className={cx(styles.scrollArea, shouldVirtualize && styles.scrollAreaVirtual)}
+			className={cx(
+				styles.scrollArea,
+				embedded && styles.scrollAreaEmbedded,
+				shouldVirtualize && styles.scrollAreaVirtual,
+			)}
 		>
 			<div className={styles.scrollAreaInner}>
 					{timelineItems.length === 0 && !showChatPending && !codeSending && codeAgentItems.length === 0 && !hasActiveCodeStream ? (

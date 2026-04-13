@@ -777,7 +777,7 @@ export function VoiceDialog() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#EDEDED] text-[#111111] dark:bg-[#111111] dark:text-[#E5E5E5]">
       <div
-        className="flex items-center justify-between px-4 pb-2 pt-4 bg-[#EDEDED] dark:bg-[#111111] z-10"
+        className="relative flex h-14 items-center justify-between px-4 bg-[#EDEDED] dark:bg-[#111111] z-10"
         style={{ WebkitAppRegion: 'drag' } as CSSProperties}
       >
         <div className="flex-1 flex justify-center">

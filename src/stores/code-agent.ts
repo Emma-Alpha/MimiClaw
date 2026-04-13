@@ -1591,16 +1591,31 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 			}
 
 			if (subtype === "api_retry") {
-				addItem({
-					kind: "api-retry",
-					id: uid(),
-					attempt: Number(msg.attempt ?? 0),
-					maxRetries: Number(msg.max_retries ?? 0),
-					delayMs: Number(msg.retry_delay_ms ?? 0),
-					error: String(msg.error ?? "unknown"),
-				});
-				return;
-			}
+					// Retry starts a fresh upstream attempt; drop partial text/tool state
+					// from the failed attempt so the next stream doesn't concatenate it.
+					clearQueuedStreamingDeltas();
+					set((state) => ({
+						streaming: {
+							...initialStreaming(),
+							spinnerMode: "requesting",
+							vendorStatusText:
+								state.streaming.vendorStatusSource === "vendor"
+									? state.streaming.vendorStatusText
+									: formatVendorStatusLabel(buildFallbackVendorStatus("requesting")),
+							vendorStatusSource:
+								state.streaming.vendorStatusSource === "vendor" ? "vendor" : "fallback",
+						},
+					}));
+					addItem({
+						kind: "api-retry",
+						id: uid(),
+						attempt: Number(msg.attempt ?? 0),
+						maxRetries: Number(msg.max_retries ?? 0),
+						delayMs: Number(msg.retry_delay_ms ?? 0),
+						error: String(msg.error ?? "unknown"),
+					});
+					return;
+				}
 
 			if (subtype === "hook_started") {
 				addItem({
@@ -1865,31 +1880,36 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 					const s = get().streaming;
 					if (s.isThinking && s.thinkingText) {
 						addItem({
-						kind: "thinking",
-						id: uid(),
-						data: { text: s.thinkingText, isStreaming: false, isRedacted: false },
-					});
+							kind: "thinking",
+							id: uid(),
+							data: { text: s.thinkingText, isStreaming: false, isRedacted: false },
+						});
+						set((state) => ({
+							streaming: { ...state.streaming, isThinking: false, thinkingText: "" },
+						}));
+					}
+					return;
+				}
+
+				if (evType === "message_start") {
+					clearQueuedStreamingDeltas();
 					set((state) => ({
-						streaming: { ...state.streaming, isThinking: false, thinkingText: "" },
+						streaming: {
+							...(state.streaming.assistantText
+									|| state.streaming.thinkingText
+									|| state.streaming.toolUses.size > 0
+								? initialStreaming()
+								: state.streaming),
+							spinnerMode: "requesting",
+							vendorStatusText:
+								state.streaming.vendorStatusSource === "vendor"
+									? state.streaming.vendorStatusText
+									: formatVendorStatusLabel(buildFallbackVendorStatus("requesting")),
+							vendorStatusSource:
+								state.streaming.vendorStatusSource === "vendor" ? "vendor" : "fallback",
+						},
 					}));
 				}
-				return;
-			}
-
-			if (evType === "message_start") {
-				set((state) => ({
-					streaming: {
-						...state.streaming,
-						spinnerMode: "requesting",
-						vendorStatusText:
-							state.streaming.vendorStatusSource === "vendor"
-								? state.streaming.vendorStatusText
-								: formatVendorStatusLabel(buildFallbackVendorStatus("requesting")),
-						vendorStatusSource:
-							state.streaming.vendorStatusSource === "vendor" ? "vendor" : "fallback",
-					},
-				}));
-			}
 
 			if (evType === "message_delta") {
 				set((state) => ({

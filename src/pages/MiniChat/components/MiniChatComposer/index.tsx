@@ -557,6 +557,15 @@ export function MiniChatComposer({
 	);
 
 	const renderActions = () => {
+		const baseSendButtonClassName = cx(
+			styles.sendButton,
+			useCodexExpandedLayout && styles.sendButtonCodex,
+		);
+		const loadingSendButtonClassName = cx(
+			baseSendButtonClassName,
+			styles.sendButtonSending,
+		);
+
 		if (isClaudeCodeCliMode) {
 			const micAction = useFullComposerControls ? (
 				<button
@@ -578,7 +587,7 @@ export function MiniChatComposer({
 						{micAction}
 						<button
 							type="button"
-							className={cx(styles.sendButton, styles.sendButtonSending)}
+							className={loadingSendButtonClassName}
 							disabled={false}
 							onClick={onSend}
 							title="停止生成"
@@ -593,7 +602,7 @@ export function MiniChatComposer({
 					{micAction}
 						<Button
 							htmlType="button"
-							className={styles.sendButton}
+							className={baseSendButtonClassName}
 							disabled={sendDisabled || sendingDisabledByRecording}
 							onClick={onSend}
 							title={sendingDisabledByRecording ? (isTranscribing ? "正在转写" : "请先停止录音") : "发送"}
@@ -617,7 +626,7 @@ export function MiniChatComposer({
 					</button>
 					<Button
 						htmlType="button"
-						className={cx(styles.sendButton, styles.sendButtonSending)}
+						className={loadingSendButtonClassName}
 						disabled={false}
 						onClick={onSend}
 						title="停止生成"
@@ -641,7 +650,7 @@ export function MiniChatComposer({
 					</button>
 					<Button
 						htmlType="button"
-						className={styles.sendButton}
+						className={baseSendButtonClassName}
 						disabled={sendDisabled || sendingDisabledByRecording}
 						onClick={onSend}
 						title={sendingDisabledByRecording ? (isTranscribing ? '正在转写' : '请先停止录音') : '发送'}
@@ -923,6 +932,7 @@ export function MiniChatComposer({
 						fusedWithTodo && styles.pillFused,
 						isMultiline && !useCodexExpandedLayout && styles.pillMultiline,
 						useCodexExpandedLayout && styles.pillCodex,
+						fusedWithTodo && useCodexExpandedLayout && styles.pillCodexFused,
 						isDragOver && styles.pillDragOver,
 					)}
 				>

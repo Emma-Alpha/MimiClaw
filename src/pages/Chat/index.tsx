@@ -24,6 +24,8 @@ import { ChatSkeletonList } from './ChatSkeletonList';
 
 const useStyles = createStyles(({ token, css }) => ({
   chatPage: css`
+    --chat-window-side-gap: 16px;
+    --chat-window-content-width: min(800px, calc(100% - (var(--chat-window-side-gap) * 2)));
     position: relative;
     display: flex;
     flex-direction: column;
@@ -42,13 +44,13 @@ const useStyles = createStyles(({ token, css }) => ({
     position: relative;
     flex: 1;
     overflow-y: auto;
-    padding: 0 24px 24px;
+    padding: 0 var(--chat-window-side-gap) 24px;
   `,
   messagesAreaVirtual: css`
     overflow: hidden;
   `,
   messagesInner: css`
-    max-width: 800px;
+    max-width: var(--chat-window-content-width);
     margin: 0 auto;
     display: flex;
     flex-direction: column;

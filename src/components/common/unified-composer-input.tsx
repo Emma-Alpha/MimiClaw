@@ -331,6 +331,7 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 	);
 	const [editorVersion, setEditorVersion] = useState(0);
 	const editorDomRef = useRef<HTMLDivElement | null>(null);
+	const visualMultilineRef = useRef(false);
 	const pendingTextEchoRef = useRef<string | null>(null);
 	const pendingPathSetRef = useRef<Set<string> | null>(null);
 
@@ -694,16 +695,39 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 		if (!onVisualMultilineChange) return;
 		const editorDom = editorDomRef.current;
 		if (!editorDom) {
-			onVisualMultilineChange(false);
+			if (visualMultilineRef.current) {
+				visualMultilineRef.current = false;
+				onVisualMultilineChange(false);
+			}
+			return;
+		}
+
+		const hasInlineItems =
+			value.paths.length > 0 || (value.skills?.length ?? 0) > 0;
+		const hasAnyContent = value.text.trim().length > 0 || hasInlineItems;
+		if (!hasAnyContent) {
+			if (visualMultilineRef.current) {
+				visualMultilineRef.current = false;
+				onVisualMultilineChange(false);
+			}
 			return;
 		}
 
 		const computed = window.getComputedStyle(editorDom);
 		const lineHeight = Number.parseFloat(computed.lineHeight || "21") || 21;
-		const hasVisualWrap = editorDom.scrollHeight > lineHeight * 1.6;
+		const measuredLines = editorDom.scrollHeight / lineHeight;
+		const expandThreshold = 1.75;
+		const collapseThreshold = 1.35;
+		const threshold = visualMultilineRef.current
+			? collapseThreshold
+			: expandThreshold;
+		const hasVisualWrap = measuredLines > threshold;
 		const hasExplicitNewline = value.text.includes("\n");
-		onVisualMultilineChange(hasVisualWrap || hasExplicitNewline);
-	}, [onVisualMultilineChange, value.text]);
+		const nextIsMultiline = hasVisualWrap || hasExplicitNewline;
+		if (nextIsMultiline === visualMultilineRef.current) return;
+		visualMultilineRef.current = nextIsMultiline;
+		onVisualMultilineChange(nextIsMultiline);
+	}, [onVisualMultilineChange, value.paths.length, value.skills, value.text]);
 
 	useEffect(() => {
 		if (pendingTextEchoRef.current !== null) {

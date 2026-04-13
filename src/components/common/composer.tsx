@@ -155,6 +155,12 @@ const useStyles = createStyles(({ token, css }) => ({
 		min-height: 24px;
 		max-height: 112px;
 	`,
+	inputEditorSingleLineLock: css`
+		height: 24px;
+		min-height: 24px;
+		max-height: 24px;
+		overflow-y: hidden;
+	`,
 	inputPlaceholder: css`
 		color: ${token.colorTextQuaternary};
 		pointer-events: none;
@@ -777,6 +783,8 @@ export function ComposerBase({
 		() => ({ text: value, paths }),
 		[value, paths],
 	);
+	const shouldLockSingleLineHeight =
+		value.trim().length === 0 && paths.length === 0;
 
 	const compactSendDisabled = loading ? !onStop : sendDisabled;
 	const sendButtonTitle = canStop ? sendTexts?.stop ?? "停止" : sendTexts?.send ?? "发送";
@@ -857,6 +865,7 @@ export function ComposerBase({
 						className={cx(
 							styles.inputEditor,
 							compact ? styles.inputEditorCompact : styles.inputEditorDesktop,
+							shouldLockSingleLineHeight && styles.inputEditorSingleLineLock,
 						)}
 						placeholderClassName={styles.inputPlaceholder}
 						pathChipClassName={styles.pathChip}

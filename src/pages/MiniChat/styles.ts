@@ -12,7 +12,8 @@ export const useMiniChatStyles = createStyles(
 		background: transparent;
 	`,
 	rootEmbedded: css`
-		--mini-chat-content-width: min(980px, calc(100vw - 56px));
+		--mini-chat-side-gap: 16px;
+		--mini-chat-content-width: min(800px, calc(100% - (var(--mini-chat-side-gap) * 2)));
 		height: 100%;
 		width: 100%;
 		box-sizing: border-box;
@@ -72,7 +73,6 @@ export const useMiniChatStyles = createStyles(
 		min-width: 0;
 		overflow: visible;
 		pointer-events: auto;
-		-webkit-app-region: no-drag;
 		gap: 8px;
 		font-size: 14px;
 		font-weight: 500;
@@ -92,7 +92,6 @@ export const useMiniChatStyles = createStyles(
 		border-radius: 0;
 		pointer-events: auto;
 		cursor: default;
-		-webkit-app-region: no-drag;
 	`,
 		embeddedThreadIcon: css`
 		display: inline-flex;
@@ -1075,6 +1074,9 @@ export const useMiniChatStyles = createStyles(
 		overflow-y: auto;
 		padding: 18px 14px;
 	`,
+		scrollAreaEmbedded: css`
+		padding: 18px var(--mini-chat-side-gap);
+	`,
 		scrollAreaInner: css`
 		width: 100%;
 		max-width: var(--mini-chat-content-width);
@@ -1193,6 +1195,11 @@ export const useMiniChatStyles = createStyles(
 		position: relative;
 		overflow: visible;
 		align-items: stretch;
+		z-index: 6;
+	`,
+	inputDockEmbedded: css`
+		padding-left: var(--mini-chat-side-gap);
+		padding-right: var(--mini-chat-side-gap);
 	`,
 	todoDock: css`
 		max-width: var(--mini-chat-content-width, 800px);
@@ -1200,10 +1207,25 @@ export const useMiniChatStyles = createStyles(
 		width: 100%;
 		position: relative;
 		z-index: 2;
-		margin-bottom: -1px;
+	`,
+	todoDockInset: css`
+		width: calc(100% - 48px);
+		max-width: calc(var(--mini-chat-content-width, 800px) - 48px);
+
+		@media (max-width: 640px) {
+			width: calc(100% - 26px);
+			max-width: calc(var(--mini-chat-content-width, 800px) - 26px);
+		}
+	`,
+	todoDockFloating: css`
+		position: absolute;
+		left: 50%;
+		bottom: calc(100% - 8px);
+		transform: translateX(-50%);
+		pointer-events: auto;
 	`,
 	todoDockFused: css`
-		margin-bottom: -12px;
+		margin-bottom: 0;
 	`,
 	composerStatusRow: css`
 		display: flex;

@@ -298,11 +298,11 @@ function MiniChatHeaderImpl({
 						) : null}
 				</div>
 
-				{useCodexHeader ? (
-					<>
-						<div className={cx("no-drag", styles.embeddedTopLeft)}>
-							<div className={styles.embeddedThreadWrap}>
-									<div className={styles.embeddedThreadBtn}>
+			{useCodexHeader ? (
+				<>
+					<div className={styles.embeddedTopLeft}>
+						<div className={styles.embeddedThreadWrap}>
+								<div className={styles.embeddedThreadBtn}>
 										<span className={styles.embeddedThreadIcon}>
 											{isCodeMode ? <ClaudeCode.Color size={12} /> : <OpenClaw.Color size={12} />}
 										</span>
@@ -334,7 +334,7 @@ function MiniChatHeaderImpl({
 				</>
 			) : (
 				<div className={cx(styles.headerCenter, embedded && styles.headerCenterEmbedded)}>
-					<div className={cx("no-drag", styles.islandContainer)}>
+					<div className={styles.islandContainer}>
 							<div
 								className={cx(
 									styles.dynamicIslandWrapper,
@@ -442,7 +442,7 @@ function MiniChatHeaderImpl({
 										}
 									>
 										<div
-											className={styles.islandMetric}
+											className={cx("no-drag", styles.islandMetric)}
 											aria-label={`上下文剩余 ${formatTokenCount(contextIndicator.remainingTokens)} tokens`}
 										>
 											<span className={styles.islandMetricValue}>{islandMetricValue}</span>

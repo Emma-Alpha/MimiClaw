@@ -4,13 +4,15 @@
  * Bridges the existing useSettingsStore theme ('light' | 'dark' | 'system') to antd-style.
  */
 import { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider as AntdConfigProvider } from 'antd';
+import { ConfigProvider as LobeConfigProvider } from '@lobehub/ui';
 import {
   StyleProvider,
   ThemeProvider as AntdThemeProvider,
   createGlobalStyle,
   type GetAntdTheme,
 } from 'antd-style';
+import { motion } from 'motion/react';
 import { useSettingsStore } from '@/stores/settings';
 import {
   createMimiThemeConfig,
@@ -108,11 +110,13 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
           theme={getAntdTheme}
           customToken={{ cssVar: true }}
         >
-          <TypographyTokenGlobalStyle />
-          <LobeUiCompatGlobalStyle />
-          <ConfigProvider getPopupContainer={getPopupContainer}>
-            {children}
-          </ConfigProvider>
+          <LobeConfigProvider motion={motion}>
+            <TypographyTokenGlobalStyle />
+            <LobeUiCompatGlobalStyle />
+            <AntdConfigProvider getPopupContainer={getPopupContainer}>
+              {children}
+            </AntdConfigProvider>
+          </LobeConfigProvider>
         </AntdThemeProvider>
       </StyleProvider>
     </div>

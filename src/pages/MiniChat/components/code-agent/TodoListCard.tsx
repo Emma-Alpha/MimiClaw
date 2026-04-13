@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createStyles } from "antd-style";
-import { CircleCheck, CircleDashed, Circle, ListChecks, Minimize2, Maximize2 } from "lucide-react";
+import { CircleCheck, Circle, Minimize2, Maximize2 } from "lucide-react";
 import type { StreamingToolUse } from "@/stores/code-agent";
 
 interface TodoItem {
@@ -15,7 +15,7 @@ interface Props {
 	fusedWithComposer?: boolean;
 }
 
-const useStyles = createStyles(({ css, token }) => ({
+const useStyles = createStyles(({ css }) => ({
 	card: css`
 		display: flex;
 		flex-direction: column;
@@ -23,169 +23,123 @@ const useStyles = createStyles(({ css, token }) => ({
 	`,
 	cardDock: css`
 		position: relative;
-		overflow: hidden;
-		padding: 10px 12px 12px;
-		border-radius: 14px;
-		border: 1px solid ${token.colorBorder};
-		background:
-			linear-gradient(
-				180deg,
-				${token.colorBgContainer} 0%,
-				${token.colorFillSecondary} 100%
-			);
+		padding: 10px 14px 12px;
+		border-radius: 18px;
+		border: 1px solid rgba(17, 24, 39, 0.08);
+		background: rgba(255, 255, 255, 0.74);
+		backdrop-filter: blur(18px) saturate(160%);
+		-webkit-backdrop-filter: blur(18px) saturate(160%);
 		box-shadow:
-			inset 0 1px 0 rgba(255, 255, 255, 0.84),
-			inset 0 -1px 0 rgba(15, 23, 42, 0.08),
-			0 2px 4px rgba(15, 23, 42, 0.06),
-			0 12px 24px rgba(15, 23, 42, 0.14);
-		backdrop-filter: blur(6px);
-
-		&::before {
-			content: "";
-			position: absolute;
-			left: 0;
-			right: 0;
-			top: 0;
-			height: 38%;
-			background: linear-gradient(
-				180deg,
-				rgba(255, 255, 255, 0.45) 0%,
-				rgba(255, 255, 255, 0) 100%
-			);
-			pointer-events: none;
-		}
+			inset 0 1px 0 rgba(255, 255, 255, 0.86),
+			0 8px 24px rgba(15, 23, 42, 0.08);
 	`,
 	cardDockFused: css`
-		border-bottom-left-radius: 8px;
-		border-bottom-right-radius: 8px;
-		border-bottom-color: transparent;
-		padding-bottom: 16px;
-		box-shadow:
-			inset 0 1px 0 rgba(255, 255, 255, 0.84),
-			inset 0 -1px 0 rgba(15, 23, 42, 0.08),
-			0 2px 4px rgba(15, 23, 42, 0.06),
-			0 6px 12px rgba(15, 23, 42, 0.09);
-
-		&::after {
-			content: "";
-			position: absolute;
-			left: 10px;
-			right: 10px;
-			bottom: 0;
-			height: 18px;
-			background: linear-gradient(
-				180deg,
-				rgba(255, 255, 255, 0) 0%,
-				rgba(255, 255, 255, 0.62) 100%
-			);
-			pointer-events: none;
-		}
+		border-bottom-left-radius: 12px;
+		border-bottom-right-radius: 12px;
+		border-bottom-color: rgba(17, 24, 39, 0.08);
+		padding-bottom: 12px;
 	`,
 	header: css`
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 0 2px 6px;
-		border-bottom: 1px solid ${token.colorBorderSecondary};
+		padding: 0 0 6px;
 	`,
 	headerCollapsed: css`
-		border-bottom-color: transparent;
-		padding-bottom: 2px;
-		transition: border-bottom-color 0.2s ease, padding 0.2s ease;
+		padding-bottom: 0;
+		transition: padding 0.2s ease;
 	`,
 	headerLeft: css`
 		display: flex;
 		align-items: center;
-		gap: 5px;
-		font-size: 11.5px;
-		font-family: ${token.fontFamilyCode};
-		line-height: 20px;
-		color: ${token.colorTextSecondary};
+		gap: 6px;
+		font-size: 12px;
+		line-height: 1.3;
+		color: rgba(17, 24, 39, 0.52);
+		font-weight: 500;
 	`,
 	headerAction: css`
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 20px;
-		height: 20px;
-		border-radius: 4px;
-		color: ${token.colorTextTertiary};
+		width: 18px;
+		height: 18px;
+		border-radius: 999px;
+		color: rgba(17, 24, 39, 0.55);
 		cursor: pointer;
 		transition: background-color 0.2s ease, color 0.2s ease;
 
 		&:hover {
-			color: ${token.colorTextSecondary};
-			background: ${token.colorFillTertiary};
+			color: rgba(17, 24, 39, 0.78);
+			background: rgba(17, 24, 39, 0.08);
 		}
 	`,
-	headerIcon: css`
+	headerDot: css`
+		display: inline-flex;
 		flex-shrink: 0;
-		color: ${token.colorTextSecondary};
-		margin-top: -1px;
+		width: 3px;
+		height: 3px;
+		border-radius: 999px;
+		background: rgba(17, 24, 39, 0.42);
 	`,
 	headerCount: css`
-		color: ${token.colorTextSecondary};
+		color: inherit;
 	`,
 	statusOk: css`
 		flex-shrink: 0;
 		margin-left: 4px;
-		color: ${token.colorSuccess};
+		color: rgba(22, 163, 74, 0.88);
 		font-size: 11px;
 	`,
 	list: css`
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
-		padding: 1px 2px 0;
+		gap: 3px;
+		padding: 2px 0 0;
 	`,
 	item: css`
 		display: flex;
-		align-items: baseline;
-		gap: 6px;
+		align-items: flex-start;
+		gap: 7px;
 		font-size: 12px;
-		line-height: 1.52;
-		padding: 1px 0;
+		line-height: 1.48;
+		padding: 0;
 	`,
 	itemLead: css`
 		display: inline-flex;
-		align-items: center;
-		gap: 4px;
+		align-items: baseline;
+		gap: 5px;
 		flex-shrink: 0;
 	`,
 	itemIcon: css`
 		flex-shrink: 0;
-		margin-top: -1px;
+		margin-top: 1px;
 	`,
 	itemOrder: css`
 		display: inline-flex;
 		align-items: center;
 		min-width: 18px;
 		font-variant-numeric: tabular-nums;
-		color: ${token.colorTextSecondary};
+		color: rgba(17, 24, 39, 0.86);
 	`,
 	itemCompleted: css`
-		color: ${token.colorSuccess};
+		color: rgba(22, 163, 74, 0.9);
 	`,
 	itemInProgress: css`
-		color: ${token.colorPrimary};
+		color: rgba(17, 24, 39, 0.55);
 	`,
 	itemPending: css`
-		color: ${token.colorTextQuaternary};
+		color: rgba(17, 24, 39, 0.44);
 	`,
 	itemText: css`
-		color: ${token.colorText};
+		color: rgba(17, 24, 39, 0.92);
 		word-break: break-word;
-		text-shadow:
-			0 1px 0 rgba(255, 255, 255, 0.82),
-			0 -1px 0 rgba(15, 23, 42, 0.03);
 	`,
 	itemTextCompleted: css`
-		color: ${token.colorTextTertiary};
-		text-decoration: line-through;
-		text-decoration-thickness: 1.5px;
+		color: rgba(17, 24, 39, 0.74);
 	`,
 	itemTextInProgress: css`
-		font-weight: 550;
+		font-weight: 500;
 	`,
 }));
 
@@ -205,11 +159,11 @@ function TodoItemIcon({ status }: { status: TodoItem["status"] }) {
 	const { styles, cx } = useStyles();
 	switch (status) {
 		case "completed":
-			return <CircleCheck size={14} className={cx(styles.itemIcon, styles.itemCompleted)} />;
+			return <CircleCheck size={12} className={cx(styles.itemIcon, styles.itemCompleted)} />;
 		case "in_progress":
-			return <Circle size={14} className={cx(styles.itemIcon, styles.itemInProgress)} />;
+			return <Circle size={12} className={cx(styles.itemIcon, styles.itemInProgress)} />;
 		case "pending":
-			return <CircleDashed size={14} className={cx(styles.itemIcon, styles.itemPending)} />;
+			return <Circle size={12} className={cx(styles.itemIcon, styles.itemPending)} />;
 	}
 }
 
@@ -237,7 +191,7 @@ export function TodoListCard({
 		>
 			<div className={cx(styles.header, !expanded && styles.headerCollapsed)}>
 				<div className={styles.headerLeft}>
-					<ListChecks size={12} className={styles.headerIcon} />
+					<span className={styles.headerDot} />
 					<span className={styles.headerCount}>
 						共 {todos.length} 个任务，已经完成 {completedCount} 个
 					</span>

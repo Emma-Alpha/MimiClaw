@@ -12,7 +12,8 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		z-index: 1;
 	`,
 	containerFused: css`
-		margin-top: -12px;
+		margin-top: 0;
+		z-index: 4;
 	`,
 	pill: css`
 		display: flex;
@@ -32,49 +33,24 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 						padding 0.3s cubic-bezier(0.32, 0.72, 0, 1),
 						box-shadow 0.2s ease;
 		box-shadow:
-			inset 0 1px 0 rgba(255, 255, 255, 0.88),
-			inset 0 -1px 0 rgba(15, 23, 42, 0.08),
-			0 2px 5px rgba(15, 23, 42, 0.06),
-			0 10px 22px rgba(15, 23, 42, 0.12);
+			inset 0 1px 0 rgba(255, 255, 255, 0.9),
+			0 1px 3px rgba(15, 23, 42, 0.04);
 		position: relative;
 		min-height: 40px;
 		width: 100%;
 
 		&:focus-within {
 			background: ${token.colorBgContainer};
-			border-color: ${token.colorPrimaryBorder};
+			border-color: rgba(17, 24, 39, 0.1);
 			box-shadow:
-				inset 0 1px 0 rgba(255, 255, 255, 0.92),
-				inset 0 -1px 0 rgba(15, 23, 42, 0.1),
-				0 4px 12px rgba(15, 23, 42, 0.1),
-				0 14px 30px rgba(15, 23, 42, 0.16);
+				inset 0 1px 0 rgba(255, 255, 255, 0.94),
+				0 2px 6px rgba(15, 23, 42, 0.06);
 		}
 	`,
 	pillFused: css`
-		border-top-left-radius: 10px;
-		border-top-right-radius: 10px;
-		border-top-color: rgba(255, 255, 255, 0.58);
-		box-shadow:
-			inset 0 1px 0 rgba(255, 255, 255, 0.9),
-			inset 0 -1px 0 rgba(15, 23, 42, 0.08),
-			0 -2px 4px rgba(15, 23, 42, 0.05),
-			0 10px 22px rgba(15, 23, 42, 0.1);
-
-		&::before {
-			content: "";
-			position: absolute;
-			left: 14px;
-			right: 14px;
-			top: -9px;
-			height: 12px;
-			border-radius: 999px;
-			background: linear-gradient(
-				180deg,
-				rgba(15, 23, 42, 0.07) 0%,
-				rgba(15, 23, 42, 0) 100%
-			);
-			pointer-events: none;
-		}
+		border-top-left-radius: 18px;
+		border-top-right-radius: 18px;
+		border-top-color: rgba(17, 24, 39, 0.07);
 	`,
 	pillMultiline: css`
 		align-items: flex-start;
@@ -84,14 +60,19 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 	pillCodex: css`
 		flex-direction: column;
 		align-items: stretch;
-		border-radius: 20px;
-		padding: 10px 10px 8px;
+		border-radius: 22px;
+		padding: 9px 10px 8px;
 		min-height: 96px;
+		background: #ffffff;
+		border-color: rgba(17, 24, 39, 0.08);
 		box-shadow:
-			inset 0 1px 0 rgba(255, 255, 255, 0.88),
-			inset 0 -1px 0 rgba(15, 23, 42, 0.1),
-			0 2px 5px rgba(15, 23, 42, 0.06),
-			0 12px 24px rgba(15, 23, 42, 0.14);
+			inset 0 1px 0 rgba(255, 255, 255, 0.92),
+			0 2px 6px rgba(15, 23, 42, 0.05);
+	`,
+	pillCodexFused: css`
+		border-top-left-radius: 18px;
+		border-top-right-radius: 18px;
+		border-top-color: rgba(17, 24, 39, 0.07);
 	`,
 	pillTopRow: css`
 		display: flex;
@@ -99,7 +80,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		gap: 0;
 	`,
 	pillTopRowCodex: css`
-		min-height: 44px;
+		min-height: 56px;
 	`,
 	pillDragOver: css`
 		border-color: ${token.colorPrimary};
@@ -139,7 +120,8 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		align-items: flex-start;
 	`,
 	inputAreaCodex: css`
-		padding: 0 4px;
+		padding: 0 2px;
+		align-items: flex-start;
 	`,
 	editor: css`
 		width: 100%;
@@ -199,15 +181,15 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		}
 	`,
 	plusButtonCodex: css`
-		width: 24px;
-		height: 24px;
+		width: 22px;
+		height: 22px;
 		border-radius: 12px;
 		background: transparent;
-		color: ${token.colorTextQuaternary};
+		color: rgba(17, 24, 39, 0.42);
 
 		&:hover:not(:disabled) {
-			background: ${token.colorFillQuaternary};
-			color: ${token.colorTextSecondary};
+			background: rgba(17, 24, 39, 0.06);
+			color: rgba(17, 24, 39, 0.68);
 			transform: none;
 		}
 	`,
@@ -257,9 +239,11 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 	`,
 	editorCodex: css`
 		font-size: 14px;
-		line-height: 1.45;
+		line-height: 1.5;
 		font-weight: 400;
-		padding: 1px 0 3px;
+		padding: 2px 0 0;
+		min-height: 44px;
+		max-height: 132px;
 	`,
 	codexModelHintButton: css`
 		display: inline-flex;
@@ -304,13 +288,14 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		padding: 0 2px;
 	`,
 	codexControlRow: css`
-		gap: 4px;
+		gap: 6px;
 		justify-content: flex-start;
+		padding-top: 6px;
 	`,
 	codexControlCenter: css`
 		display: inline-flex;
 		align-items: center;
-		gap: 4px;
+		gap: 7px;
 		margin-left: 0;
 		flex: 1;
 		min-width: 0;
@@ -318,7 +303,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 	codexControlCenterInline: css`
 		display: inline-flex;
 		align-items: center;
-		gap: 6px;
+		gap: 7px;
 		margin-left: 4px;
 		flex-shrink: 0;
 	`,
@@ -351,12 +336,13 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		align-items: center;
 		gap: 4px;
 		height: 24px;
-		padding: 0 9px;
-		border-radius: 999px;
-		border: 1px solid ${token.colorBorderSecondary};
+		padding: 0 2px;
+		border-radius: 0;
+		border: none;
 		background: transparent;
-		color: ${token.colorTextSecondary};
+		color: rgba(17, 24, 39, 0.62);
 		font-size: 12px;
+		font-weight: 500;
 		white-space: nowrap;
 		line-height: 1;
 
@@ -365,8 +351,8 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		}
 
 		&:is(button):hover {
-			background: ${token.colorFillQuaternary};
-			color: ${token.colorText};
+			background: transparent;
+			color: rgba(17, 24, 39, 0.78);
 		}
 	`,
 	attachmentMenuLabel: css`
@@ -480,8 +466,17 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 	`,
 	sendButtonSending: css`
 		&& {
-			background: ${token.colorTextSecondary} !important;
+			background: ${token.colorText} !important;
 			color: ${token.colorBgLayout} !important;
+		}
+	`,
+	sendButtonCodex: css`
+		&& {
+			width: 30px;
+			min-width: 30px;
+			height: 30px;
+			border-radius: 15px;
+			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
 		}
 	`,
 	micButtonRecording: css`
