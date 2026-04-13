@@ -17,6 +17,18 @@
         "hideThinking": "Hide thinking",
         "currentAgent": "Talking to {{agent}}"
     },
+    "thinking": {
+        "title": "Thinking",
+        "titleThinking": "Thinking",
+        "titleDone": "Thought",
+        "titleDoneWithDuration": "Thought for {{seconds}}s",
+        "redacted": "Part of the reasoning process is hidden"
+    },
+    "status": {
+        "thinking": "Thinking...",
+        "processingTools": "Processing tool results..."
+    },
+    "backToBottom": "Back to bottom",
     "composer": {
         "attachFiles": "Attach files",
         "pickAgent": "Choose agent",

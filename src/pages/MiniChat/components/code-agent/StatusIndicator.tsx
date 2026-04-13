@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 
 interface Props {
 	text: string;
+	showCursor?: boolean;
 }
 
 const useStyles = createStyles(({ css, token }) => ({
@@ -58,7 +59,7 @@ const useStyles = createStyles(({ css, token }) => ({
 	`,
 }));
 
-export function StatusIndicator({ text }: Props) {
+export function StatusIndicator({ text, showCursor = true }: Props) {
 	const { styles } = useStyles();
 	const normalized = text.trim().replace(/^✶\s*/u, "");
 	const label = normalized || "Thinking...";
@@ -74,7 +75,9 @@ export function StatusIndicator({ text }: Props) {
 			<span className={styles.star} aria-hidden="true">✶</span>
 			<span className={styles.text}>
 				{label}
-				<span key={label} className={styles.cursor} style={cursorStyle} aria-hidden="true" />
+				{showCursor ? (
+					<span key={label} className={styles.cursor} style={cursorStyle} aria-hidden="true" />
+				) : null}
 			</span>
 		</div>
 	);

@@ -9,6 +9,10 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		width: 100%;
 		max-width: var(--mini-chat-content-width, 800px);
 		margin: 0 auto;
+		z-index: 1;
+	`,
+	containerFused: css`
+		margin-top: -12px;
 	`,
 	pill: css`
 		display: flex;
@@ -17,21 +21,59 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		align-items: center;
 		padding: 3px 5px;
 		border-radius: 20px;
-		background: ${token.colorBgContainer};
-		border: 1px solid ${token.colorBorderSecondary};
+		background: linear-gradient(
+			180deg,
+			${token.colorBgContainer} 0%,
+			${token.colorFillQuaternary} 100%
+		);
+		border: 1px solid ${token.colorBorder};
 		transition: border-radius 0.3s cubic-bezier(0.32, 0.72, 0, 1),
-					background-color 0.2s ease,
-					padding 0.3s cubic-bezier(0.32, 0.72, 0, 1),
-					box-shadow 0.2s ease;
-		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+						background-color 0.2s ease,
+						padding 0.3s cubic-bezier(0.32, 0.72, 0, 1),
+						box-shadow 0.2s ease;
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.88),
+			inset 0 -1px 0 rgba(15, 23, 42, 0.08),
+			0 2px 5px rgba(15, 23, 42, 0.06),
+			0 10px 22px rgba(15, 23, 42, 0.12);
 		position: relative;
 		min-height: 40px;
 		width: 100%;
 
 		&:focus-within {
 			background: ${token.colorBgContainer};
-			border-color: ${token.colorBorder};
-			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+			border-color: ${token.colorPrimaryBorder};
+			box-shadow:
+				inset 0 1px 0 rgba(255, 255, 255, 0.92),
+				inset 0 -1px 0 rgba(15, 23, 42, 0.1),
+				0 4px 12px rgba(15, 23, 42, 0.1),
+				0 14px 30px rgba(15, 23, 42, 0.16);
+		}
+	`,
+	pillFused: css`
+		border-top-left-radius: 10px;
+		border-top-right-radius: 10px;
+		border-top-color: rgba(255, 255, 255, 0.58);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.9),
+			inset 0 -1px 0 rgba(15, 23, 42, 0.08),
+			0 -2px 4px rgba(15, 23, 42, 0.05),
+			0 10px 22px rgba(15, 23, 42, 0.1);
+
+		&::before {
+			content: "";
+			position: absolute;
+			left: 14px;
+			right: 14px;
+			top: -9px;
+			height: 12px;
+			border-radius: 999px;
+			background: linear-gradient(
+				180deg,
+				rgba(15, 23, 42, 0.07) 0%,
+				rgba(15, 23, 42, 0) 100%
+			);
+			pointer-events: none;
 		}
 	`,
 	pillMultiline: css`
@@ -45,7 +87,11 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		border-radius: 20px;
 		padding: 10px 10px 8px;
 		min-height: 96px;
-		box-shadow: none;
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.88),
+			inset 0 -1px 0 rgba(15, 23, 42, 0.1),
+			0 2px 5px rgba(15, 23, 42, 0.06),
+			0 12px 24px rgba(15, 23, 42, 0.14);
 	`,
 	pillTopRow: css`
 		display: flex;

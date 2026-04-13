@@ -22,8 +22,6 @@ type Params = {
 	pushSdkMessage: (payload: unknown) => void;
 	resetCodeAgentStreaming: () => void;
 	setCodeAgentStatus: Dispatch<SetStateAction<CodeAgentStatus | null>>;
-	setCodeStreamingText: Dispatch<SetStateAction<string>>;
-	setCodeActivities: Dispatch<SetStateAction<ToolActivityItem[]>>;
 	setCodeRunActive: Dispatch<SetStateAction<boolean>>;
 	setCodeAgentPendingPermission: (permission: PendingPermission | null) => void;
 	codeActivitiesRef: MutableRefObject<ToolActivityItem[]>;
@@ -34,8 +32,6 @@ export function useMiniChatCodeAgentEvents({
 	pushSdkMessage,
 	resetCodeAgentStreaming,
 	setCodeAgentStatus,
-	setCodeStreamingText,
-	setCodeActivities,
 	setCodeRunActive,
 	setCodeAgentPendingPermission,
 	codeActivitiesRef,
@@ -54,37 +50,27 @@ export function useMiniChatCodeAgentEvents({
 			toolName: string;
 			inputSummary: string;
 		}>("code-agent:activity", (payload) => {
-			if (typeof payload?.toolName === "string") {
-				const item: ToolActivityItem = {
-					id: crypto.randomUUID(),
-					toolId: payload.toolId || "",
-					toolName: payload.toolName,
-					inputSummary: payload.inputSummary || "",
-					timestamp: Date.now(),
-				};
-				setCodeActivities((prev) => {
-					const updated = [...prev, item];
-					codeActivitiesRef.current = updated;
-					return updated;
-				});
-			}
+			if (typeof payload?.toolName !== "string") return;
+			const item: ToolActivityItem = {
+				id: crypto.randomUUID(),
+				toolId: payload.toolId || "",
+				toolName: payload.toolName,
+				inputSummary: payload.inputSummary || "",
+				timestamp: Date.now(),
+			};
+			codeActivitiesRef.current = [...codeActivitiesRef.current, item];
 		});
 
 		const unsubscribeToolResult = subscribeHostEvent<{
 			toolId: string;
 			resultSummary: string;
 		}>("code-agent:tool-result", (payload) => {
-			if (payload?.toolId && payload?.resultSummary) {
-				setCodeActivities((prev) => {
-					const updated = prev.map((act) =>
-						act.toolId === payload.toolId
-							? { ...act, resultSummary: payload.resultSummary }
-							: act,
-					);
-					codeActivitiesRef.current = updated;
-					return updated;
-				});
-			}
+			if (!payload?.toolId || !payload?.resultSummary) return;
+			codeActivitiesRef.current = codeActivitiesRef.current.map((act) =>
+				act.toolId === payload.toolId
+					? { ...act, resultSummary: payload.resultSummary }
+					: act,
+			);
 		});
 
 		const appendStreamingText = useCodeAgentStore.getState().appendStreamingText;
@@ -92,7 +78,6 @@ export function useMiniChatCodeAgentEvents({
 			"code-agent:token",
 			(payload) => {
 				if (payload?.text) {
-					setCodeStreamingText((prev) => prev + payload.text);
 					appendStreamingText(payload.text);
 				}
 			},
@@ -102,10 +87,14 @@ export function useMiniChatCodeAgentEvents({
 			"code-agent:run-started",
 			() => {
 				setCodeRunActive(true);
-				setCodeStreamingText("");
-				setCodeActivities([]);
 				codeActivitiesRef.current = [];
 				resetCodeAgentStreaming();
+				// Prime the CLI status line immediately so users see activity
+				// before the first SDK text/tool event arrives.
+				pushSdkMessage({
+					type: "stream_event",
+					event: { type: "message_start" },
+				});
 			},
 		);
 
@@ -114,9 +103,8 @@ export function useMiniChatCodeAgentEvents({
 			() => {
 				setCodeRunActive(false);
 				pendingCompletionActivitiesRef.current = [...codeActivitiesRef.current];
-				setCodeStreamingText("");
-				setCodeActivities([]);
 				codeActivitiesRef.current = [];
+				resetCodeAgentStreaming();
 			},
 		);
 
@@ -125,9 +113,8 @@ export function useMiniChatCodeAgentEvents({
 			() => {
 				setCodeRunActive(false);
 				pendingCompletionActivitiesRef.current = [...codeActivitiesRef.current];
-				setCodeStreamingText("");
-				setCodeActivities([]);
 				codeActivitiesRef.current = [];
+				resetCodeAgentStreaming();
 			},
 		);
 
@@ -181,8 +168,6 @@ export function useMiniChatCodeAgentEvents({
 		resetCodeAgentStreaming,
 		setCodeAgentPendingPermission,
 		setCodeAgentStatus,
-		setCodeStreamingText,
-		setCodeActivities,
 		setCodeRunActive,
 		codeActivitiesRef,
 		pendingCompletionActivitiesRef,

@@ -24,6 +24,7 @@ export const useMiniChatStyles = createStyles(
 		grid-template-columns: auto 1fr auto;
 		align-items: center;
 		gap: 8px;
+		padding-inline: 10px;
 		-webkit-app-region: drag;
 	`,
 		headerEmbedded: css`
@@ -43,7 +44,7 @@ export const useMiniChatStyles = createStyles(
 		margin-inline-start: ${window.electron?.platform === "darwin" && props.isCollapsed ? "128px" : "12px"};
 		transition: margin-inline-start 0.28s ease;
 		pointer-events: auto;
-		-webkit-app-region: no-drag;
+		-webkit-app-region: drag;
 		border-bottom: none;
 		background: ${token.colorBgContainer};
 		position: relative;
@@ -238,21 +239,6 @@ export const useMiniChatStyles = createStyles(
 	`,
 		dynamicIslandWrapperGenerating: css`
 		filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.18));
-		animation: islandBreath 2.4s ease-in-out infinite;
-
-		@keyframes islandBreath {
-			0%,
-			100% {
-				transform: translateY(0) scale(1);
-			}
-			50% {
-				transform: translateY(-0.5px) scale(1.006);
-			}
-		}
-
-		@media (prefers-reduced-motion: reduce) {
-			animation: none;
-		}
 	`,
 		dynamicIslandWrapperExpanded: css`
 		flex: 1;
@@ -384,8 +370,8 @@ export const useMiniChatStyles = createStyles(
 		z-index: 1;
 	`,
 		islandTextLabel: css`
-		font-family:
-			"SF Pro Display",
+			font-family:
+				"SF Pro Display",
 			"SF Pro Icons",
 			"Helvetica Neue",
 			Helvetica,
@@ -398,19 +384,20 @@ export const useMiniChatStyles = createStyles(
 		color: rgba(255, 255, 255, 0.98);
 		white-space: nowrap;
 		overflow: hidden;
-		text-overflow: ellipsis;
-		display: block;
-		min-width: 0;
-		font-variant-numeric: tabular-nums;
-	`,
+			text-overflow: ellipsis;
+			display: block;
+			max-width: 100%;
+			min-width: 0;
+			font-variant-numeric: tabular-nums;
+		`,
 		islandGeneratingBadge: css`
 		display: inline-flex;
 		align-items: center;
-		gap: 5px;
+		justify-content: center;
+		gap: 0;
 		flex-shrink: 0;
-		min-width: 0;
-		max-width: 52%;
-		padding: 2px 7px;
+		min-width: 20px;
+		padding: 3px 6px;
 		border-radius: 999px;
 		background: rgba(59, 130, 246, 0.14);
 		border: 1px solid rgba(59, 130, 246, 0.3);
@@ -419,19 +406,10 @@ export const useMiniChatStyles = createStyles(
 	`,
 		islandGeneratingSpinner: css`
 		font-family: ${token.fontFamilyCode};
-		font-size: 11px;
+		font-size: 12px;
 		line-height: 1;
 		color: rgba(191, 219, 254, 0.98);
 		flex-shrink: 0;
-	`,
-		islandGeneratingText: css`
-		font-size: 10.5px;
-		font-weight: 600;
-		letter-spacing: 0.01em;
-		color: rgba(219, 234, 254, 0.96);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
 	`,
 		islandPath: css`
 		font-family: ${token.fontFamilyCode};
@@ -464,12 +442,14 @@ export const useMiniChatStyles = createStyles(
 		transform: translateX(0);
 	`,
 		islandContainer: css`
-		position: relative;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		overflow: visible;
-	`,
+			position: relative;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 100%;
+			min-width: 0;
+			overflow: visible;
+		`,
 		islandMetric: css`
 		display: inline-flex;
 		align-items: center;
@@ -1201,21 +1181,31 @@ export const useMiniChatStyles = createStyles(
 		overflow-wrap: anywhere;
 		letter-spacing: 0;
 
-		& p,
-		:global(.markdown-body) p {
+		& p {
 			margin: 0 !important;
 		}
 	`,
-		inputDock: css`
+	inputDock: css`
 		padding: 10px 12px 12px;
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
+		gap: 6px;
 		position: relative;
 		overflow: visible;
 		align-items: stretch;
 	`,
-		composerStatusRow: css`
+	todoDock: css`
+		max-width: var(--mini-chat-content-width, 800px);
+		margin: 0 auto;
+		width: 100%;
+		position: relative;
+		z-index: 2;
+		margin-bottom: -1px;
+	`,
+	todoDockFused: css`
+		margin-bottom: -12px;
+	`,
+	composerStatusRow: css`
 		display: flex;
 		align-items: center;
 		justify-content: space-between;

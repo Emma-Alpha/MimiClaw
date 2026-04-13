@@ -32,6 +32,7 @@ const electronAPI = {
         'shell:openExternal',
         'shell:showItemInFolder',
         'shell:openPath',
+        'shell:openPathAtLine',
         'screenshot:captureSnipaste',
         // Dialog
         'dialog:open',

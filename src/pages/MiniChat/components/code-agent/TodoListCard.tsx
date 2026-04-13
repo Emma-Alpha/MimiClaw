@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { createStyles } from "antd-style";
-import { CircleCheck, CircleDashed, Circle, ListChecks } from "lucide-react";
+import { CircleCheck, CircleDashed, Circle, ListChecks, Minimize2, Maximize2 } from "lucide-react";
 import type { StreamingToolUse } from "@/stores/code-agent";
 
 interface TodoItem {
@@ -10,33 +11,117 @@ interface TodoItem {
 
 interface Props {
 	tool: StreamingToolUse;
+	variant?: "inline" | "dock";
+	fusedWithComposer?: boolean;
 }
 
 const useStyles = createStyles(({ css, token }) => ({
 	card: css`
 		display: flex;
 		flex-direction: column;
-		gap: 0;
+		gap: 6px;
+	`,
+	cardDock: css`
+		position: relative;
+		overflow: hidden;
+		padding: 10px 12px 12px;
+		border-radius: 14px;
+		border: 1px solid ${token.colorBorder};
+		background:
+			linear-gradient(
+				180deg,
+				${token.colorBgContainer} 0%,
+				${token.colorFillSecondary} 100%
+			);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.84),
+			inset 0 -1px 0 rgba(15, 23, 42, 0.08),
+			0 2px 4px rgba(15, 23, 42, 0.06),
+			0 12px 24px rgba(15, 23, 42, 0.14);
+		backdrop-filter: blur(6px);
+
+		&::before {
+			content: "";
+			position: absolute;
+			left: 0;
+			right: 0;
+			top: 0;
+			height: 38%;
+			background: linear-gradient(
+				180deg,
+				rgba(255, 255, 255, 0.45) 0%,
+				rgba(255, 255, 255, 0) 100%
+			);
+			pointer-events: none;
+		}
+	`,
+	cardDockFused: css`
+		border-bottom-left-radius: 8px;
+		border-bottom-right-radius: 8px;
+		border-bottom-color: transparent;
+		padding-bottom: 16px;
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.84),
+			inset 0 -1px 0 rgba(15, 23, 42, 0.08),
+			0 2px 4px rgba(15, 23, 42, 0.06),
+			0 6px 12px rgba(15, 23, 42, 0.09);
+
+		&::after {
+			content: "";
+			position: absolute;
+			left: 10px;
+			right: 10px;
+			bottom: 0;
+			height: 18px;
+			background: linear-gradient(
+				180deg,
+				rgba(255, 255, 255, 0) 0%,
+				rgba(255, 255, 255, 0.62) 100%
+			);
+			pointer-events: none;
+		}
 	`,
 	header: css`
 		display: flex;
 		align-items: center;
-		gap: 4px;
-		font-size: 11px;
+		justify-content: space-between;
+		padding: 0 2px 6px;
+		border-bottom: 1px solid ${token.colorBorderSecondary};
+	`,
+	headerCollapsed: css`
+		border-bottom-color: transparent;
+		padding-bottom: 2px;
+		transition: border-bottom-color 0.2s ease, padding 0.2s ease;
+	`,
+	headerLeft: css`
+		display: flex;
+		align-items: center;
+		gap: 5px;
+		font-size: 11.5px;
 		font-family: ${token.fontFamilyCode};
-		line-height: 22px;
+		line-height: 20px;
 		color: ${token.colorTextSecondary};
+	`,
+	headerAction: css`
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 20px;
+		height: 20px;
+		border-radius: 4px;
+		color: ${token.colorTextTertiary};
+		cursor: pointer;
+		transition: background-color 0.2s ease, color 0.2s ease;
+
+		&:hover {
+			color: ${token.colorTextSecondary};
+			background: ${token.colorFillTertiary};
+		}
 	`,
 	headerIcon: css`
 		flex-shrink: 0;
-		color: ${token.colorTextTertiary};
-	`,
-	headerLabel: css`
-		font-weight: 600;
-		color: ${token.colorText};
-	`,
-	headerSep: css`
-		color: ${token.colorTextQuaternary};
+		color: ${token.colorTextSecondary};
+		margin-top: -1px;
 	`,
 	headerCount: css`
 		color: ${token.colorTextSecondary};
@@ -50,20 +135,33 @@ const useStyles = createStyles(({ css, token }) => ({
 	list: css`
 		display: flex;
 		flex-direction: column;
-		gap: 1px;
-		padding: 2px 0 2px 2px;
+		gap: 2px;
+		padding: 1px 2px 0;
 	`,
 	item: css`
 		display: flex;
-		align-items: flex-start;
+		align-items: baseline;
 		gap: 6px;
 		font-size: 12px;
-		line-height: 1.6;
+		line-height: 1.52;
 		padding: 1px 0;
+	`,
+	itemLead: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		flex-shrink: 0;
 	`,
 	itemIcon: css`
 		flex-shrink: 0;
-		margin-top: 3px;
+		margin-top: -1px;
+	`,
+	itemOrder: css`
+		display: inline-flex;
+		align-items: center;
+		min-width: 18px;
+		font-variant-numeric: tabular-nums;
+		color: ${token.colorTextSecondary};
 	`,
 	itemCompleted: css`
 		color: ${token.colorSuccess};
@@ -77,13 +175,17 @@ const useStyles = createStyles(({ css, token }) => ({
 	itemText: css`
 		color: ${token.colorText};
 		word-break: break-word;
+		text-shadow:
+			0 1px 0 rgba(255, 255, 255, 0.82),
+			0 -1px 0 rgba(15, 23, 42, 0.03);
 	`,
 	itemTextCompleted: css`
 		color: ${token.colorTextTertiary};
 		text-decoration: line-through;
+		text-decoration-thickness: 1.5px;
 	`,
 	itemTextInProgress: css`
-		font-weight: 500;
+		font-weight: 550;
 	`,
 }));
 
@@ -111,8 +213,13 @@ function TodoItemIcon({ status }: { status: TodoItem["status"] }) {
 	}
 }
 
-export function TodoListCard({ tool }: Props) {
+export function TodoListCard({
+	tool,
+	variant = "inline",
+	fusedWithComposer = false,
+}: Props) {
 	const { styles, cx } = useStyles();
+	const [expanded, setExpanded] = useState(true);
 	const todos = parseTodos(tool.rawInput);
 	const isCompleted = tool.status === "completed";
 
@@ -121,32 +228,50 @@ export function TodoListCard({ tool }: Props) {
 	const completedCount = todos.filter((t) => t.status === "completed").length;
 
 	return (
-		<div className={styles.card}>
-			<div className={styles.header}>
-				<ListChecks size={12} className={styles.headerIcon} />
-				<span className={styles.headerLabel}>Todo</span>
-				<span className={styles.headerSep}>·</span>
-				<span className={styles.headerCount}>
-					{completedCount}/{todos.length} completed
-				</span>
-				{isCompleted && <span className={styles.statusOk}>✓</span>}
+		<div
+			className={cx(
+				styles.card,
+				variant === "dock" && styles.cardDock,
+				variant === "dock" && fusedWithComposer && styles.cardDockFused,
+			)}
+		>
+			<div className={cx(styles.header, !expanded && styles.headerCollapsed)}>
+				<div className={styles.headerLeft}>
+					<ListChecks size={12} className={styles.headerIcon} />
+					<span className={styles.headerCount}>
+						共 {todos.length} 个任务，已经完成 {completedCount} 个
+					</span>
+					{isCompleted && <span className={styles.statusOk}>✓</span>}
+				</div>
+				<div
+					className={styles.headerAction}
+					onClick={() => setExpanded(!expanded)}
+					title={expanded ? "收起" : "展开"}
+				>
+					{expanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+				</div>
 			</div>
-			<div className={styles.list}>
-				{todos.map((todo) => (
-					<div key={todo.content} className={styles.item}>
-						<TodoItemIcon status={todo.status} />
-						<span
-							className={cx(
-								styles.itemText,
-								todo.status === "completed" && styles.itemTextCompleted,
-								todo.status === "in_progress" && styles.itemTextInProgress,
-							)}
-						>
-							{todo.content}
-						</span>
-					</div>
-				))}
-			</div>
+			{expanded && (
+				<div className={styles.list}>
+					{todos.map((todo, index) => (
+						<div key={`${todo.content}-${index}`} className={styles.item}>
+							<span className={styles.itemLead}>
+								<TodoItemIcon status={todo.status} />
+								<span className={styles.itemOrder}>{index + 1}.</span>
+							</span>
+							<span
+								className={cx(
+									styles.itemText,
+									todo.status === "completed" && styles.itemTextCompleted,
+									todo.status === "in_progress" && styles.itemTextInProgress,
+								)}
+							>
+								{todo.content}
+							</span>
+						</div>
+					))}
+				</div>
+			)}
 		</div>
 	);
 }

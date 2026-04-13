@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Markdown } from "@lobehub/ui";
 import { createStyles } from "antd-style";
 import type { ToolActivityItem } from "../types";
+import { useEnhancedMarkdownProps } from "@/lib/markdown-enhancements";
 
 export type { ToolActivityItem };
 
@@ -192,6 +193,7 @@ export function CodeAgentFeed({
 	isError,
 }: CodeAgentFeedProps) {
 	const { styles, cx } = useFeedStyles();
+	const markdownProps = useEnhancedMarkdownProps();
 	const spinner = useSpinner(isRunning);
 
 	const hasActivities = activities.length > 0;
@@ -246,16 +248,16 @@ export function CodeAgentFeed({
 					)
 					: null}
 
-			{/* Text response */}
-			{hasText ? (
-				<>
-					{hasActivities ? <div className={styles.divider} /> : null}
-					<div className={styles.text}>
-						<Markdown>{streamingText}</Markdown>
-						{isRunning ? <span className={styles.cursor} /> : null}
-					</div>
-				</>
-			) : null}
+				{/* Text response */}
+				{hasText ? (
+					<>
+						{hasActivities ? <div className={styles.divider} /> : null}
+						<div className={styles.text}>
+							<Markdown variant="chat" headerMultiple={0} {...markdownProps}>{streamingText}</Markdown>
+							{isRunning ? <span className={styles.cursor} /> : null}
+						</div>
+					</>
+				) : null}
 		</div>
 	);
 }

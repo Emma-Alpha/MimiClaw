@@ -361,6 +361,8 @@ export type CodeAgentContextWindowUsage = {
 	usedPercentage: number;
 	remainingPercentage: number;
 	updatedAt: number;
+	/** Internal: dedupe key for usage accumulation from sdk messages. */
+	sourceMessageId?: string | null;
 };
 
 // ─── Store interface ──────────────────────────────────────────────────────────
@@ -407,6 +409,7 @@ export interface CodeAgentStore {
 	// Actions
 	pushSdkMessage: (raw: unknown) => void;
 	pushUserMessage: (text: string, meta?: CodeAgentUserMessageMeta) => void;
+	setContextUsage: (usage: CodeAgentContextWindowUsage | null) => void;
 	/** Append incremental text from `code-agent:token` IPC events for live streaming */
 	appendStreamingText: (text: string) => void;
 	setPendingPermission: (p: PendingPermission | null) => void;
@@ -610,6 +613,42 @@ function pickNumber(record: Record<string, unknown> | null, keys: string[]): num
 	return null;
 }
 
+function normalizeModelIdentifier(value: string | null | undefined): string {
+	return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+function pickModelUsageRecord(
+	modelUsage: Record<string, unknown> | null,
+	preferredModel: string | null,
+): {
+	model: string | null;
+	usage: Record<string, unknown> | null;
+} {
+	if (!modelUsage) {
+		return { model: null, usage: null };
+	}
+
+	const preferred = normalizeModelIdentifier(preferredModel);
+	let fallbackModel: string | null = null;
+	let fallbackUsage: Record<string, unknown> | null = null;
+
+	for (const [modelName, value] of Object.entries(modelUsage)) {
+		const usage = asRecord(value);
+		if (!usage) continue;
+
+		if (!fallbackUsage) {
+			fallbackModel = modelName;
+			fallbackUsage = usage;
+		}
+
+		if (preferred && normalizeModelIdentifier(modelName) === preferred) {
+			return { model: modelName, usage };
+		}
+	}
+
+	return { model: fallbackModel, usage: fallbackUsage };
+}
+
 function extractLastIterationUsage(record: Record<string, unknown> | null): {
 	inputTokens: number;
 	outputTokens: number;
@@ -670,7 +709,319 @@ function inferContextWindowFromModel(model: string | null): number {
 
 function clampPercent(value: number): number {
 	if (!Number.isFinite(value)) return 0;
-	return Math.max(0, Math.min(100, Math.round(value)));
+	return Math.max(0, Math.min(100, value));
+}
+
+function safeJsonStringify(value: unknown): string {
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return "";
+	}
+}
+
+function roughTokenCountEstimation(content: string, bytesPerToken = 4): number {
+	if (!content) return 0;
+	return Math.max(0, Math.round(content.length / bytesPerToken));
+}
+
+function roughTokenCountForContent(content: unknown): number {
+	if (!content) return 0;
+	if (typeof content === "string") return roughTokenCountEstimation(content);
+	if (Array.isArray(content)) {
+		return content.reduce((sum, block) => sum + roughTokenCountForBlock(block), 0);
+	}
+	const record = asRecord(content);
+	if (!record) return 0;
+	if (typeof record.text === "string") {
+		return roughTokenCountEstimation(record.text);
+	}
+	if (typeof record.thinking === "string") {
+		return roughTokenCountEstimation(record.thinking);
+	}
+	if (typeof record.data === "string") {
+		return roughTokenCountEstimation(record.data);
+	}
+	if ("content" in record) {
+		return roughTokenCountForContent(record.content);
+	}
+	return roughTokenCountEstimation(safeJsonStringify(record));
+}
+
+function roughTokenCountForBlock(block: unknown): number {
+	if (typeof block === "string") {
+		return roughTokenCountEstimation(block);
+	}
+	const record = asRecord(block);
+	if (!record) return 0;
+
+	const type = typeof record.type === "string" ? record.type : "";
+	if (type === "text") {
+		return roughTokenCountEstimation(typeof record.text === "string" ? record.text : "");
+	}
+	if (type === "thinking") {
+		return roughTokenCountEstimation(
+			typeof record.thinking === "string" ? record.thinking : "",
+		);
+	}
+	if (type === "redacted_thinking") {
+		return roughTokenCountEstimation(typeof record.data === "string" ? record.data : "");
+	}
+	if (type === "tool_result") {
+		return roughTokenCountForContent(record.content);
+	}
+	if (type === "tool_use") {
+		const name = typeof record.name === "string" ? record.name : "";
+		return roughTokenCountEstimation(name + safeJsonStringify(record.input ?? {}));
+	}
+	if (type === "image" || type === "document") {
+		// Keep parity with Claude Code rough estimator defaults.
+		return 2_000;
+	}
+
+	return roughTokenCountEstimation(safeJsonStringify(record));
+}
+
+function roughTokenCountForRawMessage(msg: Record<string, unknown>): number {
+	const type = typeof msg.type === "string" ? msg.type : "";
+	if (type === "assistant" || type === "user") {
+		const message = asRecord(msg.message);
+		return roughTokenCountForContent(message?.content);
+	}
+	if (type === "attachment") {
+		return roughTokenCountEstimation(safeJsonStringify(msg.attachment));
+	}
+	return 0;
+}
+
+function roughTokenCountForRawMessages(
+	messages: readonly Record<string, unknown>[],
+): number {
+	return messages.reduce((sum, message) => sum + roughTokenCountForRawMessage(message), 0);
+}
+
+type HistoryUsageCandidate = {
+	usage: {
+		inputTokens: number;
+		outputTokens: number;
+		cacheReadInputTokens: number;
+		cacheCreationInputTokens: number;
+	};
+	model: string | null;
+	contextWindowSize: number;
+	windowSource: "reported" | "estimated";
+	sourceMessageId: string | null;
+	usedPercentageFromPayload: number | null;
+	remainingPercentageFromPayload: number | null;
+	assistantMessageId: string | null;
+};
+
+function extractHistoryUsageCandidate(
+	msg: Record<string, unknown>,
+	fallbackModel: string | null,
+): HistoryUsageCandidate | null {
+	const message = asRecord(msg.message);
+	const request = asRecord(msg.request);
+	const contextWindow = asRecord(msg.context_window)
+		?? asRecord(message?.context_window)
+		?? asRecord(request?.context_window);
+	const preferredModel =
+		typeof message?.model === "string"
+			? message.model
+			: typeof msg.model === "string"
+				? (msg.model as string)
+				: fallbackModel;
+	const modelUsage = asRecord(msg.modelUsage) ?? asRecord(message?.modelUsage);
+	const modelUsageRecord = pickModelUsageRecord(modelUsage, preferredModel);
+	const usage =
+		extractUsageShape(asRecord(contextWindow?.current_usage))
+		?? extractUsageShape(asRecord(message?.usage))
+		?? extractUsageShape(asRecord(msg.usage))
+		?? extractUsageShape(modelUsageRecord.usage);
+	if (!usage) return null;
+
+	const model =
+		typeof message?.model === "string"
+			? message.model
+			: typeof msg.model === "string"
+				? (msg.model as string)
+				: modelUsageRecord.model ?? fallbackModel;
+	const reportedWindowSizeFromContext = pickNumber(
+		contextWindow,
+		["context_window_size", "contextWindowSize"],
+	);
+	const reportedWindowSizeFromModelUsage = pickNumber(
+		modelUsageRecord.usage,
+		["contextWindow", "context_window_size", "contextWindowSize"],
+	);
+	const reportedWindowSize = reportedWindowSizeFromContext ?? reportedWindowSizeFromModelUsage;
+	const contextWindowSize = Math.max(
+		1,
+		Math.round(reportedWindowSize ?? inferContextWindowFromModel(model)),
+	);
+	const sourceMessageId =
+		typeof message?.id === "string" && message.id.trim()
+			? `assistant:${message.id.trim()}`
+			: typeof msg.uuid === "string" && msg.uuid.trim()
+				? `uuid:${msg.uuid.trim()}`
+				: null;
+
+	return {
+		usage,
+		model: model ?? null,
+		contextWindowSize,
+		windowSource: reportedWindowSize != null ? "reported" : "estimated",
+		sourceMessageId,
+		usedPercentageFromPayload: pickNumber(contextWindow, ["used_percentage", "usedPercentage"]),
+		remainingPercentageFromPayload: pickNumber(contextWindow, ["remaining_percentage", "remainingPercentage"]),
+		assistantMessageId:
+			typeof message?.id === "string" && message.id.trim()
+				? message.id.trim()
+				: null,
+	};
+}
+
+function findLatestModelFromRawMessages(
+	messages: readonly Record<string, unknown>[],
+	fallbackModel: string | null,
+): string | null {
+	for (let i = messages.length - 1; i >= 0; i -= 1) {
+		const msg = messages[i];
+		const message = asRecord(msg.message);
+		if (typeof message?.model === "string" && message.model.trim()) {
+			return message.model.trim();
+		}
+		if (typeof msg.model === "string" && msg.model.trim()) {
+			return msg.model.trim();
+		}
+	}
+	return fallbackModel;
+}
+
+function getUsageTokenCount(candidate: HistoryUsageCandidate): number {
+	return (
+		candidate.usage.inputTokens
+		+ candidate.usage.cacheReadInputTokens
+		+ candidate.usage.cacheCreationInputTokens
+		+ candidate.usage.outputTokens
+	);
+}
+
+function estimateContextTokensFromRawMessages(
+	messages: readonly Record<string, unknown>[],
+	fallbackModel: string | null,
+): {
+	estimatedTokens: number;
+	candidate: HistoryUsageCandidate | null;
+} {
+	const roughAllMessages = roughTokenCountForRawMessages(messages);
+
+	for (let i = messages.length - 1; i >= 0; i -= 1) {
+		const msg = messages[i];
+		const candidate = extractHistoryUsageCandidate(msg, fallbackModel);
+		if (!candidate) continue;
+
+		let anchorIndex = i;
+		if (candidate.assistantMessageId) {
+			let j = i - 1;
+			while (j >= 0) {
+				const previous = messages[j];
+				const previousMessage = asRecord(previous.message);
+				const previousAssistantMessageId =
+					typeof previousMessage?.id === "string" && previousMessage.id.trim()
+						? previousMessage.id.trim()
+						: null;
+				if (previousAssistantMessageId === candidate.assistantMessageId) {
+					anchorIndex = j;
+				} else if (previousAssistantMessageId != null) {
+					break;
+				}
+				j -= 1;
+			}
+		}
+
+		const strictVendorEstimate =
+			getUsageTokenCount(candidate)
+			+ roughTokenCountForRawMessages(messages.slice(anchorIndex + 1));
+		const inputFootprintTokens =
+			candidate.usage.inputTokens
+			+ candidate.usage.cacheReadInputTokens
+			+ candidate.usage.cacheCreationInputTokens;
+		const estimatedTokens =
+			inputFootprintTokens > 0
+				? strictVendorEstimate
+				: Math.max(strictVendorEstimate, roughAllMessages);
+		return {
+			estimatedTokens,
+			candidate,
+		};
+	}
+
+	return {
+		estimatedTokens: roughAllMessages,
+		candidate: null,
+	};
+}
+
+/**
+ * Compute the final context usage snapshot from replayed transcript rows.
+ *
+ * For normal SDK rows, this matches Claude Code's "last usage + estimate newer
+ * messages" strategy. If transcript usage is output-only (input/cache=0), we
+ * fall back to a full-message rough estimate so session switching doesn't show 0.
+ */
+export function deriveContextUsageFromRawMessages(
+	rawSdkMessages: unknown[],
+	fallbackModel: string | null,
+): CodeAgentContextWindowUsage | null {
+	const messages: Record<string, unknown>[] = rawSdkMessages
+		.map((item) => asRecord(item))
+		.filter((item): item is Record<string, unknown> => Boolean(item));
+	if (messages.length === 0) return null;
+
+	const model = findLatestModelFromRawMessages(messages, fallbackModel);
+	const { estimatedTokens, candidate } = estimateContextTokensFromRawMessages(
+		messages,
+		model,
+	);
+	const contextWindowSize = Math.max(
+		1,
+		Math.round(candidate?.contextWindowSize ?? inferContextWindowFromModel(model)),
+	);
+	const inputTokens = candidate?.usage.inputTokens ?? 0;
+	const outputTokens = candidate?.usage.outputTokens ?? 0;
+	const cacheReadInputTokens = candidate?.usage.cacheReadInputTokens ?? 0;
+	const cacheCreationInputTokens = candidate?.usage.cacheCreationInputTokens ?? 0;
+	const inputFootprintTokens =
+		inputTokens + cacheReadInputTokens + cacheCreationInputTokens;
+	const rawUsedTokens =
+		inputFootprintTokens > 0 ? inputFootprintTokens : Math.max(0, Math.round(estimatedTokens));
+	const usedTokens = Math.max(0, Math.min(contextWindowSize, rawUsedTokens));
+	if (usedTokens <= 0) return null;
+	const remainingTokens = Math.max(0, contextWindowSize - usedTokens);
+	const computedUsedPercentage = Math.round((usedTokens / contextWindowSize) * 100);
+	const usedPercentage = clampPercent(
+		candidate?.usedPercentageFromPayload ?? computedUsedPercentage,
+	);
+	const remainingPercentage = clampPercent(
+		candidate?.remainingPercentageFromPayload ?? 100 - usedPercentage,
+	);
+
+	return {
+		contextWindowSize,
+		windowSource: candidate?.windowSource ?? "estimated",
+		model: candidate?.model ?? model ?? null,
+		inputTokens,
+		outputTokens,
+		cacheReadInputTokens,
+		cacheCreationInputTokens,
+		usedTokens,
+		remainingTokens,
+		usedPercentage,
+		remainingPercentage,
+		updatedAt: Date.now(),
+		sourceMessageId: candidate?.sourceMessageId ?? null,
+	};
 }
 
 function extractContextUsage(
@@ -681,43 +1032,106 @@ function extractContextUsage(
 	const message = asRecord(msg.message);
 	const request = asRecord(msg.request);
 	const event = asRecord(msg.event);
+	const isStreamEventMessage = msg.type === "stream_event";
+	const streamEventType = isStreamEventMessage && typeof event?.type === "string"
+		? (event.type as string)
+		: null;
+	const streamEventMessage = asRecord(event?.message);
 	const contextWindow = asRecord(msg.context_window) ?? asRecord(message?.context_window) ?? asRecord(request?.context_window);
+	const preferredModel =
+		typeof message?.model === "string"
+			? message.model
+			: typeof msg.model === "string"
+				? (msg.model as string)
+				: fallbackModel;
+	const modelUsage = asRecord(msg.modelUsage) ?? asRecord(message?.modelUsage);
+	const modelUsageRecord = pickModelUsageRecord(modelUsage, preferredModel);
+	let sourceMessageId: string | null = null;
+	if (typeof message?.id === "string" && message.id.trim()) {
+		sourceMessageId = `assistant:${message.id.trim()}`;
+	} else if (
+		typeof streamEventMessage?.id === "string"
+		&& streamEventMessage.id.trim()
+	) {
+		sourceMessageId = `assistant:${streamEventMessage.id.trim()}`;
+	} else if (
+		isStreamEventMessage
+		&& (streamEventType === "message_delta" || streamEventType === "message_stop")
+		&& previousUsage?.sourceMessageId
+	) {
+		// Stream deltas usually do not carry message ids; keep the previous id so
+		// we can merge partial usage updates for the same assistant message.
+		sourceMessageId = previousUsage.sourceMessageId;
+	} else if (!isStreamEventMessage && typeof msg.uuid === "string" && msg.uuid.trim()) {
+		sourceMessageId = `uuid:${msg.uuid.trim()}`;
+	}
+	const streamEventUsage =
+		isStreamEventMessage && streamEventType === "message_start"
+			? extractUsageShape(asRecord(streamEventMessage?.usage))
+			: isStreamEventMessage && streamEventType === "message_delta"
+				? extractUsageShape(asRecord(event?.usage))
+				: null;
 	const usage =
 		extractUsageShape(asRecord(contextWindow?.current_usage))
-		?? extractUsageShape(asRecord(event?.usage))
-		?? extractUsageShape(asRecord(asRecord(event?.message)?.usage))
+		?? streamEventUsage
+		?? (
+			!isStreamEventMessage
+				? extractUsageShape(asRecord(event?.usage))
+					?? extractUsageShape(asRecord(asRecord(event?.message)?.usage))
+				: null
+		)
 		?? extractUsageShape(asRecord(message?.usage))
-		?? extractUsageShape(asRecord(msg.usage));
+		?? extractUsageShape(asRecord(msg.usage))
+		?? extractUsageShape(modelUsageRecord.usage);
 
 	if (!usage) return null;
+	const isDuplicateUsageSample =
+		Boolean(sourceMessageId)
+		&& sourceMessageId === (previousUsage?.sourceMessageId ?? null);
+	const mergedUsage = isDuplicateUsageSample
+		? {
+			// Match Claude Code's stream usage merge behavior:
+			// message_delta can emit 0 for input/cache fields.
+			inputTokens:
+				usage.inputTokens > 0
+					? usage.inputTokens
+					: previousUsage?.inputTokens ?? usage.inputTokens,
+			outputTokens:
+				usage.outputTokens > 0
+					? usage.outputTokens
+					: previousUsage?.outputTokens ?? usage.outputTokens,
+			cacheReadInputTokens:
+				usage.cacheReadInputTokens > 0
+					? usage.cacheReadInputTokens
+					: previousUsage?.cacheReadInputTokens ?? usage.cacheReadInputTokens,
+			cacheCreationInputTokens:
+				usage.cacheCreationInputTokens > 0
+					? usage.cacheCreationInputTokens
+					: previousUsage?.cacheCreationInputTokens ?? usage.cacheCreationInputTokens,
+		}
+		: usage;
 
 	const model =
 		typeof message?.model === "string"
 			? message.model
 			: typeof msg.model === "string"
 				? (msg.model as string)
-				: fallbackModel;
+				: modelUsageRecord.model ?? fallbackModel;
 
-	const reportedWindowSize = pickNumber(contextWindow, ["context_window_size", "contextWindowSize"]);
+	const reportedWindowSizeFromContext = pickNumber(
+		contextWindow,
+		["context_window_size", "contextWindowSize"],
+	);
+	const reportedWindowSizeFromModelUsage = pickNumber(
+		modelUsageRecord.usage,
+		["contextWindow", "context_window_size", "contextWindowSize"],
+	);
+	const reportedWindowSize = reportedWindowSizeFromContext ?? reportedWindowSizeFromModelUsage;
 	const contextWindowSize = Math.max(
 		1,
 		Math.round(reportedWindowSize ?? inferContextWindowFromModel(model)),
 	);
-	const usedTokens = Math.max(
-		0,
-		usage.inputTokens + usage.cacheReadInputTokens + usage.cacheCreationInputTokens,
-	);
-	const remainingTokens = Math.max(0, contextWindowSize - usedTokens);
-
-	const usedPercentageFromPayload = pickNumber(contextWindow, ["used_percentage", "usedPercentage"]);
-	const remainingPercentageFromPayload = pickNumber(contextWindow, ["remaining_percentage", "remainingPercentage"]);
-	const usedPercentage = clampPercent(
-		usedPercentageFromPayload ?? (usedTokens / contextWindowSize) * 100,
-	);
-	const remainingPercentage = clampPercent(
-		remainingPercentageFromPayload ?? 100 - usedPercentage,
-	);
-	const hasExplicitContextWindowUsage = Boolean(
+	const hasExplicitContextWindowUsageFromContext = Boolean(
 		contextWindow && (
 			asRecord(contextWindow.current_usage)
 			|| pickNumber(contextWindow, ["used_percentage", "usedPercentage"]) != null
@@ -726,11 +1140,44 @@ function extractContextUsage(
 			|| pickNumber(contextWindow, ["total_output_tokens", "totalOutputTokens"]) != null
 		),
 	);
+	const hasExplicitContextWindowUsage =
+		hasExplicitContextWindowUsageFromContext || reportedWindowSizeFromModelUsage != null;
+	const inputFootprintTokens = Math.max(
+		0,
+		mergedUsage.inputTokens + mergedUsage.cacheReadInputTokens + mergedUsage.cacheCreationInputTokens,
+	);
+	let usedTokens = inputFootprintTokens;
+	// Some providers/transcript replays only expose output tokens. Use a
+	// conservative monotonic fallback so session switching does not collapse to 0.
+	if (usedTokens === 0 && mergedUsage.outputTokens > 0 && !hasExplicitContextWindowUsageFromContext) {
+		if (isDuplicateUsageSample) {
+			usedTokens = previousUsage?.usedTokens ?? mergedUsage.outputTokens;
+		} else {
+			const previousUsedTokens = previousUsage?.usedTokens ?? 0;
+			usedTokens = Math.max(
+				mergedUsage.outputTokens,
+				previousUsedTokens + mergedUsage.outputTokens,
+			);
+		}
+	}
+	if (isDuplicateUsageSample && previousUsage && !hasExplicitContextWindowUsageFromContext) {
+		usedTokens = Math.max(usedTokens, previousUsage.usedTokens);
+	}
+	usedTokens = Math.max(0, Math.min(contextWindowSize, Math.round(usedTokens)));
+	const remainingTokens = Math.max(0, contextWindowSize - usedTokens);
 
-	// Some providers emit output-only usage records (input/cache = 0) for
-	// assistant turns. If we overwrite with these records, the UI jumps back to
-	// "200k remaining". Keep the previous session footprint unless payload gives
-	// explicit context-window metrics.
+	const usedPercentageFromPayload = pickNumber(contextWindow, ["used_percentage", "usedPercentage"]);
+	const remainingPercentageFromPayload = pickNumber(contextWindow, ["remaining_percentage", "remainingPercentage"]);
+	const computedUsedPercentage = Math.round((usedTokens / contextWindowSize) * 100);
+	const usedPercentage = clampPercent(
+		usedPercentageFromPayload ?? computedUsedPercentage,
+	);
+	const remainingPercentage = clampPercent(
+		remainingPercentageFromPayload ?? 100 - usedPercentage,
+	);
+
+	// Keep previous non-zero footprint when current payload has no usable
+	// context usage metrics (common with output-only transcript records).
 	if (usedTokens === 0 && !hasExplicitContextWindowUsage && previousUsage) {
 		return null;
 	}
@@ -739,15 +1186,16 @@ function extractContextUsage(
 		contextWindowSize,
 		windowSource: reportedWindowSize != null ? "reported" : "estimated",
 		model: model ?? null,
-		inputTokens: usage.inputTokens,
-		outputTokens: usage.outputTokens,
-		cacheReadInputTokens: usage.cacheReadInputTokens,
-		cacheCreationInputTokens: usage.cacheCreationInputTokens,
+		inputTokens: mergedUsage.inputTokens,
+		outputTokens: mergedUsage.outputTokens,
+		cacheReadInputTokens: mergedUsage.cacheReadInputTokens,
+		cacheCreationInputTokens: mergedUsage.cacheCreationInputTokens,
 		usedTokens,
 		remainingTokens,
 		usedPercentage,
 		remainingPercentage,
 		updatedAt: Date.now(),
+		sourceMessageId,
 	};
 }
 
@@ -764,7 +1212,106 @@ function initialStreaming() {
 	};
 }
 // ─── Store ────────────────────────────────────────────────────────────────────
-export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
+export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
+	const queuedStreamingDeltas = {
+		assistant: "",
+		thinking: "",
+	};
+	let scheduledStreamingFlush: number | ReturnType<typeof setTimeout> | null = null;
+	let scheduledWithAnimationFrame = false;
+
+	const canUseAnimationFrame = () =>
+		typeof globalThis !== "undefined"
+		&& typeof globalThis.requestAnimationFrame === "function"
+		&& typeof globalThis.cancelAnimationFrame === "function";
+
+	const flushQueuedStreamingDeltas = () => {
+		const assistantDelta = queuedStreamingDeltas.assistant;
+		const thinkingDelta = queuedStreamingDeltas.thinking;
+		if (!assistantDelta && !thinkingDelta) return;
+
+		queuedStreamingDeltas.assistant = "";
+		queuedStreamingDeltas.thinking = "";
+
+		set((state) => {
+			const nextAssistantText = assistantDelta
+				? state.streaming.assistantText + assistantDelta
+				: state.streaming.assistantText;
+			const nextThinkingText = thinkingDelta
+				? state.streaming.thinkingText + thinkingDelta
+				: state.streaming.thinkingText;
+			if (
+				nextAssistantText === state.streaming.assistantText
+				&& nextThinkingText === state.streaming.thinkingText
+			) {
+				return state;
+			}
+			return {
+				streaming: {
+					...state.streaming,
+					assistantText: nextAssistantText,
+					thinkingText: nextThinkingText,
+				},
+			};
+		});
+	};
+
+	const clearScheduledStreamingFlush = () => {
+		if (scheduledStreamingFlush == null) return;
+
+		if (scheduledWithAnimationFrame && canUseAnimationFrame()) {
+			globalThis.cancelAnimationFrame(scheduledStreamingFlush as number);
+		} else {
+			clearTimeout(scheduledStreamingFlush as ReturnType<typeof setTimeout>);
+		}
+		scheduledStreamingFlush = null;
+		scheduledWithAnimationFrame = false;
+	};
+
+	const flushQueuedStreamingDeltasNow = () => {
+		clearScheduledStreamingFlush();
+		flushQueuedStreamingDeltas();
+	};
+
+	const clearQueuedStreamingDeltas = () => {
+		clearScheduledStreamingFlush();
+		queuedStreamingDeltas.assistant = "";
+		queuedStreamingDeltas.thinking = "";
+	};
+
+	const scheduleStreamingFlush = () => {
+		if (scheduledStreamingFlush != null) return;
+
+		if (canUseAnimationFrame()) {
+			scheduledWithAnimationFrame = true;
+			scheduledStreamingFlush = globalThis.requestAnimationFrame(() => {
+				scheduledStreamingFlush = null;
+				scheduledWithAnimationFrame = false;
+				flushQueuedStreamingDeltas();
+			});
+			return;
+		}
+
+		scheduledWithAnimationFrame = false;
+		scheduledStreamingFlush = setTimeout(() => {
+			scheduledStreamingFlush = null;
+			flushQueuedStreamingDeltas();
+		}, 16);
+	};
+
+	const queueAssistantStreamingDelta = (text: string) => {
+		if (!text) return;
+		queuedStreamingDeltas.assistant += text;
+		scheduleStreamingFlush();
+	};
+
+	const queueThinkingStreamingDelta = (text: string) => {
+		if (!text) return;
+		queuedStreamingDeltas.thinking += text;
+		scheduleStreamingFlush();
+	};
+
+	return {
 	sessionId: null,
 	sessionInit: null,
 	sessionState: "idle",
@@ -780,6 +1327,7 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 	sessionAllowedTools: new Set(),
 
 	reset: () => {
+		clearQueuedStreamingDeltas();
 		set({
 			sessionId: null,
 			sessionInit: null,
@@ -798,33 +1346,50 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 		},
 
 	resetStreaming: () => {
-			set({
-				streaming: initialStreaming(),
-				pendingPermission: null,
-				pendingElicitation: null,
-				rateLimitInfo: null,
-			});
-		},
+		clearQueuedStreamingDeltas();
+		set({
+			streaming: initialStreaming(),
+			pendingPermission: null,
+			pendingElicitation: null,
+			rateLimitInfo: null,
+		});
+	},
 
 	appendStreamingText: (text) => {
-		set((state) => ({
-			streaming: {
-				...state.streaming,
-				assistantText: state.streaming.assistantText + text,
-				isStreaming: true,
-				spinnerMode: "responding",
-				vendorStatusText:
+		if (!text) return;
+		queueAssistantStreamingDelta(text);
+		set((state) => {
+			const shouldKeepStreamingFlags =
+				state.streaming.isStreaming
+				&& state.streaming.spinnerMode === "responding"
+				&& (
 					state.streaming.vendorStatusSource === "vendor"
-						? state.streaming.vendorStatusText
-						: formatVendorStatusLabel(buildFallbackVendorStatus("responding")),
-				vendorStatusSource:
-					state.streaming.vendorStatusSource === "vendor" ? "vendor" : "fallback",
-			},
-		}));
+					|| state.streaming.vendorStatusText
+						=== formatVendorStatusLabel(buildFallbackVendorStatus("responding"))
+				);
+			if (shouldKeepStreamingFlags) return state;
+			return {
+				streaming: {
+					...state.streaming,
+					isStreaming: true,
+					spinnerMode: "responding",
+					vendorStatusText:
+						state.streaming.vendorStatusSource === "vendor"
+							? state.streaming.vendorStatusText
+							: formatVendorStatusLabel(buildFallbackVendorStatus("responding")),
+					vendorStatusSource:
+						state.streaming.vendorStatusSource === "vendor" ? "vendor" : "fallback",
+				},
+			};
+		});
 	},
 
 	setPendingPermission: (p) => {
 		set({ pendingPermission: p });
+	},
+
+	setContextUsage: (usage) => {
+		set({ contextUsage: usage });
 	},
 
 	resolvePermission: (requestId, _decision) => {
@@ -880,6 +1445,9 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 		const msg = raw as Record<string, unknown>;
 		const type = msg.type as string | undefined;
 		if (!type) return;
+		if (type !== "stream_event") {
+			flushQueuedStreamingDeltasNow();
+		}
 
 			const vendorStatusText = extractVendorStatus(msg);
 			if (vendorStatusText) {
@@ -954,25 +1522,65 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 				if (s === "compacting") {
 					addItem({ kind: "system-notice", id: uid(), text: "⟳ 正在压缩上下文…", variant: "info" });
 				}
-				set((state) => ({
-					sessionState: s === null ? "idle" : "running",
-					streaming:
-						s === null
-							? initialStreaming()
-							: {
-								...state.streaming,
-								vendorStatusText:
-									state.streaming.vendorStatusSource === "vendor"
-										? state.streaming.vendorStatusText
-										: formatVendorStatusLabel(buildFallbackVendorStatus(state.streaming.spinnerMode)),
-								vendorStatusSource:
-									state.streaming.vendorStatusSource === "vendor"
-										? "vendor"
-										: state.streaming.spinnerMode
-											? "fallback"
-											: null,
-							},
-				}));
+				set((state) => {
+					if (s === null) {
+						const hasLiveStreaming =
+							state.streaming.spinnerMode !== null
+							|| state.streaming.isThinking
+							|| state.streaming.isStreaming
+							|| state.streaming.assistantText.trim().length > 0
+							|| state.streaming.thinkingText.trim().length > 0
+							|| state.streaming.toolUses.size > 0
+							|| state.pendingPermission !== null
+							|| state.pendingElicitation !== null;
+
+						// Some CLI runs emit system status=null while the turn is still active.
+						// Preserve active streaming state so "working..." feedback doesn't vanish.
+						if (hasLiveStreaming) {
+							return {
+								sessionState: "running" as const,
+								streaming: {
+									...state.streaming,
+									vendorStatusText:
+										state.streaming.vendorStatusSource === "vendor"
+											? state.streaming.vendorStatusText
+											: formatVendorStatusLabel(
+												buildFallbackVendorStatus(
+													state.streaming.spinnerMode ?? "requesting",
+													state.streaming.vendorStatusText,
+												),
+											),
+									vendorStatusSource:
+										state.streaming.vendorStatusSource === "vendor"
+											? "vendor"
+											: "fallback",
+								},
+							};
+						}
+
+						return {
+							sessionState: "idle" as const,
+							streaming: initialStreaming(),
+						};
+					}
+
+					return {
+						sessionState: "running" as const,
+						streaming: {
+							...state.streaming,
+							vendorStatusText:
+								state.streaming.vendorStatusSource === "vendor"
+									? state.streaming.vendorStatusText
+									: formatVendorStatusLabel(buildFallbackVendorStatus(state.streaming.spinnerMode)),
+							vendorStatusSource:
+								state.streaming.vendorStatusSource === "vendor"
+									? "vendor"
+									: state.streaming.spinnerMode
+										? "fallback"
+										: null,
+						},
+					};
+				});
 				return;
 			}
 
@@ -1082,11 +1690,12 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 			return;
 		}
 
-		// ── assistant turn (completed) ─────────────────────────────────────────
-		if (type === "assistant") {
-			const content = (msg.message as Record<string, unknown>)?.content;
-			const streaming = get().streaming;
-			const thinkingText = streaming.thinkingText;
+			// ── assistant turn (completed) ─────────────────────────────────────────
+			if (type === "assistant") {
+				flushQueuedStreamingDeltasNow();
+				const content = (msg.message as Record<string, unknown>)?.content;
+				const streaming = get().streaming;
+				const thinkingText = streaming.thinkingText;
 			const toolUses = streaming.toolUses;
 
 			// Flush any accumulated thinking block
@@ -1113,7 +1722,8 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 			}
 
 			// Reset streaming state
-			set({ streaming: initialStreaming() });
+				clearQueuedStreamingDeltas();
+				set({ streaming: initialStreaming() });
 
 			// In CLI stream-json mode there are no incremental stream events, so
 			// streaming.toolUses and streaming.assistantText are empty.
@@ -1235,29 +1845,26 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 				return;
 			}
 
-			if (evType === "content_block_delta") {
-				const delta = event.delta as Record<string, unknown> | undefined;
-				if (!delta) return;
-				const deltaType = String(delta.type || "");
+				if (evType === "content_block_delta") {
+					const delta = event.delta as Record<string, unknown> | undefined;
+					if (!delta) return;
+					const deltaType = String(delta.type || "");
 
-				if (deltaType === "thinking_delta") {
-					const text = String(delta.thinking || "");
-					set((state) => ({
-						streaming: { ...state.streaming, thinkingText: state.streaming.thinkingText + text },
-					}));
-				} else if (deltaType === "text_delta") {
-					const text = String(delta.text || "");
-					set((state) => ({
-						streaming: { ...state.streaming, assistantText: state.streaming.assistantText + text },
-					}));
+					if (deltaType === "thinking_delta") {
+						const text = String(delta.thinking || "");
+						queueThinkingStreamingDelta(text);
+					} else if (deltaType === "text_delta") {
+						const text = String(delta.text || "");
+						get().appendStreamingText(text);
+					}
+					return;
 				}
-				return;
-			}
 
-			if (evType === "content_block_stop") {
-				const s = get().streaming;
-				if (s.isThinking && s.thinkingText) {
-					addItem({
+				if (evType === "content_block_stop") {
+					flushQueuedStreamingDeltasNow();
+					const s = get().streaming;
+					if (s.isThinking && s.thinkingText) {
+						addItem({
 						kind: "thinking",
 						id: uid(),
 						data: { text: s.thinkingText, isStreaming: false, isRedacted: false },
@@ -1330,15 +1937,16 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 		}
 
 		// ── result (turn complete) ─────────────────────────────────────────────
-		if (type === "result") {
-			const isError = Boolean(msg.is_error);
-			const numTurns = Number(msg.num_turns ?? 0);
-			const totalCostUsd = Number(msg.total_cost_usd ?? 0);
+			if (type === "result") {
+				clearQueuedStreamingDeltas();
+				const isError = Boolean(msg.is_error);
+				const numTurns = Number(msg.num_turns ?? 0);
+				const totalCostUsd = Number(msg.total_cost_usd ?? 0);
 			const durationMs = Number(msg.duration_ms ?? 0);
 			addItem({ kind: "result", id: uid(), isError, numTurns, totalCostUsd, durationMs });
 			set({ sessionState: "idle", streaming: initialStreaming(), lastUpdatedAt: Date.now() });
-			return;
-		}
+				return;
+			}
 
 		// ── rate_limit_event ──────────────────────────────────────────────────
 		if (type === "rate_limit_event") {
@@ -1369,7 +1977,7 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 		}
 
 		// ── user (tool_result or first user message) ──────────────────────────
-		if (type === "user") {
+			if (type === "user") {
 			const message = msg.message as Record<string, unknown> | undefined;
 			const content = message?.content;
 			// Capture session title from the first plain text user message
@@ -1422,7 +2030,8 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => ({
 					}
 				}
 			}
-			return;
-		}
-	},
-}));
+				return;
+			}
+		},
+	};
+});

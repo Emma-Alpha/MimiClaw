@@ -13,8 +13,10 @@ import { CopyOutlined, CheckOutlined, RobotOutlined } from '@ant-design/icons';
 import { createStyles } from 'antd-style';
 import { createPortal } from 'react-dom';
 import { invokeIpc } from '@/lib/api-client';
+import { useEnhancedMarkdownProps, type EnhancedMarkdownProps } from '@/lib/markdown-enhancements';
 import type { RawMessage, AttachedFileMeta } from '@/stores/chat';
 import { extractText, extractThinking, extractImages, extractToolUse, formatTimestamp } from './message-utils';
+import { ThinkingPanel } from '@/components/chat/ThinkingPanel';
 
 const useStyles = createStyles(({ token, css }) => ({
   messageRow: css`
@@ -79,35 +81,6 @@ const useStyles = createStyles(({ token, css }) => ({
     font-size: var(--mimi-font-size-base);
     box-shadow: 0 2px 8px rgba(0,0,0,0.02);
     border: 1px solid rgba(0,0,0,0.04);
-  `,
-  thinkingBlock: css`
-    width: 100%;
-    border-radius: ${token.borderRadiusLG}px;
-    border: 1px solid ${token.colorBorderSecondary};
-    background: ${token.colorFillQuaternary};
-    font-size: var(--mimi-font-size-base);
-    overflow: hidden;
-  `,
-  thinkingHeader: css`
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 8px 12px;
-    color: ${token.colorTextSecondary};
-    cursor: pointer;
-    background: none;
-    border: none;
-    transition: color 0.2s;
-
-    &:hover {
-      color: ${token.colorText};
-    }
-  `,
-  thinkingBody: css`
-    padding: 0 12px 12px;
-    color: ${token.colorTextSecondary};
-    opacity: 0.8;
   `,
   toolCard: css`
     border-radius: ${token.borderRadiusLG}px;
@@ -284,6 +257,7 @@ export const ChatMessage = memo(function ChatMessage({
   streamingTools = [],
 }: ChatMessageProps) {
   const { styles, cx } = useStyles();
+  const markdownProps = useEnhancedMarkdownProps();
 
   const isUser = message.role === 'user';
   const role = typeof message.role === 'string' ? message.role.toLowerCase() : '';
@@ -294,6 +268,7 @@ export const ChatMessage = memo(function ChatMessage({
   const images = extractImages(message);
   const tools = extractToolUse(message);
   const visibleThinking = showThinking ? thinking : null;
+  const thinkingIsStreaming = isStreaming && !!visibleThinking;
   const visibleTools = tools;
 
   const attachedFiles = message._attachedFiles || [];
@@ -307,7 +282,19 @@ export const ChatMessage = memo(function ChatMessage({
   const assistantAboveMessage = !isUser && (
     <div className={styles.assistantSection}>
       {hasStreamingToolStatus && <ToolStatusBar tools={streamingTools} />}
-      {visibleThinking && <ThinkingBlock content={visibleThinking} />}
+      {visibleThinking && (
+        <ThinkingPanel
+          content={visibleThinking}
+          isThinking={thinkingIsStreaming}
+          showStreamingCursor={thinkingIsStreaming}
+          variant="card"
+          renderContent={(content) => (
+            <Markdown variant="chat" headerMultiple={0} {...markdownProps}>
+              {content || ' '}
+            </Markdown>
+          )}
+        />
+      )}
       {visibleTools.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {visibleTools.map((tool, i) => (
@@ -388,7 +375,6 @@ export const ChatMessage = memo(function ChatMessage({
           renderMessage={(editableContent) => (
             <div className={styles.assistantRender}>
               {editableContent}
-              {isStreaming && <span className={styles.streamCursor} />}
             </div>
           )}
           showTitle={false}
@@ -464,7 +450,7 @@ export const ChatMessage = memo(function ChatMessage({
 
         {/* Main text bubble */}
         {hasText && (
-          <MessageBubble text={text} isUser={isUser} isStreaming={isStreaming} />
+          <MessageBubble text={text} isUser={isUser} isStreaming={isStreaming} markdownProps={markdownProps} />
         )}
 
         {/* User timestamp */}
@@ -490,7 +476,17 @@ export const ChatMessage = memo(function ChatMessage({
 
 // ── Message Bubble ───────────────────────────────────────────────
 
-function MessageBubble({ text, isUser, isStreaming }: { text: string; isUser: boolean; isStreaming: boolean }) {
+function MessageBubble({
+  text,
+  isUser,
+  isStreaming,
+  markdownProps,
+}: {
+  text: string;
+  isUser: boolean;
+  isStreaming: boolean;
+  markdownProps: EnhancedMarkdownProps;
+}) {
   const { styles } = useStyles();
 
   if (isUser) {
@@ -503,29 +499,8 @@ function MessageBubble({ text, isUser, isStreaming }: { text: string; isUser: bo
 
   return (
     <div className={styles.bubbleAssistant}>
-      <Markdown>{text}</Markdown>
+      <Markdown variant="chat" headerMultiple={0} {...markdownProps}>{text}</Markdown>
       {isStreaming && <span className={styles.streamCursor} />}
-    </div>
-  );
-}
-
-// ── Thinking Block ───────────────────────────────────────────────
-
-function ThinkingBlock({ content }: { content: string }) {
-  const { styles } = useStyles();
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div className={styles.thinkingBlock}>
-      <button type="button" className={styles.thinkingHeader} onClick={() => setExpanded(!expanded)}>
-        {expanded ? <ChevronDown style={{ width: 14, height: 14 }} /> : <ChevronRight style={{ width: 14, height: 14 }} />}
-        <span style={{ fontWeight: 'var(--mimi-font-weight-medium)' }}>Thinking</span>
-      </button>
-      {expanded && (
-        <div className={styles.thinkingBody}>
-          <Markdown>{content}</Markdown>
-        </div>
-      )}
     </div>
   );
 }

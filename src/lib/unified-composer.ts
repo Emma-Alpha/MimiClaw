@@ -12,11 +12,21 @@ export type UnifiedComposerDraft<TAttachment = FileAttachment> = {
 	paths: UnifiedComposerPath[];
 };
 
+export type SnippetClipboardPayload = {
+	plainText?: string;
+	htmlText?: string;
+	uriListText?: string;
+	extraTextPayloads?: string[];
+};
+
 const SNIPPET_REFERENCE_PATTERNS = [
-	/^\s*(?:[-*]\s+)?`?(?<path>[^()\n\r`]+?\.[A-Za-z0-9][^()\n\r`]*)`?\s*\(\s*(?<start>\d{1,7})\s*[-~–—]\s*(?<end>\d{1,7})\s*\)\s*`?\s*$/,
-	/^\s*(?:[-*]\s+)?`?(?<path>[^:\n\r`]+?\.[A-Za-z0-9][^:\n\r`]*)`?\s*:\s*(?<start>\d{1,7})\s*[-~–—]\s*(?<end>\d{1,7})\s*`?\s*$/,
-	/^\s*(?:[-*]\s+)?`?(?<path>[^#\n\r`]+?\.[A-Za-z0-9][^#\n\r`]*)`?\s*#L(?<start>\d{1,7})(?:\s*-\s*L?(?<end>\d{1,7}))?\s*`?\s*$/,
+	/^\s*(?:[-*]\s+)?`?(?<path>[^()\n\r`]+?\.[A-Za-z0-9][^()\n\r`]*)`?\s*[（(]\s*(?<start>\d{1,7})(?:\s*[-~–—]\s*(?<end>\d{1,7}))?\s*[）)]\s*`?\s*/,
+	/^\s*(?:[-*]\s+)?`?(?<path>.+?\.[A-Za-z0-9][^:\n\r`]*)`?\s*:\s*(?<start>\d{1,7})(?:\s*[-~–—]\s*(?<end>\d{1,7}))?\s*`?\s*/,
+	/^\s*(?:[-*]\s+)?`?(?<path>[^#\n\r`]+?\.[A-Za-z0-9][^#\n\r`]*)`?\s*#L(?<start>\d{1,7})(?:\s*[-~–—]\s*L?(?<end>\d{1,7}))?\s*`?\s*/,
 ] as const;
+
+const SNIPPET_URI_TOKEN_PATTERN =
+	/(?:file|vscode|vscode-insiders):\/\/[^\s"'<>`)]{8,}/gi;
 
 function parseAbsolutePath(raw: string): string | null {
 	const value = raw.trim().replace(/^["']|["']$/g, "");
@@ -71,6 +81,284 @@ function normalizeSnippetPathCandidate(raw: string): string | null {
 		return null;
 	}
 	return candidate;
+}
+
+function createSnippetReferencePath(
+	normalizedPath: string,
+	range: { start: number; end: number },
+): UnifiedComposerPath {
+	const rangeLabel = `${range.start}-${range.end}`;
+	const fileName =
+		normalizedPath.split(/[\\/]/).filter(Boolean).pop() || normalizedPath;
+	return {
+		absolutePath: `${normalizedPath} (${rangeLabel})`,
+		name: `${fileName} (${rangeLabel})`,
+		isDirectory: false,
+	};
+}
+
+function parseSnippetRangeFromLooseText(
+	raw: string,
+): { start: number; end: number } | null {
+	const normalized = raw.trim();
+	if (!normalized) return null;
+
+	const hashLike = normalized.match(
+		/(?:^|[#&?])L?(?<start>\d{1,7})(?:\s*[-~–—]\s*L?(?<end>\d{1,7}))?/i,
+	);
+	if (hashLike?.groups?.start) {
+		return normalizeSnippetRange(hashLike.groups.start, hashLike.groups.end);
+	}
+
+	const rangeLike = normalized.match(
+		/(?<start>\d{1,7})(?::\d+)?(?:\s*[-~–—]\s*(?<end>\d{1,7})(?::\d+)?)?/,
+	);
+	if (rangeLike?.groups?.start) {
+		return normalizeSnippetRange(rangeLike.groups.start, rangeLike.groups.end);
+	}
+	return null;
+}
+
+function splitPathWithLineSuffix(
+	raw: string,
+): { path: string; range: { start: number; end: number } } | null {
+	const normalized = raw.trim();
+	if (!normalized) return null;
+
+	const match = normalized.match(
+		/^(?<path>.+\.[A-Za-z0-9][^:\n\r]*):(?<start>\d{1,7})(?::\d+)?(?:\s*[-~–—]\s*(?<end>\d{1,7})(?::\d+)?)?$/,
+	);
+	if (!match?.groups?.path || !match.groups.start) return null;
+	const range = normalizeSnippetRange(match.groups.start, match.groups.end);
+	if (!range) return null;
+	return { path: match.groups.path, range };
+}
+
+function normalizeVscodePathname(pathname: string): string {
+	const decoded = decodeURIComponent(pathname).trim();
+	if (/^\/[A-Za-z]:[\\/]/.test(decoded)) {
+		return decoded.slice(1);
+	}
+	return decoded;
+}
+
+function parseSnippetReferenceFromUriToken(rawToken: string): UnifiedComposerPath | null {
+	const candidate = rawToken.trim().replace(/[),.;\]]+$/, "");
+	if (!candidate) return null;
+
+	try {
+		const url = new URL(candidate);
+		let normalizedPath: string | null = null;
+		let range: { start: number; end: number } | null = null;
+
+		if (url.protocol === "file:") {
+			normalizedPath = parseAbsolutePath(candidate.split(/[?#]/)[0] ?? "");
+			range = parseSnippetRangeFromLooseText(url.hash || url.search || "");
+			if (!range) {
+				const fromSuffix = splitPathWithLineSuffix(
+					normalizeVscodePathname(url.pathname || ""),
+				);
+				if (fromSuffix) {
+					range = fromSuffix.range;
+					if (!normalizedPath) {
+						normalizedPath =
+							normalizeSnippetPathCandidate(fromSuffix.path) || null;
+					}
+				}
+			}
+		} else if (
+			url.protocol === "vscode:"
+			|| url.protocol === "vscode-insiders:"
+		) {
+			const rawPath = normalizeVscodePathname(url.pathname || "");
+			const fromSuffix = splitPathWithLineSuffix(rawPath);
+			const queryPath =
+				url.searchParams.get("path")
+				|| url.searchParams.get("file")
+				|| url.searchParams.get("uri");
+
+			normalizedPath =
+				(fromSuffix
+					? normalizeSnippetPathCandidate(fromSuffix.path)
+					: null)
+				|| (queryPath ? normalizeSnippetPathCandidate(queryPath) : null);
+			range =
+				fromSuffix?.range
+				|| parseSnippetRangeFromLooseText(
+					url.hash
+					|| url.searchParams.get("selection")
+					|| url.searchParams.get("range")
+					|| url.search
+					|| "",
+				);
+
+			if (!normalizedPath && (url.hostname === "file" || url.host === "file")) {
+				normalizedPath = normalizeSnippetPathCandidate(rawPath);
+			}
+		}
+
+		if (!normalizedPath || !range) return null;
+		return createSnippetReferencePath(normalizedPath, range);
+	} catch {
+		return null;
+	}
+}
+
+function stripHtmlToText(rawHtml: string): string {
+	if (!rawHtml.trim()) return "";
+	return rawHtml
+		.replace(/<br\s*\/?>/gi, "\n")
+		.replace(/<\/(p|div|li|tr|h[1-6]|pre|code|blockquote)>/gi, "\n")
+		.replace(/<[^>]+>/g, " ")
+		.replace(/&nbsp;/gi, " ")
+		.replace(/&lt;/gi, "<")
+		.replace(/&gt;/gi, ">")
+		.replace(/&amp;/gi, "&")
+		.replace(/&#39;/gi, "'")
+		.replace(/&quot;/gi, "\"");
+}
+
+function extractSnippetReferencePathsFromJsonMetadata(
+	rawPayload: string,
+): UnifiedComposerPath[] {
+	const trimmed = rawPayload.trim();
+	if (!trimmed || (!trimmed.startsWith("{") && !trimmed.startsWith("["))) {
+		return [];
+	}
+
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(trimmed);
+	} catch {
+		return [];
+	}
+
+	const results: UnifiedComposerPath[] = [];
+	const seen = new Set<string>();
+	const pathKeys = [
+		"resource",
+		"uri",
+		"path",
+		"filePath",
+		"fsPath",
+		"file",
+		"documentUri",
+		"sourceUri",
+		"targetUri",
+		"sourceFile",
+		"targetFile",
+	] as const;
+	const startKeys = [
+		"startLineNumber",
+		"startLine",
+		"lineStart",
+		"lineNumber",
+		"line",
+		"start",
+		"fromLine",
+	] as const;
+	const endKeys = [
+		"endLineNumber",
+		"endLine",
+		"lineEnd",
+		"end",
+		"toLine",
+	] as const;
+
+	const readNumber = (
+		record: Record<string, unknown>,
+		keys: readonly string[],
+	): number | null => {
+		for (const key of keys) {
+			const value = record[key];
+			if (typeof value === "number" && Number.isFinite(value)) {
+				return Math.round(value);
+			}
+			if (typeof value === "string" && /^\d+$/.test(value.trim())) {
+				return Number.parseInt(value.trim(), 10);
+			}
+		}
+		return null;
+	};
+
+	const pushPath = (pathRaw: string, startRaw: number, endRaw?: number | null) => {
+		const normalizedPath = normalizeSnippetPathCandidate(pathRaw);
+		const range = normalizeSnippetRange(
+			String(startRaw),
+			typeof endRaw === "number" ? String(endRaw) : undefined,
+		);
+		if (!normalizedPath || !range) return;
+		const snippetPath = createSnippetReferencePath(normalizedPath, range);
+		if (seen.has(snippetPath.absolutePath)) return;
+		seen.add(snippetPath.absolutePath);
+		results.push(snippetPath);
+	};
+
+	const visit = (node: unknown) => {
+		if (!node || typeof node !== "object") return;
+		if (Array.isArray(node)) {
+			for (const item of node) {
+				visit(item);
+			}
+			return;
+		}
+
+		const record = node as Record<string, unknown>;
+		let pathValue: string | null = null;
+		for (const key of pathKeys) {
+			const value = record[key];
+			if (typeof value === "string" && value.trim()) {
+				pathValue = value.trim();
+				break;
+			}
+		}
+
+		if (pathValue) {
+			const start = readNumber(record, startKeys);
+			const end = readNumber(record, endKeys);
+			if (start !== null) {
+				pushPath(pathValue, start, end);
+			}
+		}
+
+		for (const value of Object.values(record)) {
+			visit(value);
+		}
+	};
+
+	visit(parsed);
+	return results;
+}
+
+function extractSnippetLineCandidates(rawLine: string): string[] {
+	const line = rawLine.trim();
+	if (!line) return [];
+
+	const candidates = new Set<string>();
+	const markdownLinkMatch = line.match(
+		/^\s*(?:[-*]\s+)?\[[^\]]+\]\((?<target>[^)]+)\)\s*$/,
+	);
+	const markdownTarget = markdownLinkMatch?.groups?.target?.trim();
+	if (markdownTarget) {
+		candidates.add(markdownTarget);
+	}
+	candidates.add(line);
+
+	const inlinePatterns = [
+		/`?(?<path>[^`\s]+?\.[A-Za-z0-9][^`\s]*)`?\s*[（(]\s*(?<start>\d{1,7})(?:\s*[-~–—]\s*(?<end>\d{1,7}))?\s*[）)]/g,
+		/`?(?<path>[^`\s]+?\.[A-Za-z0-9][^`\s]*)`?\s*:\s*(?<start>\d{1,7})(?:\s*[-~–—]\s*(?<end>\d{1,7}))?/g,
+		/`?(?<path>[^`\s]+?\.[A-Za-z0-9][^`\s]*)`?\s*#L(?<start>\d{1,7})(?:\s*[-~–—]\s*L?(?<end>\d{1,7}))?/gi,
+	] as const;
+	for (const pattern of inlinePatterns) {
+		for (const match of line.matchAll(pattern)) {
+			const value = match[0]?.trim();
+			if (value) {
+				candidates.add(value);
+			}
+		}
+	}
+
+	return Array.from(candidates);
 }
 
 function resolveAbsolutePathFromFile(file: globalThis.File | null): string | undefined {
@@ -169,37 +457,128 @@ export function extractSnippetReferencePathsFromText(rawText: string): UnifiedCo
 	const seen = new Set<string>();
 
 	for (const rawLine of lines) {
-		const line = rawLine.trim();
-		if (!line) continue;
+		const lineCandidates = extractSnippetLineCandidates(rawLine);
+		if (lineCandidates.length === 0) continue;
 
-		for (const pattern of SNIPPET_REFERENCE_PATTERNS) {
-			const match = line.match(pattern);
-			const groups = match?.groups as
-				| { path?: string; start?: string; end?: string }
-				| undefined;
-			if (!groups?.path || !groups.start) continue;
+		let matched = false;
+		for (const line of lineCandidates) {
+			for (const pattern of SNIPPET_REFERENCE_PATTERNS) {
+				const match = line.match(pattern);
+				const groups = match?.groups as
+					| { path?: string; start?: string; end?: string }
+					| undefined;
+				if (!groups?.path || !groups.start) continue;
 
-			const normalizedPath = normalizeSnippetPathCandidate(groups.path);
-			const range = normalizeSnippetRange(groups.start, groups.end);
-			if (!normalizedPath || !range) continue;
+				const normalizedPath = normalizeSnippetPathCandidate(groups.path);
+				const range = normalizeSnippetRange(groups.start, groups.end);
+				if (!normalizedPath || !range) continue;
 
-			const rangeLabel = `${range.start}-${range.end}`;
-			const refPath = `${normalizedPath} (${rangeLabel})`;
-			if (seen.has(refPath)) break;
-			seen.add(refPath);
-
-			const fileName =
-				normalizedPath.split(/[\\/]/).filter(Boolean).pop() || normalizedPath;
-			paths.push({
-				absolutePath: refPath,
-				name: `${fileName} (${rangeLabel})`,
-				isDirectory: false,
-			});
-			break;
+				const snippetPath = createSnippetReferencePath(normalizedPath, range);
+				if (seen.has(snippetPath.absolutePath)) {
+					matched = true;
+					break;
+				}
+				seen.add(snippetPath.absolutePath);
+				paths.push(snippetPath);
+				matched = true;
+				break;
+			}
+			if (matched) break;
 		}
 	}
 
 	return paths;
+}
+
+function appendUniqueSnippetPaths(
+	target: UnifiedComposerPath[],
+	seen: Set<string>,
+	incoming: UnifiedComposerPath[],
+) {
+	for (const item of incoming) {
+		const key = item.absolutePath.trim();
+		if (!key || seen.has(key)) continue;
+		seen.add(key);
+		target.push(item);
+	}
+}
+
+function extractUriTokens(raw: string): string[] {
+	if (!raw.trim()) return [];
+	const found = raw.match(SNIPPET_URI_TOKEN_PATTERN) ?? [];
+	return found.map((token) => token.trim()).filter(Boolean);
+}
+
+function removeBasenameOnlySnippetDuplicates(
+	paths: UnifiedComposerPath[],
+): UnifiedComposerPath[] {
+	const namesWithDirectory = new Set(
+		paths
+			.filter((item) => {
+				const sourcePath = item.absolutePath.replace(
+					/\s*\(\d+\s*-\s*\d+\)\s*$/,
+					"",
+				);
+				return /[\\/]/.test(sourcePath);
+			})
+			.map((item) => item.name),
+	);
+
+	return paths.filter((item) => {
+		const sourcePath = item.absolutePath.replace(
+			/\s*\(\d+\s*-\s*\d+\)\s*$/,
+			"",
+		);
+		if (/[\\/]/.test(sourcePath)) return true;
+		return !namesWithDirectory.has(item.name);
+	});
+}
+
+export function extractSnippetReferencePathsFromClipboard(
+	payload: SnippetClipboardPayload,
+): UnifiedComposerPath[] {
+	const result: UnifiedComposerPath[] = [];
+	const seen = new Set<string>();
+	const extraPayloads = payload.extraTextPayloads ?? [];
+
+	const textCandidates = [
+		payload.plainText ?? "",
+		payload.uriListText ?? "",
+		stripHtmlToText(payload.htmlText ?? ""),
+		...extraPayloads,
+	].filter((value) => value.trim().length > 0);
+
+	for (const candidate of textCandidates) {
+		appendUniqueSnippetPaths(
+			result,
+			seen,
+			extractSnippetReferencePathsFromText(candidate),
+		);
+	}
+
+	const uriTokenSources = [
+		payload.plainText ?? "",
+		payload.htmlText ?? "",
+		payload.uriListText ?? "",
+		...extraPayloads,
+	].filter((value) => value.trim().length > 0);
+	for (const source of uriTokenSources) {
+		for (const token of extractUriTokens(source)) {
+			const parsed = parseSnippetReferenceFromUriToken(token);
+			if (!parsed) continue;
+			appendUniqueSnippetPaths(result, seen, [parsed]);
+		}
+	}
+
+	for (const metadataText of extraPayloads) {
+		appendUniqueSnippetPaths(
+			result,
+			seen,
+			extractSnippetReferencePathsFromJsonMetadata(metadataText),
+		);
+	}
+
+	return removeBasenameOnlySnippetDuplicates(result);
 }
 
 export function isPathDrag(dataTransfer: DataTransfer | null | undefined): boolean {

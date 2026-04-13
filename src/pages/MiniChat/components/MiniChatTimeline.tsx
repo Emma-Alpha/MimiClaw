@@ -10,6 +10,7 @@ import { extractText } from "../utils";
 import { CodeTimeline } from "./code-agent/CodeTimeline";
 import { ReadOnlySlateMessage } from "./ReadOnlySlateMessage";
 import { TypingIndicator } from "./TypingIndicator";
+import { useFileReferenceMarkdownProps } from "./file-reference-markdown";
 import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/code-agent";
 
 	type MiniChatTimelineProps = {
@@ -171,16 +172,20 @@ function MiniChatTimelineImpl({
 	spinnerMode,
 }: MiniChatTimelineProps) {
 	const { styles, cx } = useMiniChatStyles();
+	const markdownProps = useFileReferenceMarkdownProps(codeWorkspaceRoot);
 	const scrollAreaRef = useRef<HTMLDivElement | null>(null);
 	const vListRef = useRef<ListRef | null>(null);
 	const [viewportHeight, setViewportHeight] = useState(0);
 	const showChatPending = sending || !!streamingText || pendingFinal;
+	const effectiveVendorStatusText =
+		vendorStatusText
+		|| (codeSending ? "✶ Baking…" : "");
 	const hasActiveCodeStream =
 		isCodeStreaming
 		|| isThinking
 		|| Boolean(streamingThinkingText)
 		|| Boolean(streamingAssistantText)
-		|| Boolean(vendorStatusText)
+		|| Boolean(effectiveVendorStatusText)
 		|| spinnerMode != null;
 
 	useEffect(() => {
@@ -288,7 +293,7 @@ function MiniChatTimelineImpl({
 								text={text}
 								renderContent={() => (
 									<div className={styles.markdownBubble}>
-										<Markdown>{text}</Markdown>
+										<Markdown variant="chat" headerMultiple={0} {...markdownProps}>{text}</Markdown>
 									</div>
 								)}
 							/>
@@ -454,7 +459,7 @@ function MiniChatTimelineImpl({
 							text={streamingText}
 							renderContent={() => (
 								<div className={styles.markdownBubble}>
-									<Markdown>{streamingText}</Markdown>
+									<Markdown variant="chat" headerMultiple={0} {...markdownProps}>{streamingText}</Markdown>
 									<span className={styles.streamCursor} />
 								</div>
 							)}
@@ -478,16 +483,16 @@ function MiniChatTimelineImpl({
 		timelineRows.push({
 			key: "code:timeline",
 			node: (
-				<CodeTimeline
-					items={codeAgentItems}
-					streamingThinkingText={streamingThinkingText}
-					streamingAssistantText={streamingAssistantText}
-					vendorStatusText={vendorStatusText}
-					isThinking={isThinking}
-					isStreaming={isCodeStreaming}
-					workspaceRoot={codeWorkspaceRoot}
-					spinnerMode={spinnerMode}
-				/>
+					<CodeTimeline
+						items={codeAgentItems}
+						streamingThinkingText={streamingThinkingText}
+						streamingAssistantText={streamingAssistantText}
+						vendorStatusText={effectiveVendorStatusText}
+						isThinking={isThinking}
+						isStreaming={isCodeStreaming}
+						workspaceRoot={codeWorkspaceRoot}
+						spinnerMode={spinnerMode}
+					/>
 			),
 		});
 	}
@@ -516,13 +521,13 @@ function MiniChatTimelineImpl({
 		pendingFinal,
 		codeSending,
 		codeAgentItems,
-		streamingThinkingText,
-		streamingAssistantText,
-		vendorStatusText,
-		isThinking,
-		isCodeStreaming,
-		spinnerMode,
-	]);
+			streamingThinkingText,
+			streamingAssistantText,
+			effectiveVendorStatusText,
+			isThinking,
+			isCodeStreaming,
+			spinnerMode,
+		]);
 
 	return (
 		<div

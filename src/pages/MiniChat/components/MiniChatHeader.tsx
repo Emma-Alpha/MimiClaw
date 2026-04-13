@@ -12,10 +12,7 @@ import {
 	ShieldAlert,
 } from "lucide-react";
 import { useSettingsStore } from "@/stores/settings";
-import type {
-	CodeAgentStatus,
-	CodeAgentPermissionMode,
-} from "../../../../shared/code-agent";
+import type { CodeAgentStatus } from "../../../../shared/code-agent";
 import type {
 	SessionInitInfo,
 	CodeAgentContextWindowUsage,
@@ -23,6 +20,10 @@ import type {
 import { SearchInput } from "@/components/common/SearchInput";
 import type { MiniChatTarget } from "../types";
 import { useMiniChatStyles } from "../styles";
+import {
+	buildMiniChatHeaderViewModel,
+	type HeaderStatusKind,
+} from "./MiniChatHeader.view-model";
 
 type ChatSessionOption = {
 	key: string;
@@ -38,7 +39,6 @@ type MiniChatHeaderProps = {
 	codeAgentStatus: CodeAgentStatus | null;
 	sessionInit: SessionInitInfo | null;
 	sessionTitle: string | null;
-	lastUpdatedAt: number | null;
 	contextUsage: CodeAgentContextWindowUsage | null;
 	chatSessions: ChatSessionOption[];
 	currentSessionKey: string;
@@ -47,22 +47,10 @@ type MiniChatHeaderProps = {
 	isConnecting: boolean;
 	onOpenFull: () => void;
 	onClose: () => void;
-	codeWorkspaceRoot: string;
-	onRemoveCodeMode: () => void;
-	onPickWorkspace: () => void;
-	permissionMode: CodeAgentPermissionMode;
-	onPermissionModeChange: (mode: CodeAgentPermissionMode) => void;
 	onNewConversation: () => void;
 	onSwitchSession: (key: string) => void;
 	showWindowActions?: boolean;
-	canExitCodeMode?: boolean;
 };
-
-function shortModel(model: string) {
-	return model.replace(/^claude-/i, "").replace(/-\d{8}$/, "");
-}
-
-const MAX_CODE_SESSION_TITLE_LENGTH = 40;
 const HEADER_SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
 
 function useHeaderSpinner(active: boolean): string {
@@ -75,50 +63,6 @@ function useHeaderSpinner(active: boolean): string {
 		return () => clearInterval(timer);
 	}, [active]);
 	return HEADER_SPINNER_FRAMES[frame] ?? HEADER_SPINNER_FRAMES[0];
-}
-
-function isOpaqueSessionId(value: string): boolean {
-	const normalized = value.trim();
-	if (!normalized) return true;
-	if (/^agent:[^:]+:session-\d+(?::.*)?$/i.test(normalized)) return true;
-	if (/^session[-:_][a-z0-9-]{6,}$/i.test(normalized)) return true;
-	if (/^[0-9a-f]{24,}$/i.test(normalized)) return true;
-	if (
-		/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-			normalized,
-		)
-	)
-		return true;
-	return false;
-}
-
-function isAbsolutePathLike(value: string): boolean {
-	const normalized = value.trim();
-	if (!normalized) return false;
-	if (/^(\/|~\/)/.test(normalized)) return true;
-	if (/^[A-Za-z]:[\\/]/.test(normalized)) return true;
-	if (/^\\\\/.test(normalized)) return true;
-	return false;
-}
-
-function getCodeSessionTitle(value: string | null | undefined): string {
-	const normalized = typeof value === "string" ? value.trim() : "";
-	if (!normalized) return "CLI 会话";
-	if (isOpaqueSessionId(normalized) || isAbsolutePathLike(normalized)) {
-		return "CLI 会话";
-	}
-	if (normalized.length <= MAX_CODE_SESSION_TITLE_LENGTH) return normalized;
-	return `${normalized.slice(0, MAX_CODE_SESSION_TITLE_LENGTH)}…`;
-}
-
-function getChatThreadLabel(sessionKey: string): string {
-	const normalized = sessionKey.trim();
-	if (!normalized.startsWith("agent:")) return "Agent main · main";
-	const segments = normalized.split(":");
-	const agentId = segments[1] || "main";
-	const thread = segments.slice(2).join(":") || "main";
-	const compactThread = thread.length > 18 ? `${thread.slice(0, 17)}…` : thread;
-	return `Agent ${agentId} · ${compactThread}`;
 }
 
 function formatRelativeTimeCompact(ts: number | null, isActive: boolean): string {
@@ -141,9 +85,11 @@ function formatTokenCount(value: number): string {
 	return `${Math.round(value)}`;
 }
 
-function inferContextWindowSize(model: string | null | undefined): number {
-	if (model && /\[1m\]/i.test(model)) return 1_000_000;
-	return 200_000;
+function truncateHeaderText(value: string, maxLength = 20): string {
+	const normalized = value.trim();
+	if (!normalized) return "";
+	if (normalized.length <= maxLength) return normalized;
+	return `${normalized.slice(0, maxLength)}…`;
 }
 
 function MiniChatHeaderImpl({
@@ -171,41 +117,55 @@ function MiniChatHeaderImpl({
 	const [dropdownOpen, setDropdownOpen] = useState(false);
 	const [sessionQuery, setSessionQuery] = useState("");
 	const isCodeMode = draftTarget === "code";
-	const runSpinner = useHeaderSpinner(isGenerating);
 
 	const activeChatSession = useMemo(
 		() => chatSessions.find((session) => session.key === currentSessionKey) ?? null,
 		[chatSessions, currentSessionKey],
 	);
-
-	const showCodeStatus = codeSending || draftTarget === "code";
-	const selectedCodeSessionTitle = !isCodeMode
-		? ""
-		: activeChatSession?.title?.trim()
-			? activeChatSession.title.trim()
-			: sessionTitle?.trim()
-				? getCodeSessionTitle(sessionTitle)
-				: currentSessionKey?.trim()
-					? getCodeSessionTitle(currentSessionKey)
-					: "CLI 会话";
-	const islandTitle = isCodeMode
-		? sessionInit
-			? shortModel(sessionInit.model)
-			: selectedCodeSessionTitle
-		: activeChatSession?.title ?? "当前会话";
-	const statusDotClass = showCodeStatus
-		? codeSending
-			? styles.statusDotWorking
-			: codeAgentStatus?.state === "running"
-				? styles.statusDotReady
-				: codeAgentStatus?.state === "error"
-					? styles.statusDotError
-					: styles.statusDotPending
-		: isReady
-			? styles.statusDotReady
-			: isError
-				? styles.statusDotError
-				: styles.statusDotPending;
+	const viewModel = useMemo(
+		() =>
+			buildMiniChatHeaderViewModel({
+				draftTarget,
+				codeSending,
+				isGenerating,
+				isReady,
+				isError,
+				isConnecting,
+				codeAgentStatus,
+				sessionInit,
+				sessionTitle,
+				currentSessionKey,
+				activeSessionTitle: activeChatSession?.title ?? null,
+				contextUsage,
+			}),
+		[
+			draftTarget,
+			codeSending,
+			isGenerating,
+			isReady,
+			isError,
+			isConnecting,
+			codeAgentStatus,
+			sessionInit,
+			sessionTitle,
+			currentSessionKey,
+			activeChatSession?.title,
+			contextUsage,
+		],
+	);
+	const statusDotByKind: Record<HeaderStatusKind, string> = {
+		error: styles.statusDotError,
+		connecting: styles.statusDotPending,
+		generating: styles.statusDotWorking,
+		ready: styles.statusDotReady,
+	};
+	const statusDotClass = statusDotByKind[viewModel.status.kind];
+	const islandLabel = viewModel.islandLabel;
+	const islandModelLabel = viewModel.islandModelLabel;
+	const contextIndicator = viewModel.contextIndicator;
+	const islandLabelDisplay = truncateHeaderText(islandLabel, 20);
+	const isGeneratingNow = viewModel.status.kind === "generating";
+	const runSpinner = useHeaderSpinner(isGeneratingNow);
 	const normalizedSessionQuery = sessionQuery.trim().toLowerCase();
 	const visibleChatSessions = useMemo(() => {
 		if (!normalizedSessionQuery) return chatSessions;
@@ -213,83 +173,31 @@ function MiniChatHeaderImpl({
 			session.title.toLowerCase().includes(normalizedSessionQuery),
 		);
 	}, [chatSessions, normalizedSessionQuery]);
-	const contextIndicator = useMemo(() => {
-		if (!isCodeMode) return null;
-
-		const fallbackContextWindow = sessionInit?.model
-			? inferContextWindowSize(sessionInit.model)
-			: null;
-		const rawContextWindow = contextUsage?.contextWindowSize ?? fallbackContextWindow;
-		if (!rawContextWindow || !Number.isFinite(rawContextWindow)) return null;
-		const contextWindowSize = Math.max(1, Math.round(rawContextWindow));
-
-		const usedTokens = Math.max(
-			0,
-			Math.min(contextWindowSize, Math.round(contextUsage?.usedTokens ?? 0)),
-		);
-		const remainingTokens = Math.max(0, contextWindowSize - usedTokens);
-		const usedPercentage = Math.max(
-			0,
-			Math.min(
-				100,
-				Math.round(
-					contextUsage?.usedPercentage ?? (usedTokens / contextWindowSize) * 100,
-				),
-			),
-		);
-		const remainingPercentage = Math.max(
-			0,
-			Math.min(100, Math.round(contextUsage?.remainingPercentage ?? 100 - usedPercentage)),
-		);
-		const ringColor =
-			usedPercentage >= 90
-				? "#ef4444"
-				: usedPercentage >= 75
-					? "#f59e0b"
-					: "#3b82f6";
-		return {
-			contextWindowSize,
-			usedTokens,
-			remainingTokens,
-			usedPercentage,
-			remainingPercentage,
-			ringColor,
-			windowSource: contextUsage?.windowSource ?? "estimated",
-		};
-	}, [contextUsage, isCodeMode, sessionInit]);
-	const islandLabel = isCodeMode ? islandTitle : islandTitle;
 	const islandMetricValue = contextIndicator
 		? formatTokenCount(contextIndicator.remainingTokens)
 		: null;
 	const islandProgressPercent = contextIndicator?.usedPercentage ?? 0;
 	const islandProgressTone = contextIndicator?.ringColor ?? "#0071e3";
-	const runningThreadLabel = useMemo(() => {
-		if (!isGenerating) return "";
-		if (isCodeMode) {
-			const codeSession = getCodeSessionTitle(sessionTitle || currentSessionKey || "");
-			return `CLI · ${codeSession}`;
-		}
-		return getChatThreadLabel(currentSessionKey);
-	}, [isGenerating, isCodeMode, sessionTitle, currentSessionKey]);
+	const islandTextMaxWidth = contextIndicator
+		? isGeneratingNow
+			? "calc(100% - 132px)"
+			: "calc(100% - 104px)"
+		: isGeneratingNow
+			? "calc(100% - 78px)"
+			: "calc(100% - 46px)";
 
 	const useCodexHeader = embedded && !showWindowActions;
-	const embeddedHeaderTitle = (
-		(isCodeMode ? selectedCodeSessionTitle : activeChatSession?.title) || "新线程"
-	).trim();
-	const embeddedStatusLabel = isGenerating
-		? runningThreadLabel || "运行中"
-		: isConnecting
-			? "连接中…"
-			: isError
-				? "连接断开"
-				: "就绪";
-	const EmbeddedStatusIcon = isGenerating
-		? Clock
-		: isConnecting
-			? Cpu
-			: isError
-				? ShieldAlert
-				: Wrench;
+	const embeddedHeaderTitle = viewModel.headerTitle || "新线程";
+	const embeddedHeaderTitleDisplay = truncateHeaderText(embeddedHeaderTitle, 20) || "新线程";
+	const embeddedStatusLabel = viewModel.status.label;
+	const EmbeddedStatusIcon =
+		viewModel.status.kind === "generating"
+			? Clock
+			: viewModel.status.kind === "connecting"
+				? Cpu
+				: viewModel.status.kind === "error"
+					? ShieldAlert
+					: Wrench;
 	const sessionDropdown = (
 		<div
 			className={cx(styles.islandDropdown, useCodexHeader && styles.islandDropdownEmbedded)}
@@ -379,51 +287,45 @@ function MiniChatHeaderImpl({
 				<div className={styles.brandLogo}>
 					<OpenClaw.Color size={14} />
 				</div>
-				{!embedded && draftTarget !== "code" ? (
-					<div className={styles.brandText}>
-						<span className={styles.brandTitle}>极智</span>
-						<div className={styles.status}>
-							<span className={cx(styles.statusDot, statusDotClass)} />
-							<span>
-								{isConnecting
-									? "连接中…"
-									: isGenerating
-										? "生成中…"
-										: isError
-											? "连接断开"
-											: "快捷聊天"}
-							</span>
+					{!embedded && draftTarget !== "code" ? (
+						<div className={styles.brandText}>
+							<span className={styles.brandTitle}>极智</span>
+							<div className={styles.status}>
+								<span className={cx(styles.statusDot, statusDotClass)} />
+								<span>{viewModel.status.brandLabel}</span>
+							</div>
 						</div>
-					</div>
-					) : null}
-			</div>
+						) : null}
+				</div>
 
 				{useCodexHeader ? (
 					<>
 						<div className={cx("no-drag", styles.embeddedTopLeft)}>
 							<div className={styles.embeddedThreadWrap}>
-								<div className={styles.embeddedThreadBtn}>
-									<span className={styles.embeddedThreadIcon}>
-										{isCodeMode ? <ClaudeCode.Color size={12} /> : <OpenClaw.Color size={12} />}
-									</span>
-									<span className={styles.embeddedThreadLabel}>{embeddedHeaderTitle}</span>
-								</div>
+									<div className={styles.embeddedThreadBtn}>
+										<span className={styles.embeddedThreadIcon}>
+											{isCodeMode ? <ClaudeCode.Color size={12} /> : <OpenClaw.Color size={12} />}
+										</span>
+										<span className={styles.embeddedThreadLabel} title={embeddedHeaderTitle}>
+											{embeddedHeaderTitleDisplay}
+										</span>
+									</div>
 							</div>
 						</div>
 					{!isCodeMode ? (
-						<div className={cx("no-drag", styles.embeddedTopRight)}>
-							<Tooltip placement="bottom" title={embeddedStatusLabel}>
-								<span
-									className={cx(
-										styles.embeddedHeaderStatus,
-										isGenerating
-											? styles.embeddedHeaderStatusRunning
-											: isError
-												? styles.embeddedHeaderStatusError
-												: styles.embeddedHeaderStatusIdle,
-									)}
-									aria-label={embeddedStatusLabel}
-								>
+							<div className={cx("no-drag", styles.embeddedTopRight)}>
+								<Tooltip placement="bottom" title={embeddedStatusLabel}>
+									<span
+										className={cx(
+											styles.embeddedHeaderStatus,
+											viewModel.status.kind === "generating"
+												? styles.embeddedHeaderStatusRunning
+												: viewModel.status.kind === "error"
+													? styles.embeddedHeaderStatusError
+													: styles.embeddedHeaderStatusIdle,
+										)}
+										aria-label={embeddedStatusLabel}
+									>
 									<EmbeddedStatusIcon size={13} />
 								</span>
 							</Tooltip>
@@ -433,26 +335,26 @@ function MiniChatHeaderImpl({
 			) : (
 				<div className={cx(styles.headerCenter, embedded && styles.headerCenterEmbedded)}>
 					<div className={cx("no-drag", styles.islandContainer)}>
-						<div
-							className={cx(
-								styles.dynamicIslandWrapper,
-								isGenerating && styles.dynamicIslandWrapperGenerating,
-							)}
-						>
 							<div
 								className={cx(
-									styles.dynamicIslandGlow,
-									isGenerating && styles.dynamicIslandGlowGenerating,
-								)}
-							/>
-							<div className={styles.dynamicIslandFrost} />
-							<div className={styles.dynamicIslandSpecular} />
-							<div
-								className={cx(
-									styles.dynamicIsland,
-									isGenerating && styles.dynamicIslandGenerating,
+									styles.dynamicIslandWrapper,
+									isGeneratingNow && styles.dynamicIslandWrapperGenerating,
 								)}
 							>
+								<div
+									className={cx(
+										styles.dynamicIslandGlow,
+										isGeneratingNow && styles.dynamicIslandGlowGenerating,
+									)}
+								/>
+								<div className={styles.dynamicIslandFrost} />
+								<div className={styles.dynamicIslandSpecular} />
+								<div
+									className={cx(
+										styles.dynamicIsland,
+										isGeneratingNow && styles.dynamicIslandGenerating,
+									)}
+								>
 								{contextIndicator ? (
 									<div className={styles.dynamicIslandContextMeter} aria-hidden="true">
 										<div
@@ -484,19 +386,28 @@ function MiniChatHeaderImpl({
 											>
 												{isCodeMode ? <ClaudeCode.Color size={14} /> : <OpenClaw.Color size={14} />}
 											</button>
-										</Dropdown>
-									</div>
-								<div className={styles.islandTextWrapper}>
-									<span className={styles.islandTextLabel}>{islandLabel}</span>
-								</div>
-								{isGenerating ? (
-									<div className={styles.islandGeneratingBadge} role="status" aria-live="polite">
-										<span className={styles.islandGeneratingSpinner}>{runSpinner}</span>
-										<span className={styles.islandGeneratingText}>
-											{runningThreadLabel || "生成中"}
+											</Dropdown>
+										</div>
+									<div className={styles.islandTextWrapper} style={{ maxWidth: islandTextMaxWidth }}>
+										<span
+											className={styles.islandTextLabel}
+											title={isCodeMode && islandModelLabel
+												? `${islandLabel}\n模型：${islandModelLabel}`
+												: islandLabel}
+										>
+											{islandLabelDisplay}
 										</span>
 									</div>
-								) : null}
+									{isGeneratingNow ? (
+										<div
+											className={styles.islandGeneratingBadge}
+											role="status"
+											aria-live="polite"
+											aria-label={viewModel.status.label}
+										>
+											<span className={styles.islandGeneratingSpinner} aria-hidden="true">{runSpinner}</span>
+										</div>
+									) : null}
 								{contextIndicator ? (
 									<Tooltip
 										placement="top"

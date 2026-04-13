@@ -697,6 +697,9 @@ async function runClaudeCliTask({
     '--output-format', 'stream-json',
     '--input-format', 'stream-json',
     '--verbose',
+    // Request incremental stream_event chunks so renderer can update text live
+    // instead of waiting for the final assistant/result envelopes.
+    '--include-partial-messages',
     '--permission-prompt-tool', 'stdio',
   ];
   if (sessionId) {
@@ -730,6 +733,9 @@ async function runClaudeCliTask({
 
   const env = {
     ...process.env,
+    // Older/newer Claude CLI builds gate partial stream chunks behind this env.
+    // Keep it enabled explicitly as a fallback to the CLI flag above.
+    CLAUDE_CODE_INCLUDE_PARTIAL_MESSAGES: '1',
   };
   if (cliConfig.baseUrl) {
     env.ANTHROPIC_BASE_URL = cliConfig.baseUrl;

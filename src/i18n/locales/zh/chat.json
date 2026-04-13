@@ -17,6 +17,18 @@
         "hideThinking": "隐藏思考过程",
         "currentAgent": "当前对话对象：{{agent}}"
     },
+    "thinking": {
+        "title": "思考",
+        "titleThinking": "思考中",
+        "titleDone": "思考完成",
+        "titleDoneWithDuration": "思考用时 {{seconds}} 秒",
+        "redacted": "部分推理过程已隐藏"
+    },
+    "status": {
+        "thinking": "思考中...",
+        "processingTools": "正在处理工具结果..."
+    },
+    "backToBottom": "回到底部",
     "composer": {
         "attachFiles": "添加文件",
         "pickAgent": "选择 Agent",

@@ -1,9 +1,11 @@
 import { createStyles } from "antd-style";
 import { Markdown } from "@lobehub/ui";
+import { useFileReferenceMarkdownProps } from "../file-reference-markdown";
 
 interface Props {
 	text: string;
 	isStreaming: boolean;
+	workspaceRoot?: string;
 }
 
 const useStyles = createStyles(({ css, token }) => ({
@@ -28,13 +30,14 @@ const useStyles = createStyles(({ css, token }) => ({
 	`,
 }));
 
-export function StreamingText({ text, isStreaming }: Props) {
+export function StreamingText({ text, isStreaming, workspaceRoot }: Props) {
 	const { styles } = useStyles();
+	const markdownProps = useFileReferenceMarkdownProps(workspaceRoot);
 	if (!text && !isStreaming) return null;
 
 	return (
 		<div className={styles.wrap}>
-			<Markdown>{text || " "}</Markdown>
+			<Markdown variant="chat" headerMultiple={0} {...markdownProps}>{text || " "}</Markdown>
 			{isStreaming && <span className={styles.cursor} aria-hidden="true" />}
 		</div>
 	);

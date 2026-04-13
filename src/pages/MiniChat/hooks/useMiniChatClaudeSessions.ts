@@ -5,6 +5,10 @@ import {
 } from "@/lib/code-agent";
 import { toUserMessage } from "@/lib/api-client";
 import {
+	deriveContextUsageFromRawMessages,
+	type CodeAgentContextWindowUsage,
+} from "@/stores/code-agent";
+import {
 	type HeaderSessionOption,
 	toDisplaySessionTitle,
 } from "../session-title";
@@ -16,6 +20,7 @@ type Params = {
 	pushSdkMessage: (payload: unknown) => void;
 	pushUserMessage: (text: string) => void;
 	resetCodeAgentStreaming: () => void;
+	setContextUsage: (usage: CodeAgentContextWindowUsage | null) => void;
 };
 
 export function useMiniChatClaudeSessions({
@@ -25,6 +30,7 @@ export function useMiniChatClaudeSessions({
 	pushSdkMessage,
 	pushUserMessage,
 	resetCodeAgentStreaming,
+	setContextUsage,
 }: Params) {
 	const [claudeSessions, setClaudeSessions] = useState<HeaderSessionOption[]>([]);
 	const [activeClaudeSessionId, setActiveClaudeSessionId] = useState("");
@@ -63,16 +69,23 @@ export function useMiniChatClaudeSessions({
 	const hydrateClaudeSessionHistory = useCallback(
 		async (sessionId: string) => {
 			const workspaceRoot = codeWorkspaceRoot.trim();
-				if (!workspaceRoot || !sessionId) return false;
+			if (!workspaceRoot || !sessionId) return false;
 
-				setActiveClaudeSessionId(sessionId);
-				resetCodeTimelineState();
-				resetChatSeenState();
+			setActiveClaudeSessionId(sessionId);
+			resetCodeTimelineState();
+			resetChatSeenState();
 
 			try {
 				const result = await fetchCodeAgentSessionHistory(workspaceRoot, sessionId, 300);
+				const replayContextUsage = deriveContextUsageFromRawMessages(
+					result.rawSdkMessages,
+					null,
+				);
 				for (const rawMsg of result.rawSdkMessages) {
 					pushSdkMessage(rawMsg);
+				}
+				if (replayContextUsage) {
+					setContextUsage(replayContextUsage);
 				}
 				resetCodeAgentStreaming();
 				return true;
@@ -81,14 +94,15 @@ export function useMiniChatClaudeSessions({
 				return false;
 			}
 		},
-			[
-				codeWorkspaceRoot,
-				pushSdkMessage,
-				pushUserMessage,
-				resetChatSeenState,
-				resetCodeAgentStreaming,
-				resetCodeTimelineState,
-			],
+		[
+			codeWorkspaceRoot,
+			pushSdkMessage,
+			pushUserMessage,
+			resetChatSeenState,
+			resetCodeAgentStreaming,
+			resetCodeTimelineState,
+			setContextUsage,
+		],
 	);
 
 	return {

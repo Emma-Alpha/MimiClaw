@@ -27,6 +27,7 @@ import {
 } from "slate-react";
 import { File as FileIcon, Folder, Link2, X } from "lucide-react";
 import {
+	extractSnippetReferencePathsFromClipboard,
 	extractSnippetReferencePathsFromText,
 	extractDroppedPathsFromTransfer,
 	isPathDrag,
@@ -120,7 +121,44 @@ function createEditorValue(
 	return [{ type: "paragraph", children } as SlateParagraphElement];
 }
 
-const SNIPPET_RANGE_SUFFIX_PATTERN = /\(\s*\d+\s*-\s*\d+\s*\)\s*$/;
+const SNIPPET_RANGE_SUFFIX_PATTERN = /\(\s*\d+\s*(?:-\s*\d+)?\s*\)\s*$/;
+const STANDARD_CLIPBOARD_TEXT_TYPES = new Set([
+	"text/plain",
+	"text/html",
+	"text/uri-list",
+	"public.file-url",
+	"Files",
+]);
+
+function shouldConsumeSnippetReferencePaste(rawText: string): boolean {
+	const nonEmptyLines = rawText
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0);
+	if (nonEmptyLines.length === 0 || nonEmptyLines.length > 4) return false;
+	return nonEmptyLines.every(
+		(line) => extractSnippetReferencePathsFromText(line).length > 0,
+	);
+}
+
+function collectClipboardExtraTextPayloads(
+	dataTransfer: DataTransfer | null,
+): string[] {
+	if (!dataTransfer) return [];
+
+	const payloads: string[] = [];
+	for (const type of Array.from(dataTransfer.types ?? [])) {
+		if (!type || STANDARD_CLIPBOARD_TEXT_TYPES.has(type)) continue;
+		try {
+			const raw = dataTransfer.getData(type);
+			if (!raw?.trim()) continue;
+			payloads.push(raw.slice(0, 80_000));
+		} catch {
+			// Ignore non-readable custom clipboard types.
+		}
+	}
+	return payloads;
+}
 
 function getPathChipLabel(path: UnifiedComposerPath): string {
 	const label = path.name?.trim();
@@ -889,8 +927,32 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 						);
 						if (!hasFileItem) {
 							const text = dataTransfer?.getData("text/plain") ?? "";
-							const snippetPaths = extractSnippetReferencePathsFromText(text);
+							const html = dataTransfer?.getData("text/html") ?? "";
+							const uriList =
+								dataTransfer?.getData("text/uri-list")
+								|| dataTransfer?.getData("public.file-url")
+								|| "";
+							const extraPayloads =
+								collectClipboardExtraTextPayloads(dataTransfer);
+							const plainTextSnippetPaths =
+								extractSnippetReferencePathsFromText(text);
+							const snippetPaths = extractSnippetReferencePathsFromClipboard({
+								plainText: text,
+								htmlText: html,
+								uriListText: uriList,
+								extraTextPayloads: extraPayloads,
+							});
 							if (snippetPaths.length > 0) {
+								const likelyCodeSelectionPaste =
+									text.split(/\r?\n/).length >= 2
+									&& plainTextSnippetPaths.length === 0
+									&& extraPayloads.length > 0;
+								if (
+									shouldConsumeSnippetReferencePaste(text)
+									|| likelyCodeSelectionPaste
+								) {
+									event.preventDefault();
+								}
 								requestAnimationFrame(() => {
 									insertDroppedPathsAtCaret(snippetPaths);
 								});

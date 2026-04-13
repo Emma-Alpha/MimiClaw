@@ -128,6 +128,20 @@ describe('chat runtime event handlers', () => {
     expect(h.read().loadHistory).toHaveBeenCalledTimes(1);
   });
 
+  it('uses activeRunId fallback for final message ids so mixed runId events do not duplicate', async () => {
+    const { handleRuntimeEventState } = await import('@/stores/chat/runtime-event-handlers');
+    const h = makeHarness({ sending: true, activeRunId: 'abc123' });
+    const finalEvent = { message: { role: 'assistant', content: 'same final answer' } };
+
+    handleRuntimeEventState(h.set as never, h.get as never, finalEvent, 'final', '');
+    expect(h.read().messages).toHaveLength(1);
+    expect(h.read().messages[0]?.id).toBe('run-abc123');
+
+    handleRuntimeEventState(h.set as never, h.get as never, finalEvent, 'final', 'abc123');
+    expect(h.read().messages).toHaveLength(1);
+    expect(h.read().messages[0]?.id).toBe('run-abc123');
+  });
+
   it('handles error event and finalizes immediately when not sending', async () => {
     const { handleRuntimeEventState } = await import('@/stores/chat/runtime-event-handlers');
     const h = makeHarness({ sending: false, activeRunId: 'r1', lastUserMessageAt: 123 });
@@ -163,4 +177,3 @@ describe('chat runtime event handlers', () => {
     expect(next.pendingToolImages).toEqual([]);
   });
 });
-

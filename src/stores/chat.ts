@@ -1889,7 +1889,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 if (streamRole === 'assistant' || streamRole === undefined) {
                   // Use message's own id if available, otherwise derive a stable one from runId
                   const snapId = currentStream.id
-                    || `${runId || 'run'}-turn-${s.messages.length}`;
+                    || `${runId || s.activeRunId || 'run'}-turn-${s.messages.length}`;
                   if (!s.messages.some(m => m.id === snapId)) {
                     snapshotMsgs.push({
                       ...(currentStream as RawMessage),
@@ -1911,54 +1911,40 @@ export const useChatStore = create<ChatState>((set, get) => ({
               };
             });
             break;
-          }
-          const toolOnly = isToolOnlyMessage(finalMsg);
-          const hasOutput = hasNonToolAssistantContent(finalMsg);
-          const msgId = finalMsg.id || (toolOnly ? `run-${runId}-tool-${Date.now()}` : `run-${runId}`);
-          set((s) => {
-            const nextTools = updates.length > 0 ? upsertToolStatuses(s.streamingTools, updates) : s.streamingTools;
-            const streamingTools = hasOutput ? [] : nextTools;
+        }
+        const toolOnly = isToolOnlyMessage(finalMsg);
+        const hasOutput = hasNonToolAssistantContent(finalMsg);
+        set((s) => {
+          const effectiveRunId = runId || s.activeRunId || 'run';
+          const msgId = finalMsg.id
+            || (toolOnly
+              ? `run-${effectiveRunId}-tool-${finalMsg.toolCallId || finalMsg.timestamp || Date.now()}`
+              : `run-${effectiveRunId}`);
+          const nextTools = updates.length > 0 ? upsertToolStatuses(s.streamingTools, updates) : s.streamingTools;
+          const streamingTools = hasOutput ? [] : nextTools;
 
-            // Attach any images collected from preceding tool results
-            const pendingImgs = s.pendingToolImages;
-            const msgWithImages: RawMessage = pendingImgs.length > 0
-              ? {
-                ...finalMsg,
-                role: (finalMsg.role || 'assistant') as RawMessage['role'],
-                id: msgId,
-                _attachedFiles: [...(finalMsg._attachedFiles || []), ...pendingImgs],
-              }
-              : { ...finalMsg, role: (finalMsg.role || 'assistant') as RawMessage['role'], id: msgId };
-            const clearPendingImages = { pendingToolImages: [] as AttachedFileMeta[] };
-
-            // Check if message already exists (prevent duplicates)
-            const alreadyExists = s.messages.some(m => m.id === msgId);
-            if (alreadyExists) {
-              return toolOnly ? {
-                streamingText: '',
-                streamingMessage: null,
-                pendingFinal: true,
-                streamingTools,
-                ...clearPendingImages,
-              } : {
-                streamingText: '',
-                streamingMessage: null,
-                sending: hasOutput ? false : s.sending,
-                activeRunId: hasOutput ? null : s.activeRunId,
-                pendingFinal: hasOutput ? false : true,
-                streamingTools,
-                ...clearPendingImages,
-              };
+          // Attach any images collected from preceding tool results
+          const pendingImgs = s.pendingToolImages;
+          const msgWithImages: RawMessage = pendingImgs.length > 0
+            ? {
+              ...finalMsg,
+              role: (finalMsg.role || 'assistant') as RawMessage['role'],
+              id: msgId,
+              _attachedFiles: [...(finalMsg._attachedFiles || []), ...pendingImgs],
             }
+            : { ...finalMsg, role: (finalMsg.role || 'assistant') as RawMessage['role'], id: msgId };
+          const clearPendingImages = { pendingToolImages: [] as AttachedFileMeta[] };
+
+          // Check if message already exists (prevent duplicates)
+          const alreadyExists = s.messages.some(m => m.id === msgId);
+          if (alreadyExists) {
             return toolOnly ? {
-              messages: [...s.messages, msgWithImages],
               streamingText: '',
               streamingMessage: null,
               pendingFinal: true,
               streamingTools,
               ...clearPendingImages,
             } : {
-              messages: [...s.messages, msgWithImages],
               streamingText: '',
               streamingMessage: null,
               sending: hasOutput ? false : s.sending,
@@ -1967,7 +1953,25 @@ export const useChatStore = create<ChatState>((set, get) => ({
               streamingTools,
               ...clearPendingImages,
             };
-          });
+          }
+          return toolOnly ? {
+            messages: [...s.messages, msgWithImages],
+            streamingText: '',
+            streamingMessage: null,
+            pendingFinal: true,
+            streamingTools,
+            ...clearPendingImages,
+          } : {
+            messages: [...s.messages, msgWithImages],
+            streamingText: '',
+            streamingMessage: null,
+            sending: hasOutput ? false : s.sending,
+            activeRunId: hasOutput ? null : s.activeRunId,
+            pendingFinal: hasOutput ? false : true,
+            streamingTools,
+            ...clearPendingImages,
+          };
+        });
           // After the final response, quietly reload history to surface all intermediate
           // tool-use turns (thinking + tool blocks) from the Gateway's authoritative record.
           if (hasOutput && !toolOnly) {

@@ -14,7 +14,6 @@ import { ApiRetryNotice } from "./ApiRetryNotice";
 import { TaskStart, TaskEnd } from "./TaskBoundary";
 import { ResultSummary } from "./ResultSummary";
 import { StatusIndicator } from "./StatusIndicator";
-import { TodoListCard } from "./TodoListCard";
 import { ReadOnlySlateMessage } from "../ReadOnlySlateMessage";
 
 interface Props {
@@ -189,6 +188,11 @@ export function CodeTimeline({
 }: Props) {
 	const { styles } = useStyles();
 	const hasVendorStatusText = vendorStatusText.trim().length > 0;
+	const hasLiveCursor =
+		isThinking
+		|| isStreaming
+		|| Boolean(streamingThinkingText)
+		|| Boolean(streamingAssistantText);
 
 	const renderItem = (item: CodeAgentTimelineItem, inTask = false) => {
 		const wrap = (el: React.ReactNode) =>
@@ -211,13 +215,16 @@ export function CodeTimeline({
 
 			case "assistant-text":
 				return wrap(
-					<StreamingText key={item.id} text={item.text} isStreaming={item.isStreaming} />,
+					<StreamingText
+						key={item.id}
+						text={item.text}
+						isStreaming={item.isStreaming}
+						workspaceRoot={workspaceRoot}
+					/>,
 				);
 
 			case "tool-use":
-				if (item.tool.toolName.toLowerCase() === "todowrite") {
-					return wrap(<TodoListCard key={item.id} tool={item.tool} />);
-				}
+				if (item.tool.toolName.toLowerCase() === "todowrite") return null;
 				return wrap(<ToolUseLine key={item.id} tool={item.tool} />);
 
 			case "diff":
@@ -342,11 +349,20 @@ export function CodeTimeline({
 
 			{/* Live assistant text stream */}
 			{(isStreaming || streamingAssistantText) && (
-				<StreamingText text={streamingAssistantText} isStreaming={isStreaming} />
+				<StreamingText
+					text={streamingAssistantText}
+					isStreaming={isStreaming}
+					workspaceRoot={workspaceRoot}
+				/>
 			)}
 
 			{/* ✶ Status indicator – visible for all busy spinner modes */}
-			{isBusy && <StatusIndicator text={vendorStatusText} />}
-		</div>
+				{isBusy && (
+					<StatusIndicator
+						text={vendorStatusText}
+						showCursor={!hasLiveCursor}
+					/>
+				)}
+			</div>
 	);
 }

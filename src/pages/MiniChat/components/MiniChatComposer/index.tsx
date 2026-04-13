@@ -49,6 +49,7 @@ function extractDroppedPathsFromTransfer(
 	return extractUnifiedDroppedPathsFromTransfer(dataTransfer);
 }
 export function MiniChatComposer({
+	fusedWithTodo = false,
 	input,
 	onInputChange,
 	onSend,
@@ -665,7 +666,7 @@ export function MiniChatComposer({
 
 	return (
 		<>
-			<div className={styles.container}>
+			<div className={cx(styles.container, fusedWithTodo && styles.containerFused)}>
 				{showSlashPicker && (
 					<div className={styles.claudeSlashPanel}>
 						{/* Project Skills */}
@@ -919,6 +920,7 @@ export function MiniChatComposer({
 					transition={isMultiline ? { duration: 0.3, ease: [0.32, 0.72, 0, 1] } : undefined}
 					className={cx(
 						styles.pill,
+						fusedWithTodo && styles.pillFused,
 						isMultiline && !useCodexExpandedLayout && styles.pillMultiline,
 						useCodexExpandedLayout && styles.pillCodex,
 						isDragOver && styles.pillDragOver,

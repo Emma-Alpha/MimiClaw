@@ -4,9 +4,10 @@
  * via gateway:rpc IPC. Session selector, thinking toggle, and refresh
  * are in the toolbar; messages render with markdown + streaming.
  */
-import { useEffect, useState } from 'react';
-import { AlertCircle, Loader2, Sparkles } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type UIEvent } from 'react';
+import { AlertCircle, ChevronDown, Loader2, Sparkles } from 'lucide-react';
 import { createStyles } from 'antd-style';
+import VList, { type ListRef } from '@rc-component/virtual-list';
 import { useChatStore, type RawMessage } from '@/stores/chat';
 import { useGatewayStore } from '@/stores/gateway';
 import { useAgentsStore } from '@/stores/agents';
@@ -18,8 +19,8 @@ import { ChatToolbar } from './ChatToolbar';
 import { invokeIpc } from '@/lib/api-client';
 import { extractImages, extractText, extractThinking, extractToolUse } from './message-utils';
 import { useTranslation } from 'react-i18next';
-import { useStickToBottomInstant } from '@/hooks/use-stick-to-bottom-instant';
 import { useMinLoading } from '@/hooks/use-min-loading';
+import { ChatSkeletonList } from './ChatSkeletonList';
 
 const useStyles = createStyles(({ token, css }) => ({
   chatPage: css`
@@ -38,9 +39,13 @@ const useStyles = createStyles(({ token, css }) => ({
     padding: 16px 24px 8px;
   `,
   messagesArea: css`
+    position: relative;
     flex: 1;
     overflow-y: auto;
     padding: 0 24px 24px;
+  `,
+  messagesAreaVirtual: css`
+    overflow: hidden;
   `,
   messagesInner: css`
     max-width: 800px;
@@ -48,6 +53,24 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     flex-direction: column;
     gap: 24px;
+  `,
+  messagesInnerVirtual: css`
+    height: 100%;
+    display: block;
+  `,
+  timelineRow: css`
+    width: 100%;
+  `,
+  timelineVirtual: css`
+    height: 100%;
+    overflow-anchor: none;
+    padding-bottom: 24px;
+  `,
+  timelineVirtualItem: css`
+    padding-bottom: 24px;
+    &:last-child {
+      padding-bottom: 0;
+    }
   `,
   errorBar: css`
     padding: 8px 16px;
@@ -153,11 +176,53 @@ const useStyles = createStyles(({ token, css }) => ({
     border-radius: ${token.borderRadiusLG}px;
     padding: 12px 16px;
   `,
+  activityElapsed: css`
+    font-size: var(--mimi-font-size-sm);
+    color: ${token.colorTextTertiary};
+  `,
+  backBottom: css`
+    position: absolute;
+    right: 36px;
+    bottom: 22px;
+    z-index: 8;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid ${token.colorBorderSecondary};
+    border-radius: 999px;
+    background: ${token.colorBgElevated};
+    color: ${token.colorTextSecondary};
+    padding: 8px 12px;
+    cursor: pointer;
+    box-shadow: ${token.boxShadowSecondary};
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  `,
+  backBottomVisible: css`
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  `,
 }));
+
+const BACK_BOTTOM_THRESHOLD = 40;
+const USER_PIN_RETRY_DELAYS = [0, 32, 96];
+
+type TimelineRenderRow = {
+  key: string;
+  node: ReactNode;
+  messageIndex?: number;
+};
+
+function isNearBottom(scrollTop: number, scrollHeight: number, clientHeight: number): boolean {
+  return scrollHeight - scrollTop - clientHeight <= BACK_BOTTOM_THRESHOLD;
+}
 
 export function Chat() {
   const { t } = useTranslation('chat');
-  const { styles } = useStyles();
+  const { styles, cx } = useStyles();
   const location = useLocation();
   const gatewayStatus = useGatewayStore((s) => s.status);
   const isGatewayRunning = gatewayStatus.state === 'running';
@@ -181,7 +246,12 @@ export function Chat() {
 
   const [streamingTimestamp, setStreamingTimestamp] = useState<number>(0);
   const minLoading = useMinLoading(loading && messages.length > 0);
-  const { contentRef, scrollRef } = useStickToBottomInstant(currentSessionKey);
+  const messagesAreaRef = useRef<HTMLDivElement | null>(null);
+  const vListRef = useRef<ListRef | null>(null);
+  const pinTimersRef = useRef<number[]>([]);
+  const prevMessagesLengthRef = useRef(messages.length);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [atBottom, setAtBottom] = useState(true);
 
   // Load data when gateway is running.
   // When the store already holds messages for this session (i.e. the user
@@ -240,10 +310,203 @@ export function Chat() {
       : 'listening';
 
   const isEmpty = messages.length === 0 && !sending;
+  const showInitialSkeleton = loading && messages.length === 0 && !sending;
+
+  const timelineRows = useMemo<TimelineRenderRow[]>(() => {
+    if (showInitialSkeleton || isEmpty) return [];
+
+    const rows: TimelineRenderRow[] = messages.map((msg, idx) => ({
+      key: msg.id || `msg-${idx}`,
+      messageIndex: idx,
+      node: (
+        <ChatMessage
+          key={msg.id || `msg-${idx}`}
+          message={msg}
+          showThinking={showThinking}
+        />
+      ),
+    }));
+
+    if (shouldRenderStreaming) {
+      rows.push({
+        key: 'streaming:message',
+        node: (
+          <ChatMessage
+            message={(streamMsg
+              ? {
+                  ...(streamMsg as Record<string, unknown>),
+                  role: (typeof streamMsg.role === 'string' ? streamMsg.role : 'assistant') as RawMessage['role'],
+                  content: streamMsg.content ?? streamText,
+                  timestamp: streamMsg.timestamp ?? streamingTimestamp,
+                }
+              : {
+                  role: 'assistant',
+                  content: streamText,
+                  timestamp: streamingTimestamp,
+                }) as RawMessage}
+            showThinking={showThinking}
+            isStreaming
+            streamingTools={streamingTools}
+          />
+        ),
+      });
+    }
+
+    if (sending && pendingFinal && !shouldRenderStreaming) {
+      rows.push({
+        key: 'streaming:pending-final',
+        node: (
+          <ActivityIndicator
+            phase="tool_processing"
+            startedAt={streamingTimestamp || undefined}
+          />
+        ),
+      });
+    }
+
+    if (sending && !pendingFinal && !hasAnyStreamContent) {
+      rows.push({
+        key: 'streaming:typing',
+        node: <TypingIndicator startedAt={streamingTimestamp || undefined} />,
+      });
+    }
+
+    return rows;
+  }, [
+    showInitialSkeleton,
+    isEmpty,
+    messages,
+    showThinking,
+    shouldRenderStreaming,
+    streamMsg,
+    streamText,
+    streamingTimestamp,
+    streamingTools,
+    sending,
+    pendingFinal,
+    hasAnyStreamContent,
+  ]);
+
+  const shouldVirtualize = viewportHeight > 0 && timelineRows.length > 20;
+
+  const clearUserPinTimers = useCallback(() => {
+    pinTimersRef.current.forEach((timerId) => {
+      window.clearTimeout(timerId);
+    });
+    pinTimersRef.current = [];
+  }, []);
+
+  const scrollToBottom = useCallback((smooth = true) => {
+    const behavior: ScrollBehavior = smooth ? 'smooth' : 'auto';
+
+    if (shouldVirtualize) {
+      vListRef.current?.scrollTo(Number.MAX_SAFE_INTEGER);
+      setAtBottom(true);
+      return;
+    }
+
+    const node = messagesAreaRef.current;
+    if (!node) return;
+    node.scrollTo({ top: node.scrollHeight, behavior });
+    setAtBottom(true);
+  }, [shouldVirtualize]);
 
   useEffect(() => {
     void invokeIpc('pet:setUiActivity', { activity: petUiActivity }).catch(() => {});
   }, [petUiActivity]);
+
+  useEffect(() => {
+    const node = messagesAreaRef.current;
+    if (!node) return;
+
+    const update = () => {
+      setViewportHeight(Math.max(0, Math.floor(node.clientHeight)));
+    };
+
+    update();
+
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      const shouldFollow = atBottom && sending;
+      if (!shouldFollow || timelineRows.length === 0) return;
+      scrollToBottom(false);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [atBottom, sending, timelineRows.length, scrollToBottom]);
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => scrollToBottom(false));
+    return () => cancelAnimationFrame(raf);
+  }, [currentSessionKey, scrollToBottom]);
+
+  const pinToUserMessage = useCallback((messageIndex: number, rowKey: string) => {
+    clearUserPinTimers();
+
+    const scrollToUserRow = () => {
+      if (shouldVirtualize) {
+        vListRef.current?.scrollTo({
+          index: messageIndex,
+          align: 'top',
+        });
+        return;
+      }
+
+      const container = messagesAreaRef.current;
+      if (!container) return;
+
+      const target = Array.from(
+        container.querySelectorAll<HTMLElement>('[data-chat-row-key]'),
+      ).find((element) => element.dataset.chatRowKey === rowKey);
+
+      if (!target) return;
+
+      container.scrollTo({
+        top: Math.max(0, target.offsetTop - 8),
+        behavior: 'smooth',
+      });
+    };
+
+    USER_PIN_RETRY_DELAYS.forEach((delay) => {
+      const timerId = window.setTimeout(scrollToUserRow, delay);
+      pinTimersRef.current.push(timerId);
+    });
+  }, [clearUserPinTimers, shouldVirtualize]);
+
+  useEffect(() => {
+    return clearUserPinTimers;
+  }, [clearUserPinTimers]);
+
+  useEffect(() => {
+    const previousLength = prevMessagesLengthRef.current;
+    const currentLength = messages.length;
+    prevMessagesLengthRef.current = currentLength;
+
+    if (!sending || currentLength <= previousLength) return;
+
+    const lastMessage = messages[currentLength - 1];
+    if (!lastMessage || lastMessage.role !== 'user') return;
+
+    const userRow = timelineRows.find((row) => row.messageIndex === currentLength - 1);
+    if (!userRow) return;
+
+    pinToUserMessage(currentLength - 1, userRow.key);
+  }, [messages, sending, timelineRows, pinToUserMessage]);
+
+  const handleNativeScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
+    const target = event.currentTarget;
+    setAtBottom(isNearBottom(target.scrollTop, target.scrollHeight, target.clientHeight));
+  }, []);
+
+  const handleVirtualScroll = useCallback((event: UIEvent<HTMLElement>) => {
+    const target = event.currentTarget;
+    setAtBottom(isNearBottom(target.scrollTop, target.scrollHeight, target.clientHeight));
+  }, []);
 
   return (
     <div className={styles.chatPage}>
@@ -253,53 +516,58 @@ export function Chat() {
       </div>
 
       {/* Messages Area */}
-      <div ref={scrollRef} className={styles.messagesArea}>
-        <div ref={contentRef} className={styles.messagesInner}>
-          {isEmpty ? (
+      <div
+        ref={messagesAreaRef}
+        className={cx(styles.messagesArea, shouldVirtualize && styles.messagesAreaVirtual)}
+        onScroll={!shouldVirtualize ? handleNativeScroll : undefined}
+      >
+        <div className={cx(styles.messagesInner, shouldVirtualize && styles.messagesInnerVirtual)}>
+          {showInitialSkeleton ? (
+            <ChatSkeletonList />
+          ) : isEmpty ? (
             <WelcomeScreen />
+          ) : shouldVirtualize ? (
+            <VList<TimelineRenderRow>
+              ref={vListRef}
+              data={timelineRows}
+              height={viewportHeight}
+              itemHeight={80}
+              itemKey="key"
+              className={styles.timelineVirtual}
+              onScroll={handleVirtualScroll}
+            >
+              {(row) => (
+                <div className={styles.timelineVirtualItem} data-chat-row-key={row.key}>
+                  {row.node}
+                </div>
+              )}
+            </VList>
           ) : (
             <>
-              {messages.map((msg, idx) => (
-                <ChatMessage
-                  key={msg.id || `msg-${idx}`}
-                  message={msg}
-                  showThinking={showThinking}
-                />
+              {timelineRows.map((row) => (
+                <div
+                  key={row.key}
+                  className={styles.timelineRow}
+                  data-chat-row-key={row.key}
+                >
+                  {row.node}
+                </div>
               ))}
-
-              {/* Streaming message */}
-              {shouldRenderStreaming && (
-                <ChatMessage
-                  message={(streamMsg
-                    ? {
-                        ...(streamMsg as Record<string, unknown>),
-                        role: (typeof streamMsg.role === 'string' ? streamMsg.role : 'assistant') as RawMessage['role'],
-                        content: streamMsg.content ?? streamText,
-                        timestamp: streamMsg.timestamp ?? streamingTimestamp,
-                      }
-                    : {
-                        role: 'assistant',
-                        content: streamText,
-                        timestamp: streamingTimestamp,
-                      }) as RawMessage}
-                  showThinking={showThinking}
-                  isStreaming
-                  streamingTools={streamingTools}
-                />
-              )}
-
-              {/* Activity indicator */}
-              {sending && pendingFinal && !shouldRenderStreaming && (
-                <ActivityIndicator phase="tool_processing" />
-              )}
-
-              {/* Typing indicator */}
-              {sending && !pendingFinal && !hasAnyStreamContent && (
-                <TypingIndicator />
-              )}
             </>
           )}
         </div>
+
+        {!isEmpty && !showInitialSkeleton && (
+          <button
+            type="button"
+            className={cx(styles.backBottom, !atBottom && styles.backBottomVisible)}
+            onClick={() => scrollToBottom(true)}
+            title={t('backToBottom', { defaultValue: 'Back to bottom' })}
+          >
+            <ChevronDown style={{ width: 14, height: 14 }} />
+            <span>{t('backToBottom', { defaultValue: 'Back to bottom' })}</span>
+          </button>
+        )}
       </div>
 
       {/* Error bar */}
@@ -360,20 +628,44 @@ function WelcomeScreen() {
   );
 }
 
+function useElapsedLabel(startedAt?: number): string | null {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!startedAt) return;
+
+    const updateElapsed = () => {
+      setElapsedSeconds(Math.max(0, Math.floor(Date.now() / 1000 - startedAt)));
+    };
+
+    updateElapsed();
+    const id = setInterval(updateElapsed, 1000);
+    return () => clearInterval(id);
+  }, [startedAt]);
+
+  if (elapsedSeconds < 2) return null;
+  return `${elapsedSeconds}s`;
+}
+
 // ── Typing Indicator ────────────────────────────────────────────
 
-function TypingIndicator() {
+function TypingIndicator({ startedAt }: { startedAt?: number }) {
   const { styles } = useStyles();
+  const { t } = useTranslation('chat');
+  const elapsed = useElapsedLabel(startedAt);
+
   return (
     <div style={{ display: 'flex', gap: 12 }}>
       <div style={{ display: 'flex', width: 32, height: 32, flexShrink: 0, alignItems: 'center', justifyContent: 'center', borderRadius: '50%', marginTop: 4, background: 'rgba(0,0,0,0.05)' }}>
         <Sparkles style={{ width: 16, height: 16 }} />
       </div>
       <div className={styles.typingBubble}>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span>{t('status.thinking', { defaultValue: 'Thinking...' })}</span>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', opacity: 0.4, animation: 'bounce 1s infinite', animationDelay: '0ms' }} />
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', opacity: 0.4, animation: 'bounce 1s infinite', animationDelay: '150ms' }} />
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', opacity: 0.4, animation: 'bounce 1s infinite', animationDelay: '300ms' }} />
+          {elapsed && <span className={styles.activityElapsed}>({elapsed})</span>}
         </div>
       </div>
     </div>
@@ -382,9 +674,12 @@ function TypingIndicator() {
 
 // ── Activity Indicator ──────────────────────────────────────────
 
-function ActivityIndicator({ phase }: { phase: 'tool_processing' }) {
+function ActivityIndicator({ phase, startedAt }: { phase: 'tool_processing'; startedAt?: number }) {
   void phase;
   const { styles } = useStyles();
+  const { t } = useTranslation('chat');
+  const elapsed = useElapsedLabel(startedAt);
+
   return (
     <div style={{ display: 'flex', gap: 12 }}>
       <div style={{ display: 'flex', width: 32, height: 32, flexShrink: 0, alignItems: 'center', justifyContent: 'center', borderRadius: '50%', marginTop: 4, background: 'rgba(0,0,0,0.05)' }}>
@@ -392,7 +687,8 @@ function ActivityIndicator({ phase }: { phase: 'tool_processing' }) {
       </div>
       <div className={styles.activityBubble}>
         <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} />
-        <span>Processing tool results…</span>
+        <span>{t('status.processingTools', { defaultValue: 'Processing tool results...' })}</span>
+        {elapsed && <span className={styles.activityElapsed}>({elapsed})</span>}
       </div>
     </div>
   );

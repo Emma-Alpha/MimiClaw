@@ -3224,6 +3224,75 @@ function registerProviderHandlers(gatewayManager: GatewayManager): void {
 /**
  * Shell-related IPC handlers
  */
+type OpenPathAtLineRequest = {
+	path: string;
+	line?: number;
+	column?: number;
+};
+
+function parsePositiveLineNumber(value: unknown): number | null {
+	if (typeof value !== "number" || !Number.isFinite(value)) return null;
+	const normalized = Math.floor(value);
+	return normalized > 0 ? normalized : null;
+}
+
+function normalizeOpenPathAtLineRequest(
+	payload: unknown,
+): OpenPathAtLineRequest | null {
+	if (!payload || typeof payload !== "object") return null;
+
+	const rawPath = (payload as { path?: unknown }).path;
+	if (typeof rawPath !== "string" || !rawPath.trim()) return null;
+
+	const line = parsePositiveLineNumber((payload as { line?: unknown }).line) ?? 1;
+	const column = parsePositiveLineNumber((payload as { column?: unknown }).column) ?? 1;
+
+	return {
+		path: rawPath.trim(),
+		line,
+		column,
+	};
+}
+
+function toEditorUriPath(filePath: string): string {
+	const unixPath = filePath.replace(/\\/g, "/");
+	const withLeadingSlash = /^[A-Za-z]:\//.test(unixPath)
+		? `/${unixPath}`
+		: unixPath;
+	return encodeURI(withLeadingSlash);
+}
+
+function buildEditorDeepLinks(
+	filePath: string,
+	line: number,
+	column: number,
+): string[] {
+	const uriPath = toEditorUriPath(filePath);
+	const location = `:${line}:${column}`;
+	const schemes = ["cursor", "vscode", "vscode-insiders", "zed"];
+	return schemes.map((scheme) => `${scheme}://file${uriPath}${location}`);
+}
+
+async function openPathAtLineWithFallback(
+	filePath: string,
+	line: number,
+	column: number,
+): Promise<string> {
+	for (const deepLink of buildEditorDeepLinks(filePath, line, column)) {
+		try {
+			await shell.openExternal(deepLink);
+			return "";
+		} catch (error) {
+			logger.debug(
+				`[shell:openPathAtLine] Failed deep link "${deepLink}":`,
+				error,
+			);
+		}
+	}
+
+	return await shell.openPath(filePath);
+}
+
 function registerShellHandlers(): void {
 	// Open external URL
 	ipcMain.handle("shell:openExternal", async (_, url: string) => {
@@ -3238,6 +3307,20 @@ function registerShellHandlers(): void {
 	// Open path
 	ipcMain.handle("shell:openPath", async (_, path: string) => {
 		return await shell.openPath(path);
+	});
+
+	// Open path at specific line/column in an available editor
+	ipcMain.handle("shell:openPathAtLine", async (_, payload: unknown) => {
+		const request = normalizeOpenPathAtLineRequest(payload);
+		if (!request) {
+			return "Invalid openPathAtLine payload";
+		}
+
+		return await openPathAtLineWithFallback(
+			request.path,
+			request.line ?? 1,
+			request.column ?? 1,
+		);
 	});
 }
 

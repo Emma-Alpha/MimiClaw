@@ -1,6 +1,10 @@
 import { Markdown } from '@lobehub/ui';
 import { Brain, CheckCheck, FileText, Image as ImageIcon, Loader2, Terminal } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  useEnhancedMarkdownProps,
+  type EnhancedMarkdownProps,
+} from '@/lib/markdown-enhancements';
 import type {
   HostJizhiMessageContent,
   HostJizhiMessageContentItem,
@@ -108,7 +112,7 @@ function renderReasoningCard(payload: JizhiTextContent, item: HostJizhiMessageCo
   );
 }
 
-function renderText(item: HostJizhiMessageContentItem) {
+function renderText(item: HostJizhiMessageContentItem, markdownProps: EnhancedMarkdownProps) {
   const payload = parseItemContent<JizhiTextContent>(item);
   const content = payload?.content?.trim() ?? '';
   const reasoningCard = payload ? renderReasoningCard(payload, item) : null;
@@ -120,7 +124,7 @@ function renderText(item: HostJizhiMessageContentItem) {
       {reasoningCard}
       {content ? (
         <div className="prose prose-sm max-w-none break-words text-[14px] leading-7 text-foreground dark:prose-invert prose-p:my-0 prose-pre:my-0 prose-headings:mb-3 prose-headings:mt-5 prose-ul:my-2 prose-ol:my-2 prose-li:my-1">
-          <Markdown>{content}</Markdown>
+          <Markdown variant="chat" headerMultiple={0} {...markdownProps}>{content}</Markdown>
         </div>
       ) : null}
     </div>
@@ -321,6 +325,7 @@ function renderFallback(item: HostJizhiMessageContentItem) {
 }
 
 export function JizhiMessageContent({ message }: { message?: HostJizhiMessageContent }) {
+  const markdownProps = useEnhancedMarkdownProps();
   const items = message?.items ?? [];
   if (items.length === 0) return null;
 
@@ -331,7 +336,7 @@ export function JizhiMessageContent({ message }: { message?: HostJizhiMessageCon
           return renderDebugBlock(item);
         }
         if (item.contentType === 'text' || item.contentType === 'steps') {
-          return renderText(item);
+          return renderText(item, markdownProps);
         }
         if (item.contentType === 'imageSet') {
           return renderImages(item);

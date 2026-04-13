@@ -17,6 +17,18 @@
         "hideThinking": "思考を非表示",
         "currentAgent": "現在の会話相手: {{agent}}"
     },
+    "thinking": {
+        "title": "思考",
+        "titleThinking": "思考中",
+        "titleDone": "思考完了",
+        "titleDoneWithDuration": "{{seconds}} 秒思考",
+        "redacted": "推論の一部は非表示です"
+    },
+    "status": {
+        "thinking": "思考中...",
+        "processingTools": "ツール結果を処理中..."
+    },
+    "backToBottom": "一番下へ",
     "composer": {
         "attachFiles": "ファイルを添付",
         "pickAgent": "Agent を選択",

@@ -12,6 +12,7 @@ import type { MentionEmptyState, MentionOption, SlashOption } from "../../types"
 export type DroppedPathChip = UnifiedComposerPath;
 
 export type MiniChatComposerProps = {
+	fusedWithTodo?: boolean;
 	input: string;
 	onInputChange: (value: string) => void;
 	onSend: () => void;

@@ -103,7 +103,7 @@ export function handleRuntimeEventState(
                   if (streamRole === 'assistant' || streamRole === undefined) {
                     // Use message's own id if available, otherwise derive a stable one from runId
                     const snapId = currentStream.id
-                      || `${runId || 'run'}-turn-${s.messages.length}`;
+                      || `${runId || s.activeRunId || 'run'}-turn-${s.messages.length}`;
                     if (!s.messages.some(m => m.id === snapId)) {
                       snapshotMsgs.push({
                         ...(currentStream as RawMessage),
@@ -128,8 +128,12 @@ export function handleRuntimeEventState(
             }
             const toolOnly = isToolOnlyMessage(finalMsg);
             const hasOutput = hasNonToolAssistantContent(finalMsg);
-            const msgId = finalMsg.id || (toolOnly ? `run-${runId}-tool-${Date.now()}` : `run-${runId}`);
             set((s) => {
+              const effectiveRunId = runId || s.activeRunId || 'run';
+              const msgId = finalMsg.id
+                || (toolOnly
+                  ? `run-${effectiveRunId}-tool-${finalMsg.toolCallId || finalMsg.timestamp || Date.now()}`
+                  : `run-${effectiveRunId}`);
               const nextTools = updates.length > 0 ? upsertToolStatuses(s.streamingTools, updates) : s.streamingTools;
               const streamingTools = hasOutput ? [] : nextTools;
 

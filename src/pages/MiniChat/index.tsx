@@ -56,6 +56,7 @@ import { MiniChatHeader } from "./components/MiniChatHeader";
 import { MiniChatTimeline } from "./components/MiniChatTimeline";
 import { ElicitationForm } from "./components/code-agent/ElicitationForm";
 import { PermissionDispatcher } from "./components/code-agent/permissions/PermissionDispatcher";
+import { TodoListCard } from "./components/code-agent/TodoListCard";
 import { useMiniChatAttachmentActions } from "./hooks/useMiniChatAttachmentActions";
 import { useMiniChatCodeAgentControls } from "./hooks/useMiniChatCodeAgentControls";
 import { useMiniChatClaudeSessions } from "./hooks/useMiniChatClaudeSessions";
@@ -123,6 +124,22 @@ function formatTokenCount(value: number): string {
 	return `${Math.round(value)}`;
 }
 
+function isTodoWriteToolName(name: string): boolean {
+	return name.trim().toLowerCase() === "todowrite";
+}
+
+function hasValidTodoItems(rawInput: Record<string, unknown>): boolean {
+	const todos = rawInput?.todos;
+	if (!Array.isArray(todos)) return false;
+	return todos.some(
+		(todo) =>
+			todo != null
+			&& typeof todo === "object"
+			&& typeof (todo as { content?: unknown }).content === "string"
+			&& typeof (todo as { status?: unknown }).status === "string",
+	);
+}
+
 type MiniChatProps = {
 	embeddedCodeAssistant?: boolean;
 };
@@ -173,8 +190,6 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 	>("idle");
 	const [codeSending, setCodeSending] = useState(false);
 	const [codeRunActive, setCodeRunActive] = useState(false);
-	const [_codeActivities, setCodeActivities] = useState<ToolActivityItem[]>([]);
-	const [_codeStreamingText, setCodeStreamingText] = useState("");
 	// Ref keeps the latest activities accessible in callbacks without dep-array churn
 	const codeActivitiesRef = useRef<ToolActivityItem[]>([]);
 	// Snapshot taken at run-completed, before the ref is cleared, so
@@ -204,8 +219,8 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 	const sessionInit = useCodeAgentStore((s) => s.sessionInit);
 	const sessionTitle = useCodeAgentStore((s) => s.sessionTitle);
 	const codeSessionState = useCodeAgentStore((s) => s.sessionState);
-	const lastUpdatedAt = useCodeAgentStore((s) => s.lastUpdatedAt);
 	const contextUsage = useCodeAgentStore((s) => s.contextUsage);
+	const setCodeAgentContextUsage = useCodeAgentStore((s) => s.setContextUsage);
 	const [codeAgentStatus, setCodeAgentStatus] =
 		useState<CodeAgentStatus | null>(null);
 	const [codeWorkspaceRoot, setCodeWorkspaceRoot] = useState(() =>
@@ -237,6 +252,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 	const inputRef = useRef(input);
 	const caretIndexRef = useRef(caretIndex);
 	const lastHydratedClaudeSessionRef = useRef("");
+	const lastRequestedClaudeSessionRef = useRef("");
 	const pushedToolIdsRef = useRef<Set<string>>(new Set());
 	const chatSubmitInFlightRef = useRef(false);
 	const gatewayState = gatewayStatus.state;
@@ -299,8 +315,6 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 	);
 	const resetCodeTimelineState = useCallback(() => {
 		resetCodeAgent();
-		setCodeStreamingText("");
-		setCodeActivities([]);
 		codeActivitiesRef.current = [];
 		pendingCompletionActivitiesRef.current = [];
 	}, [resetCodeAgent]);
@@ -355,6 +369,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 		pushSdkMessage,
 		pushUserMessage,
 		resetCodeAgentStreaming,
+		setContextUsage: setCodeAgentContextUsage,
 	});
 
 	useEffect(() => {
@@ -363,6 +378,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 
 	useEffect(() => {
 		lastHydratedClaudeSessionRef.current = "";
+		lastRequestedClaudeSessionRef.current = "";
 	}, [codeWorkspaceRoot]);
 
 	const liveStreamingText = useMemo(() => {
@@ -436,8 +452,6 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 		pushSdkMessage,
 		resetCodeAgentStreaming,
 		setCodeAgentStatus,
-		setCodeStreamingText,
-		setCodeActivities,
 		setCodeRunActive,
 		setCodeAgentPendingPermission,
 		codeActivitiesRef,
@@ -638,13 +652,16 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 	useEffect(() => {
 		if (!embeddedCodeAssistant) return;
 		if (!requestedClaudeSessionId) return;
-		if (requestedClaudeSessionId === activeClaudeSessionId) return;
-		lastHydratedClaudeSessionRef.current = "";
-		setActiveClaudeSessionId(requestedClaudeSessionId);
-		resetCodeTimelineState();
-		resetChatSeenState();
+		if (lastRequestedClaudeSessionRef.current === requestedClaudeSessionId) return;
+		lastRequestedClaudeSessionRef.current = requestedClaudeSessionId;
+		const timer = window.setTimeout(() => {
+			lastHydratedClaudeSessionRef.current = "";
+			setActiveClaudeSessionId(requestedClaudeSessionId);
+			resetCodeTimelineState();
+			resetChatSeenState();
+		}, 0);
+		return () => window.clearTimeout(timer);
 	}, [
-		activeClaudeSessionId,
 		embeddedCodeAssistant,
 		requestedClaudeSessionId,
 		resetChatSeenState,
@@ -735,20 +752,6 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 		},
 		[slashDraft],
 	);
-
-	const removeCodeMentionFromInput = useCallback(() => {
-		if (embeddedCodeAssistant) return;
-		setSelectedMode(null);
-		setPersistentMode(null);
-		setInput((previous) => {
-			const nextInput = previous
-				.replace(/(^|\s)@(code|cli|CLI编程|cli编程)(?=\s|$)/i, " ")
-				.replace(/\s+/g, " ")
-				.trimStart();
-			setCaretIndex(nextInput.length);
-				return nextInput;
-			});
-	}, [embeddedCodeAssistant]);
 
 	const handleKeyDown = useCallback(
 		(event: KeyboardEvent<HTMLElement>) => {
@@ -988,16 +991,14 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 			0,
 			Math.min(
 				100,
-				Math.round(
-					contextUsage?.usedPercentage ?? (usedTokens / contextWindowSize) * 100,
-				),
+				contextUsage?.usedPercentage ?? (usedTokens / contextWindowSize) * 100,
 			),
 		);
 		const remainingPercentage = Math.max(
 			0,
 			Math.min(
 				100,
-				Math.round(contextUsage?.remainingPercentage ?? 100 - usedPercentage),
+				contextUsage?.remainingPercentage ?? 100 - usedPercentage,
 			),
 		);
 		const ringColor =
@@ -1083,36 +1084,39 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 			return left.sortAt - right.sortAt;
 		});
 	}, [chatSeenAt, visibleMessages]);
+	const latestTodoTool = useMemo(() => {
+		for (let index = codeAgentItems.length - 1; index >= 0; index -= 1) {
+			const item = codeAgentItems[index];
+			if (item.kind !== "tool-use") continue;
+			if (!isTodoWriteToolName(item.tool.toolName)) continue;
+			if (!hasValidTodoItems(item.tool.rawInput)) continue;
+			return item.tool;
+		}
+		return null;
+	}, [codeAgentItems]);
 
 	return (
 		<div className={cx(styles.root, embeddedCodeAssistant && styles.rootEmbedded)}>
-			<MiniChatHeader
-				embedded={embeddedCodeAssistant}
-				draftTarget={draftTarget}
-				codeSending={codeSending}
-				isGenerating={isHeaderGenerating}
-				codeAgentStatus={codeAgentStatus}
-				sessionInit={sessionInit}
-				sessionTitle={sessionTitle}
-				lastUpdatedAt={lastUpdatedAt}
-				contextUsage={contextUsage}
-				chatSessions={headerSessions}
-				currentSessionKey={headerSessionKey}
-				isReady={isReady}
-				isError={isError}
-				isConnecting={isConnecting}
-				onOpenFull={handleOpenFull}
-				onClose={handleClose}
-				codeWorkspaceRoot={codeWorkspaceRoot}
-				onRemoveCodeMode={removeCodeMentionFromInput}
-				onPickWorkspace={handlePickWorkspaceClick}
-				permissionMode={codeAgentConfig.permissionMode}
-				onPermissionModeChange={handlePermissionModeChange}
-				onNewConversation={handleNewConversation}
-				onSwitchSession={handleSwitchSession}
-				showWindowActions={!embeddedCodeAssistant}
-				canExitCodeMode={!embeddedCodeAssistant}
-			/>
+				<MiniChatHeader
+					embedded={embeddedCodeAssistant}
+					draftTarget={draftTarget}
+					codeSending={codeSending}
+					isGenerating={isHeaderGenerating}
+					codeAgentStatus={codeAgentStatus}
+					sessionInit={sessionInit}
+					sessionTitle={sessionTitle}
+					contextUsage={contextUsage}
+					chatSessions={headerSessions}
+					currentSessionKey={headerSessionKey}
+					isReady={isReady}
+					isError={isError}
+					isConnecting={isConnecting}
+					onOpenFull={handleOpenFull}
+					onClose={handleClose}
+					onNewConversation={handleNewConversation}
+					onSwitchSession={handleSwitchSession}
+					showWindowActions={!embeddedCodeAssistant}
+				/>
 
 			<MiniChatTimeline
 				timelineItems={timelineItems}
@@ -1168,7 +1172,17 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 						/>
 					</div>
 				)}
+				{latestTodoTool ? (
+					<div className={cx(styles.todoDock, styles.todoDockFused)}>
+						<TodoListCard
+							tool={latestTodoTool}
+							variant="dock"
+							fusedWithComposer
+						/>
+					</div>
+				) : null}
 					<MiniChatComposer
+						fusedWithTodo={Boolean(latestTodoTool)}
 						input={input}
 						onInputChange={setInput}
 						onSend={() => {
@@ -1280,6 +1294,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 								usedPercentage={embeddedContextSummary.usedPercentage}
 								remainingPercentage={embeddedContextSummary.remainingPercentage}
 								usedTokensLabel={formatTokenCount(embeddedContextSummary.usedTokens)}
+								remainingTokensLabel={formatTokenCount(embeddedContextSummary.remainingTokens)}
 								totalTokensLabel={formatTokenCount(embeddedContextSummary.contextWindowSize)}
 								ringColor={embeddedContextSummary.ringColor}
 								size={14}

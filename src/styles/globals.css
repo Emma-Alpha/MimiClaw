@@ -64,7 +64,6 @@
 
   [style*="--lobe-markdown-font-size"] {
     --lobe-markdown-font-size: var(--app-font-size-max) !important;
-    --lobe-markdown-header-multiple: 1 !important;
   }
 
   [data-slate-editor="true"],
