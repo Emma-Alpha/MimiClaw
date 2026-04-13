@@ -43,7 +43,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		flex-direction: column;
 		align-items: stretch;
 		border-radius: 20px;
-		padding: 8px 10px 8px;
+		padding: 10px 10px 8px;
 		min-height: 96px;
 		box-shadow: none;
 	`,
