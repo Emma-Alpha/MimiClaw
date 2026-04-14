@@ -830,6 +830,7 @@ export function LegacySidebar() {
 	const openClawCount = filteredOpenClawSessions.length;
 	const xiaojiuCount = filteredXiaojiuSessions.length;
 	const realtimeVoiceCount = filteredRealtimeVoiceSessions.length;
+	const threadCategoryCount = visibleThreadWorkspaces.length;
 	const hasActiveOpenClawSession =
 		pathname === "/" && openClawSessions.some((session) => session.key === currentSessionKey);
 

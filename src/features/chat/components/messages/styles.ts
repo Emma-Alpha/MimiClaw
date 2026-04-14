@@ -48,22 +48,14 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
       .lobe-chat-item {
         width: 100%;
         gap: 4px !important;
-        padding: 4px 0 10px !important;
+        padding: 8px 0 4px !important;
       }
 
       .lobe-chat-item-message {
         margin-left: 0 !important;
         margin-right: 0 !important;
         align-items: flex-end !important;
-        gap: 4px !important;
-      }
-
-      .lobe-chat-item-message-item {
-        max-width: min(100%, 720px) !important;
-        padding: 0 !important;
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
+        gap: 2px !important;
       }
     }
   `,
@@ -88,18 +80,9 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     gap: 10px;
     justify-content: flex-end;
   `,
-  userMessageBubble: css`
-    display: inline-flex;
-    max-width: min(100%, 720px);
-    padding: 10px 14px;
-    border-radius: 18px;
-    border: 1px solid ${token.colorBorderSecondary};
-    background: linear-gradient(180deg, ${token.colorBgElevated} 0%, ${token.colorFillQuaternary} 100%);
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
-  `,
   userMessageText: css`
-    font-size: var(--mimi-font-size-base);
-    line-height: var(--mimi-line-height-base);
+    font-size: 13px;
+    line-height: 1.5;
     color: ${token.colorText};
     white-space: pre-wrap;
     word-break: break-word;

@@ -558,7 +558,7 @@ function MiniChatTimelineImpl({
 					onScroll={handleScroll}
 				>
 					{(row) => (
-						<div className={styles.timelineVirtualItem}>
+						<div className={styles.timelineVirtualItem} data-chat-row-key={row.key}>
 							{row.node}
 						</div>
 					)}
@@ -566,10 +566,13 @@ function MiniChatTimelineImpl({
 			)}
 
 			{hasContent && (
-				<BackBottomButton
-					visible={!atBottom}
-					onScrollToBottom={() => scrollToBottom(true)}
-				/>
+				<div className={styles.backBottomAnchor}>
+					<BackBottomButton
+						visible={!atBottom}
+						className={styles.backBottomButton}
+						onScrollToBottom={() => scrollToBottom(true)}
+					/>
+				</div>
 			)}
 		</div>
 	);

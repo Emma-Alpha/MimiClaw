@@ -127,14 +127,10 @@ export function UserMessage({
             backgroundColor: 'transparent',
             title: '我',
           }}
-          className={styles.userChatItem}
+          className={cx(styles.chatItem, styles.userChatItem)}
           message={text}
           placement="right"
-          renderMessage={() => (
-            <div className={styles.userMessageBubble}>
-              {renderUserTextBubble(protocol, { className: styles.userMessageText, text })}
-            </div>
-          )}
+          renderMessage={() => renderUserTextBubble(protocol, { className: styles.userMessageText, text })}
           showAvatar={false}
           showTitle={false}
           variant="bubble"

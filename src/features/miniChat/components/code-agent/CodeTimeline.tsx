@@ -1,5 +1,6 @@
 import { createStyles } from "antd-style";
 import type { Descendant } from "slate";
+import { ChatItem } from "@lobehub/ui/chat";
 import { File as FileIcon, Folder } from "lucide-react";
 import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/code-agent";
 import { StreamingText } from "./StreamingText";
@@ -15,6 +16,7 @@ import { TaskStart, TaskEnd } from "./TaskBoundary";
 import { ResultSummary } from "./ResultSummary";
 import { StatusIndicator } from "./StatusIndicator";
 import { ReadOnlySlateMessage } from "../ReadOnlySlateMessage";
+import { useMiniChatStyles } from "../../styles";
 
 interface Props {
 	items: CodeAgentTimelineItem[];
@@ -48,10 +50,11 @@ const useStyles = createStyles(({ css, token }) => ({
 	userBubble: css`
 		font-size: 13px;
 		color: ${token.colorText};
-		background: ${token.colorFillTertiary};
+		background: ${token.colorBgContainer};
 		padding: 8px 12px;
 		border-radius: 12px 12px 0 12px;
 		max-width: 85%;
+		border: 1px solid color-mix(in srgb, ${token.colorBgContainer} 66%, transparent);
 		word-break: break-word;
 		white-space: pre-wrap;
 	`,
@@ -187,6 +190,7 @@ export function CodeTimeline({
 	spinnerMode,
 }: Props) {
 	const { styles } = useStyles();
+	const { styles: miniChatStyles, cx } = useMiniChatStyles();
 	const hasVendorStatusText = vendorStatusText.trim().length > 0;
 	const hasLiveCursor =
 		isThinking
@@ -234,11 +238,24 @@ export function CodeTimeline({
 
 			case "user":
 				return (
-					<div key={item.id} className={styles.userBubbleContainer}>
-						<div className={styles.userBubble}>
+				
+					<ChatItem
+						key={item.id}
+						avatar={{
+							avatar: <span className={miniChatStyles.userAvatar}>我</span>,
+							backgroundColor: "transparent",
+							title: "You",
+						}}
+						className={cx(miniChatStyles.chatItem, styles.userBubbleContainer)}
+						message={item.text || ""}
+						placement="right"
+						renderMessage={() => <div className={miniChatStyles.userMessageText}>
 							<UserMessageContent item={item} styles={styles} />
-						</div>
-					</div>
+						</div>}
+						showTitle={false}
+						showAvatar={false}
+						variant="bubble"
+					/>
 				);
 
 			case "system-notice":

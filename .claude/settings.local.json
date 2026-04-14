@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git pull:*)",
+      "Bash(git config:*)",
+      "Bash(env)",
+      "Bash(egrep '^\\(http_proxy|https_proxy|HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|all_proxy|NO_PROXY|no_proxy\\)=')",
+      "Bash(python3 -)",
+      "Bash(curl -I --max-time 20 https://www.baidu.com)",
+      "Bash(ssh -T -o ConnectTimeout=15 git@github.com)",
+      "Bash(pnpm:*)",
+      "Bash(grep -l \"modal\\\\|dialog\\\\|pending\" /Users/liangpingbo/Desktop/个人/MimiClaw/src/pages/*.tsx)"
+    ]
+  }
+}

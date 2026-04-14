@@ -5,6 +5,7 @@ export const useMiniChatStyles = createStyles(
 		root: css`
 			--mini-chat-side-gap: 14px;
 			--mini-chat-content-width: 800px;
+			--mini-chat-dock-inline-padding: 12px;
 			height: 100vh;
 			width: 100vw;
 			display: flex;
@@ -15,6 +16,7 @@ export const useMiniChatStyles = createStyles(
 	rootEmbedded: css`
 		--mini-chat-side-gap: 16px;
 		--mini-chat-content-width: min(800px, calc(100% - (var(--mini-chat-side-gap) * 2)));
+		--mini-chat-dock-inline-padding: var(--mini-chat-side-gap);
 		height: 100%;
 		width: 100%;
 		box-sizing: border-box;
@@ -1092,6 +1094,19 @@ export const useMiniChatStyles = createStyles(
 			padding-bottom: 8px;
 			box-sizing: border-box;
 		`,
+		backBottomAnchor: css`
+			position: absolute;
+			inset: 0;
+			width: calc(100% - (var(--mini-chat-dock-inline-padding, 12px) * 2));
+			max-width: var(--mini-chat-content-width);
+			margin: 0 auto;
+			overflow: visible;
+			pointer-events: none;
+			z-index: 8;
+		`,
+		backBottomButton: css`
+			inset-block-end: 24px;
+		`,
 		messageMetaRow: css`
 		display: inline-flex;
 		align-items: center;
@@ -1137,6 +1152,7 @@ export const useMiniChatStyles = createStyles(
 		width: 100%;
 		animation: chatSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 		transform-origin: bottom center;
+		transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
 
 		@keyframes chatSlideIn {
 			0% {

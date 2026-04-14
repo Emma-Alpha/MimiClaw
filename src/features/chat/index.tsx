@@ -30,11 +30,12 @@ const useStyles = createStyles(({ token, css }) => ({
   chatPage: css`
     --chat-window-side-gap: 24px;
     --chat-window-content-width: min(880px, calc(100% - (var(--chat-window-side-gap) * 2)));
+    --chat-dock-inline-padding: 12px;
     position: relative;
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: transparent;
+    background: hsl(var(--background));
     transition: background 0.3s;
   `,
   toolbar: css`
@@ -64,6 +65,19 @@ const useStyles = createStyles(({ token, css }) => ({
     padding: 0 0 32px; /* Removed double horizontal padding, added vertical breathing room */
     box-sizing: border-box;
     width: 100%;
+  `,
+  backBottomAnchor: css`
+    position: absolute;
+    inset: 0;
+    width: calc(100% - ((var(--chat-window-side-gap) * 2) + (var(--chat-dock-inline-padding) * 2)));
+    max-width: calc(var(--chat-window-content-width) - (var(--chat-dock-inline-padding) * 2));
+    margin: 0 auto;
+    overflow: visible;
+    pointer-events: none;
+    z-index: 8;
+  `,
+  backBottomButton: css`
+    inset-block-end: 24px;
   `,
   errorBar: css`
     padding: 8px 16px;
@@ -457,10 +471,13 @@ export function Chat() {
         )}
 
         {!isEmpty && !showInitialSkeleton && (
-          <BackBottomButton
-            visible={!atBottom}
-            onScrollToBottom={() => scrollToBottom(true)}
-          />
+          <div className={styles.backBottomAnchor}>
+            <BackBottomButton
+              visible={!atBottom}
+              className={styles.backBottomButton}
+              onScrollToBottom={() => scrollToBottom(true)}
+            />
+          </div>
         )}
       </div>
 

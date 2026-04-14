@@ -5,7 +5,7 @@
  */
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { ConfigProvider as AntdConfigProvider } from 'antd';
-import { ConfigProvider as LobeConfigProvider } from '@lobehub/ui';
+import { ConfigProvider as LobeConfigProvider, ThemeProvider as LobeThemeProvider } from '@lobehub/ui';
 // @ts-expect-error – internal path, not in public types
 import AppElementContext from '@lobehub/ui/es/ThemeProvider/AppElementContext';
 import {
@@ -95,7 +95,7 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
       }),
       // Enable antd CSS variable mode so --ant-* vars are injected at :root,
       // making them accessible to @lobehub/ui portals that render outside the tree.
-      cssVar: { prefix: 'ant' },
+      cssVar: { prefix: 'ant', key: 'lobe-vars' },
     }),
     [],
   );
@@ -108,11 +108,14 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
   return (
     <div ref={popupContainerRef} data-ywkf-root style={{ position: 'relative', height: '100%' }}>
       <StyleProvider>
-        <AntdThemeProvider
+        <LobeThemeProvider
           appearance={resolvedAppearance}
+          defaultAppearance={resolvedAppearance}
+          defaultThemeMode={resolvedAppearance}
+          enableCustomFonts={false}
+          enableGlobalStyle={false}
           themeMode={theme === 'system' ? 'auto' : theme}
           theme={getAntdTheme}
-          customToken={{ cssVar: true }}
         >
           <LobeConfigProvider motion={motion}>
             <TypographyTokenGlobalStyle />
@@ -130,7 +133,7 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
               </div>
             </AntdConfigProvider>
           </LobeConfigProvider>
-        </AntdThemeProvider>
+        </LobeThemeProvider>
       </StyleProvider>
     </div>
   );

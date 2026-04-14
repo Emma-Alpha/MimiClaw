@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { OpenClaw } from '@lobehub/icons';
 import { ChatItem } from '@lobehub/ui/chat';
+import { Avatar } from "@lobehub/ui";
+import { useResponsive } from "antd-style";
 
 import type { EnhancedMarkdownProps } from '@/lib/markdown-enhancements';
 import type { AttachedFileMeta, RawMessage } from '@/stores/chat';
@@ -73,11 +75,24 @@ export function AssistantMessage({
   tools,
 }: AssistantMessageProps) {
   const { styles, cx } = useMessageStyles();
+  const { mobile } = useResponsive();
   const [lightboxImg, setLightboxImg] = useState<LightboxImage | null>(null);
 
   const { Above, Below } = getAssistantProtocolComponents(protocol);
 
   const metaTime = isStreaming ? null : formatMetaTimestamp(message.timestamp);
+
+  const assistantAvatarSize = mobile ? 32: 40;
+  const assistantIconSize = mobile ? 20: 24;
+
+  const assistantAvatarNode = (
+    <Avatar  
+    avatar={<OpenClaw.Color size={assistantIconSize} />} 
+    background="transparent"
+    title="极智"
+    size={assistantAvatarSize}
+    />
+  );
 
   const metaRow = (
     <div className={styles.messageMetaRow}>
@@ -118,16 +133,14 @@ export function AssistantMessage({
     />
   );
 
+  const hasRenderableText = hasText && text.trim().length > 0;
+
   return (
     <>
-      <ChatItem
+      {hasRenderableText ? <ChatItem
         actions={hasText ? <AssistantActions className={styles.assistantActions} text={text} /> : undefined}
         avatar={{
-          avatar: (
-            <span className={styles.messageMetaAvatar}>
-              <OpenClaw.Color size={14} />
-            </span>
-          ),
+          avatar: assistantAvatarNode,
           backgroundColor: 'transparent',
           title: '极智',
         }}
@@ -148,7 +161,13 @@ export function AssistantMessage({
         showTitle={false}
         showAvatar={false}
         variant="bubble"
-      />
+      /> : (
+        <div className={styles.chatItem}>
+          {metaRow}
+          {assistantAboveMessage}
+          {assistantBelowMessage}
+        </div>
+      )}
 
       {lightboxImg && (
         <ImageLightbox
