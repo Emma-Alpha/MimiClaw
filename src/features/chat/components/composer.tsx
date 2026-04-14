@@ -85,20 +85,19 @@ const useStyles = createStyles(({ token, css }) => ({
 		gap: 4px;
 		border-radius: 20px;
 		overflow: visible;
-		transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+		transition: border-radius 0.3s cubic-bezier(0.32, 0.72, 0, 1),
+			background-color 0.2s ease,
+			padding 0.3s cubic-bezier(0.32, 0.72, 0, 1),
+			box-shadow 0.2s ease;
 	`,
 	shellDesktop: css`
-		padding: 8px 10px 8px;
-		--composer-ring-color: var(--color-token-border, ${token.colorBorderSecondary});
-		--composer-ring-color-focus: var(--color-token-border-heavy, var(--color-token-border, ${token.colorBorderSecondary}));
+		padding: 6px 8px;
+		min-height: 40px;
+		--composer-ring-color: var(--color-token-border, ${token.colorBorder});
+		--composer-ring-color-focus: var(--color-token-border-heavy, var(--color-token-border, ${token.colorBorder}));
 		background: ${token.colorBgContainer};
 		border: 1px solid transparent;
 		box-shadow: 0 0 0 0.5px var(--composer-ring-color);
-		backdrop-filter: blur(16px);
-
-		@supports (color: color-mix(in srgb, white 50%, black)) {
-			background: color-mix(in srgb, ${token.colorBgContainer} 90%, transparent);
-		}
 
 		&:focus-within {
 			border-color: transparent;
@@ -139,7 +138,7 @@ const useStyles = createStyles(({ token, css }) => ({
 		width: 100%;
 		padding: 0;
 		line-height: 1.5;
-		font-size: 13px;
+		font-size: 14px;
 		box-shadow: none !important;
 		background: transparent;
 		white-space: pre-wrap;
@@ -152,7 +151,7 @@ const useStyles = createStyles(({ token, css }) => ({
 	inputEditorDesktop: css`
 		min-height: 24px;
 		max-height: 200px;
-		font-size: 13px;
+		font-size: 14px;
 		line-height: 1.5;
 	`,
 	inputEditorCompact: css`
@@ -357,13 +356,13 @@ const useStyles = createStyles(({ token, css }) => ({
 		height: 28px;
 		padding: 0 !important;
 		border: none !important;
-		border-radius: 999px;
+		border-radius: 14px;
 		background: ${token.colorText} !important;
 		color: ${token.colorBgContainer} !important;
 		cursor: pointer;
-		transition: background 0.16s ease, opacity 0.16s ease;
+		transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 		line-height: 1;
-		box-shadow: none;
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 		}
 
 		& .ant-btn-icon {
@@ -375,7 +374,12 @@ const useStyles = createStyles(({ token, css }) => ({
 		}
 
 		&:hover:not(:disabled) {
-			opacity: 0.92;
+			transform: scale(1.05);
+			box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+		}
+
+		&:active:not(:disabled) {
+			transform: scale(0.95);
 		}
 
 		&:focus-visible {
@@ -386,6 +390,7 @@ const useStyles = createStyles(({ token, css }) => ({
 		&:disabled {
 			opacity: 0.5 !important;
 			cursor: not-allowed;
+			box-shadow: none !important;
 			background: ${token.colorText} !important;
 			color: ${token.colorBgContainer} !important;
 		}

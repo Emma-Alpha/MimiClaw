@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { VList, type VListHandle } from "virtua";
 import { ClaudeCode, OpenClaw } from "@lobehub/icons";
 import { Markdown } from "@lobehub/ui";
@@ -11,6 +11,7 @@ import { CodeTimeline } from "./code-agent/CodeTimeline";
 import { ReadOnlySlateMessage } from "./ReadOnlySlateMessage";
 import { TypingIndicator } from "./TypingIndicator";
 import { useFileReferenceMarkdownProps } from "./file-reference-markdown";
+import { BackBottomButton } from "@/components/common/BackBottomButton";
 import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/code-agent";
 
 	type MiniChatTimelineProps = {
@@ -178,6 +179,17 @@ function MiniChatTimelineImpl({
 	const { styles, cx } = useMiniChatStyles();
 	const markdownProps = useFileReferenceMarkdownProps(codeWorkspaceRoot);
 	const vListRef = useRef<VListHandle | null>(null);
+	const [atBottom, setAtBottom] = useState(true);
+
+	const scrollToBottom = useCallback((smooth = true) => {
+		vListRef.current?.scrollToIndex(Number.MAX_SAFE_INTEGER, { align: "end", smooth });
+	}, []);
+
+	const handleScroll = useCallback((offset: number) => {
+		const ref = vListRef.current;
+		if (!ref) return;
+		setAtBottom(ref.scrollSize - offset - ref.viewportSize <= 40);
+	}, []);
 	const showChatPending = sending || !!streamingText || pendingFinal;
 	const effectiveVendorStatusText =
 		vendorStatusText
@@ -524,6 +536,7 @@ function MiniChatTimelineImpl({
 				styles.scrollArea,
 				embedded && styles.scrollAreaEmbedded,
 			)}
+			style={{ position: "relative" }}
 		>
 			{!hasContent ? (
 				<div className={styles.scrollAreaInner}>
@@ -542,6 +555,7 @@ function MiniChatTimelineImpl({
 					ref={vListRef}
 					data={timelineRows}
 					style={{ height: "100%", paddingBottom: 18, paddingTop: 18 }}
+					onScroll={handleScroll}
 				>
 					{(row) => (
 						<div className={styles.timelineVirtualItem}>
@@ -549,6 +563,13 @@ function MiniChatTimelineImpl({
 						</div>
 					)}
 				</VList>
+			)}
+
+			{hasContent && (
+				<BackBottomButton
+					visible={!atBottom}
+					onScrollToBottom={() => scrollToBottom(true)}
+				/>
 			)}
 		</div>
 	);

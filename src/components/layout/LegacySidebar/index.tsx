@@ -194,6 +194,64 @@ function FolderSection({
 	);
 }
 
+function ThreadLikeFlatSessionRow({
+	label,
+	timeLabel,
+	active,
+	onClick,
+	leading,
+	leadingVisible = false,
+	actions,
+	styles,
+	cx,
+}: {
+	label: string;
+	timeLabel: string;
+	active: boolean;
+	onClick: () => void;
+	leading?: ReactNode;
+	leadingVisible?: boolean;
+	actions?: ReactNode;
+	styles: LegacySidebarStyles;
+	cx: LegacySidebarCx;
+}) {
+	const hasActions = Boolean(actions);
+	return (
+		<div className={cx(styles.workspaceRow, styles.threadLikeSessionRow)}>
+			<button
+				type="button"
+				onClick={onClick}
+				className={cx(
+					styles.threadSessionButton,
+					hasActions && styles.threadLikeSessionButtonWithActions,
+					active ? styles.listButtonActive : styles.listButtonIdle,
+				)}
+			>
+				{leading ? (
+					<span
+						aria-hidden="true"
+						data-session-lead="true"
+						className={cx(styles.threadLikeSessionLead, leadingVisible && styles.threadLikeSessionLeadVisible)}
+					>
+						{leading}
+					</span>
+				) : null}
+				<div className={styles.listButtonRow}>
+					<span className={styles.listButtonLabel}>{label}</span>
+					<span className={styles.sessionTime} data-session-time={hasActions ? "true" : undefined}>
+						{timeLabel}
+					</span>
+				</div>
+			</button>
+			{actions ? (
+				<div className={styles.workspaceActions} data-workspace-actions="true">
+					{actions}
+				</div>
+			) : null}
+		</div>
+	);
+}
+
 function buildCodeAgentRoute(workspaceRoot: string, sessionId?: string, newThreadToken?: string): string {
 	const params = new URLSearchParams();
 	params.set("workspaceRoot", workspaceRoot);
@@ -757,6 +815,8 @@ export function LegacySidebar() {
 	const xiaojiuCount = filteredXiaojiuSessions.length;
 	const realtimeVoiceCount = filteredRealtimeVoiceSessions.length;
 	const threadCategoryCount = visibleThreadWorkspaces.length;
+	const hasActiveOpenClawSession =
+		pathname === "/" && openClawSessions.some((session) => session.key === currentSessionKey);
 
 	const canToggleOpenClawSessions = openClawCount > COLLAPSIBLE_SESSION_LIMIT;
 	const visibleOpenClawSessions =
@@ -1074,7 +1134,7 @@ export function LegacySidebar() {
 					icon={<MessageSquare className={styles.primaryActionIcon} strokeWidth={2} />}
 					label={t("sidebar.folder.openClaw", { defaultValue: "OpenClaw" })}
 					count={openClawCount}
-					active={pathname === "/"}
+					active={pathname === "/" && !hasActiveOpenClawSession}
 					expanded={isFolderExpanded("openclaw")}
 					onActivate={() => {
 						toggleFolder("openclaw");
@@ -1092,37 +1152,30 @@ export function LegacySidebar() {
 						const isActive = pathname === "/" && currentSessionKey === session.key;
 						const isRunning = isActive && chatSending;
 						return (
-							<div key={session.key} className={styles.chatSessionRow}>
-								<button
-									type="button"
-									onClick={() => handleOpenClawSession(session.key)}
-									className={cx(
-										styles.sessionButton,
-										isActive ? styles.sessionButtonActive : styles.sessionButtonIdle,
-									)}
-								>
-									<span aria-hidden="true" data-subitem-pin="true" className={styles.subItemPinWrap}>
-										<Pin className={styles.subItemPinIcon} />
-									</span>
-									<div className={styles.sessionMainRow}>
-										{isRunning ? <Loader2 className={styles.loader} /> : null}
-										<div className={styles.sessionTitle}>{session.label}</div>
-										<span className={styles.sessionTime}>{formatRelativeTime(session.updatedAt, i18n.language)}</span>
-									</div>
-								</button>
-								<button
-									aria-label="Delete session"
-									onClick={(event) => {
-										event.stopPropagation();
-										setSessionToDelete({ key: session.key, label: session.label });
-									}}
-									type="button"
-									data-session-delete="true"
-									className={styles.sessionDeleteButton}
-								>
-									<Trash2 className={styles.sessionDeleteIcon} />
-								</button>
-							</div>
+							<ThreadLikeFlatSessionRow
+								key={session.key}
+								label={session.label}
+								timeLabel={formatRelativeTime(session.updatedAt, i18n.language)}
+								active={isActive}
+								onClick={() => handleOpenClawSession(session.key)}
+								leading={isRunning ? <Loader2 className={styles.loader} /> : <Pin className={styles.subItemPinIcon} />}
+								leadingVisible={isRunning}
+								actions={(
+									<button
+										aria-label="Delete session"
+										onClick={(event) => {
+											event.stopPropagation();
+											setSessionToDelete({ key: session.key, label: session.label });
+										}}
+										type="button"
+										className={cx(styles.workspaceActionButton, styles.threadWorkspaceActionButton, styles.threadLikeDeleteActionButton)}
+									>
+										<Trash2 className={styles.sessionDeleteIcon} />
+									</button>
+								)}
+								styles={styles}
+								cx={cx}
+							/>
 						);
 					})}
 					{canToggleOpenClawSessions ? (
@@ -1218,20 +1271,16 @@ export function LegacySidebar() {
 					{visibleRealtimeVoiceSessions.map((session) => {
 						const isActive = pathname.startsWith("/voice-chat") && voiceActiveSessionId === session.id;
 						return (
-							<button
+							<ThreadLikeFlatSessionRow
 								key={session.id}
-								type="button"
+								label={session.label}
+								timeLabel={formatRelativeTime(session.updatedAt, i18n.language)}
+								active={isActive}
 								onClick={() => handleRealtimeVoiceSession(session.id)}
-								className={cx(styles.listButton, isActive ? styles.listButtonActive : styles.listButtonIdle)}
-							>
-								<span aria-hidden="true" data-subitem-pin="true" className={styles.subItemPinWrap}>
-									<Pin className={styles.subItemPinIcon} />
-								</span>
-								<div className={styles.listButtonRow}>
-									<span className={styles.listButtonLabel}>{session.label}</span>
-									<span className={styles.sessionTime}>{formatRelativeTime(session.updatedAt, i18n.language)}</span>
-								</div>
-							</button>
+								leading={<Pin className={styles.subItemPinIcon} />}
+								styles={styles}
+								cx={cx}
+							/>
 						);
 					})}
 					{canToggleRealtimeVoiceSessions ? (

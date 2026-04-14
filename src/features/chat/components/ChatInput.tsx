@@ -37,7 +37,14 @@ const useStyles = createStyles(({ token, css }) => ({
     width: 100%;
     max-width: var(--chat-window-content-width, 800px);
     margin: 0 auto;
-    padding: 0 0 24px;
+    padding: 8px 12px 12px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 6;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   `,
 	recordingPill: css`
     display: flex;
@@ -49,7 +56,7 @@ const useStyles = createStyles(({ token, css }) => ({
     border: 1px solid rgba(239, 68, 68, 0.15);
     animation: pill-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     backdrop-filter: blur(8px);
-    
+
     @keyframes pill-slide-in {
       0% { opacity: 0; transform: translateX(-10px) scale(0.95); }
       100% { opacity: 1; transform: translateX(0) scale(1); }
@@ -62,17 +69,22 @@ const useStyles = createStyles(({ token, css }) => ({
 	    font-variant-numeric: tabular-nums;
 	    min-width: 36px;
 	  `,
-	recordingDot: css`
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
+	waveContainer: css`
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 16px;
+  `,
+	waveBar: css`
+    width: 3px;
+    border-radius: 2px;
     background: #ef4444;
-    animation: recording-pulse 1.5s infinite;
+    animation: waveAnim 1s ease-in-out infinite;
+    min-height: 4px;
 
-    @keyframes recording-pulse {
-      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-      70% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    @keyframes waveAnim {
+      0%, 100% { height: 4px; opacity: 0.7; }
+      50% { height: 14px; opacity: 1; }
     }
   `,
 	agentPickerDropdown: css`
@@ -814,9 +826,13 @@ export function ChatInput({
 					</>
 				)}
 				rightActions={
-					isRecording ? (
+						isRecording ? (
 						<div className={styles.recordingPill}>
-							<div className={styles.recordingDot} />
+							<div className={styles.waveContainer}>
+								{[0.1, 0.4, 0.2, 0.5, 0.3].map((d) => (
+									<div key={d} className={styles.waveBar} style={{ animationDelay: `-${d}s` }} />
+								))}
+							</div>
 							<span className={styles.recordingTime}>
 								{formatTime(recordingTime)}
 							</span>

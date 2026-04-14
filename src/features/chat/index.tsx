@@ -5,9 +5,11 @@
  * are in the toolbar; messages render with markdown + streaming.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { AlertCircle, ChevronDown, Loader2, OctagonX, Sparkles } from 'lucide-react';
+import { AlertCircle, Loader2, OctagonX } from 'lucide-react';
 import { createStyles } from 'antd-style';
 import { VList, type VListHandle } from 'virtua';
+import { OpenClaw } from '@lobehub/icons';
+import { ChatItem } from '@lobehub/ui/chat';
 import { useChatStore, type RawMessage } from '@/stores/chat';
 import { useGatewayStore } from '@/stores/gateway';
 import { useAgentsStore } from '@/stores/agents';
@@ -18,14 +20,16 @@ import { ChatInput } from './components/ChatInput';
 import { ChatToolbar } from './components/ChatToolbar';
 import { invokeIpc } from '@/lib/api-client';
 import { extractImages, extractText, extractThinking, extractToolUse } from './lib/message-utils';
+import { useMessageStyles } from './components/messages/styles';
 import { useTranslation } from 'react-i18next';
 import { useMinLoading } from '@/hooks/use-min-loading';
 import { ChatSkeletonList } from './components/ChatSkeletonList';
+import { BackBottomButton } from '@/components/common/BackBottomButton';
 
 const useStyles = createStyles(({ token, css }) => ({
   chatPage: css`
-    --chat-window-side-gap: 16px;
-    --chat-window-content-width: min(800px, calc(100% - (var(--chat-window-side-gap) * 2)));
+    --chat-window-side-gap: 24px;
+    --chat-window-content-width: min(880px, calc(100% - (var(--chat-window-side-gap) * 2)));
     position: relative;
     display: flex;
     flex-direction: column;
@@ -57,7 +61,7 @@ const useStyles = createStyles(({ token, css }) => ({
   timelineVirtualItem: css`
     max-width: var(--chat-window-content-width);
     margin: 0 auto;
-    padding: 0 var(--chat-window-side-gap) 24px;
+    padding: 0 0 32px; /* Removed double horizontal padding, added vertical breathing room */
     box-sizing: border-box;
     width: 100%;
   `,
@@ -149,51 +153,6 @@ const useStyles = createStyles(({ token, css }) => ({
       background: ${token.colorFillSecondary};
     }
   `,
-  typingBubble: css`
-    background: ${token.colorFillSecondary};
-    color: ${token.colorText};
-    border-radius: ${token.borderRadiusLG}px;
-    padding: 12px 16px;
-  `,
-  activityBubble: css`
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: var(--mimi-font-size-base);
-    color: ${token.colorTextSecondary};
-    background: ${token.colorFillSecondary};
-    border-radius: ${token.borderRadiusLG}px;
-    padding: 12px 16px;
-  `,
-  activityElapsed: css`
-    font-size: var(--mimi-font-size-sm);
-    color: ${token.colorTextTertiary};
-  `,
-  backBottom: css`
-    position: absolute;
-    right: 36px;
-    bottom: 22px;
-    z-index: 8;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    border: 1px solid ${token.colorBorderSecondary};
-    border-radius: 999px;
-    background: ${token.colorBgElevated};
-    color: ${token.colorTextSecondary};
-    padding: 8px 12px;
-    cursor: pointer;
-    box-shadow: ${token.boxShadowSecondary};
-    opacity: 0;
-    transform: translateY(8px);
-    pointer-events: none;
-    transition: opacity 0.2s ease, transform 0.2s ease;
-  `,
-  backBottomVisible: css`
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-  `,
   interruptedHint: css`
     display: flex;
     align-items: center;
@@ -221,7 +180,7 @@ type TimelineRenderRow = {
 
 export function Chat() {
   const { t } = useTranslation('chat');
-  const { styles, cx } = useStyles();
+  const { styles } = useStyles();
   const location = useLocation();
   const gatewayStatus = useGatewayStore((s) => s.status);
   const isGatewayRunning = gatewayStatus.state === 'running';
@@ -498,15 +457,10 @@ export function Chat() {
         )}
 
         {!isEmpty && !showInitialSkeleton && (
-          <button
-            type="button"
-            className={cx(styles.backBottom, !atBottom && styles.backBottomVisible)}
-            onClick={() => scrollToBottom(true)}
-            title={t('backToBottom', { defaultValue: 'Back to bottom' })}
-          >
-            <ChevronDown style={{ width: 14, height: 14 }} />
-            <span>{t('backToBottom', { defaultValue: 'Back to bottom' })}</span>
-          </button>
+          <BackBottomButton
+            visible={!atBottom}
+            onScrollToBottom={() => scrollToBottom(true)}
+          />
         )}
       </div>
 
@@ -590,46 +544,105 @@ function useElapsedLabel(startedAt?: number): string | null {
 // ── Typing Indicator ────────────────────────────────────────────
 
 function TypingIndicator({ startedAt }: { startedAt?: number }) {
-  const { styles } = useStyles();
-  const { t } = useTranslation('chat');
+  const { styles } = useMessageStyles();
   const elapsed = useElapsedLabel(startedAt);
 
   return (
-    <div style={{ display: 'flex', gap: 12 }}>
-      <div style={{ display: 'flex', width: 32, height: 32, flexShrink: 0, alignItems: 'center', justifyContent: 'center', borderRadius: '50%', marginTop: 4, background: 'rgba(0,0,0,0.05)' }}>
-        <Sparkles style={{ width: 16, height: 16 }} />
-      </div>
-      <div className={styles.typingBubble}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span>{t('status.thinking', { defaultValue: 'Thinking...' })}</span>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', opacity: 0.4, animation: 'bounce 1s infinite', animationDelay: '0ms' }} />
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', opacity: 0.4, animation: 'bounce 1s infinite', animationDelay: '150ms' }} />
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', opacity: 0.4, animation: 'bounce 1s infinite', animationDelay: '300ms' }} />
+    <ChatItem
+      avatar={{
+        avatar: (
+          <span className={styles.messageMetaAvatar}>
+            <OpenClaw.Color size={14} />
+          </span>
+        ),
+        backgroundColor: 'transparent',
+        title: '极智',
+      }}
+      className={styles.chatItem}
+      message=""
+      placement="left"
+      renderMessage={() => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, height: 22 }}>
+          <span
+            style={{
+              height: 6,
+              width: 6,
+              borderRadius: '50%',
+              backgroundColor: 'var(--ant-color-text-tertiary, #999)',
+              opacity: 0.6,
+              animation: 'bounce 1.4s infinite ease-in-out both',
+              animationDelay: '-0.32s',
+            }}
+          />
+          <span
+            style={{
+              height: 6,
+              width: 6,
+              borderRadius: '50%',
+              backgroundColor: 'var(--ant-color-text-tertiary, #999)',
+              opacity: 0.6,
+              animation: 'bounce 1.4s infinite ease-in-out both',
+              animationDelay: '-0.16s',
+            }}
+          />
+          <span
+            style={{
+              height: 6,
+              width: 6,
+              borderRadius: '50%',
+              backgroundColor: 'var(--ant-color-text-tertiary, #999)',
+              opacity: 0.6,
+              animation: 'bounce 1.4s infinite ease-in-out both',
+            }}
+          />
           {elapsed && <span className={styles.activityElapsed}>({elapsed})</span>}
+          <style>{`
+            @keyframes bounce {
+              0%, 80%, 100% { transform: scale(0); }
+              40% { transform: scale(1); }
+            }
+          `}</style>
         </div>
-      </div>
-    </div>
+      )}
+      showAvatar={false}
+      showTitle={false}
+      variant="bubble"
+    />
   );
 }
 
 // ── Activity Indicator ──────────────────────────────────────────
 function ActivityIndicator({ phase, startedAt }: { phase: 'tool_processing'; startedAt?: number }) {
   void phase;
-  const { styles } = useStyles();
+  const { styles } = useMessageStyles();
   const { t } = useTranslation('chat');
   const elapsed = useElapsedLabel(startedAt);
 
   return (
-    <div style={{ display: 'flex', gap: 12 }}>
-      <div style={{ display: 'flex', width: 32, height: 32, flexShrink: 0, alignItems: 'center', justifyContent: 'center', borderRadius: '50%', marginTop: 4, background: 'rgba(0,0,0,0.05)' }}>
-        <Sparkles style={{ width: 16, height: 16 }} />
-      </div>
-      <div className={styles.activityBubble}>
-        <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} />
-        <span>{t('status.processingTools', { defaultValue: 'Processing tool results...' })}</span>
-        {elapsed && <span className={styles.activityElapsed}>({elapsed})</span>}
-      </div>
-    </div>
+    <ChatItem
+      avatar={{
+        avatar: (
+          <span className={styles.messageMetaAvatar}>
+            <OpenClaw.Color size={14} />
+          </span>
+        ),
+        backgroundColor: 'transparent',
+        title: '极智',
+      }}
+      className={styles.chatItem}
+      message=""
+      placement="left"
+      renderMessage={() => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--mimi-font-size-base)', color: 'var(--ant-color-text-secondary)' }}>
+          <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} />
+          <span>{t('status.processingTools', { defaultValue: 'Processing tool results...' })}</span>
+          {elapsed && <span className={styles.activityElapsed}>({elapsed})</span>}
+        </div>
+      )}
+      showAvatar={false}
+      showTitle={false}
+      variant="bubble"
+    />
   );
 }
 

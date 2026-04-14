@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { File } from 'lucide-react';
+import { ChatItem } from '@lobehub/ui/chat';
 
 import type { AttachedFileMeta, RawMessage } from '@/stores/chat';
-import { formatTimestamp } from '../../lib/message-utils';
 import { renderUserTextBubble } from './protocols/user';
 import {
   FileCard,
@@ -31,105 +31,115 @@ export function UserMessage({
   protocol,
   text,
 }: UserMessageProps) {
+  void message;
   const { styles, cx } = useMessageStyles();
   const [lightboxImg, setLightboxImg] = useState<LightboxImage | null>(null);
 
   const videoFiles = attachedFiles.filter((f) => f.mimeType.startsWith('video/'));
   const nonVideoFiles = attachedFiles.filter((f) => !f.mimeType.startsWith('video/'));
 
-  return (
-    <div className={cx(styles.messageRow, styles.messageRowUser)}>
-      <div className={cx(styles.contentCol, styles.contentColUser)}>
-        {images.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {images.map((img, i) => {
-              const src = imageSrc(img);
-              if (!src) return null;
+  const hasMedia = images.length > 0 || nonVideoFiles.length > 0 || videoFiles.length > 0;
 
-              return (
+  const mediaSection = hasMedia ? (
+    <div
+      className={cx(
+        styles.userMediaSection,
+        hasText && styles.userMediaSectionWithText,
+      )}
+    >
+      {images.length > 0 && (
+        <div className={styles.userMediaRow}>
+          {images.map((img, i) => {
+            const src = imageSrc(img);
+            if (!src) return null;
+
+            return (
+              <ImageThumbnail
+                key={`content-img-${src ?? img.mimeType}-${i}`}
+                src={src}
+                fileName="image"
+                base64={img.data}
+                mimeType={img.mimeType}
+                onPreview={() =>
+                  setLightboxImg({
+                    src,
+                    fileName: 'image',
+                    base64: img.data,
+                    mimeType: img.mimeType,
+                  })
+                }
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {nonVideoFiles.length > 0 && (
+        <div className={styles.userMediaRow}>
+          {nonVideoFiles.map((file, i) => {
+            const isImage = file.mimeType.startsWith('image/');
+            if (isImage && images.length > 0) return null;
+
+            if (isImage) {
+              const previewSrc = file.preview;
+              return previewSrc ? (
                 <ImageThumbnail
-                  key={`content-img-${src ?? img.mimeType}-${i}`}
-                  src={src}
-                  fileName="image"
-                  base64={img.data}
-                  mimeType={img.mimeType}
+                  key={`local-img-${file.fileName}-${i}`}
+                  src={previewSrc}
+                  fileName={file.fileName}
+                  filePath={file.filePath}
+                  mimeType={file.mimeType}
                   onPreview={() =>
                     setLightboxImg({
-                      src,
-                      fileName: 'image',
-                      base64: img.data,
-                      mimeType: img.mimeType,
+                      src: previewSrc,
+                      fileName: file.fileName,
+                      filePath: file.filePath,
+                      mimeType: file.mimeType,
                     })
                   }
                 />
+              ) : (
+                <div
+                  key={`local-nopreview-${file.fileName}-${i}`}
+                  className={styles.mediaPlaceholder}
+                >
+                  <File style={{ width: 32, height: 32, opacity: 0.5 }} />
+                </div>
               );
-            })}
-          </div>
-        )}
+            }
 
-        {nonVideoFiles.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {nonVideoFiles.map((file, i) => {
-              const isImage = file.mimeType.startsWith('image/');
-              if (isImage && images.length > 0) return null;
+            return <FileCard key={`local-file-${file.fileName}-${i}`} file={file} />;
+          })}
+        </div>
+      )}
 
-              if (isImage) {
-                const previewSrc = file.preview;
-                return previewSrc ? (
-                  <ImageThumbnail
-                    key={`local-img-${file.fileName}-${i}`}
-                    src={previewSrc}
-                    fileName={file.fileName}
-                    filePath={file.filePath}
-                    mimeType={file.mimeType}
-                    onPreview={() =>
-                      setLightboxImg({
-                        src: previewSrc,
-                        fileName: file.fileName,
-                        filePath: file.filePath,
-                        mimeType: file.mimeType,
-                      })
-                    }
-                  />
-                ) : (
-                  <div
-                    key={`local-nopreview-${file.fileName}-${i}`}
-                    style={{
-                      width: 144,
-                      height: 144,
-                      borderRadius: 8,
-                      border: '1px solid rgba(0,0,0,0.1)',
-                      background: 'rgba(0,0,0,0.05)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <File style={{ width: 32, height: 32, opacity: 0.5 }} />
-                  </div>
-                );
-              }
+      <VideoFileListViewer files={videoFiles} />
+    </div>
+  ) : null;
 
-              return <FileCard key={`local-file-${file.fileName}-${i}`} file={file} />;
-            })}
-          </div>
-        )}
-
-        <VideoFileListViewer files={videoFiles} />
-
-        {hasText && renderUserTextBubble(protocol, { className: styles.bubbleUser, text })}
-
-        {message.timestamp && (
-          <span
-            style={{
-              fontSize: 'var(--mimi-font-size-sm)',
-              color: 'var(--ant-color-text-quaternary)',
-            }}
-          >
-            {formatTimestamp(message.timestamp)}
-          </span>
-        )}
-      </div>
+  return (
+    <div className={cx(styles.userTurn, styles.chatItem)}>
+      {mediaSection}
+      {hasText && (
+        <ChatItem
+          avatar={{
+            avatar: <span className={styles.userAvatar}>我</span>,
+            backgroundColor: 'transparent',
+            title: '我',
+          }}
+          className={styles.userChatItem}
+          message={text}
+          placement="right"
+          renderMessage={() => (
+            <div className={styles.userMessageBubble}>
+              {renderUserTextBubble(protocol, { className: styles.userMessageText, text })}
+            </div>
+          )}
+          showAvatar={false}
+          showTitle={false}
+          variant="bubble"
+        />
+      )}
 
       {lightboxImg && (
         <ImageLightbox

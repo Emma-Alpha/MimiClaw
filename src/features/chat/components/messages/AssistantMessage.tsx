@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RobotOutlined } from '@ant-design/icons';
+import { OpenClaw } from '@lobehub/icons';
 import { ChatItem } from '@lobehub/ui/chat';
 
 import type { EnhancedMarkdownProps } from '@/lib/markdown-enhancements';
@@ -30,6 +30,34 @@ interface AssistantMessageProps {
   tools: AssistantToolEntry[];
 }
 
+function formatMetaTimestamp(
+  timestamp: number | null | undefined,
+): { dateTime: string; label: string } | null {
+  if (typeof timestamp !== 'number' || !Number.isFinite(timestamp)) return null;
+  const ms = timestamp < 1e12 ? timestamp * 1000 : timestamp;
+  const date = new Date(ms);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const now = new Date();
+  const isSameDay =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+
+  const labelFormatter = new Intl.DateTimeFormat('zh-CN', {
+    month: isSameDay ? undefined : '2-digit',
+    day: isSameDay ? undefined : '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+  return {
+    dateTime: date.toISOString(),
+    label: labelFormatter.format(date),
+  };
+}
+
 export function AssistantMessage({
   attachedFiles,
   hasText,
@@ -44,10 +72,32 @@ export function AssistantMessage({
   thinking,
   tools,
 }: AssistantMessageProps) {
-  const { styles } = useMessageStyles();
+  const { styles, cx } = useMessageStyles();
   const [lightboxImg, setLightboxImg] = useState<LightboxImage | null>(null);
 
   const { Above, Below } = getAssistantProtocolComponents(protocol);
+
+  const metaTime = isStreaming ? null : formatMetaTimestamp(message.timestamp);
+
+  const metaRow = (
+    <div className={styles.messageMetaRow}>
+      <span className={styles.messageMetaAvatar} title="极智">
+        <OpenClaw.Color size={14} />
+      </span>
+      <span className={styles.messageMetaLabel}>极智</span>
+      {metaTime ? (
+        <>
+          <span className={styles.messageMetaDot}>·</span>
+          <time className={styles.messageMetaTime} dateTime={metaTime.dateTime}>
+            {metaTime.label}
+          </time>
+        </>
+      ) : null}
+      {isStreaming ? (
+        <span className={styles.messageMetaStreaming}>处理中</span>
+      ) : null}
+    </div>
+  );
 
   const assistantAboveMessage = (
     <Above
@@ -71,14 +121,23 @@ export function AssistantMessage({
   return (
     <>
       <ChatItem
-        actions={hasText ? <AssistantActions text={text} /> : undefined}
+        actions={hasText ? <AssistantActions className={styles.assistantActions} text={text} /> : undefined}
         avatar={{
-          avatar: <RobotOutlined />,
-          backgroundColor: 'rgba(0,0,0,0.06)',
-          title: 'Assistant',
+          avatar: (
+            <span className={styles.messageMetaAvatar}>
+              <OpenClaw.Color size={14} />
+            </span>
+          ),
+          backgroundColor: 'transparent',
+          title: '极智',
         }}
-        className={styles.assistantItem}
-        aboveMessage={assistantAboveMessage}
+        className={cx(styles.chatItem, styles.assistantChatItem)}
+        aboveMessage={
+          <>
+            {metaRow}
+            {assistantAboveMessage}
+          </>
+        }
         belowMessage={assistantBelowMessage}
         markdownProps={{ ...markdownProps, animated: isStreaming }}
         message={text}
@@ -87,7 +146,7 @@ export function AssistantMessage({
           <div className={styles.assistantRender}>{editableContent}</div>
         )}
         showTitle={false}
-        time={message.timestamp}
+        showAvatar={false}
         variant="bubble"
       />
 

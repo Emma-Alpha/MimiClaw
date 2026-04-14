@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { Button } from 'antd';
-import { CopyOutlined, CheckOutlined } from '@ant-design/icons';
 import { ActionIconGroup } from '@lobehub/ui';
 import {
   AlertCircle,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Check,
+  Copy,
   File,
   FileArchive,
   FileText,
@@ -63,9 +64,7 @@ export function ToolCard({ name, input }: { name: string; input: unknown }) {
           style={{ width: 14, height: 14, color: '#22c55e', flexShrink: 0 }}
         />
         <Wrench style={{ width: 12, height: 12, flexShrink: 0, opacity: 0.6 }} />
-        <span style={{ fontFamily: 'monospace', fontSize: 'var(--mimi-font-size-sm)' }}>
-          {name}
-        </span>
+        <span className={styles.toolLabel}>{name}</span>
         {!expanded && summary && (
           <span className={styles.toolInputSummary}>{summary}</span>
         )}
@@ -127,32 +126,14 @@ export function ToolStatusBar({ tools }: { tools: StreamingToolStatus[] }) {
             )}
             {isError && <AlertCircle style={{ width: 14, height: 14, flexShrink: 0 }} />}
             <Wrench style={{ width: 12, height: 12, flexShrink: 0, opacity: 0.6 }} />
-            <span
-              style={{
-                fontFamily: 'monospace',
-                fontSize: 'var(--mimi-font-size-sm)',
-                fontWeight: 'var(--mimi-font-weight-medium)',
-              }}
-            >
-              {tool.name}
-            </span>
+            <span className={styles.toolStatusText}>{tool.name}</span>
             {duration && (
-              <span style={{ fontSize: 'var(--mimi-font-size-xs)', opacity: 0.6 }}>
+              <span className={styles.toolStatusDuration}>
                 {tool.summary ? `(${duration})` : duration}
               </span>
             )}
             {tool.summary && (
-              <span
-                style={{
-                  fontSize: 'var(--mimi-font-size-xs)',
-                  opacity: 0.7,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {tool.summary}
-              </span>
+              <span className={styles.toolStatusSummary}>{tool.summary}</span>
             )}
           </div>
         );
@@ -161,7 +142,7 @@ export function ToolStatusBar({ tools }: { tools: StreamingToolStatus[] }) {
   );
 }
 
-export function AssistantActions({ text }: { text: string }) {
+export function AssistantActions({ className, text }: { className?: string; text: string }) {
   const [copied, setCopied] = useState(false);
 
   const copyContent = useCallback(() => {
@@ -172,7 +153,7 @@ export function AssistantActions({ text }: { text: string }) {
 
   const items = [
     {
-      icon: copied ? CheckOutlined : CopyOutlined,
+      icon: copied ? Check : Copy,
       key: 'copy',
       label: copied ? 'Copied' : 'Copy',
       onClick: copyContent,
@@ -180,15 +161,17 @@ export function AssistantActions({ text }: { text: string }) {
   ];
 
   return (
-    <ActionIconGroup
-      items={items}
-      menu={items}
-      onActionClick={({ key }) => {
-        if (key === 'copy') copyContent();
-      }}
-      size="small"
-      variant="borderless"
-    />
+    <span className={className}>
+      <ActionIconGroup
+        items={items}
+        menu={items}
+        onActionClick={({ key }) => {
+          if (key === 'copy') copyContent();
+        }}
+        size="small"
+        variant="borderless"
+      />
+    </span>
   );
 }
 
@@ -250,20 +233,9 @@ export function FileCard({ file }: { file: AttachedFileMeta }) {
         mimeType={file.mimeType}
         style={{ width: 20, height: 20, flexShrink: 0, opacity: 0.6 }}
       />
-      <div style={{ minWidth: 0, overflow: 'hidden' }}>
-        <p
-          style={{
-            fontSize: 'var(--mimi-font-size-sm)',
-            fontWeight: 'var(--mimi-font-weight-medium)',
-            margin: 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {file.fileName}
-        </p>
-        <p style={{ fontSize: 'var(--mimi-font-size-2xs)', margin: 0, opacity: 0.6 }}>
+      <div className={styles.fileCardMeta}>
+        <p className={styles.fileCardName}>{file.fileName}</p>
+        <p className={styles.fileCardSize}>
           {file.fileSize > 0 ? formatFileSize(file.fileSize) : 'File'}
         </p>
       </div>

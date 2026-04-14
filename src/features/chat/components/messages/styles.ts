@@ -1,74 +1,331 @@
 import { createStyles } from 'antd-style';
 
 export const useMessageStyles = createStyles(({ token, css }) => ({
-  messageRow: css`
-    display: flex;
-    gap: 12px;
-    position: relative;
-  `,
-  messageRowUser: css`
-    flex-direction: row-reverse;
-  `,
-  assistantItem: css`
+  chatItem: css`
     width: 100%;
+    animation: chatSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transform-origin: bottom center;
+
+    @keyframes chatSlideIn {
+      0% {
+        opacity: 0;
+        transform: translateY(12px) scale(0.98);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
   `,
-  contentCol: css`
+  assistantChatItem: css`
+    :global {
+      .lobe-chat-item {
+        width: 100%;
+        gap: 8px !important;
+        padding: 10px 0 8px !important;
+      }
+
+      .lobe-chat-item-message {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        align-items: flex-start !important;
+        gap: 6px !important;
+        width: 100%;
+      }
+
+      .lobe-chat-item-message-item {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+      }
+    }
+  `,
+  userChatItem: css`
+    :global {
+      .lobe-chat-item {
+        width: 100%;
+        gap: 4px !important;
+        padding: 4px 0 10px !important;
+      }
+
+      .lobe-chat-item-message {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        align-items: flex-end !important;
+        gap: 4px !important;
+      }
+
+      .lobe-chat-item-message-item {
+        max-width: min(100%, 720px) !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+      }
+    }
+  `,
+  userTurn: css`
+    width: 100%;
     display: flex;
     flex-direction: column;
-    width: 100%;
-    min-width: 0;
-    max-width: 80%;
-    gap: 8px;
+    gap: 0;
   `,
-  contentColUser: css`
+  userMediaSection: css`
+    display: flex;
+    flex-direction: column;
     align-items: flex-end;
+    gap: 10px;
   `,
-  contentColAssistant: css`
-    align-items: flex-start;
+  userMediaSectionWithText: css`
+    margin-bottom: 8px;
   `,
-  assistantSection: css`
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    width: 100%;
-  `,
-  mediaRow: css`
+  userMediaRow: css`
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 10px;
+    justify-content: flex-end;
+  `,
+  userMessageBubble: css`
+    display: inline-flex;
+    max-width: min(100%, 720px);
+    padding: 10px 14px;
+    border-radius: 18px;
+    border: 1px solid ${token.colorBorderSecondary};
+    background: linear-gradient(180deg, ${token.colorBgElevated} 0%, ${token.colorFillQuaternary} 100%);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  `,
+  userMessageText: css`
+    font-size: var(--mimi-font-size-base);
+    line-height: var(--mimi-line-height-base);
+    color: ${token.colorText};
+    white-space: pre-wrap;
+    word-break: break-word;
+  `,
+  messageMetaRow: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 6px 2px;
+    min-height: 20px;
+  `,
+  messageMetaAvatar: css`
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorBgContainer};
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+  `,
+  messageMetaLabel: css`
+    font-size: var(--mimi-font-size-sm);
+    font-weight: var(--mimi-font-weight-semibold);
+    letter-spacing: 0.01em;
+    color: ${token.colorTextSecondary};
+  `,
+  messageMetaDot: css`
+    font-size: var(--mimi-font-size-xs);
+    color: ${token.colorTextQuaternary};
+  `,
+  messageMetaTime: css`
+    font-size: var(--mimi-font-size-xs);
+    color: ${token.colorTextTertiary};
+    font-variant-numeric: tabular-nums;
+  `,
+  messageMetaStreaming: css`
+    font-size: var(--mimi-font-size-xs);
+    font-weight: var(--mimi-font-weight-medium);
+    padding: 2px 7px;
+    border-radius: 999px;
+    color: ${token.colorPrimary};
+    background: ${token.colorPrimaryBg};
+  `,
+  userAvatar: css`
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: ${token.colorTextSecondary};
+    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorBgElevated};
   `,
   assistantRender: css`
     position: relative;
     min-height: 1.5em;
-  `,
-  bubbleUser: css`
-    position: relative;
-    border-radius: 16px;
-    padding: 12px 16px;
-    background: #f3f4f6;
-    color: ${token.colorText};
-    word-break: break-word;
-    font-size: var(--mimi-font-size-base);
-    white-space: pre-wrap;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-  `,
-  bubbleAssistant: css`
-    position: relative;
-    border-radius: 16px;
-    padding: 12px 16px;
-    background: #ffffff;
-    color: ${token.colorText};
     width: 100%;
-    word-break: break-word;
+    max-width: 100%;
     font-size: var(--mimi-font-size-base);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-    border: 1px solid rgba(0, 0, 0, 0.04);
+    line-height: var(--mimi-line-height-relaxed);
+    color: ${token.colorText};
+    overflow-wrap: anywhere;
+    word-break: break-word;
+
+    > *:first-child {
+      margin-top: 0 !important;
+    }
+
+    > *:last-child {
+      margin-bottom: 0 !important;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    p + p {
+      margin-top: 0.9em;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 {
+      margin-top: 1.35em;
+      margin-bottom: 0.55em;
+      line-height: var(--mimi-line-height-base);
+      font-weight: var(--mimi-font-weight-semibold);
+      letter-spacing: -0.01em;
+      color: ${token.colorText};
+    }
+
+    h1 {
+      font-size: var(--mimi-font-size-xl);
+    }
+
+    h2 {
+      font-size: calc(var(--mimi-font-size-lg) + 1px);
+    }
+
+    h3 {
+      font-size: var(--mimi-font-size-lg);
+    }
+
+    h4 {
+      font-size: var(--mimi-font-size-base);
+    }
+
+    ul,
+    ol {
+      margin: 0.45em 0 0;
+      padding-left: 1.35em;
+    }
+
+    li {
+      margin: 0.22em 0;
+      padding-left: 0.1em;
+    }
+
+    li > ul,
+    li > ol {
+      margin-top: 0.35em;
+    }
+
+    blockquote {
+      margin: 1em 0;
+      padding: 0.2em 0 0.2em 1em;
+      border-left: 3px solid ${token.colorBorderSecondary};
+      color: ${token.colorTextSecondary};
+    }
+
+    hr {
+      margin: 1.1em 0;
+      border: 0;
+      border-top: 1px solid ${token.colorBorderSecondary};
+    }
+
+    a {
+      color: ${token.colorPrimary};
+    }
+
+    strong {
+      font-weight: var(--mimi-font-weight-semibold);
+    }
+
+    pre {
+      margin: 1em 0 !important;
+      border-radius: ${token.borderRadiusLG}px;
+      overflow: hidden;
+    }
+
+    :not(pre) > code {
+      padding: 0.15em 0.4em;
+      border-radius: ${token.borderRadiusSM}px;
+      background: ${token.colorFillTertiary};
+      font-family: ${token.fontFamilyCode};
+      font-size: 0.92em;
+    }
+
+    table {
+      margin: 1em 0;
+      width: 100%;
+      display: block;
+      overflow-x: auto;
+    }
+  `,
+  mediaRow: css`
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-start;
+  `,
+  mediaPlaceholder: css`
+    width: 152px;
+    height: 152px;
+    border-radius: 18px;
+    border: 1px dashed ${token.colorBorderSecondary};
+    background: ${token.colorFillQuaternary};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: ${token.colorTextTertiary};
+  `,
+  assistantSection: css`
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  `,
+  assistantToolStack: css`
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  `,
+  activityElapsed: css`
+    font-size: var(--mimi-font-size-sm);
+    color: ${token.colorTextTertiary};
+  `,
+  assistantActions: css`
+    display: inline-flex;
+    align-items: center;
+    opacity: 0.92;
+
+    :global(button) {
+      border-radius: 999px !important;
+      color: ${token.colorTextSecondary} !important;
+      transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    }
+
+    :global(button:hover) {
+      color: ${token.colorText} !important;
+      background: ${token.colorFillTertiary} !important;
+      transform: translateY(-1px);
+    }
   `,
   toolCard: css`
-    border-radius: ${token.borderRadiusLG}px;
+    border-radius: 18px;
     border: 1px solid ${token.colorBorderSecondary};
-    background: ${token.colorFillQuaternary};
-    font-size: var(--mimi-font-size-base);
+    background: ${token.colorBgElevated};
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
     overflow: hidden;
   `,
   toolCardHeader: css`
@@ -76,38 +333,56 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     align-items: center;
     gap: 8px;
     width: 100%;
-    padding: 6px 12px;
+    padding: 9px 12px;
     color: ${token.colorTextSecondary};
     cursor: pointer;
     background: none;
     border: none;
-    transition: color 0.2s;
+    text-align: left;
+    transition: color 0.2s ease, background 0.2s ease;
 
     &:hover {
       color: ${token.colorText};
+      background: ${token.colorFillQuaternary};
     }
   `,
-  toolCardBody: css`
-    padding: 0 12px 8px;
+  toolLabel: css`
+    font-family: ${token.fontFamilyCode};
     font-size: var(--mimi-font-size-sm);
+    font-weight: var(--mimi-font-weight-medium);
+  `,
+  toolCardBody: css`
+    margin: 0;
+    padding: 0 12px 12px;
+    border-top: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorFillQuaternary};
+    font-family: ${token.fontFamilyCode};
+    font-size: var(--mimi-font-size-xs);
+    line-height: var(--mimi-line-height-relaxed);
     color: ${token.colorTextSecondary};
     overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
   `,
   toolStatusBar: css`
     width: 100%;
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    flex-wrap: wrap;
+    gap: 8px;
   `,
   toolStatusItem: css`
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 8px;
-    border-radius: ${token.borderRadius}px;
+    min-width: 0;
+    max-width: 100%;
+    padding: 7px 11px;
+    border-radius: 999px;
     border: 1px solid ${token.colorBorderSecondary};
-    padding: 6px 12px;
+    background: ${token.colorBgElevated};
     font-size: var(--mimi-font-size-sm);
-    transition: background 0.2s;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03);
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   `,
   toolStatusRunning: css`
     border-color: ${token.colorPrimaryBorder};
@@ -116,7 +391,7 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
   `,
   toolStatusDone: css`
     border-color: ${token.colorBorderSecondary};
-    background: ${token.colorFillQuaternary};
+    background: ${token.colorBgElevated};
     color: ${token.colorTextSecondary};
   `,
   toolStatusError: css`
@@ -124,30 +399,71 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     background: ${token.colorErrorBg};
     color: ${token.colorError};
   `,
+  toolStatusText: css`
+    font-size: var(--mimi-font-size-sm);
+    font-weight: var(--mimi-font-weight-medium);
+    white-space: nowrap;
+  `,
+  toolStatusDuration: css`
+    font-size: var(--mimi-font-size-xs);
+    color: ${token.colorTextTertiary};
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  `,
+  toolStatusSummary: css`
+    font-size: var(--mimi-font-size-xs);
+    color: ${token.colorTextSecondary};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
   fileCard: css`
     display: flex;
     align-items: center;
     gap: 12px;
-    border-radius: ${token.borderRadiusLG}px;
+    border-radius: 18px;
     border: 1px solid ${token.colorBorderSecondary};
-    padding: 8px 12px;
-    background: ${token.colorFillQuaternary};
-    max-width: 220px;
+    padding: 10px 12px;
+    background: ${token.colorBgElevated};
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03);
+    max-width: 260px;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 
     &:hover {
-      background: ${token.colorFillTertiary};
+      transform: translateY(-1px);
+      border-color: ${token.colorBorder};
+      background: ${token.colorFillQuaternary};
     }
+  `,
+  fileCardMeta: css`
+    min-width: 0;
+    overflow: hidden;
+  `,
+  fileCardName: css`
+    font-size: var(--mimi-font-size-sm);
+    font-weight: var(--mimi-font-weight-medium);
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: ${token.colorText};
+  `,
+  fileCardSize: css`
+    font-size: var(--mimi-font-size-2xs);
+    margin: 2px 0 0;
+    color: ${token.colorTextTertiary};
   `,
   imageThumbnail: css`
     position: relative;
-    width: 144px;
-    height: 144px;
-    border-radius: ${token.borderRadiusLG}px;
+    width: 152px;
+    height: 152px;
+    border-radius: 20px;
     border: 1px solid ${token.colorBorderSecondary};
     overflow: hidden;
     cursor: zoom-in;
+    background: ${token.colorBgElevated};
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
 
     img {
       width: 100%;
@@ -162,17 +478,17 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.2s;
+      transition: background 0.2s ease;
 
       svg {
         opacity: 0;
         color: white;
-        transition: opacity 0.2s;
+        transition: opacity 0.2s ease;
       }
     }
 
     &:hover .overlay {
-      background: rgba(0, 0, 0, 0.25);
+      background: rgba(0, 0, 0, 0.22);
 
       svg {
         opacity: 1;
@@ -181,11 +497,13 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
   `,
   imagePreviewCard: css`
     position: relative;
-    max-width: 320px;
-    border-radius: ${token.borderRadiusLG}px;
+    max-width: 360px;
+    border-radius: 22px;
     border: 1px solid ${token.colorBorderSecondary};
     overflow: hidden;
     cursor: zoom-in;
+    background: ${token.colorBgElevated};
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
 
     img {
       display: block;
@@ -199,12 +517,12 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.2s;
+      transition: background 0.2s ease;
 
       svg {
         opacity: 0;
         color: white;
-        transition: opacity 0.2s;
+        transition: opacity 0.2s ease;
       }
     }
 
@@ -218,11 +536,12 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
   `,
   streamCursor: css`
     display: inline-block;
-    width: 8px;
-    height: 16px;
-    background: ${token.colorTextSecondary};
-    opacity: 0.5;
+    width: 2px;
+    height: 1em;
+    background: ${token.colorTextTertiary};
+    opacity: 0.75;
     margin-left: 2px;
+    vertical-align: text-bottom;
     animation: blink 1s step-end infinite;
 
     @keyframes blink {
@@ -231,18 +550,24 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
       }
     }
   `,
+  videoList: css`
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  `,
   videoItem: css`
     position: relative;
-    max-width: 320px;
-    border-radius: ${token.borderRadiusLG}px;
+    max-width: 360px;
+    border-radius: 22px;
     border: 1px solid ${token.colorBorderSecondary};
     overflow: hidden;
-    background: ${token.colorFillQuaternary};
+    background: ${token.colorBgElevated};
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
 
     video {
       display: block;
       width: 100%;
-      max-height: 280px;
+      max-height: 300px;
       object-fit: contain;
       background: #000;
     }
@@ -252,8 +577,9 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 5px 10px;
+    padding: 8px 12px;
     border-top: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorFillQuaternary};
   `,
   videoFileName: css`
     font-size: var(--mimi-font-size-xs);
@@ -268,16 +594,18 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    padding: 2px;
+    width: 24px;
+    height: 24px;
     color: ${token.colorTextTertiary};
     background: none;
     border: none;
     cursor: pointer;
-    border-radius: ${token.borderRadius}px;
-    transition: color 0.15s;
+    border-radius: 999px;
+    transition: color 0.15s ease, background 0.15s ease;
 
     &:hover {
-      color: ${token.colorTextSecondary};
+      color: ${token.colorText};
+      background: ${token.colorFillSecondary};
     }
   `,
   videoPlaceholder: css`
@@ -286,23 +614,25 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     align-items: center;
     justify-content: center;
     gap: 8px;
-    height: 120px;
+    height: 132px;
     color: ${token.colorTextTertiary};
     font-size: var(--mimi-font-size-sm);
+    background: ${token.colorFillQuaternary};
   `,
   toolInputSummary: css`
     font-size: var(--mimi-font-size-xs);
-    opacity: 0.5;
-    font-family: monospace;
+    color: ${token.colorTextTertiary};
+    font-family: ${token.fontFamilyCode};
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 200px;
+    max-width: 220px;
   `,
   toolResultCard: css`
-    border-radius: ${token.borderRadius}px;
-    border: 1px dashed ${token.colorBorderSecondary};
-    background: transparent;
+    border-radius: 18px;
+    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorBgElevated};
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03);
     overflow: hidden;
   `,
   toolResultCardError: css`
@@ -313,28 +643,31 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     align-items: center;
     gap: 6px;
     width: 100%;
-    padding: 4px 10px;
-    color: ${token.colorTextTertiary};
+    padding: 8px 12px;
+    color: ${token.colorTextSecondary};
     background: none;
     border: none;
     text-align: left;
-    transition: color 0.15s;
+    transition: color 0.15s ease, background 0.15s ease;
 
     &:hover {
-      color: ${token.colorTextSecondary};
+      color: ${token.colorText};
+      background: ${token.colorFillQuaternary};
     }
   `,
   toolResultBody: css`
-    padding: 0 10px 6px;
+    padding: 10px 12px 12px;
+    font-family: ${token.fontFamilyCode};
     font-size: var(--mimi-font-size-xs);
-    color: ${token.colorTextTertiary};
+    color: ${token.colorTextSecondary};
     overflow-x: auto;
     max-height: 400px;
     overflow-y: auto;
     white-space: pre-wrap;
     word-break: break-word;
     margin: 0;
-    line-height: 1.5;
-    border-top: 1px dashed ${token.colorBorderSecondary};
+    line-height: var(--mimi-line-height-relaxed);
+    border-top: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorFillQuaternary};
   `,
 }));

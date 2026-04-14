@@ -30,7 +30,7 @@ import { Setup } from "./pages/Setup";
 import { Login } from "./pages/Login";
 import { useSettingsStore } from "./stores/settings";
 import { useGatewayStore } from "./stores/gateway";
-import { useChatStore } from "./stores/chat";
+import { useChatStore, chatStreamingSelectors } from "./stores/chat";
 import { applyGatewayTransportPreference, invokeIpc } from "./lib/api-client";
 import { ThemeWrapper } from "./components/theme/ThemeWrapper";
 import { UpdateBootstrap } from "@/components/update/UpdateBootstrap";
@@ -119,10 +119,7 @@ function App() {
 	const cloudLoggedIn = useSettingsStore((state) => state.cloudLoggedIn);
 	const hydrateCloudAuth = useSettingsStore((state) => state.hydrateCloudAuth);
 	const initGateway = useGatewayStore((state) => state.init);
-	const chatSending = useChatStore((state) => state.sending);
-	const chatStreamingMessage = useChatStore((state) => state.streamingMessage);
-	const chatStreamingTools = useChatStore((state) => state.streamingTools);
-	const chatPendingFinal = useChatStore((state) => state.pendingFinal);
+	const petUiActivity = useChatStore(chatStreamingSelectors.petActivity);
 	const isPetBubbleRoute = location.pathname.startsWith("/pet-bubble");
 	const isPetRoute =
 		location.pathname === "/pet" || location.pathname.startsWith("/pet/");
@@ -131,12 +128,6 @@ function App() {
 	const isVoiceDialogRoute = location.pathname.startsWith("/voice-dialog");
 	const isTrayRuntimeRoute = location.pathname.startsWith("/tray-runtime");
 	const isMainChatRoute = location.pathname === "/";
-
-	const petUiActivity = !chatSending
-		? "idle"
-		: chatPendingFinal || chatStreamingMessage || chatStreamingTools.length > 0
-			? "working"
-			: "listening";
 
 	useEffect(() => {
 		// Restore cloud session from localStorage before any redirect checks.

@@ -562,6 +562,62 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     text-overflow: ellipsis;
     white-space: nowrap;
   `,
+  threadLikeSessionRow: css`
+    border-radius: 0.5rem;
+
+    [data-session-time='true'] {
+      transition: opacity 0.16s ease;
+    }
+
+    &:hover [data-session-lead='true'],
+    &:focus-within [data-session-lead='true'] {
+      opacity: 1;
+      transform: translate(0, -50%);
+    }
+
+    &:hover [data-session-time='true'],
+    &:focus-within [data-session-time='true'] {
+      opacity: 0;
+    }
+  `,
+  threadLikeSessionButtonWithActions: css`
+    padding-right: 3.25rem;
+
+    [data-session-time='true'] {
+      position: absolute;
+      right: 0.625rem;
+      top: 50%;
+      margin-left: 0;
+      transform: translateY(-50%);
+    }
+  `,
+  threadLikeSessionLead: css`
+    position: absolute;
+    left: calc((1.5rem - 11px) / 2);
+    top: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(0, 0, 0, 0.46);
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-2px, -50%);
+    transition: opacity 0.16s ease, transform 0.16s ease, color 0.2s ease;
+
+    ${darkMode(`
+      color: rgba(255, 255, 255, 0.5);
+    `)}
+  `,
+  threadLikeSessionLeadVisible: css`
+    opacity: 1;
+    transform: translate(0, -50%);
+  `,
+  threadLikeDeleteActionButton: css`
+    &:hover {
+      background: hsl(var(--destructive) / 0.1);
+      color: hsl(var(--destructive));
+    }
+  `,
   workspaceRow: css`
     position: relative;
     display: flex;

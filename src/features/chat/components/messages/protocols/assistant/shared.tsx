@@ -45,7 +45,7 @@ export function AssistantStandardAbove({
         />
       )}
       {tools.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className={styles.assistantToolStack}>
           {tools.map((tool, i) => (
             <ToolCard key={tool.id || i} name={tool.name} input={tool.input} />
           ))}
@@ -123,16 +123,7 @@ export function AssistantStandardBelow({
               return (
                 <div
                   key={`local-nopreview-${file.fileName}-${i}`}
-                  style={{
-                    width: 144,
-                    height: 144,
-                    borderRadius: 8,
-                    border: '1px solid rgba(0,0,0,0.1)',
-                    background: 'rgba(0,0,0,0.05)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
+                  className={styles.mediaPlaceholder}
                 >
                   <File style={{ width: 32, height: 32, opacity: 0.5 }} />
                 </div>

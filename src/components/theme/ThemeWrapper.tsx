@@ -3,9 +3,11 @@
  * Provides antd v6 + antd-style theme context using @4399ywkf/theme-system color algorithms.
  * Bridges the existing useSettingsStore theme ('light' | 'dark' | 'system') to antd-style.
  */
-import { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { ConfigProvider as AntdConfigProvider } from 'antd';
 import { ConfigProvider as LobeConfigProvider } from '@lobehub/ui';
+// @ts-expect-error – internal path, not in public types
+import AppElementContext from '@lobehub/ui/es/ThemeProvider/AppElementContext';
 import {
   StyleProvider,
   ThemeProvider as AntdThemeProvider,
@@ -76,11 +78,9 @@ const TypographyTokenGlobalStyle = createGlobalStyle`
 export function ThemeWrapper({ children }: ThemeWrapperProps) {
   const theme = useSettingsStore((s) => s.theme);
   const popupContainerRef = useRef<HTMLDivElement>(null);
+  const [appElement, setAppElement] = useState<HTMLDivElement | null>(null);
 
-  const resolvedAppearance = useMemo(
-    () => resolveAppearance(theme),
-    [theme],
-  );
+  const resolvedAppearance = resolveAppearance(theme);
 
   // Sync data-theme attribute for antd CSS variable mode
   useEffect(() => {
@@ -88,11 +88,15 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
   }, [resolvedAppearance]);
 
   const getAntdTheme = useCallback<GetAntdTheme>(
-    (appearance) =>
-      createMimiThemeConfig({
+    (appearance) => ({
+      ...createMimiThemeConfig({
         appearance: appearance as ResolvedAppearance,
         neutralColor: 'slate',
       }),
+      // Enable antd CSS variable mode so --ant-* vars are injected at :root,
+      // making them accessible to @lobehub/ui portals that render outside the tree.
+      cssVar: { prefix: 'ant' },
+    }),
     [],
   );
 
@@ -114,7 +118,16 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
             <TypographyTokenGlobalStyle />
             <LobeUiCompatGlobalStyle />
             <AntdConfigProvider getPopupContainer={getPopupContainer}>
-              {children}
+              {/* Provide AppElementContext so @lobehub/ui DropdownMenu portals
+                  render inside the theme container rather than document.body */}
+              <div
+                ref={setAppElement}
+                style={{ display: 'contents' }}
+              >
+                <AppElementContext.Provider value={appElement}>
+                  {children}
+                </AppElementContext.Provider>
+              </div>
             </AntdConfigProvider>
           </LobeConfigProvider>
         </AntdThemeProvider>
