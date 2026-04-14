@@ -70,6 +70,14 @@ export interface AppSettings {
 
   // UI State
   sidebarCollapsed: boolean;
+  sidebarThreadWorkspaces: Array<{
+    id: string;
+    rootPath: string;
+    name: string;
+    createdAt: number;
+    lastUsedAt: number;
+  }>;
+  sidebarThreadWorkspaceExpanded: Record<string, boolean>;
   devModeUnlocked: boolean;
 
   // Presets
@@ -133,6 +141,8 @@ function createDefaultSettings(): AppSettings {
 
     // UI State
     sidebarCollapsed: false,
+    sidebarThreadWorkspaces: [],
+    sidebarThreadWorkspaceExpanded: {},
     devModeUnlocked: false,
 
     // Presets

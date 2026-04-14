@@ -1,48 +1,56 @@
 /**
  * Sidebar Component
- * Refined compact navigation for conversation workspaces.
+ * Workspace-driven left navigation.
  */
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
-	Bot,
+	Blocks,
 	ChevronDown,
 	Clock,
+	Ellipsis,
+	FolderOpen,
+	Hexagon,
 	Loader2,
 	MessageCircle,
 	MessageSquare,
 	Mic,
-	Blocks,
-	Hexagon,
-	SquarePen,
+	Pin,
+	Plus,
 	Search,
 	Settings as SettingsIcon,
-	Terminal,
+	SquarePen,
 	Trash2,
-	Pin,
 } from "lucide-react";
-import { useSettingsStore } from "@/stores/settings";
+import { Dropdown, type MenuProps } from "antd";
+import { useSettingsStore, type SidebarThreadWorkspace } from "@/stores/settings";
 import { useChatStore } from "@/stores/chat";
 import { useGatewayStore } from "@/stores/gateway";
-import { useAgentsStore } from "@/stores/agents";
-import { useJizhiSessionsStore } from "@/stores/jizhi-sessions";
 import { useRemoteMessengerStore } from "@/stores/remote-messenger";
 import { useVoiceChatSessionsStore } from "@/stores/voice-chat-sessions";
 import {
 	fetchCodeAgentSessions,
+	fetchWorkspaceAvailability,
 	readStoredCodeAgentWorkspaceRoot,
+	writeStoredCodeAgentWorkspaceRoot,
 } from "@/lib/code-agent";
+import { invokeIpc } from "@/lib/api-client";
+import { subscribeHostEvent } from "@/lib/host-events";
+import {
+	buildWorkspaceId,
+	deriveWorkspaceName,
+	normalizeWorkspacePath,
+} from "@/lib/sidebar-workspace";
 import { SearchInput } from "@/components/common/SearchInput";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useTranslation } from "react-i18next";
 import { useLegacySidebarStyles } from "./style";
 
-type FolderKey = "chat" | "cli" | "jizhi" | "xiaojiu" | "voice";
+type FolderKey = "thread" | "openclaw" | "realtimeVoice" | "xiaojiu";
 
 type OpenClawSessionItem = {
 	key: string;
 	label: string;
-	agentName: string;
 	updatedAt: number;
 };
 
@@ -52,22 +60,28 @@ type CliSessionItem = {
 	updatedAt: number;
 };
 
-type NamedSessionItem = {
+type VoiceSessionItem = {
 	id: string;
 	label: string;
 	updatedAt: number;
 };
 
-const COLLAPSIBLE_SESSION_LIMIT = 5;
+type XiaojiuSessionItem = {
+	id: string;
+	label: string;
+	updatedAt: number;
+};
+
+type WorkspaceAvailability = {
+	available: boolean;
+	reason?: string;
+};
 
 type LegacySidebarStyles = ReturnType<typeof useLegacySidebarStyles>["styles"];
 type LegacySidebarCx = ReturnType<typeof useLegacySidebarStyles>["cx"];
 
-function getAgentIdFromSessionKey(sessionKey: string): string {
-	if (!sessionKey.startsWith("agent:")) return "main";
-	const [, agentId] = sessionKey.split(":");
-	return agentId || "main";
-}
+const COLLAPSIBLE_SESSION_LIMIT = 5;
+const THREAD_WORKSPACE_MIGRATION_KEY = "mimiclaw:thread-workspaces-migrated-v1";
 
 function formatRelativeTime(timestamp: number, language: string): string {
 	if (!timestamp || Number.isNaN(timestamp)) {
@@ -90,6 +104,15 @@ function formatRelativeTime(timestamp: number, language: string): string {
 	return isZh ? `${days} 天` : `${days}d`;
 }
 
+function getWorkspaceSecondaryLabel(workspace: SidebarThreadWorkspace): string {
+	const parts = normalizeWorkspacePath(workspace.rootPath).split(/[\\/]+/).filter(Boolean);
+	if (parts.length < 2) {
+		return "";
+	}
+	const parent = parts[parts.length - 2] ?? "";
+	return parent && parent !== workspace.name ? parent : "";
+}
+
 function FolderSection({
 	icon,
 	label,
@@ -98,9 +121,11 @@ function FolderSection({
 	expanded,
 	onActivate,
 	onToggle,
+	headerActions,
 	children,
 	styles,
 	cx,
+	variant = "default",
 }: {
 	icon: ReactNode;
 	label: string;
@@ -109,16 +134,20 @@ function FolderSection({
 	expanded: boolean;
 	onActivate: () => void;
 	onToggle: () => void;
+	headerActions?: ReactNode;
 	children?: ReactNode;
 	styles: LegacySidebarStyles;
 	cx: LegacySidebarCx;
+	variant?: "default" | "threadTop";
 }) {
+	const isThreadTop = variant === "threadTop";
 	return (
-		<section className={styles.folderSection}>
+		<section className={cx(styles.folderSection, isThreadTop && styles.threadFolderSection)}>
 			<div
 				className={cx(
 					styles.folderHeader,
-					active && styles.folderHeaderActive,
+					active && (isThreadTop ? styles.threadFolderHeaderActive : styles.folderHeaderActive),
+					isThreadTop && styles.threadFolderHeader,
 				)}
 			>
 				<button
@@ -128,16 +157,9 @@ function FolderSection({
 						onToggle();
 					}}
 					aria-label={expanded ? "Collapse folder" : "Expand folder"}
-					className={styles.folderInlineToggleButton}
-					data-folder-toggle="true"
+					className={cx(styles.folderInlineToggleButton, isThreadTop && styles.threadFolderInlineToggleButton)}
 				>
-					<span
-						data-folder-icon="true"
-						className={cx(
-							styles.folderIconWrap,
-							active && styles.folderIconWrapActive,
-						)}
-					>
+					<span data-folder-icon="true" className={cx(styles.folderIconWrap, active && styles.folderIconWrapActive)}>
 						{icon}
 					</span>
 					<ChevronDown
@@ -154,33 +176,50 @@ function FolderSection({
 					onClick={onActivate}
 					className={cx(
 						styles.folderActivateButton,
-						active
-							? styles.folderActivateButtonActive
-							: styles.folderActivateButtonIdle,
+						active ? styles.folderActivateButtonActive : styles.folderActivateButtonIdle,
+						isThreadTop && styles.threadFolderActivateButton,
 					)}
 				>
 					<span className={styles.truncate}>{label}</span>
-					<span className={styles.folderCount}>{count}</span>
+					<span className={cx(styles.folderCount, isThreadTop && styles.threadFolderCount)}>{count}</span>
 				</button>
+				{headerActions ? (
+					<div className={cx(styles.folderHeaderActions, isThreadTop && styles.threadFolderHeaderActions)} data-folder-actions="true">
+						{headerActions}
+					</div>
+				) : null}
 			</div>
-			{expanded ? (
-				<div className={styles.folderChildren}>
-					{children}
-				</div>
-			) : null}
+			{expanded ? <div className={cx(styles.folderChildren, isThreadTop && styles.threadFolderChildren)}>{children}</div> : null}
 		</section>
 	);
+}
+
+function buildCodeAgentRoute(workspaceRoot: string, sessionId?: string, newThreadToken?: string): string {
+	const params = new URLSearchParams();
+	params.set("workspaceRoot", workspaceRoot);
+	if (sessionId) {
+		params.set("sessionId", sessionId);
+	}
+	if (newThreadToken) {
+		params.set("newThread", newThreadToken);
+	}
+	return `/code-agent/chat?${params.toString()}`;
 }
 
 export function LegacySidebar() {
 	const { styles, cx } = useLegacySidebarStyles();
 	const sidebarCollapsed = useSettingsStore((state) => state.sidebarCollapsed);
-	const sidebarFolderExpanded = useSettingsStore(
-		(state) => state.sidebarFolderExpanded,
-	);
-	const setSidebarFolderExpanded = useSettingsStore(
-		(state) => state.setSidebarFolderExpanded,
-	);
+	const sidebarFolderExpanded = useSettingsStore((state) => state.sidebarFolderExpanded);
+	const setSidebarFolderExpanded = useSettingsStore((state) => state.setSidebarFolderExpanded);
+	const sidebarThreadWorkspaces = useSettingsStore((state) => state.sidebarThreadWorkspaces);
+	const sidebarThreadWorkspaceExpanded = useSettingsStore((state) => state.sidebarThreadWorkspaceExpanded);
+	const sidebarActiveContext = useSettingsStore((state) => state.sidebarActiveContext);
+	const setSidebarThreadWorkspaceExpanded = useSettingsStore((state) => state.setSidebarThreadWorkspaceExpanded);
+	const setSidebarActiveContext = useSettingsStore((state) => state.setSidebarActiveContext);
+	const upsertSidebarThreadWorkspace = useSettingsStore((state) => state.upsertSidebarThreadWorkspace);
+	const renameSidebarThreadWorkspace = useSettingsStore((state) => state.renameSidebarThreadWorkspace);
+	const removeSidebarThreadWorkspace = useSettingsStore((state) => state.removeSidebarThreadWorkspace);
+	const touchSidebarThreadWorkspace = useSettingsStore((state) => state.touchSidebarThreadWorkspace);
 
 	const sessions = useChatStore((s) => s.sessions);
 	const currentSessionKey = useChatStore((s) => s.currentSessionKey);
@@ -196,60 +235,39 @@ export function LegacySidebar() {
 	const gatewayStatus = useGatewayStore((s) => s.status);
 	const isGatewayRunning = gatewayStatus.state === "running";
 
-	const agents = useAgentsStore((s) => s.agents);
-	const fetchAgents = useAgentsStore((s) => s.fetchAgents);
-
 	const remoteSessions = useRemoteMessengerStore((s) => s.sessions);
 	const remoteLastSyncedAt = useRemoteMessengerStore((s) => s.lastSyncedAt);
 	const remoteSyncError = useRemoteMessengerStore((s) => s.syncError);
 	const remoteActiveSessionId = useRemoteMessengerStore((s) => s.activeSessionId);
-	const setRemoteActiveSessionId = useRemoteMessengerStore(
-		(s) => s.setActiveSessionId,
-	);
-
-	const jizhiSessions = useJizhiSessionsStore((s) => s.sessions);
-	const jizhiSyncError = useJizhiSessionsStore((s) => s.syncError);
-	const jizhiActiveSessionId = useJizhiSessionsStore((s) => s.activeSessionId);
-	const setJizhiActiveSessionId = useJizhiSessionsStore(
-		(s) => s.setActiveSessionId,
-	);
+	const setRemoteActiveSessionId = useRemoteMessengerStore((s) => s.setActiveSessionId);
 
 	const voiceSessions = useVoiceChatSessionsStore((s) => s.sessions);
 	const voiceSyncError = useVoiceChatSessionsStore((s) => s.syncError);
 	const voiceActiveSessionId = useVoiceChatSessionsStore((s) => s.activeSessionId);
-	const setVoiceActiveSessionId = useVoiceChatSessionsStore(
-		(s) => s.setActiveSessionId,
-	);
+	const setVoiceActiveSessionId = useVoiceChatSessionsStore((s) => s.setActiveSessionId);
 
 	const xiaojiuEnabled = useSettingsStore((s) => s.xiaojiuEnabled);
-	const jizhiEnabled = useSettingsStore((s) => s.jizhiEnabled);
 
 	const navigate = useNavigate();
 	const location = useLocation();
 	const pathname = location.pathname;
 	const { t, i18n } = useTranslation(["common"]);
 
-	const [sessionToDelete, setSessionToDelete] = useState<{
-		key: string;
-		label: string;
-	} | null>(null);
-	const [cliWorkspaceRoot, setCliWorkspaceRoot] = useState(() =>
-		readStoredCodeAgentWorkspaceRoot().trim(),
-	);
-	const [cliSessions, setCliSessions] = useState<CliSessionItem[]>([]);
-	const [cliLoading, setCliLoading] = useState(false);
-	const [cliError, setCliError] = useState<string | null>(null);
-	const [activeCliSessionId, setActiveCliSessionId] = useState<string | null>(
-		null,
-	);
+	const [sessionToDelete, setSessionToDelete] = useState<{ key: string; label: string } | null>(null);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [searchExpanded, setSearchExpanded] = useState(false);
-	const [chatSessionsExpanded, setChatSessionsExpanded] = useState(false);
-	const [cliSessionsExpanded, setCliSessionsExpanded] = useState(false);
-	const [jizhiSessionsExpanded, setJizhiSessionsExpanded] = useState(false);
+	const [openClawSessionsExpanded, setOpenClawSessionsExpanded] = useState(false);
 	const [xiaojiuSessionsExpanded, setXiaojiuSessionsExpanded] = useState(false);
 	const [voiceSessionsExpanded, setVoiceSessionsExpanded] = useState(false);
+	const [workspaceSessionsExpanded, setWorkspaceSessionsExpanded] = useState<Record<string, boolean>>({});
+	const [workspaceSessionsById, setWorkspaceSessionsById] = useState<Record<string, CliSessionItem[]>>({});
+	const [workspaceLoadingById, setWorkspaceLoadingById] = useState<Record<string, boolean>>({});
+	const [workspaceErrorById, setWorkspaceErrorById] = useState<Record<string, string | null>>({});
+	const [workspaceAvailabilityById, setWorkspaceAvailabilityById] = useState<Record<string, WorkspaceAvailability>>({});
 	const searchInputRef = useRef<HTMLInputElement>(null);
+	const didRunMigrationRef = useRef(false);
+	const didInitialWorkspaceFetchRef = useRef(false);
+	const fetchedWorkspaceIdsRef = useRef<Set<string>>(new Set());
 
 	useEffect(() => {
 		if (!isGatewayRunning) return;
@@ -264,77 +282,6 @@ export function LegacySidebar() {
 			cancelled = true;
 		};
 	}, [isGatewayRunning, loadHistory, loadSessions]);
-
-	useEffect(() => {
-		void fetchAgents();
-	}, [fetchAgents]);
-
-	useEffect(() => {
-		const syncWorkspaceRoot = () => {
-			const next = readStoredCodeAgentWorkspaceRoot().trim();
-			setCliWorkspaceRoot((current) => (current === next ? current : next));
-		};
-
-		syncWorkspaceRoot();
-		window.addEventListener("focus", syncWorkspaceRoot);
-		const interval = window.setInterval(syncWorkspaceRoot, 5000);
-
-		return () => {
-			window.removeEventListener("focus", syncWorkspaceRoot);
-			window.clearInterval(interval);
-		};
-	}, [pathname]);
-
-	useEffect(() => {
-		let cancelled = false;
-
-		if (!cliWorkspaceRoot) {
-			return;
-		}
-
-		void (async () => {
-			setCliLoading(true);
-			setCliError(null);
-			try {
-				const sessionsInWorkspace = await fetchCodeAgentSessions(
-					cliWorkspaceRoot,
-					60,
-				);
-				if (cancelled) return;
-				const sorted = [...sessionsInWorkspace].sort(
-					(left, right) => right.updatedAt - left.updatedAt,
-				);
-				const mapped = sorted.map((session) => ({
-					sessionId: session.sessionId,
-					title: session.title?.trim() || session.sessionId,
-					updatedAt: session.updatedAt,
-				}));
-				setCliSessions(mapped);
-				setActiveCliSessionId((current) => {
-					if (current && mapped.some((item) => item.sessionId === current)) {
-						return current;
-					}
-					return mapped[0]?.sessionId ?? null;
-				});
-			} catch {
-				if (cancelled) return;
-				setCliSessions([]);
-				setCliError(
-					t("sidebar.cliSessionsLoadFailed", {
-						defaultValue: "CLI 会话加载失败",
-					}),
-				);
-			} finally {
-				if (!cancelled) {
-					setCliLoading(false);
-				}
-			}
-		})();
-
-		return () => {
-			cancelled = true;
-		};
-	}, [cliWorkspaceRoot, pathname, t]);
 
 	const isFolderExpanded = useCallback(
 		(folder: FolderKey) => sidebarFolderExpanded?.[folder] !== false,
@@ -355,10 +302,22 @@ export function LegacySidebar() {
 		[isFolderExpanded, setFolderExpanded],
 	);
 
-	const agentNameById = useMemo(
+	const threadWorkspaces = useMemo(
+		() => [...sidebarThreadWorkspaces].sort((left, right) => (right.lastUsedAt || 0) - (left.lastUsedAt || 0)),
+		[sidebarThreadWorkspaces],
+	);
+
+	const workspaceById = useMemo(
+		() => Object.fromEntries(threadWorkspaces.map((workspace) => [workspace.id, workspace])),
+		[threadWorkspaces],
+	);
+
+	const workspaceIdByNormalizedRoot = useMemo(
 		() =>
-			Object.fromEntries((agents ?? []).map((agent) => [agent.id, agent.name])),
-		[agents],
+			Object.fromEntries(
+				threadWorkspaces.map((workspace) => [normalizeWorkspacePath(workspace.rootPath), workspace.id]),
+			),
+		[threadWorkspaces],
 	);
 
 	const openClawSessions = useMemo<OpenClawSessionItem[]>(() => {
@@ -374,19 +333,24 @@ export function LegacySidebar() {
 				const leftUpdated = sessionLastActivity[left.key] ?? left.updatedAt ?? 0;
 				return rightUpdated - leftUpdated;
 			})
-			.map((session) => {
-				const agentId = getAgentIdFromSessionKey(session.key);
-				const updatedAt = sessionLastActivity[session.key] ?? session.updatedAt ?? 0;
-				return {
-					key: session.key,
-					label: getSessionLabel(session.key, session.displayName, session.label),
-					agentName: agentNameById[agentId] || agentId,
-					updatedAt,
-				};
-			});
-	}, [agentNameById, sessionLabels, sessionLastActivity, sessions]);
+			.map((session) => ({
+				key: session.key,
+				label: getSessionLabel(session.key, session.displayName, session.label),
+				updatedAt: sessionLastActivity[session.key] ?? session.updatedAt ?? 0,
+			}));
+	}, [sessionLabels, sessionLastActivity, sessions]);
 
-	const xiaojiuSessionItems = useMemo<NamedSessionItem[]>(() => {
+	const realtimeVoiceSessions = useMemo<VoiceSessionItem[]>(() => {
+		return [...voiceSessions]
+			.sort((left, right) => right.lastActivityAt - left.lastActivityAt)
+			.map((session) => ({
+				id: session.id,
+				label: session.title,
+				updatedAt: session.lastActivityAt,
+			}));
+	}, [voiceSessions]);
+
+	const xiaojiuSessionItems = useMemo<XiaojiuSessionItem[]>(() => {
 		if (!xiaojiuEnabled) return [];
 		const syncBase = remoteLastSyncedAt ?? 0;
 		return [...remoteSessions]
@@ -402,54 +366,13 @@ export function LegacySidebar() {
 			}));
 	}, [remoteLastSyncedAt, remoteSessions, xiaojiuEnabled]);
 
-	const jizhiSessionItems = useMemo<NamedSessionItem[]>(() => {
-		if (!jizhiEnabled) return [];
-		return [...jizhiSessions]
-			.sort((left, right) => {
-				const rightUpdated = right.lastMessageCreatedAt ?? right.updatedAt ?? 0;
-				const leftUpdated = left.lastMessageCreatedAt ?? left.updatedAt ?? 0;
-				return rightUpdated - leftUpdated;
-			})
-			.map((session) => ({
-				id: session.id,
-				label: session.name,
-				updatedAt: session.lastMessageCreatedAt ?? session.updatedAt ?? 0,
-			}));
-	}, [jizhiEnabled, jizhiSessions]);
-
-	const voiceSessionItems = useMemo<NamedSessionItem[]>(() => {
-		return [...voiceSessions]
-			.sort((left, right) => right.lastActivityAt - left.lastActivityAt)
-			.map((session) => ({
-				id: session.id,
-				label: session.title,
-				updatedAt: session.lastActivityAt,
-			}));
-	}, [voiceSessions]);
-
-	const requestedCliSessionId = useMemo(() => {
-		if (!pathname.startsWith("/code-agent/chat")) return null;
-		const raw = new URLSearchParams(location.search).get("sessionId");
-		const normalized = raw?.trim();
-		return normalized || null;
-	}, [location.search, pathname]);
-
-	const activeFolder = useMemo<FolderKey | null>(() => {
-		if (pathname === "/") return "chat";
-		if (pathname.startsWith("/code-agent")) return "cli";
-		if (pathname.startsWith("/jizhi-chat")) return "jizhi";
-		if (pathname.startsWith("/xiaojiu-chat")) return "xiaojiu";
-		if (pathname.startsWith("/voice-chat")) return "voice";
-		return null;
-	}, [pathname]);
-
-	const cliHasWorkspace = cliWorkspaceRoot.length > 0;
-	const visibleCliSessions = useMemo(
-		() => (cliHasWorkspace ? cliSessions : []),
-		[cliHasWorkspace, cliSessions],
-	);
-	const visibleCliLoading = cliHasWorkspace ? cliLoading : false;
-	const visibleCliError = cliHasWorkspace ? cliError : null;
+	const routeSearchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+	const routeWorkspaceRoot = routeSearchParams.get("workspaceRoot")?.trim() || "";
+	const routeSessionId = routeSearchParams.get("sessionId")?.trim() || "";
+	const activeThreadWorkspaceIdFromRoute =
+		(pathname.startsWith("/code-agent/chat") && routeWorkspaceRoot
+			? workspaceIdByNormalizedRoot[normalizeWorkspacePath(routeWorkspaceRoot)]
+			: undefined) ?? null;
 
 	const normalizedQuery = searchQuery.trim().toLowerCase();
 	const hasSearchQuery = normalizedQuery.length > 0;
@@ -459,173 +382,239 @@ export function LegacySidebar() {
 	);
 
 	const filteredOpenClawSessions = useMemo(
-		() =>
-			openClawSessions.filter(
-				(session) => matchesQuery(session.label) || matchesQuery(session.agentName),
-			),
+		() => openClawSessions.filter((session) => matchesQuery(session.label)),
 		[matchesQuery, openClawSessions],
 	);
-	const canToggleChatSessions = filteredOpenClawSessions.length > COLLAPSIBLE_SESSION_LIMIT;
-	const visibleOpenClawSessions = useMemo(
-		() =>
-			canToggleChatSessions && !chatSessionsExpanded
-				? filteredOpenClawSessions.slice(0, COLLAPSIBLE_SESSION_LIMIT)
-				: filteredOpenClawSessions,
-		[canToggleChatSessions, chatSessionsExpanded, filteredOpenClawSessions],
-	);
-	const hasVisibleActiveChatSession = useMemo(
-		() =>
-			pathname === "/"
-			&& filteredOpenClawSessions.some((session) => session.key === currentSessionKey),
-		[currentSessionKey, filteredOpenClawSessions, pathname],
-	);
-	const filteredCliSessions = useMemo(
-		() => visibleCliSessions.filter((session) => matchesQuery(session.title)),
-		[matchesQuery, visibleCliSessions],
-	);
-	const canToggleCliSessions = filteredCliSessions.length > COLLAPSIBLE_SESSION_LIMIT;
-	const visibleFilteredCliSessions = useMemo(
-		() =>
-			canToggleCliSessions && !cliSessionsExpanded
-				? filteredCliSessions.slice(0, COLLAPSIBLE_SESSION_LIMIT)
-				: filteredCliSessions,
-		[canToggleCliSessions, cliSessionsExpanded, filteredCliSessions],
-	);
-	const effectiveActiveCliSessionId = useMemo(
-		() => requestedCliSessionId ?? activeCliSessionId ?? visibleCliSessions[0]?.sessionId ?? null,
-		[activeCliSessionId, requestedCliSessionId, visibleCliSessions],
-	);
-	const hasVisibleActiveCliSession = useMemo(
-		() =>
-			pathname.startsWith("/code-agent/chat")
-			&& filteredCliSessions.some(
-				(session) => session.sessionId === effectiveActiveCliSessionId,
-			),
-		[effectiveActiveCliSessionId, filteredCliSessions, pathname],
-	);
-	const filteredJizhiSessions = useMemo(
-		() => jizhiSessionItems.filter((session) => matchesQuery(session.label)),
-		[jizhiSessionItems, matchesQuery],
-	);
-	const canToggleJizhiSessions = filteredJizhiSessions.length > COLLAPSIBLE_SESSION_LIMIT;
-	const visibleFilteredJizhiSessions = useMemo(
-		() =>
-			canToggleJizhiSessions && !jizhiSessionsExpanded
-				? filteredJizhiSessions.slice(0, COLLAPSIBLE_SESSION_LIMIT)
-				: filteredJizhiSessions,
-		[canToggleJizhiSessions, filteredJizhiSessions, jizhiSessionsExpanded],
-	);
-	const hasVisibleActiveJizhiSession = useMemo(
-		() =>
-			pathname.startsWith("/jizhi-chat")
-			&& filteredJizhiSessions.some((session) => session.id === jizhiActiveSessionId),
-		[filteredJizhiSessions, jizhiActiveSessionId, pathname],
+	const filteredRealtimeVoiceSessions = useMemo(
+		() => realtimeVoiceSessions.filter((session) => matchesQuery(session.label)),
+		[matchesQuery, realtimeVoiceSessions],
 	);
 	const filteredXiaojiuSessions = useMemo(
 		() => xiaojiuSessionItems.filter((session) => matchesQuery(session.label)),
 		[matchesQuery, xiaojiuSessionItems],
 	);
-	const canToggleXiaojiuSessions = filteredXiaojiuSessions.length > COLLAPSIBLE_SESSION_LIMIT;
-	const visibleFilteredXiaojiuSessions = useMemo(
-		() =>
-			canToggleXiaojiuSessions && !xiaojiuSessionsExpanded
-				? filteredXiaojiuSessions.slice(0, COLLAPSIBLE_SESSION_LIMIT)
-				: filteredXiaojiuSessions,
-		[
-			canToggleXiaojiuSessions,
-			filteredXiaojiuSessions,
-			xiaojiuSessionsExpanded,
-		],
-	);
-	const hasVisibleActiveXiaojiuSession = useMemo(
-		() =>
-			pathname.startsWith("/xiaojiu-chat")
-			&& filteredXiaojiuSessions.some((session) => session.id === remoteActiveSessionId),
-		[filteredXiaojiuSessions, pathname, remoteActiveSessionId],
-	);
-	const filteredVoiceSessions = useMemo(
-		() => voiceSessionItems.filter((session) => matchesQuery(session.label)),
-		[matchesQuery, voiceSessionItems],
-	);
-	const canToggleVoiceSessions = filteredVoiceSessions.length > COLLAPSIBLE_SESSION_LIMIT;
-	const visibleFilteredVoiceSessions = useMemo(
-		() =>
-			canToggleVoiceSessions && !voiceSessionsExpanded
-				? filteredVoiceSessions.slice(0, COLLAPSIBLE_SESSION_LIMIT)
-				: filteredVoiceSessions,
-		[canToggleVoiceSessions, filteredVoiceSessions, voiceSessionsExpanded],
-	);
-	const hasVisibleActiveVoiceSession = useMemo(
-		() =>
-			pathname.startsWith("/voice-chat")
-			&& filteredVoiceSessions.some((session) => session.id === voiceActiveSessionId),
-		[filteredVoiceSessions, pathname, voiceActiveSessionId],
-	);
 
-	const visibleThreadCount =
-		filteredOpenClawSessions.length
-		+ filteredCliSessions.length
-		+ filteredVoiceSessions.length
-		+ (jizhiEnabled ? filteredJizhiSessions.length : 0)
-		+ (xiaojiuEnabled ? filteredXiaojiuSessions.length : 0);
+	const filteredThreadSessionsByWorkspace = useMemo(() => {
+		const next: Record<string, CliSessionItem[]> = {};
+		for (const workspace of threadWorkspaces) {
+			const sessionsInWorkspace = workspaceSessionsById[workspace.id] ?? [];
+			next[workspace.id] = sessionsInWorkspace.filter((session) => matchesQuery(session.title));
+		}
+		return next;
+	}, [matchesQuery, threadWorkspaces, workspaceSessionsById]);
 
-	const openFolderAndNavigate = useCallback(
-		(folder: FolderKey) => {
-			setFolderExpanded(folder, true);
+	const visibleThreadWorkspaces = useMemo(() => {
+		return threadWorkspaces.filter((workspace) => {
+			if (!hasSearchQuery) return true;
+			if (matchesQuery(workspace.name)) return true;
+			const filteredSessions = filteredThreadSessionsByWorkspace[workspace.id] ?? [];
+			return filteredSessions.length > 0;
+		});
+	}, [filteredThreadSessionsByWorkspace, hasSearchQuery, matchesQuery, threadWorkspaces]);
+
+	const refreshWorkspaceSessions = useCallback(
+		async (workspace: SidebarThreadWorkspace) => {
+			setWorkspaceLoadingById((previous) => ({ ...previous, [workspace.id]: true }));
+			setWorkspaceErrorById((previous) => ({ ...previous, [workspace.id]: null }));
+			try {
+				const availability = await fetchWorkspaceAvailability(workspace.rootPath);
+				setWorkspaceAvailabilityById((previous) => ({ ...previous, [workspace.id]: availability }));
+				if (!availability.available) {
+					setWorkspaceSessionsById((previous) => ({ ...previous, [workspace.id]: [] }));
+					setWorkspaceErrorById((previous) => ({
+						...previous,
+						[workspace.id]: t("sidebar.workspaceUnavailable", { defaultValue: "工作区不可用" }),
+					}));
+					return;
+				}
+				const sessionsInWorkspace = await fetchCodeAgentSessions(workspace.rootPath, 60);
+				const mapped = [...sessionsInWorkspace]
+					.sort((left, right) => right.updatedAt - left.updatedAt)
+					.map((session) => ({
+						sessionId: session.sessionId,
+						title: session.title?.trim() || session.sessionId,
+						updatedAt: session.updatedAt,
+					}));
+				setWorkspaceSessionsById((previous) => ({ ...previous, [workspace.id]: mapped }));
+			} catch {
+				setWorkspaceSessionsById((previous) => ({ ...previous, [workspace.id]: [] }));
+				setWorkspaceErrorById((previous) => ({
+					...previous,
+					[workspace.id]: t("sidebar.threadSessionsLoadFailed", { defaultValue: "线程会话加载失败" }),
+				}));
+			} finally {
+				setWorkspaceLoadingById((previous) => ({ ...previous, [workspace.id]: false }));
+			}
 		},
-		[setFolderExpanded],
+		[t],
 	);
 
-	const activateChatFolder = useCallback(() => {
-		openFolderAndNavigate("chat");
-		const latest = openClawSessions[0];
-		if (latest) {
-			switchSession(latest.key);
-		} else {
-			newSession();
-		}
-		navigate("/");
-	}, [navigate, newSession, openClawSessions, openFolderAndNavigate, switchSession]);
+	useEffect(() => {
+		if (didRunMigrationRef.current) return;
+		didRunMigrationRef.current = true;
 
-	const activateCliFolder = useCallback(() => {
-		openFolderAndNavigate("cli");
-		const latest = cliSessions[0];
-		if (latest) {
-			setActiveCliSessionId(latest.sessionId);
-			navigate(`/code-agent/chat?sessionId=${encodeURIComponent(latest.sessionId)}`);
-			return;
-		}
-		navigate("/code-agent/chat");
-	}, [cliSessions, navigate, openFolderAndNavigate]);
+		const runMigration = async () => {
+			try {
+				const migrated = window.localStorage.getItem(THREAD_WORKSPACE_MIGRATION_KEY) === "1";
+				if (migrated) return;
+				const legacyRoot = readStoredCodeAgentWorkspaceRoot().trim();
+				if (!legacyRoot) {
+					window.localStorage.setItem(THREAD_WORKSPACE_MIGRATION_KEY, "1");
+					return;
+				}
+				const normalizedLegacyRoot = normalizeWorkspacePath(legacyRoot);
+				const existing = sidebarThreadWorkspaces.find(
+					(workspace) => normalizeWorkspacePath(workspace.rootPath) === normalizedLegacyRoot,
+				);
+				if (!existing) {
+					const workspaceId = await buildWorkspaceId(legacyRoot);
+					if (workspaceId) {
+						const now = Date.now();
+						upsertSidebarThreadWorkspace({
+							id: workspaceId,
+							rootPath: legacyRoot,
+							name: deriveWorkspaceName(legacyRoot) || legacyRoot,
+							createdAt: now,
+							lastUsedAt: now,
+						});
+						setSidebarThreadWorkspaceExpanded(workspaceId, true);
+					}
+				}
+				window.localStorage.setItem(THREAD_WORKSPACE_MIGRATION_KEY, "1");
+			} catch {
+				// Ignore migration failures and keep runtime usable.
+			}
+		};
 
-	const activateJizhiFolder = useCallback(() => {
-		openFolderAndNavigate("jizhi");
-		if (jizhiSessionItems[0]) {
-			setJizhiActiveSessionId(jizhiSessionItems[0].id);
-		}
-		navigate("/jizhi-chat");
-	}, [jizhiSessionItems, navigate, openFolderAndNavigate, setJizhiActiveSessionId]);
-
-	const activateXiaojiuFolder = useCallback(() => {
-		openFolderAndNavigate("xiaojiu");
-		if (xiaojiuSessionItems[0]) {
-			setRemoteActiveSessionId(xiaojiuSessionItems[0].id);
-		}
-		navigate("/xiaojiu-chat");
+		void runMigration();
 	}, [
-		navigate,
-		openFolderAndNavigate,
-		setRemoteActiveSessionId,
-		xiaojiuSessionItems,
+		sidebarThreadWorkspaces,
+		setSidebarThreadWorkspaceExpanded,
+		upsertSidebarThreadWorkspace,
 	]);
 
-	const activateVoiceFolder = useCallback(() => {
-		openFolderAndNavigate("voice");
-		if (voiceSessionItems[0]) {
-			setVoiceActiveSessionId(voiceSessionItems[0].id);
+	useEffect(() => {
+		if (threadWorkspaces.length === 0) return;
+		if (!didInitialWorkspaceFetchRef.current) {
+			didInitialWorkspaceFetchRef.current = true;
+			for (const workspace of threadWorkspaces) {
+				fetchedWorkspaceIdsRef.current.add(workspace.id);
+				void refreshWorkspaceSessions(workspace);
+			}
+			return;
 		}
-		navigate("/voice-chat");
-	}, [navigate, openFolderAndNavigate, setVoiceActiveSessionId, voiceSessionItems]);
+
+		for (const workspace of threadWorkspaces) {
+			if (fetchedWorkspaceIdsRef.current.has(workspace.id)) continue;
+			fetchedWorkspaceIdsRef.current.add(workspace.id);
+			void refreshWorkspaceSessions(workspace);
+		}
+	}, [refreshWorkspaceSessions, threadWorkspaces]);
+
+	useEffect(() => {
+		const refreshWorkspaceFromRunPayload = (payload: unknown) => {
+			if (!payload || typeof payload !== "object") return;
+			const request = (payload as { request?: unknown }).request;
+			if (!request || typeof request !== "object") return;
+			const workspaceRoot = (request as { workspaceRoot?: unknown }).workspaceRoot;
+			if (typeof workspaceRoot !== "string" || !workspaceRoot.trim()) return;
+			const workspaceId = workspaceIdByNormalizedRoot[normalizeWorkspacePath(workspaceRoot)];
+			if (!workspaceId) return;
+			const workspace = workspaceById[workspaceId];
+			if (!workspace) return;
+			void refreshWorkspaceSessions(workspace);
+		};
+
+		const unsubscribeRunCompleted = subscribeHostEvent("code-agent:run-completed", refreshWorkspaceFromRunPayload);
+		const unsubscribeRunFailed = subscribeHostEvent("code-agent:run-failed", refreshWorkspaceFromRunPayload);
+		return () => {
+			unsubscribeRunCompleted();
+			unsubscribeRunFailed();
+		};
+	}, [refreshWorkspaceSessions, workspaceById, workspaceIdByNormalizedRoot]);
+
+	useEffect(() => {
+		if (pathname === "/") {
+			setSidebarActiveContext({ kind: "openclaw", workspaceId: null });
+			return;
+		}
+		if (pathname.startsWith("/voice-chat")) {
+			setSidebarActiveContext({ kind: "realtimeVoice", workspaceId: null });
+			return;
+		}
+		if (pathname.startsWith("/code-agent/chat") && activeThreadWorkspaceIdFromRoute) {
+			setSidebarActiveContext({ kind: "thread", workspaceId: activeThreadWorkspaceIdFromRoute });
+		}
+	}, [activeThreadWorkspaceIdFromRoute, pathname, setSidebarActiveContext]);
+
+	useEffect(() => {
+		const workspaceIdSet = new Set(threadWorkspaces.map((workspace) => workspace.id));
+		setWorkspaceSessionsById((previous) =>
+			Object.fromEntries(
+				Object.entries(previous).filter(([workspaceId]) => workspaceIdSet.has(workspaceId)),
+			),
+		);
+		setWorkspaceLoadingById((previous) =>
+			Object.fromEntries(
+				Object.entries(previous).filter(([workspaceId]) => workspaceIdSet.has(workspaceId)),
+			),
+		);
+		setWorkspaceErrorById((previous) =>
+			Object.fromEntries(
+				Object.entries(previous).filter(([workspaceId]) => workspaceIdSet.has(workspaceId)),
+			),
+		);
+		setWorkspaceAvailabilityById((previous) =>
+			Object.fromEntries(
+				Object.entries(previous).filter(([workspaceId]) => workspaceIdSet.has(workspaceId)),
+			),
+		);
+	}, [threadWorkspaces]);
+
+	const handleAddWorkspace = useCallback(async () => {
+		const result = (await invokeIpc("dialog:open", {
+			properties: ["openDirectory"],
+		})) as { canceled: boolean; filePaths?: string[] };
+		if (result.canceled || !result.filePaths?.[0]) return;
+
+		const rootPath = result.filePaths[0].trim();
+		if (!rootPath) return;
+
+		const normalizedRoot = normalizeWorkspacePath(rootPath);
+		const existing = threadWorkspaces.find(
+			(workspace) => normalizeWorkspacePath(workspace.rootPath) === normalizedRoot,
+		);
+		if (existing) {
+			setSidebarThreadWorkspaceExpanded(existing.id, true);
+			setSidebarActiveContext({ kind: "thread", workspaceId: existing.id });
+			touchSidebarThreadWorkspace(existing.id);
+			void refreshWorkspaceSessions(existing);
+			return;
+		}
+
+		const workspaceId = await buildWorkspaceId(rootPath);
+		if (!workspaceId) return;
+		const now = Date.now();
+		const workspace: SidebarThreadWorkspace = {
+			id: workspaceId,
+			rootPath,
+			name: deriveWorkspaceName(rootPath) || rootPath,
+			createdAt: now,
+			lastUsedAt: now,
+		};
+		upsertSidebarThreadWorkspace(workspace);
+		setSidebarThreadWorkspaceExpanded(workspace.id, true);
+		setSidebarActiveContext({ kind: "thread", workspaceId: workspace.id });
+		writeStoredCodeAgentWorkspaceRoot(rootPath);
+		void refreshWorkspaceSessions(workspace);
+	}, [
+		refreshWorkspaceSessions,
+		setSidebarActiveContext,
+		setSidebarThreadWorkspaceExpanded,
+		threadWorkspaces,
+		touchSidebarThreadWorkspace,
+		upsertSidebarThreadWorkspace,
+	]);
 
 	const focusSearch = useCallback(() => {
 		setSearchExpanded(true);
@@ -633,6 +622,201 @@ export function LegacySidebar() {
 			searchInputRef.current?.focus();
 		}, 0);
 	}, []);
+
+	const handleOpenClawNewThread = useCallback(() => {
+		setSidebarActiveContext({ kind: "openclaw", workspaceId: null });
+		setFolderExpanded("openclaw", true);
+		newSession();
+		navigate("/");
+	}, [navigate, newSession, setFolderExpanded, setSidebarActiveContext]);
+
+	const handleRealtimeVoiceNewThread = useCallback(() => {
+		setSidebarActiveContext({ kind: "realtimeVoice", workspaceId: null });
+		setFolderExpanded("realtimeVoice", true);
+		void invokeIpc("voice:openDialog").catch(() => {});
+	}, [setFolderExpanded, setSidebarActiveContext]);
+
+	const handleWorkspaceNewThread = useCallback(
+		(workspace: SidebarThreadWorkspace) => {
+			const availability = workspaceAvailabilityById[workspace.id];
+			if (availability && !availability.available) return;
+			setSidebarActiveContext({ kind: "thread", workspaceId: workspace.id });
+			touchSidebarThreadWorkspace(workspace.id);
+			setSidebarThreadWorkspaceExpanded(workspace.id, true);
+			writeStoredCodeAgentWorkspaceRoot(workspace.rootPath);
+			navigate(buildCodeAgentRoute(workspace.rootPath, undefined, String(Date.now())));
+		},
+		[
+			navigate,
+			setSidebarActiveContext,
+			setSidebarThreadWorkspaceExpanded,
+			touchSidebarThreadWorkspace,
+			workspaceAvailabilityById,
+		],
+	);
+
+	const handleGlobalNewThread = useCallback(() => {
+		if (sidebarActiveContext.kind === "realtimeVoice") {
+			handleRealtimeVoiceNewThread();
+			return;
+		}
+
+		if (sidebarActiveContext.kind === "thread") {
+			const activeWorkspace =
+				(sidebarActiveContext.workspaceId
+					? workspaceById[sidebarActiveContext.workspaceId]
+					: undefined) ?? threadWorkspaces[0];
+			if (activeWorkspace) {
+				handleWorkspaceNewThread(activeWorkspace);
+				return;
+			}
+			void handleAddWorkspace();
+			return;
+		}
+
+		handleOpenClawNewThread();
+	}, [
+		handleAddWorkspace,
+		handleOpenClawNewThread,
+		handleRealtimeVoiceNewThread,
+		handleWorkspaceNewThread,
+		sidebarActiveContext,
+		threadWorkspaces,
+		workspaceById,
+	]);
+
+	const handleWorkspaceRename = useCallback(
+		(workspace: SidebarThreadWorkspace) => {
+			const nextName = window.prompt(
+				t("sidebar.workspace.renamePrompt", { defaultValue: "重命名工作区" }),
+				workspace.name,
+			);
+			if (!nextName) return;
+			const trimmed = nextName.trim();
+			if (!trimmed || trimmed === workspace.name) return;
+			renameSidebarThreadWorkspace(workspace.id, trimmed);
+		},
+		[renameSidebarThreadWorkspace, t],
+	);
+
+	const handleWorkspaceRemove = useCallback(
+		(workspace: SidebarThreadWorkspace) => {
+			const confirmed = window.confirm(
+				t("sidebar.workspace.removeConfirm", {
+					defaultValue: `确定从列表移除工作区“${workspace.name}”吗？此操作不会删除本地文件。`,
+				}),
+			);
+			if (!confirmed) return;
+			removeSidebarThreadWorkspace(workspace.id);
+		},
+		[removeSidebarThreadWorkspace, t],
+	);
+
+	const handleWorkspaceOpenInFinder = useCallback((workspace: SidebarThreadWorkspace) => {
+		void invokeIpc("shell:showItemInFolder", workspace.rootPath).catch(() => {});
+	}, []);
+
+	const handleOpenClawSession = useCallback(
+		(sessionKey: string) => {
+			setSidebarActiveContext({ kind: "openclaw", workspaceId: null });
+			switchSession(sessionKey);
+			navigate("/");
+		},
+		[navigate, setSidebarActiveContext, switchSession],
+	);
+
+	const handleRealtimeVoiceSession = useCallback(
+		(sessionId: string) => {
+			setSidebarActiveContext({ kind: "realtimeVoice", workspaceId: null });
+			setVoiceActiveSessionId(sessionId);
+			navigate("/voice-chat");
+		},
+		[navigate, setSidebarActiveContext, setVoiceActiveSessionId],
+	);
+
+	const handleXiaojiuSession = useCallback(
+		(sessionId: string) => {
+			setRemoteActiveSessionId(sessionId);
+			navigate("/xiaojiu-chat");
+		},
+		[navigate, setRemoteActiveSessionId],
+	);
+
+	const handleThreadSession = useCallback(
+		(workspace: SidebarThreadWorkspace, sessionId: string) => {
+			setSidebarActiveContext({ kind: "thread", workspaceId: workspace.id });
+			touchSidebarThreadWorkspace(workspace.id);
+			setSidebarThreadWorkspaceExpanded(workspace.id, true);
+			writeStoredCodeAgentWorkspaceRoot(workspace.rootPath);
+			navigate(buildCodeAgentRoute(workspace.rootPath, sessionId));
+		},
+		[navigate, setSidebarActiveContext, setSidebarThreadWorkspaceExpanded, touchSidebarThreadWorkspace],
+	);
+
+	const openClawCount = filteredOpenClawSessions.length;
+	const xiaojiuCount = filteredXiaojiuSessions.length;
+	const realtimeVoiceCount = filteredRealtimeVoiceSessions.length;
+	const threadCategoryCount = visibleThreadWorkspaces.length;
+
+	const canToggleOpenClawSessions = openClawCount > COLLAPSIBLE_SESSION_LIMIT;
+	const visibleOpenClawSessions =
+		canToggleOpenClawSessions && !openClawSessionsExpanded
+			? filteredOpenClawSessions.slice(0, COLLAPSIBLE_SESSION_LIMIT)
+			: filteredOpenClawSessions;
+
+	const canToggleRealtimeVoiceSessions = realtimeVoiceCount > COLLAPSIBLE_SESSION_LIMIT;
+	const visibleRealtimeVoiceSessions =
+		canToggleRealtimeVoiceSessions && !voiceSessionsExpanded
+			? filteredRealtimeVoiceSessions.slice(0, COLLAPSIBLE_SESSION_LIMIT)
+			: filteredRealtimeVoiceSessions;
+
+	const canToggleXiaojiuSessions = xiaojiuCount > COLLAPSIBLE_SESSION_LIMIT;
+	const visibleXiaojiuSessions =
+		canToggleXiaojiuSessions && !xiaojiuSessionsExpanded
+			? filteredXiaojiuSessions.slice(0, COLLAPSIBLE_SESSION_LIMIT)
+			: filteredXiaojiuSessions;
+
+	const threadHeaderActions = (
+		<button
+			type="button"
+			onClick={(event) => {
+				event.stopPropagation();
+				void handleAddWorkspace();
+			}}
+			className={styles.folderHeaderActionButton}
+			aria-label={t("sidebar.addWorkspace", { defaultValue: "添加工作区" })}
+		>
+			<Plus className={styles.primaryActionIcon} />
+		</button>
+	);
+
+	const openClawHeaderActions = (
+		<button
+			type="button"
+			onClick={(event) => {
+				event.stopPropagation();
+				handleOpenClawNewThread();
+			}}
+			className={styles.folderHeaderActionButton}
+			aria-label={t("sidebar.newThread", { defaultValue: "新线程" })}
+		>
+			<Plus className={styles.primaryActionIcon} />
+		</button>
+	);
+
+	const realtimeVoiceHeaderActions = (
+		<button
+			type="button"
+			onClick={(event) => {
+				event.stopPropagation();
+				handleRealtimeVoiceNewThread();
+			}}
+			className={styles.folderHeaderActionButton}
+			aria-label={t("sidebar.newThread", { defaultValue: "新线程" })}
+		>
+			<Plus className={styles.primaryActionIcon} />
+		</button>
+	);
 
 	if (sidebarCollapsed) {
 		return null;
@@ -643,25 +827,13 @@ export function LegacySidebar() {
 			<div className={styles.topSpacer} />
 			<div className={styles.topBlock}>
 				<div className={styles.actionStack}>
-					<button
-						type="button"
-						onClick={() => {
-							newSession();
-							navigate("/");
-							openFolderAndNavigate("chat");
-						}}
-						className={styles.primaryAction}
-					>
+					<button type="button" onClick={handleGlobalNewThread} className={styles.primaryAction}>
 						<SquarePen className={styles.primaryActionIcon} />
 						<span className={styles.truncate}>{t("sidebar.newThread", { defaultValue: "新线程" })}</span>
 					</button>
 
 					{!searchExpanded && !hasSearchQuery ? (
-						<button
-							type="button"
-							onClick={focusSearch}
-							className={styles.primaryAction}
-						>
+						<button type="button" onClick={focusSearch} className={styles.primaryAction}>
 							<Search className={styles.primaryActionIcon} />
 							<span className={styles.truncate}>{t("actions.search", { defaultValue: "Search" })}</span>
 						</button>
@@ -688,10 +860,7 @@ export function LegacySidebar() {
 					<NavLink
 						to="/skills"
 						className={({ isActive }) =>
-							cx(
-								styles.navAction,
-								isActive ? styles.navActionActive : styles.navActionIdle,
-							)
+							cx(styles.navAction, isActive ? styles.navActionActive : styles.navActionIdle)
 						}
 					>
 						<Hexagon className={styles.primaryActionIcon} />
@@ -701,121 +870,251 @@ export function LegacySidebar() {
 					<NavLink
 						to="/agents"
 						className={({ isActive }) =>
-							cx(
-								styles.navAction,
-								isActive ? styles.navActionActive : styles.navActionIdle,
-							)
+							cx(styles.navAction, isActive ? styles.navActionActive : styles.navActionIdle)
 						}
 					>
 						<Blocks className={styles.primaryActionIcon} />
-						<span className={styles.truncate}>
-							{t("sidebar.pluginsNav", { defaultValue: "Plugins" })}
-						</span>
+						<span className={styles.truncate}>{t("sidebar.pluginsNav", { defaultValue: "Plugins" })}</span>
 					</NavLink>
 
 					<NavLink
 						to="/cron"
 						className={({ isActive }) =>
-							cx(
-								styles.navAction,
-								isActive ? styles.navActionActive : styles.navActionIdle,
-							)
+							cx(styles.navAction, isActive ? styles.navActionActive : styles.navActionIdle)
 						}
 					>
 						<Clock className={styles.primaryActionIcon} />
-						<span className={styles.truncate}>
-							{t("sidebar.automationNav", { defaultValue: "自动化" })}
-						</span>
+						<span className={styles.truncate}>{t("sidebar.automationNav", { defaultValue: "自动化" })}</span>
 					</NavLink>
 				</div>
 			</div>
 
 			<div className={styles.threadsArea}>
-				<div className={styles.threadsMeta}>
-					<span>
-						{t("sidebar.sectionThreads", {
-							defaultValue: i18n.language.startsWith("zh") ? "线程" : "Threads",
-						})}
-					</span>
-					{hasSearchQuery ? (
-						<button
-							type="button"
-							onClick={() => setSearchQuery("")}
-							className={styles.clearSearchButton}
-						>
-							{t("actions.clear", { defaultValue: "清空" })}
-						</button>
-					) : (
-						<span className={styles.tinyCount}>{visibleThreadCount}</span>
-					)}
-				</div>
+				<FolderSection
+					icon={<FolderOpen className={styles.primaryActionIcon} strokeWidth={2} />}
+					label={t("sidebar.folder.thread", { defaultValue: "线程" })}
+					count={threadCategoryCount}
+					active={false}
+					expanded={isFolderExpanded("thread")}
+					onActivate={() => {
+						toggleFolder("thread");
+						const firstWorkspace = threadWorkspaces[0];
+						if (firstWorkspace) {
+							setSidebarActiveContext({ kind: "thread", workspaceId: firstWorkspace.id });
+							void refreshWorkspaceSessions(firstWorkspace);
+						}
+					}}
+					onToggle={() => toggleFolder("thread")}
+					headerActions={threadHeaderActions}
+					styles={styles}
+					cx={cx}
+					variant="threadTop"
+				>
+					{visibleThreadWorkspaces.length === 0 ? (
+						<div className={styles.sessionEmpty}>{t("sidebar.empty.thread", { defaultValue: "无线程" })}</div>
+					) : null}
+					{visibleThreadWorkspaces.map((workspace) => {
+						const expanded = sidebarThreadWorkspaceExpanded?.[workspace.id] !== false;
+						const availability = workspaceAvailabilityById[workspace.id] ?? { available: true };
+						const secondaryLabel = getWorkspaceSecondaryLabel(workspace);
+						const sessionsInWorkspace = filteredThreadSessionsByWorkspace[workspace.id] ?? [];
+						const isLoading = workspaceLoadingById[workspace.id] === true;
+						const error = workspaceErrorById[workspace.id];
+						const canToggleSessions = sessionsInWorkspace.length > COLLAPSIBLE_SESSION_LIMIT;
+						const sessionsExpanded = workspaceSessionsExpanded[workspace.id] === true;
+						const visibleSessions =
+							canToggleSessions && !sessionsExpanded
+								? sessionsInWorkspace.slice(0, COLLAPSIBLE_SESSION_LIMIT)
+								: sessionsInWorkspace;
+
+						const workspaceMenu: MenuProps = {
+							items: [
+								{ key: "rename", label: t("sidebar.workspace.rename", { defaultValue: "重命名" }) },
+								{ key: "remove", label: t("sidebar.workspace.remove", { defaultValue: "从列表移除" }) },
+								{ key: "open", label: t("sidebar.workspace.openInFinder", { defaultValue: "在 Finder 中打开" }) },
+							],
+							onClick: ({ key }) => {
+								if (key === "rename") {
+									handleWorkspaceRename(workspace);
+									return;
+								}
+								if (key === "remove") {
+									handleWorkspaceRemove(workspace);
+									return;
+								}
+								handleWorkspaceOpenInFinder(workspace);
+							},
+						};
+
+						return (
+							<div
+								key={workspace.id}
+								className={cx(
+									styles.workspaceRow,
+									styles.threadWorkspaceRow,
+								)}
+							>
+								<div className={styles.workspaceTopRow}>
+									<button
+										type="button"
+										onClick={() => {
+											const nextExpanded = !expanded;
+											setSidebarThreadWorkspaceExpanded(workspace.id, nextExpanded);
+											setSidebarActiveContext({ kind: "thread", workspaceId: workspace.id });
+											touchSidebarThreadWorkspace(workspace.id);
+											void refreshWorkspaceSessions(workspace);
+										}}
+										className={cx(
+											styles.workspaceButton,
+											styles.threadWorkspaceButton,
+											styles.threadWorkspaceButtonIdle,
+										)}
+									>
+										<span className={styles.workspaceFolderWrap}>
+											<FolderOpen data-workspace-folder-icon="true" className={styles.workspaceFolderIcon} />
+											<ChevronDown
+												data-workspace-chevron="true"
+												className={cx(
+													styles.workspaceChevron,
+													!expanded && styles.workspaceChevronCollapsed,
+												)}
+											/>
+										</span>
+										<div className={styles.workspaceMain}>
+											<span className={styles.workspaceName}>{workspace.name}</span>
+											{secondaryLabel ? <span className={styles.workspaceSecondary}>{secondaryLabel}</span> : null}
+											{!availability.available ? (
+												<span className={styles.workspaceUnavailableTag}>
+													{t("sidebar.workspaceUnavailable", { defaultValue: "不可用" })}
+												</span>
+											) : null}
+										</div>
+									</button>
+									<div className={styles.workspaceActions} data-workspace-actions="true">
+										<button
+											type="button"
+											onClick={(event) => {
+												event.stopPropagation();
+												handleWorkspaceNewThread(workspace);
+											}}
+											className={cx(styles.workspaceActionButton, styles.threadWorkspaceActionButton)}
+											disabled={!availability.available}
+											aria-label={t("sidebar.newThread", { defaultValue: "新线程" })}
+										>
+											<Plus className={styles.primaryActionIcon} />
+										</button>
+										<Dropdown menu={workspaceMenu} trigger={["click"]}>
+											<button
+												type="button"
+												onClick={(event) => event.stopPropagation()}
+												className={cx(styles.workspaceActionButton, styles.threadWorkspaceActionButton)}
+												aria-label={t("sidebar.workspace.more", { defaultValue: "更多" })}
+											>
+												<Ellipsis className={styles.primaryActionIcon} />
+											</button>
+										</Dropdown>
+									</div>
+								</div>
+
+								{expanded ? (
+									<div className={cx(styles.workspaceChildren, styles.threadWorkspaceChildren)}>
+										{isLoading ? (
+											<div className={styles.sessionEmpty}>{t("status.loading", { defaultValue: "加载中..." })}</div>
+										) : null}
+										{!isLoading && error ? <div className={styles.warningText}>{error}</div> : null}
+										{!isLoading && !error && visibleSessions.length === 0 ? (
+											<div className={styles.sessionEmpty}>{t("sidebar.empty.thread", { defaultValue: "无线程" })}</div>
+										) : null}
+										{visibleSessions.map((session) => {
+											const isActive =
+												pathname.startsWith("/code-agent/chat")
+												&& activeThreadWorkspaceIdFromRoute === workspace.id
+												&& routeSessionId === session.sessionId;
+											return (
+												<button
+													key={`${workspace.id}:${session.sessionId}`}
+													type="button"
+													onClick={() => handleThreadSession(workspace, session.sessionId)}
+													className={cx(
+														styles.threadSessionButton,
+														isActive ? styles.listButtonActive : styles.listButtonIdle,
+													)}
+												>
+													<div className={styles.listButtonRow}>
+														<span className={styles.listButtonLabel}>{session.title}</span>
+														<span className={styles.sessionTime}>{formatRelativeTime(session.updatedAt, i18n.language)}</span>
+													</div>
+												</button>
+											);
+										})}
+										{canToggleSessions ? (
+											<button
+												type="button"
+												onClick={() =>
+													setWorkspaceSessionsExpanded((current) => ({
+														...current,
+														[workspace.id]: !sessionsExpanded,
+													}))
+												}
+												className={styles.sessionListToggleButton}
+											>
+												{sessionsExpanded
+													? t("sidebar.collapseList", { defaultValue: "折叠显示" })
+													: t("sidebar.expandList", { defaultValue: "展开显示" })}
+											</button>
+										) : null}
+									</div>
+								) : null}
+							</div>
+						);
+					})}
+				</FolderSection>
 
 				<FolderSection
 					icon={<MessageSquare className={styles.primaryActionIcon} strokeWidth={2} />}
-					label={t("sidebar.folder.chat", { defaultValue: "对话" })}
-					count={filteredOpenClawSessions.length}
-					active={activeFolder === "chat" && !hasVisibleActiveChatSession}
-					expanded={isFolderExpanded("chat")}
-					onActivate={activateChatFolder}
-					onToggle={() => toggleFolder("chat")}
+					label={t("sidebar.folder.openClaw", { defaultValue: "OpenClaw" })}
+					count={openClawCount}
+					active={pathname === "/"}
+					expanded={isFolderExpanded("openclaw")}
+					onActivate={() => {
+						toggleFolder("openclaw");
+						setSidebarActiveContext({ kind: "openclaw", workspaceId: null });
+					}}
+					onToggle={() => toggleFolder("openclaw")}
+					headerActions={openClawHeaderActions}
 					styles={styles}
 					cx={cx}
 				>
-					{filteredOpenClawSessions.length === 0 ? (
-						<div className={styles.sessionEmpty}>
-							{hasSearchQuery
-								? t("sidebar.noResults", { defaultValue: "没有匹配结果" })
-								: t("sidebar.noConversations", { defaultValue: "暂无会话" })}
-						</div>
+					{openClawCount === 0 ? (
+						<div className={styles.sessionEmpty}>{t("sidebar.empty.openClaw", { defaultValue: "无对话" })}</div>
 					) : null}
 					{visibleOpenClawSessions.map((session) => {
 						const isActive = pathname === "/" && currentSessionKey === session.key;
 						const isRunning = isActive && chatSending;
 						return (
-							<div
-								key={session.key}
-								className={styles.chatSessionRow}
-							>
+							<div key={session.key} className={styles.chatSessionRow}>
 								<button
 									type="button"
-									onClick={() => {
-										switchSession(session.key);
-										navigate("/");
-										openFolderAndNavigate("chat");
-									}}
+									onClick={() => handleOpenClawSession(session.key)}
 									className={cx(
 										styles.sessionButton,
 										isActive ? styles.sessionButtonActive : styles.sessionButtonIdle,
 									)}
 								>
-									<span
-										aria-hidden="true"
-										data-subitem-pin="true"
-										className={styles.subItemPinWrap}
-									>
+									<span aria-hidden="true" data-subitem-pin="true" className={styles.subItemPinWrap}>
 										<Pin className={styles.subItemPinIcon} />
 									</span>
 									<div className={styles.sessionMainRow}>
-										{isRunning ? (
-											<Loader2 className={styles.loader} />
-										) : null}
+										{isRunning ? <Loader2 className={styles.loader} /> : null}
 										<div className={styles.sessionTitle}>{session.label}</div>
-										<span className={styles.sessionTime}>
-											{formatRelativeTime(session.updatedAt, i18n.language)}
-										</span>
-									</div>
-									<div className={styles.sessionSubtitle}>
-										{session.agentName}
+										<span className={styles.sessionTime}>{formatRelativeTime(session.updatedAt, i18n.language)}</span>
 									</div>
 								</button>
 								<button
 									aria-label="Delete session"
 									onClick={(event) => {
 										event.stopPropagation();
-										setSessionToDelete({
-											key: session.key,
-											label: session.label,
-										});
+										setSessionToDelete({ key: session.key, label: session.label });
 									}}
 									type="button"
 									data-session-delete="true"
@@ -826,241 +1125,59 @@ export function LegacySidebar() {
 							</div>
 						);
 					})}
-					{canToggleChatSessions ? (
+					{canToggleOpenClawSessions ? (
 						<button
 							type="button"
-							onClick={() => setChatSessionsExpanded((current) => !current)}
+							onClick={() => setOpenClawSessionsExpanded((current) => !current)}
 							className={styles.sessionListToggleButton}
 						>
-							{chatSessionsExpanded
+							{openClawSessionsExpanded
 								? t("sidebar.collapseList", { defaultValue: "折叠显示" })
 								: t("sidebar.expandList", { defaultValue: "展开显示" })}
 						</button>
 					) : null}
 				</FolderSection>
-
-				<FolderSection
-					icon={<Terminal className={styles.primaryActionIcon} strokeWidth={2} />}
-					label={t("sidebar.folder.cli", { defaultValue: "CLI" })}
-					count={filteredCliSessions.length}
-					active={activeFolder === "cli" && !hasVisibleActiveCliSession}
-					expanded={isFolderExpanded("cli")}
-					onActivate={activateCliFolder}
-					onToggle={() => toggleFolder("cli")}
-					styles={styles}
-					cx={cx}
-				>
-					{!cliWorkspaceRoot ? (
-						<div className={styles.cliWorkspaceCard}>
-							<div className={styles.cliWorkspaceText}>
-								{t("sidebar.cliWorkspaceNotConfigured", {
-									defaultValue: "未配置 CLI 工作区",
-								})}
-							</div>
-							<button
-								type="button"
-								onClick={() => navigate("/settings")}
-								className={styles.cliWorkspaceButton}
-							>
-								{t("sidebar.configureWorkspace", { defaultValue: "配置工作区" })}
-							</button>
-						</div>
-					) : null}
-					{cliHasWorkspace && visibleCliLoading ? (
-						<div className={styles.sessionEmpty}>
-							{t("status.loading", { defaultValue: "加载中..." })}
-						</div>
-					) : null}
-					{cliHasWorkspace && visibleCliError ? (
-						<div className={styles.warningText}>
-							{visibleCliError}
-						</div>
-					) : null}
-					{cliHasWorkspace
-					&& !visibleCliLoading
-					&& !visibleCliError
-					&& filteredCliSessions.length === 0 ? (
-						<div className={styles.sessionEmpty}>
-							{hasSearchQuery
-								? t("sidebar.noResults", { defaultValue: "没有匹配结果" })
-								: t("sidebar.noConversations", { defaultValue: "暂无会话" })}
-						</div>
-					) : null}
-					{visibleFilteredCliSessions.map((session) => {
-						const isActive =
-							pathname.startsWith("/code-agent/chat")
-							&& session.sessionId === effectiveActiveCliSessionId;
-						return (
-							<button
-								key={session.sessionId}
-								type="button"
-								onClick={() => {
-									setActiveCliSessionId(session.sessionId);
-									navigate(
-										`/code-agent/chat?sessionId=${encodeURIComponent(session.sessionId)}`,
-									);
-									openFolderAndNavigate("cli");
-								}}
-								className={cx(
-									styles.listButton,
-									isActive ? styles.listButtonActive : styles.listButtonIdle,
-								)}
-							>
-								<span
-									aria-hidden="true"
-									data-subitem-pin="true"
-									className={styles.subItemPinWrap}
-								>
-									<Pin className={styles.subItemPinIcon} />
-								</span>
-								<div className={styles.listButtonRow}>
-									<span className={styles.listButtonLabel}>{session.title}</span>
-									<span className={styles.sessionTime}>
-										{formatRelativeTime(session.updatedAt, i18n.language)}
-									</span>
-								</div>
-							</button>
-						);
-					})}
-					{canToggleCliSessions ? (
-						<button
-							type="button"
-							onClick={() => setCliSessionsExpanded((current) => !current)}
-							className={styles.sessionListToggleButton}
-						>
-							{cliSessionsExpanded
-								? t("sidebar.collapseList", { defaultValue: "折叠显示" })
-								: t("sidebar.expandList", { defaultValue: "展开显示" })}
-						</button>
-					) : null}
-				</FolderSection>
-
-				{jizhiEnabled ? (
-					<FolderSection
-						icon={<Bot className={styles.primaryActionIcon} strokeWidth={2} />}
-						label={t("sidebar.folder.jizhi", { defaultValue: "极智" })}
-						count={filteredJizhiSessions.length}
-						active={activeFolder === "jizhi" && !hasVisibleActiveJizhiSession}
-						expanded={isFolderExpanded("jizhi")}
-						onActivate={activateJizhiFolder}
-						onToggle={() => toggleFolder("jizhi")}
-						styles={styles}
-						cx={cx}
-					>
-						{jizhiSyncError ? (
-							<div className={styles.warningText}>
-								{t("sidebar.syncFailed", { defaultValue: "同步失败" })}
-							</div>
-						) : null}
-						{filteredJizhiSessions.length === 0 ? (
-							<div className={styles.sessionEmpty}>
-								{hasSearchQuery
-									? t("sidebar.noResults", { defaultValue: "没有匹配结果" })
-									: t("sidebar.noConversations", { defaultValue: "暂无会话" })}
-							</div>
-						) : null}
-						{visibleFilteredJizhiSessions.map((session) => {
-							const isActive =
-								pathname.startsWith("/jizhi-chat")
-								&& jizhiActiveSessionId === session.id;
-							return (
-								<button
-									key={session.id}
-									type="button"
-									onClick={() => {
-										setJizhiActiveSessionId(session.id);
-										navigate("/jizhi-chat");
-										openFolderAndNavigate("jizhi");
-									}}
-									className={cx(
-										styles.listButton,
-										isActive ? styles.listButtonActive : styles.listButtonIdle,
-									)}
-								>
-									<span
-										aria-hidden="true"
-										data-subitem-pin="true"
-										className={styles.subItemPinWrap}
-									>
-										<Pin className={styles.subItemPinIcon} />
-									</span>
-									<div className={styles.listButtonRow}>
-										<span className={styles.listButtonLabel}>{session.label}</span>
-										<span className={styles.sessionTime}>
-											{formatRelativeTime(session.updatedAt, i18n.language)}
-										</span>
-									</div>
-								</button>
-							);
-						})}
-						{canToggleJizhiSessions ? (
-							<button
-								type="button"
-								onClick={() => setJizhiSessionsExpanded((current) => !current)}
-								className={styles.sessionListToggleButton}
-							>
-								{jizhiSessionsExpanded
-									? t("sidebar.collapseList", { defaultValue: "折叠显示" })
-									: t("sidebar.expandList", { defaultValue: "展开显示" })}
-							</button>
-						) : null}
-					</FolderSection>
-				) : null}
 
 				{xiaojiuEnabled ? (
 					<FolderSection
 						icon={<MessageCircle className={styles.primaryActionIcon} strokeWidth={2} />}
 						label={t("sidebar.folder.xiaojiu", { defaultValue: "小九" })}
-						count={filteredXiaojiuSessions.length}
-						active={activeFolder === "xiaojiu" && !hasVisibleActiveXiaojiuSession}
+						count={xiaojiuCount}
+						active={pathname.startsWith("/xiaojiu-chat")}
 						expanded={isFolderExpanded("xiaojiu")}
-						onActivate={activateXiaojiuFolder}
+						onActivate={() => {
+							toggleFolder("xiaojiu");
+							const first = xiaojiuSessionItems[0];
+							if (first) {
+								setRemoteActiveSessionId(first.id);
+							}
+							navigate("/xiaojiu-chat");
+						}}
 						onToggle={() => toggleFolder("xiaojiu")}
 						styles={styles}
 						cx={cx}
 					>
 						{remoteSyncError ? (
-							<div className={styles.warningText}>
-								{t("sidebar.syncFailed", { defaultValue: "同步失败" })}
-							</div>
+							<div className={styles.warningText}>{t("sidebar.syncFailed", { defaultValue: "同步失败" })}</div>
 						) : null}
-						{filteredXiaojiuSessions.length === 0 ? (
-							<div className={styles.sessionEmpty}>
-								{hasSearchQuery
-									? t("sidebar.noResults", { defaultValue: "没有匹配结果" })
-									: t("sidebar.noConversations", { defaultValue: "暂无会话" })}
-							</div>
+						{xiaojiuCount === 0 ? (
+							<div className={styles.sessionEmpty}>{t("sidebar.noConversations", { defaultValue: "暂无会话" })}</div>
 						) : null}
-						{visibleFilteredXiaojiuSessions.map((session) => {
-							const isActive =
-								pathname.startsWith("/xiaojiu-chat")
-								&& remoteActiveSessionId === session.id;
+						{visibleXiaojiuSessions.map((session) => {
+							const isActive = pathname.startsWith("/xiaojiu-chat") && remoteActiveSessionId === session.id;
 							return (
 								<button
 									key={session.id}
 									type="button"
-									onClick={() => {
-										setRemoteActiveSessionId(session.id);
-										navigate("/xiaojiu-chat");
-										openFolderAndNavigate("xiaojiu");
-									}}
-									className={cx(
-										styles.listButton,
-										isActive ? styles.listButtonActive : styles.listButtonIdle,
-									)}
+									onClick={() => handleXiaojiuSession(session.id)}
+									className={cx(styles.listButton, isActive ? styles.listButtonActive : styles.listButtonIdle)}
 								>
-									<span
-										aria-hidden="true"
-										data-subitem-pin="true"
-										className={styles.subItemPinWrap}
-									>
+									<span aria-hidden="true" data-subitem-pin="true" className={styles.subItemPinWrap}>
 										<Pin className={styles.subItemPinIcon} />
 									</span>
 									<div className={styles.listButtonRow}>
 										<span className={styles.listButtonLabel}>{session.label}</span>
-										<span className={styles.sessionTime}>
-											{formatRelativeTime(session.updatedAt, i18n.language)}
-										</span>
+										<span className={styles.sessionTime}>{formatRelativeTime(session.updatedAt, i18n.language)}</span>
 									</div>
 								</button>
 							);
@@ -1081,62 +1198,43 @@ export function LegacySidebar() {
 
 				<FolderSection
 					icon={<Mic className={styles.primaryActionIcon} strokeWidth={2} />}
-					label={t("sidebar.folder.voice", { defaultValue: "语音" })}
-					count={filteredVoiceSessions.length}
-					active={activeFolder === "voice" && !hasVisibleActiveVoiceSession}
-					expanded={isFolderExpanded("voice")}
-					onActivate={activateVoiceFolder}
-					onToggle={() => toggleFolder("voice")}
+					label={t("sidebar.folder.realtimeVoice", { defaultValue: "实时语音" })}
+					count={realtimeVoiceCount}
+					active={pathname.startsWith("/voice-chat")}
+					expanded={isFolderExpanded("realtimeVoice")}
+					onActivate={() => {
+						toggleFolder("realtimeVoice");
+						setSidebarActiveContext({ kind: "realtimeVoice", workspaceId: null });
+					}}
+					onToggle={() => toggleFolder("realtimeVoice")}
+					headerActions={realtimeVoiceHeaderActions}
 					styles={styles}
 					cx={cx}
 				>
-					{voiceSyncError ? (
-						<div className={styles.warningText}>
-							{t("sidebar.syncFailed", { defaultValue: "同步失败" })}
-						</div>
+					{voiceSyncError ? <div className={styles.warningText}>{t("sidebar.syncFailed", { defaultValue: "同步失败" })}</div> : null}
+					{realtimeVoiceCount === 0 ? (
+						<div className={styles.sessionEmpty}>{t("sidebar.empty.realtimeVoice", { defaultValue: "无语音会话" })}</div>
 					) : null}
-					{filteredVoiceSessions.length === 0 ? (
-						<div className={styles.sessionEmpty}>
-							{hasSearchQuery
-								? t("sidebar.noResults", { defaultValue: "没有匹配结果" })
-								: t("sidebar.noConversations", { defaultValue: "暂无会话" })}
-						</div>
-					) : null}
-					{visibleFilteredVoiceSessions.map((session) => {
-						const isActive =
-							pathname.startsWith("/voice-chat")
-							&& voiceActiveSessionId === session.id;
+					{visibleRealtimeVoiceSessions.map((session) => {
+						const isActive = pathname.startsWith("/voice-chat") && voiceActiveSessionId === session.id;
 						return (
 							<button
 								key={session.id}
 								type="button"
-								onClick={() => {
-									setVoiceActiveSessionId(session.id);
-									navigate("/voice-chat");
-									openFolderAndNavigate("voice");
-								}}
-								className={cx(
-									styles.listButton,
-									isActive ? styles.listButtonActive : styles.listButtonIdle,
-								)}
+								onClick={() => handleRealtimeVoiceSession(session.id)}
+								className={cx(styles.listButton, isActive ? styles.listButtonActive : styles.listButtonIdle)}
 							>
-								<span
-									aria-hidden="true"
-									data-subitem-pin="true"
-									className={styles.subItemPinWrap}
-								>
+								<span aria-hidden="true" data-subitem-pin="true" className={styles.subItemPinWrap}>
 									<Pin className={styles.subItemPinIcon} />
 								</span>
 								<div className={styles.listButtonRow}>
 									<span className={styles.listButtonLabel}>{session.label}</span>
-									<span className={styles.sessionTime}>
-										{formatRelativeTime(session.updatedAt, i18n.language)}
-									</span>
+									<span className={styles.sessionTime}>{formatRelativeTime(session.updatedAt, i18n.language)}</span>
 								</div>
 							</button>
 						);
 					})}
-					{canToggleVoiceSessions ? (
+					{canToggleRealtimeVoiceSessions ? (
 						<button
 							type="button"
 							onClick={() => setVoiceSessionsExpanded((current) => !current)}
@@ -1148,42 +1246,37 @@ export function LegacySidebar() {
 						</button>
 					) : null}
 				</FolderSection>
-				
-				{/* Spacer ensures the last item clears the footer blur mask cross-browser */}
-				<div style={{ height: "2.75rem", flexShrink: 0 }} />
 			</div>
 
 			<div className={styles.footer}>
 				<NavLink
 					to="/settings"
 					className={({ isActive }) =>
-						cx(
-							styles.settingsLink,
-							isActive && styles.settingsLinkActive,
-						)
+						cx(styles.settingsLink, isActive && styles.settingsLinkActive)
 					}
 				>
-					<SettingsIcon className={styles.settingsIcon} strokeWidth={2} />
-					<span>{t("sidebar.settings", { defaultValue: "设置" })}</span>
+					<SettingsIcon className={styles.settingsIcon} />
+					<span className={styles.truncate}>{t("sidebar.settings", { defaultValue: "设置" })}</span>
 				</NavLink>
 			</div>
 
 			<ConfirmDialog
-				open={!!sessionToDelete}
-				title={t("actions.confirm")}
+				open={Boolean(sessionToDelete)}
+				title={t("actions.delete", { defaultValue: "删除" })}
 				message={t("sidebar.deleteSessionConfirm", {
-					label: sessionToDelete?.label,
+					defaultValue: "确定要删除会话 \"{{label}}\" 吗？",
+					label: sessionToDelete?.label || "",
 				})}
-				confirmLabel={t("actions.delete")}
-				cancelLabel={t("actions.cancel")}
-				variant="destructive"
-				onConfirm={async () => {
-					if (!sessionToDelete) return;
-					await deleteSession(sessionToDelete.key);
-					if (currentSessionKey === sessionToDelete.key) navigate("/");
+				confirmLabel={t("actions.delete", { defaultValue: "删除" })}
+				cancelLabel={t("actions.cancel", { defaultValue: "取消" })}
+				onConfirm={() => {
+					if (sessionToDelete) {
+						deleteSession(sessionToDelete.key);
+					}
 					setSessionToDelete(null);
 				}}
 				onCancel={() => setSessionToDelete(null)}
+				variant="destructive"
 			/>
 		</aside>
 	);

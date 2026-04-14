@@ -31,6 +31,19 @@ export type SidebarProject = {
   createdAt: number;
 };
 
+export type SidebarThreadWorkspace = {
+  id: string;
+  rootPath: string;
+  name: string;
+  createdAt: number;
+  lastUsedAt: number;
+};
+
+export type SidebarActiveContext = {
+  kind: 'thread' | 'openclaw' | 'realtimeVoice';
+  workspaceId: string | null;
+};
+
 // ---------------------------------------------------------------------------
 // Cloud auth / bootstrap state — kept separate from local UI preferences so
 // login readiness and local prefs can evolve independently.
@@ -84,6 +97,9 @@ interface SettingsState extends CloudAuthState {
   // UI State
   sidebarCollapsed: boolean;
   sidebarFolderExpanded: Record<string, boolean>;
+  sidebarThreadWorkspaces: SidebarThreadWorkspace[];
+  sidebarThreadWorkspaceExpanded: Record<string, boolean>;
+  sidebarActiveContext: SidebarActiveContext;
   sidebarBetaEnabled: boolean;
   sidebarWidth: number;
   sidebarProjects: SidebarProject[];
@@ -123,6 +139,13 @@ interface SettingsState extends CloudAuthState {
   setAutoDownloadUpdate: (value: boolean) => void;
   setSidebarCollapsed: (value: boolean) => void;
   setSidebarFolderExpanded: (folder: string, expanded: boolean) => void;
+  setSidebarThreadWorkspaces: (workspaces: SidebarThreadWorkspace[]) => void;
+  upsertSidebarThreadWorkspace: (workspace: SidebarThreadWorkspace) => void;
+  renameSidebarThreadWorkspace: (workspaceId: string, name: string) => void;
+  removeSidebarThreadWorkspace: (workspaceId: string) => void;
+  touchSidebarThreadWorkspace: (workspaceId: string, lastUsedAt?: number) => void;
+  setSidebarThreadWorkspaceExpanded: (workspaceId: string, expanded: boolean) => void;
+  setSidebarActiveContext: (context: SidebarActiveContext) => void;
   setSidebarBetaEnabled: (value: boolean) => void;
   setSidebarWidth: (value: number) => void;
   addSidebarProject: (name: string) => string;
@@ -175,9 +198,18 @@ const defaultSettings = {
   sidebarFolderExpanded: {
     chat: true,
     cli: true,
+    thread: true,
+    openclaw: true,
+    realtimeVoice: true,
     jizhi: true,
     xiaojiu: true,
     voice: true,
+  },
+  sidebarThreadWorkspaces: [] as SidebarThreadWorkspace[],
+  sidebarThreadWorkspaceExpanded: {} as Record<string, boolean>,
+  sidebarActiveContext: {
+    kind: 'openclaw' as const,
+    workspaceId: null,
   },
   sidebarBetaEnabled: false,
   sidebarWidth: 268,
@@ -197,14 +229,103 @@ const defaultSettings = {
   cloudWorkspaceId: null as string | null,
 };
 
+const MAIN_PROCESS_SETTINGS_KEYS = [
+  'theme',
+  'language',
+  'startMinimized',
+  'launchAtStartup',
+  'telemetryEnabled',
+  'petEnabled',
+  'petAnimation',
+  'petCompanionSeed',
+  'petCompanion',
+  'xiaojiuEnabled',
+  'jizhiEnabled',
+  'machineId',
+  'gatewayAutoStart',
+  'gatewayPort',
+  'remoteGatewayUrl',
+  'remoteGatewayToken',
+  'proxyEnabled',
+  'proxyServer',
+  'proxyHttpServer',
+  'proxyHttpsServer',
+  'proxyAllServer',
+  'proxyBypassRules',
+  'codeAgent',
+  'updateChannel',
+  'autoCheckUpdate',
+  'autoDownloadUpdate',
+  'sidebarCollapsed',
+  'sidebarThreadWorkspaces',
+  'sidebarThreadWorkspaceExpanded',
+  'devModeUnlocked',
+] as const satisfies ReadonlyArray<keyof typeof defaultSettings>;
+
+type MainProcessSettingsPatch = Partial<
+  Pick<typeof defaultSettings, (typeof MAIN_PROCESS_SETTINGS_KEYS)[number]>
+>;
+
+function pickMainProcessSettings(raw: Record<string, unknown>): MainProcessSettingsPatch {
+  const patch: MainProcessSettingsPatch = {};
+  for (const key of MAIN_PROCESS_SETTINGS_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(raw, key)) continue;
+    (patch as Record<string, unknown>)[key] = raw[key];
+  }
+  return patch;
+}
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
-    (set) => ({
-      ...defaultSettings,
+    (set, get) => {
+      const syncSidebarThreadState = () => {
+        const {
+          sidebarThreadWorkspaces,
+          sidebarThreadWorkspaceExpanded,
+        } = get();
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({
+            sidebarThreadWorkspaces,
+            sidebarThreadWorkspaceExpanded,
+          }),
+        }).catch(() => { });
+      };
+
+      return {
+        ...defaultSettings,
 
       init: async () => {
         try {
-          const settings = await hostApiFetch<Partial<typeof defaultSettings>>('/api/settings');
+          const rawSettings = await hostApiFetch<Record<string, unknown>>('/api/settings');
+          const settings = pickMainProcessSettings(rawSettings);
+          const currentState = get();
+          const remoteThreadWorkspaces = Array.isArray(settings.sidebarThreadWorkspaces)
+            ? settings.sidebarThreadWorkspaces
+            : [];
+          const remoteThreadExpanded = settings.sidebarThreadWorkspaceExpanded
+            && typeof settings.sidebarThreadWorkspaceExpanded === 'object'
+            ? settings.sidebarThreadWorkspaceExpanded
+            : {};
+          const localThreadWorkspaces = currentState.sidebarThreadWorkspaces;
+          const localThreadExpanded = currentState.sidebarThreadWorkspaceExpanded;
+          const shouldBackfillThreadWorkspaces =
+            remoteThreadWorkspaces.length === 0
+            && localThreadWorkspaces.length > 0;
+          const shouldBackfillThreadExpanded =
+            Object.keys(remoteThreadExpanded).length === 0
+            && Object.keys(localThreadExpanded).length > 0;
+          const mergedThreadWorkspaces = shouldBackfillThreadWorkspaces
+            ? localThreadWorkspaces
+            : remoteThreadWorkspaces;
+          const mergedThreadExpanded = shouldBackfillThreadExpanded
+            ? localThreadExpanded
+            : remoteThreadExpanded;
+          const nextSettings: MainProcessSettingsPatch = {
+            ...settings,
+            sidebarThreadWorkspaces: mergedThreadWorkspaces,
+            sidebarThreadWorkspaceExpanded: mergedThreadExpanded,
+          };
           const codeAgent = settings.codeAgent
             ? {
                 ...DEFAULT_CODE_AGENT_RUNTIME_CONFIG,
@@ -222,11 +343,20 @@ export const useSettingsStore = create<SettingsState>()(
             : undefined;
           set((state) => ({
             ...state,
-            ...settings,
+            ...nextSettings,
             ...(codeAgent ? { codeAgent } : {}),
             ...(petCompanion ? { petCompanion } : {}),
             ...(resolvedLanguage ? { language: resolvedLanguage } : {}),
           }));
+          if (shouldBackfillThreadWorkspaces || shouldBackfillThreadExpanded) {
+            void hostApiFetch('/api/settings', {
+              method: 'PUT',
+              body: JSON.stringify({
+                sidebarThreadWorkspaces: mergedThreadWorkspaces,
+                sidebarThreadWorkspaceExpanded: mergedThreadExpanded,
+              }),
+            }).catch(() => { });
+          }
           if (resolvedLanguage) {
             i18n.changeLanguage(resolvedLanguage);
           }
@@ -345,13 +475,124 @@ export const useSettingsStore = create<SettingsState>()(
       setUpdateChannel: (updateChannel) => set({ updateChannel }),
       setAutoCheckUpdate: (autoCheckUpdate) => set({ autoCheckUpdate }),
       setAutoDownloadUpdate: (autoDownloadUpdate) => set({ autoDownloadUpdate }),
-      setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
+      setSidebarCollapsed: (sidebarCollapsed) => {
+        set({ sidebarCollapsed });
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ sidebarCollapsed }),
+        }).catch(() => { });
+      },
       setSidebarFolderExpanded: (folder, expanded) => set((state) => ({
         sidebarFolderExpanded: {
           ...state.sidebarFolderExpanded,
           [folder]: expanded,
         },
       })),
+      setSidebarThreadWorkspaces: (workspaces) => {
+        const nextWorkspaces = [...workspaces].sort(
+          (left, right) => (right.lastUsedAt || 0) - (left.lastUsedAt || 0),
+        );
+        set({
+          sidebarThreadWorkspaces: nextWorkspaces,
+        });
+        syncSidebarThreadState();
+      },
+      upsertSidebarThreadWorkspace: (workspace) => {
+        if (!workspace.id || !workspace.rootPath) return;
+        set((state) => {
+          const index = state.sidebarThreadWorkspaces.findIndex(
+            (item) => item.id === workspace.id,
+          );
+          if (index === -1) {
+            return {
+              sidebarThreadWorkspaces: [...state.sidebarThreadWorkspaces, workspace].sort(
+                (left, right) => (right.lastUsedAt || 0) - (left.lastUsedAt || 0),
+              ),
+              sidebarThreadWorkspaceExpanded: {
+                ...state.sidebarThreadWorkspaceExpanded,
+                [workspace.id]: state.sidebarThreadWorkspaceExpanded[workspace.id] ?? true,
+              },
+            };
+          }
+
+          const updated = [...state.sidebarThreadWorkspaces];
+          updated[index] = {
+            ...updated[index],
+            ...workspace,
+          };
+          updated.sort((left, right) => (right.lastUsedAt || 0) - (left.lastUsedAt || 0));
+          return { sidebarThreadWorkspaces: updated };
+        });
+        syncSidebarThreadState();
+      },
+      renameSidebarThreadWorkspace: (workspaceId, name) => {
+        const trimmed = name.trim();
+        if (!workspaceId || !trimmed) return;
+        set((state) => ({
+          sidebarThreadWorkspaces: state.sidebarThreadWorkspaces.map((workspace) =>
+            workspace.id === workspaceId
+              ? { ...workspace, name: trimmed }
+              : workspace
+          ),
+        }));
+        syncSidebarThreadState();
+      },
+      removeSidebarThreadWorkspace: (workspaceId) => {
+        if (!workspaceId) return;
+        set((state) => {
+          const { [workspaceId]: _removed, ...restExpanded } = state.sidebarThreadWorkspaceExpanded;
+          void _removed;
+          const nextActiveContext =
+            state.sidebarActiveContext.kind === 'thread'
+            && state.sidebarActiveContext.workspaceId === workspaceId
+              ? { kind: 'openclaw' as const, workspaceId: null }
+              : state.sidebarActiveContext;
+          return {
+            sidebarThreadWorkspaces: state.sidebarThreadWorkspaces.filter(
+              (workspace) => workspace.id !== workspaceId,
+            ),
+            sidebarThreadWorkspaceExpanded: restExpanded,
+            sidebarActiveContext: nextActiveContext,
+          };
+        });
+        syncSidebarThreadState();
+      },
+      touchSidebarThreadWorkspace: (workspaceId, lastUsedAt = Date.now()) => {
+        if (!workspaceId) return;
+        set((state) => {
+          const updated = state.sidebarThreadWorkspaces.map((workspace) =>
+            workspace.id === workspaceId
+              ? { ...workspace, lastUsedAt }
+              : workspace
+          );
+          updated.sort((left, right) => (right.lastUsedAt || 0) - (left.lastUsedAt || 0));
+          return { sidebarThreadWorkspaces: updated };
+        });
+        syncSidebarThreadState();
+      },
+      setSidebarThreadWorkspaceExpanded: (workspaceId, expanded) => {
+        if (!workspaceId) return;
+        set((state) => ({
+          sidebarThreadWorkspaceExpanded: {
+            ...state.sidebarThreadWorkspaceExpanded,
+            [workspaceId]: expanded,
+          },
+        }));
+        syncSidebarThreadState();
+      },
+      setSidebarActiveContext: (context) => {
+        const kind = context.kind === 'thread'
+          ? 'thread'
+          : context.kind === 'realtimeVoice'
+            ? 'realtimeVoice'
+            : 'openclaw';
+        set({
+          sidebarActiveContext: {
+            kind,
+            workspaceId: kind === 'thread' ? context.workspaceId ?? null : null,
+          },
+        });
+      },
       setSidebarBetaEnabled: (sidebarBetaEnabled) => set({ sidebarBetaEnabled }),
       setSidebarWidth: (sidebarWidth) => set({
         sidebarWidth: Math.max(220, Math.min(480, Math.round(sidebarWidth))),
@@ -510,7 +751,8 @@ export const useSettingsStore = create<SettingsState>()(
       },
 
       markCloudBootstrapped: () => set({ cloudBootstrapped: true }),
-    }),
+      };
+    },
     {
       name: 'mimiclaw-settings',
     }

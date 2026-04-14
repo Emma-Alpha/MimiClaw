@@ -84,6 +84,8 @@ interface ChatState {
   streamingTools: ToolStatus[];
   pendingFinal: boolean;
   lastUserMessageAt: number | null;
+  /** True when the last run was aborted by the user — cleared on next sendMessage */
+  lastRunWasAborted: boolean;
   /** Images collected from tool results, attached to the next assistant message */
   pendingToolImages: AttachedFileMeta[];
 
@@ -1083,6 +1085,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   streamingTools: [],
   pendingFinal: false,
   lastUserMessageAt: null,
+  lastRunWasAborted: false,
   pendingToolImages: [],
 
   sessions: [],
@@ -1609,6 +1612,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         streamingTools: [],
         pendingFinal: false,
         lastUserMessageAt: nowMs,
+        lastRunWasAborted: false,
       }));
 
       // Update session label with first user message text as soon as it's sent
@@ -1752,7 +1756,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     clearHistoryPoll();
     clearErrorRecoveryTimer();
     const { currentSessionKey } = get();
-    set({ sending: false, streamingText: '', streamingMessage: null, pendingFinal: false, lastUserMessageAt: null, pendingToolImages: [] });
+    set({ sending: false, streamingText: '', streamingMessage: null, pendingFinal: false, lastUserMessageAt: null, pendingToolImages: [], lastRunWasAborted: true });
     set({ streamingTools: [] });
 
     try {

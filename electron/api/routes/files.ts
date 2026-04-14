@@ -169,6 +169,83 @@ export async function handleFileRoutes(
     return true;
   }
 
+  if (url.pathname === '/api/files/git-branch' && req.method === 'GET') {
+    try {
+      const workspaceRoot = url.searchParams.get('workspaceRoot')?.trim() || '';
+      if (!workspaceRoot) {
+        sendJson(res, 400, { success: false, error: 'workspaceRoot is required' });
+        return true;
+      }
+      try {
+        const { execFile } = await import('node:child_process');
+        const { promisify } = await import('node:util');
+        const execFileAsync = promisify(execFile);
+
+        const [headResult, branchResult] = await Promise.allSettled([
+          execFileAsync('git', ['symbolic-ref', '--short', 'HEAD'], { cwd: workspaceRoot }),
+          execFileAsync('git', ['branch', '--format=%(refname:short)'], { cwd: workspaceRoot }),
+        ]);
+
+        const branch = headResult.status === 'fulfilled'
+          ? headResult.value.stdout.trim()
+          : '';
+
+        const branches = branchResult.status === 'fulfilled'
+          ? branchResult.value.stdout
+              .split('\n')
+              .map((b) => b.trim())
+              .filter(Boolean)
+          : branch ? [branch] : [];
+
+        sendJson(res, 200, { success: true, branch, branches });
+      } catch {
+        sendJson(res, 200, { success: true, branch: '', branches: [] });
+      }
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
+  if (url.pathname === '/api/files/workspace-status' && req.method === 'GET') {
+    try {
+      const workspaceRoot = url.searchParams.get('workspaceRoot')?.trim() || '';
+      if (!workspaceRoot) {
+        sendJson(res, 400, { success: false, error: 'workspaceRoot is required' });
+        return true;
+      }
+
+      const fsP = await import('node:fs/promises');
+      try {
+        const stat = await fsP.stat(workspaceRoot);
+        if (!stat.isDirectory()) {
+          sendJson(res, 200, {
+            success: true,
+            available: false,
+            reason: 'not_directory',
+          });
+          return true;
+        }
+
+        await fsP.access(workspaceRoot, fsP.constants.R_OK);
+        sendJson(res, 200, {
+          success: true,
+          available: true,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        sendJson(res, 200, {
+          success: true,
+          available: false,
+          reason: message,
+        });
+      }
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
   if (url.pathname === '/api/files/stage-paths' && req.method === 'POST') {
     try {
       const body = await parseJsonBody<{ filePaths: string[] }>(req);

@@ -146,37 +146,6 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     overflow-y: auto;
     padding: 0 0.75rem;
   `,
-  threadsMeta: css`
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 0.25rem;
-    font-size: 12px;
-    color: hsl(var(--muted-foreground) / 0.8);
-  `,
-  clearSearchButton: css`
-    border-radius: 0.25rem;
-    padding: 0.125rem 0.25rem;
-    font-size: 10px;
-    color: hsl(var(--muted-foreground));
-    transition: background-color 0.2s ease, color 0.2s ease;
-
-    &:hover {
-      background: rgba(0, 0, 0, 0.05);
-      color: hsl(var(--foreground));
-    }
-
-    ${darkMode(`
-      &:hover {
-        background: rgba(255, 255, 255, 0.08);
-      }
-    `)}
-  `,
-  tinyCount: css`
-    font-size: 10px;
-    letter-spacing: 0;
-  `,
   folderSection: css`
     border-radius: 0.75rem;
     padding: 0.125rem 0;
@@ -198,6 +167,12 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
       opacity: 1;
     }
 
+    &:hover [data-folder-actions='true'],
+    &:focus-within [data-folder-actions='true'] {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
     &:hover,
     &:focus-within {
       background: rgba(0, 0, 0, 0.05);
@@ -209,6 +184,55 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
         background: rgba(255, 255, 255, 0.08);
       }
     `)}
+  `,
+  threadFolderSection: css`
+    margin-bottom: 0.125rem;
+  `,
+  threadFolderHeader: css`
+    border-radius: 0.5rem;
+    padding: 0.125rem 0;
+
+    &:hover,
+    &:focus-within {
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    ${darkMode(`
+      &:hover,
+      &:focus-within {
+        background: rgba(255, 255, 255, 0.08);
+      }
+    `)}
+  `,
+  threadFolderHeaderActive: css`
+    background: rgba(0, 0, 0, 0.06);
+
+    ${darkMode(`
+      background: rgba(255, 255, 255, 0.1);
+    `)}
+  `,
+  threadFolderInlineToggleButton: css`
+    display: none;
+  `,
+  threadFolderActivateButton: css`
+    gap: 0.375rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 13px;
+    font-weight: 400;
+    color: hsl(var(--foreground) / 0.82);
+  `,
+  threadFolderCount: css`
+    margin-left: auto;
+    font-size: 11px;
+    color: hsl(var(--muted-foreground) / 0.85);
+  `,
+  threadFolderChildren: css`
+    margin-top: 0.125rem;
+    padding-left: 0;
+  `,
+  threadFolderHeaderActions: css`
+    opacity: 1;
+    pointer-events: auto;
   `,
   folderHeaderActive: css`
     background: rgba(0, 0, 0, 0.07);
@@ -251,6 +275,40 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     flex-shrink: 0;
     font-size: 11px;
     color: hsl(var(--muted-foreground) / 0.85);
+  `,
+  folderHeaderActions: css`
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-right: 0.25rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.16s ease;
+  `,
+  folderHeaderActionButton: css`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.25rem;
+    padding: 0.25rem;
+    color: hsl(var(--muted-foreground));
+    transition: background-color 0.2s ease, color 0.2s ease;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.08);
+      color: hsl(var(--foreground));
+    }
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    ${darkMode(`
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+    `)}
   `,
   folderInlineToggleButton: css`
     position: relative;
@@ -503,6 +561,196 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  `,
+  workspaceRow: css`
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+
+    &:hover [data-workspace-actions='true'],
+    &:focus-within [data-workspace-actions='true'] {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  `,
+  workspaceButton: css`
+    position: relative;
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    width: 100%;
+    border-radius: 0.5rem;
+    padding: 0.125rem 3.25rem 0.125rem 0.25rem;
+    text-align: left;
+    font-size: 12px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  `,
+  workspaceTopRow: css`
+    position: relative;
+  `,
+  threadWorkspaceRow: css`
+    border-radius: 0.5rem;
+
+    &:hover [data-workspace-folder-icon='true'],
+    &:focus-within [data-workspace-folder-icon='true'] {
+      opacity: 0;
+    }
+
+    &:hover [data-workspace-chevron='true'],
+    &:focus-within [data-workspace-chevron='true'] {
+      opacity: 1;
+    }
+  `,
+  threadWorkspaceRowActive: css`
+    background: rgba(0, 0, 0, 0.06);
+
+    ${darkMode(`
+      background: rgba(255, 255, 255, 0.1);
+    `)}
+  `,
+  threadWorkspaceButton: css`
+    color: hsl(var(--foreground) / 0.82);
+  `,
+  threadWorkspaceButtonActive: css`
+    background: rgba(0, 0, 0, 0.06);
+    color: hsl(var(--foreground));
+
+    ${darkMode(`
+      background: rgba(255, 255, 255, 0.1);
+    `)}
+  `,
+  threadWorkspaceButtonIdle: css`
+    color: hsl(var(--foreground) / 0.82);
+  `,
+  workspaceFolderWrap: css`
+    position: relative;
+    display: flex;
+    height: 24px;
+    width: 24px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    color: hsl(var(--muted-foreground) / 0.8);
+  `,
+  workspaceFolderIcon: css`
+    height: 14px;
+    width: 14px;
+    flex-shrink: 0;
+    transition: opacity 0.16s ease;
+  `,
+  workspaceChevron: css`
+    position: absolute;
+    height: 14px;
+    width: 14px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.16s ease, transform 0.2s ease;
+  `,
+  workspaceChevronCollapsed: css`
+    transform: rotate(-90deg);
+  `,
+  workspaceMain: css`
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 0.375rem;
+    white-space: nowrap;
+  `,
+  workspaceName: css`
+    min-width: 0;
+    flex: 0 1 auto;
+    max-width: 65%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 0;
+  `,
+  workspaceSecondary: css`
+    max-width: 35%;
+    min-width: 0;
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    color: hsl(var(--muted-foreground) / 0.9);
+  `,
+  workspaceActions: css`
+    position: absolute;
+    right: 0.375rem;
+    top: 50%;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-50%);
+    transition: opacity 0.16s ease;
+  `,
+  workspaceActionButton: css`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.25rem;
+    padding: 0.25rem;
+    color: hsl(var(--muted-foreground));
+    transition: background-color 0.2s ease, color 0.2s ease;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.08);
+      color: hsl(var(--foreground));
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    ${darkMode(`
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+    `)}
+  `,
+  threadWorkspaceActionButton: css`
+    border-radius: 0.375rem;
+    padding: 0.1875rem;
+  `,
+  workspaceChildren: css`
+    margin-left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  `,
+  threadWorkspaceChildren: css`
+    margin-top: 0.125rem;
+    padding-left: 0;
+  `,
+  threadSessionButton: css`
+    position: relative;
+    width: 100%;
+    border-radius: 0.5rem;
+    padding: 0.25rem 0.5rem 0.25rem 1.75rem;
+    text-align: left;
+    font-size: 13px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  `,
+  workspaceUnavailableTag: css`
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: rgba(180, 83, 9, 0.14);
+    padding: 0.125rem 0.375rem;
+    font-size: 10px;
+    line-height: 1;
+    color: #92400e;
+
+    ${darkMode(`
+      background: rgba(252, 211, 77, 0.16);
+      color: #fcd34d;
+    `)}
   `,
   cliWorkspaceCard: css`
     display: flex;

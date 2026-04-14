@@ -103,6 +103,11 @@ export type ProjectMentionEntry = {
   isDirectory: boolean;
 };
 
+export type WorkspaceAvailability = {
+  available: boolean;
+  reason?: string;
+};
+
 export async function fetchCodeAgentSessionHistory(
   workspaceRoot: string,
   sessionId: string,
@@ -160,4 +165,34 @@ export async function fetchProjectMentionEntries(
     entries: ProjectMentionEntry[];
   }>(`/api/files/project-mentions?${params.toString()}`);
   return Array.isArray(response.entries) ? response.entries : [];
+}
+
+export async function fetchWorkspaceAvailability(
+  workspaceRoot: string,
+): Promise<WorkspaceAvailability> {
+  const params = new URLSearchParams({ workspaceRoot });
+  const response = await hostApiFetch<{
+    success: boolean;
+    available: boolean;
+    reason?: string;
+  }>(`/api/files/workspace-status?${params.toString()}`);
+  return {
+    available: response.available === true,
+    reason: typeof response.reason === 'string' ? response.reason : undefined,
+  };
+}
+
+export async function fetchWorkspaceGitBranch(
+  workspaceRoot: string,
+): Promise<{ branch: string; branches: string[] }> {
+  const params = new URLSearchParams({ workspaceRoot });
+  const response = await hostApiFetch<{
+    success: boolean;
+    branch: string;
+    branches: string[];
+  }>(`/api/files/git-branch?${params.toString()}`);
+  return {
+    branch: typeof response.branch === 'string' ? response.branch : '',
+    branches: Array.isArray(response.branches) ? response.branches : [],
+  };
 }

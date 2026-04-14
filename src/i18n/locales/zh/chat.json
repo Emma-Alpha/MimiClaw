@@ -26,7 +26,9 @@
     },
     "status": {
         "thinking": "思考中...",
-        "processingTools": "正在处理工具结果..."
+        "processingTools": "正在处理工具结果...",
+        "interrupted": "已中断",
+        "interruptedHint": "此次运行已被中止，发送新消息可继续对话。"
     },
     "backToBottom": "回到底部",
     "composer": {

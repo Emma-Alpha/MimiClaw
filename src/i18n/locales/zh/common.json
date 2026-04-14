@@ -23,12 +23,31 @@
         "cliWorkspaceNotConfigured": "未配置 CLI 工作区",
         "cliSessionsLoadFailed": "CLI 会话加载失败",
         "folder": {
+            "thread": "线程",
+            "openClaw": "OpenClaw",
+            "realtimeVoice": "实时语音",
             "chat": "对话",
             "cli": "CLI",
             "jizhi": "极智",
             "xiaojiu": "小九",
             "voice": "语音"
         },
+        "empty": {
+            "thread": "无线程",
+            "openClaw": "无对话",
+            "realtimeVoice": "无语音会话"
+        },
+        "workspace": {
+            "rename": "重命名",
+            "remove": "从列表移除",
+            "openInFinder": "在 Finder 中打开",
+            "more": "更多",
+            "renamePrompt": "重命名工作区",
+            "removeConfirm": "确定从列表移除工作区吗？此操作不会删除本地文件。"
+        },
+        "workspaceUnavailable": "工作区不可用",
+        "threadSessionsLoadFailed": "线程会话加载失败",
+        "addWorkspace": "添加工作区",
         "deleteSessionConfirm": "确定要删除对话 \"{{label}}\" 吗？",
         "openClawPage": "OpenClaw 页面",
         "expandList": "展开显示",

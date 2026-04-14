@@ -71,6 +71,8 @@ export interface ChatState {
   streamingTools: ToolStatus[];
   pendingFinal: boolean;
   lastUserMessageAt: number | null;
+  /** True when the last run was aborted by the user — cleared on next sendMessage */
+  lastRunWasAborted: boolean;
   /** Images collected from tool results, attached to the next assistant message */
   pendingToolImages: AttachedFileMeta[];
 

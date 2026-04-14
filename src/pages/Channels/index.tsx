@@ -7,7 +7,7 @@ import { useGatewayStore } from '@/stores/gateway';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { hostApiFetch } from '@/lib/host-api';
 import { subscribeHostEvent } from '@/lib/host-events';
-import { ChannelConfigModal } from '@/components/channels/ChannelConfigModal';
+import { ChannelConfigModal } from '@/features/channels/components/ChannelConfigModal';
 import { cn } from '@/lib/utils';
 import {
   CHANNEL_ICONS,

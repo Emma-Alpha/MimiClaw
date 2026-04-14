@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 import { useSettingsStore } from '@/stores/settings';
 import { useGatewayStore } from '@/stores/gateway';
 import { useUpdateStore } from '@/stores/update';
-import { UpdateSettings } from '@/components/settings/UpdateSettings';
+import { UpdateSettings } from '@/features/settings/components/UpdateSettings';
 import {
   getGatewayWsDiagnosticEnabled,
   invokeIpc,

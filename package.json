@@ -106,6 +106,7 @@
         "semver": "^7.7.4",
         "slate": "^0.124.0",
         "slate-react": "^0.124.0",
+        "virtua": "^0.48.8",
         "ws": "^8.19.0"
     },
     "devDependencies": {

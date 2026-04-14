@@ -105,6 +105,7 @@ export function createRuntimeSendActions(set: ChatSet, get: ChatGet): Pick<Runti
         streamingTools: [],
         pendingFinal: false,
         lastUserMessageAt: nowMs,
+        lastRunWasAborted: false,
       }));
 
       // Update session label with first user message text as soon as it's sent
@@ -237,7 +238,7 @@ export function createRuntimeSendActions(set: ChatSet, get: ChatGet): Pick<Runti
       clearHistoryPoll();
       clearErrorRecoveryTimer();
       const { currentSessionKey } = get();
-      set({ sending: false, streamingText: '', streamingMessage: null, pendingFinal: false, lastUserMessageAt: null, pendingToolImages: [] });
+      set({ sending: false, streamingText: '', streamingMessage: null, pendingFinal: false, lastUserMessageAt: null, pendingToolImages: [], lastRunWasAborted: true });
       set({ streamingTools: [] });
 
       try {

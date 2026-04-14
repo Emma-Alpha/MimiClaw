@@ -15,6 +15,7 @@ export const initialChatState: Pick<
   | 'streamingTools'
   | 'pendingFinal'
   | 'lastUserMessageAt'
+  | 'lastRunWasAborted'
   | 'pendingToolImages'
   | 'sessions'
   | 'currentSessionKey'
@@ -35,6 +36,7 @@ export const initialChatState: Pick<
   streamingTools: [],
   pendingFinal: false,
   lastUserMessageAt: null,
+  lastRunWasAborted: false,
   pendingToolImages: [],
 
   sessions: [],

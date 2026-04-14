@@ -6,11 +6,12 @@ import {
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import AnimatedNumber from '@/components/ui/animated-number';
 import { useGatewayStore } from '@/stores/gateway';
 import { useSettingsStore } from '@/stores/settings';
 import { hostApiFetch } from '@/lib/host-api';
 import { trackUiEvent } from '@/lib/telemetry';
-import { ProvidersSettings } from '@/components/settings/ProvidersSettings';
+import { ProvidersSettings } from '@/features/settings/components/ProvidersSettings';
 import { FeedbackState } from '@/components/common/FeedbackState';
 import {
   filterUsageHistoryByWindow,
@@ -325,7 +326,13 @@ export function Models() {
                             </p>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="font-bold text-[14px]">{formatTokenCount(entry.totalTokens)}</p>
+                            <p className="font-bold text-[14px]">
+                              <AnimatedNumber
+                                value={entry.totalTokens}
+                                duration={800}
+                                formatter={(v) => formatTokenCount(Math.round(v))}
+                              />
+                            </p>
                             <p className="text-[12px] text-muted-foreground mt-0.5">
                               {formatUsageTimestamp(entry.timestamp)}
                             </p>
@@ -472,7 +479,11 @@ function UsageBarChart({
           <div className="flex items-center justify-between gap-3 text-[13.5px]">
             <span className="truncate font-semibold text-foreground">{group.label}</span>
             <span className="text-muted-foreground font-medium">
-              {totalLabel}: {formatTokenCount(group.totalTokens)}
+              {totalLabel}: <AnimatedNumber
+                value={group.totalTokens}
+                duration={900}
+                formatter={(v) => formatTokenCount(Math.round(v))}
+              />
             </span>
           </div>
           <div className="h-3.5 overflow-hidden rounded-full bg-black/5 dark:bg-white/5">

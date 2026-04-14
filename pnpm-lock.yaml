@@ -69,6 +69,9 @@ importers:
       slate-react:
         specifier: ^0.124.0
         version: 0.124.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(slate-dom@0.124.0(slate@0.124.0))(slate@0.124.0)
+      virtua:
+        specifier: ^0.48.8
+        version: 0.48.8(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       ws:
         specifier: ^8.19.0
         version: 8.19.0
