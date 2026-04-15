@@ -93,6 +93,9 @@
         }
     },
     "provider": {
+        "title": "AI 提供商",
+        "remoteModeTitle": "提供商由远程网关管理",
+        "remoteModeDesc": "当前连接了远程网关，AI 提供商配置由服务端统一管理，无需在本地配置。",
         "label": "模型提供商",
         "cloudOnlyTitle": "提供商会同步到云端",
         "cloudOnlyDesc": "当前是 cloud-only 版本，本地 OpenClaw 已移除。这里保存的模型配置会同步到您的云端工作区，供远程运行时使用。",

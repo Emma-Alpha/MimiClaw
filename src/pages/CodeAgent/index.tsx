@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { cn } from '@/lib/utils';
 import { Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -329,8 +330,24 @@ export function CodeAgent() {
                 <Badge variant="secondary" className="rounded-full px-3 py-1">
                   {t('settings:developer.codeAgentStatus')}: {codeAgentStatus?.state || '-'}
                 </Badge>
-                <Badge variant="outline" className="rounded-full px-3 py-1">
-                  {t('settings:developer.codeAgentHealth')}: {codeAgentHealth ? (codeAgentHealth.ok ? 'ok' : 'error') : '-'}
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'rounded-full px-3 py-1',
+                    codeAgentStatus?.state === 'running' && codeAgentHealth?.ok && 'border-green-500/30 text-green-700 dark:text-green-400 bg-green-500/10',
+                    codeAgentStatus?.state === 'running' && codeAgentHealth && !codeAgentHealth.ok && 'border-amber-500/30 text-amber-700 dark:text-amber-300 bg-amber-500/10',
+                    codeAgentStatus?.state === 'error' && 'border-red-500/30 text-red-700 dark:text-red-400 bg-red-500/10',
+                  )}
+                >
+                  {t('settings:developer.codeAgentHealth')}: {(() => {
+                    const state = codeAgentStatus?.state;
+                    if (!state || state === 'stopped') return t('settings:developer.codeAgentHealthStopped', { defaultValue: '未启动' });
+                    if (state === 'starting') return t('settings:developer.codeAgentHealthStarting', { defaultValue: '启动中' });
+                    if (state === 'error') return t('settings:developer.codeAgentHealthError', { defaultValue: 'error' });
+                    if (codeAgentHealth?.ok) return t('settings:developer.codeAgentHealthOk', { defaultValue: 'ok' });
+                    if (codeAgentHealth) return t('settings:developer.codeAgentHealthError', { defaultValue: 'error' });
+                    return '-';
+                  })()}
                 </Badge>
                 <Badge variant="outline" className="rounded-full px-3 py-1">
                   {t('settings:developer.codeAgentConfigSource')}: {codeAgentHealth?.configSource === 'default_provider'

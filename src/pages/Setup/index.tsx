@@ -13,14 +13,14 @@ import {
   Eye,
   EyeOff,
   CheckCircle2,
-  XCircle,
+  AlertCircle,
+  RotateCcw,
 } from 'lucide-react';
 import { TitleBar } from '@/components/layout/TitleBar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { useGatewayStore } from '@/stores/gateway';
 import { useSettingsStore } from '@/stores/settings';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -36,12 +36,11 @@ interface SetupStep {
   description: string;
 }
 
+// Steps: Welcome → Provider → Installing
 const STEP = {
   WELCOME: 0,
-  RUNTIME: 1,
-  PROVIDER: 2,
-  INSTALLING: 3,
-  COMPLETE: 4,
+  PROVIDER: 1,
+  INSTALLING: 2,
 } as const;
 
 const getSteps = (t: TFunction): SetupStep[] => [
@@ -49,11 +48,6 @@ const getSteps = (t: TFunction): SetupStep[] => [
     id: 'welcome',
     title: t('steps.welcome.title'),
     description: t('steps.welcome.description'),
-  },
-  {
-    id: 'runtime',
-    title: t('steps.runtime.title'),
-    description: t('steps.runtime.description'),
   },
   {
     id: 'provider',
@@ -64,11 +58,6 @@ const getSteps = (t: TFunction): SetupStep[] => [
     id: 'installing',
     title: t('steps.installing.title'),
     description: t('steps.installing.description'),
-  },
-  {
-    id: 'complete',
-    title: t('steps.complete.title'),
-    description: t('steps.complete.description'),
   },
 ];
 
@@ -117,15 +106,12 @@ export function Setup() {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [providerConfigured, setProviderConfigured] = useState(false);
   const [apiKey, setApiKey] = useState('');
-  const [installedSkills, setInstalledSkills] = useState<string[]>([]);
-  const [runtimeChecksPassed, setRuntimeChecksPassed] = useState(false);
 
   const steps = getSteps(t);
   const safeStepIndex = Number.isInteger(currentStep)
     ? Math.min(Math.max(currentStep, STEP.WELCOME), steps.length - 1)
     : STEP.WELCOME;
   const isFirstStep = safeStepIndex === STEP.WELCOME;
-  const isLastStep = safeStepIndex === steps.length - 1;
 
   const markSetupComplete = useSettingsStore((state) => state.markSetupComplete);
   const remoteGatewayUrl = useSettingsStore((state) => state.remoteGatewayUrl);
@@ -135,27 +121,17 @@ export function Setup() {
     switch (safeStepIndex) {
       case STEP.WELCOME:
         return true;
-      case STEP.RUNTIME:
-        return isCloudOnlyBuild || isRemoteMode || runtimeChecksPassed;
       case STEP.PROVIDER:
         return isRemoteMode || providerConfigured;
       case STEP.INSTALLING:
-        return false; 
-      case STEP.COMPLETE:
-        return true;
+        return false; // Handled internally via inline Get Started button
       default:
         return true;
     }
-  }, [safeStepIndex, providerConfigured, runtimeChecksPassed, isRemoteMode, isCloudOnlyBuild]);
+  }, [safeStepIndex, providerConfigured, isRemoteMode]);
 
   const handleNext = async () => {
-    if (isLastStep) {
-      markSetupComplete();
-      toast.success(t('complete.title'));
-      navigate('/');
-    } else {
-      setCurrentStep((i) => i + 1);
-    }
+    setCurrentStep((i) => i + 1);
   };
 
   const handleBack = () => {
@@ -167,12 +143,11 @@ export function Setup() {
     navigate('/');
   };
 
-  const handleInstallationComplete = useCallback((skills: string[]) => {
-    setInstalledSkills(skills);
-    setTimeout(() => {
-      setCurrentStep((i) => i + 1);
-    }, 1000);
-  }, []);
+  const handleFinish = useCallback(() => {
+    markSetupComplete();
+    toast.success(t('complete.title'));
+    navigate('/');
+  }, [markSetupComplete, navigate, t]);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground relative">
@@ -183,12 +158,12 @@ export function Setup() {
 
       <TitleBar hideSidebarToggle />
       <div className="flex-1 flex flex-col items-center justify-center p-4 z-10">
-        
-        {/* Sleek Progress Indicator */}
+
+        {/* Step progress indicator */}
         <div className="mb-8 flex gap-2 items-center">
           {steps.map((s, i) => (
-            <div 
-              key={s.id} 
+            <div
+              key={s.id}
               className={cn(
                 "h-1.5 rounded-full transition-all duration-500",
                 i === safeStepIndex ? "w-8 bg-primary" : i < safeStepIndex ? "w-2 bg-primary/40" : "w-2 bg-border"
@@ -210,13 +185,6 @@ export function Setup() {
             >
               <div className="flex-1 flex flex-col">
                 {safeStepIndex === STEP.WELCOME && <WelcomeContent />}
-                {safeStepIndex === STEP.RUNTIME && (
-                  <RuntimeContent
-                    onStatusChange={setRuntimeChecksPassed}
-                    isRemoteMode={isRemoteMode}
-                    isCloudOnlyBuild={isCloudOnlyBuild}
-                  />
-                )}
                 {safeStepIndex === STEP.PROVIDER && (
                   <ProviderContent
                     providers={providers}
@@ -232,21 +200,14 @@ export function Setup() {
                 {safeStepIndex === STEP.INSTALLING && (
                   <InstallingContent
                     skills={getDefaultSkills(t)}
-                    onComplete={handleInstallationComplete}
-                    onSkip={() => setCurrentStep((i) => i + 1)}
-                    isCloudOnlyBuild={isCloudOnlyBuild}
-                  />
-                )}
-                {safeStepIndex === STEP.COMPLETE && (
-                  <CompleteContent
+                    onFinish={handleFinish}
                     selectedProvider={selectedProvider}
-                    installedSkills={installedSkills}
                     isCloudOnlyBuild={isCloudOnlyBuild}
                   />
                 )}
               </div>
 
-              {/* Navigation Footer */}
+              {/* Navigation Footer — hidden during Installing (controlled inline) */}
               {safeStepIndex !== STEP.INSTALLING && (
                 <div className="mt-10 flex items-center justify-between pt-4 border-t border-border/40">
                   <div className="flex gap-2">
@@ -258,21 +219,20 @@ export function Setup() {
                     )}
                   </div>
                   <div className="flex gap-2 items-center">
-                    {!isLastStep && safeStepIndex !== STEP.RUNTIME && (
-                      <button 
-                        onClick={handleSkip}
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-2"
-                      >
-                        {t('nav.skipSetup')}
-                      </button>
-                    )}
-                    <Button 
-                      onClick={handleNext} 
+                    {/* Skip is secondary — subtle text link to reduce misclick risk */}
+                    <button
+                      onClick={handleSkip}
+                      className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors px-2 py-2"
+                    >
+                      {t('nav.skipSetup')}
+                    </button>
+                    <Button
+                      onClick={handleNext}
                       disabled={!canProceed}
                       className="rounded-full px-6 shadow-md"
                     >
-                      {isLastStep ? t('nav.getStarted') : t('nav.next')}
-                      {!isLastStep && <ChevronRight className="h-4 w-4 ml-1" />}
+                      {t('nav.next')}
+                      <ChevronRight className="h-4 w-4 ml-1" />
                     </Button>
                   </div>
                 </div>
@@ -295,10 +255,10 @@ function WelcomeContent() {
     <div className="flex flex-col items-center justify-center text-center space-y-8 flex-1 py-4">
       <div className="relative">
         <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full" />
-        <img 
-          src={mimiclawIcon} 
-          alt="Logo" 
-          className="relative h-24 w-24 rounded-[28px] object-cover shadow-2xl ring-1 ring-white/10" 
+        <img
+          src={mimiclawIcon}
+          alt="Logo"
+          className="relative h-24 w-24 rounded-[28px] object-cover shadow-2xl ring-1 ring-white/10"
         />
       </div>
 
@@ -317,8 +277,8 @@ function WelcomeContent() {
               onClick={() => setLanguage(lang.code)}
               className={cn(
                 "flex-1 py-2 text-sm font-medium rounded-xl transition-all duration-300",
-                language === lang.code 
-                  ? "bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/5" 
+                language === lang.code
+                  ? "bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/5"
                   : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
               )}
             >
@@ -327,212 +287,6 @@ function WelcomeContent() {
           ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-interface RuntimeContentProps {
-  onStatusChange: (canProceed: boolean) => void;
-  isRemoteMode?: boolean;
-  isCloudOnlyBuild?: boolean;
-}
-
-function RuntimeContent({ onStatusChange, isRemoteMode, isCloudOnlyBuild }: RuntimeContentProps) {
-  const { t } = useTranslation('setup');
-  const gatewayStatus = useGatewayStore((state) => state.status);
-  const startGateway = useGatewayStore((state) => state.start);
-  const remoteGatewayUrl = useSettingsStore((state) => state.remoteGatewayUrl);
-  const cloudWorkspaceId = useSettingsStore((state) => state.cloudWorkspaceId);
-
-  useEffect(() => {
-    if (isRemoteMode || isCloudOnlyBuild) {
-      onStatusChange(true);
-    }
-  }, [isCloudOnlyBuild, isRemoteMode, onStatusChange]);
-
-  const [checks, setChecks] = useState({
-    nodejs: { status: 'checking' as 'checking' | 'success' | 'error', message: '' },
-    openclaw: { status: 'checking' as 'checking' | 'success' | 'error', message: '' },
-    gateway: { status: 'checking' as 'checking' | 'success' | 'error', message: '' },
-  });
-  const [showLogs, setShowLogs] = useState(false);
-  const [logContent, setLogContent] = useState('');
-  const gatewayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const runChecks = useCallback(async () => {
-    setChecks({
-      nodejs: { status: 'checking', message: '' },
-      openclaw: { status: 'checking', message: '' },
-      gateway: { status: 'checking', message: '' },
-    });
-
-    setChecks((prev) => ({
-      ...prev,
-      nodejs: { status: 'success', message: t('runtime.status.success') },
-    }));
-
-    try {
-      const openclawStatus = await invokeIpc('openclaw:status') as {
-        packageExists: boolean;
-        isBuilt: boolean;
-        dir: string;
-        version?: string;
-      };
-
-      if (!openclawStatus.packageExists || !openclawStatus.isBuilt) {
-        setChecks((prev) => ({
-          ...prev,
-          openclaw: { status: 'error', message: 'OpenClaw unavailable' },
-        }));
-      } else {
-        setChecks((prev) => ({
-          ...prev,
-          openclaw: { status: 'success', message: `Ready` },
-        }));
-      }
-    } catch (error) {
-      setChecks((prev) => ({
-        ...prev,
-        openclaw: { status: 'error', message: `Check failed` },
-      }));
-    }
-
-    const currentGateway = useGatewayStore.getState().status;
-    if (currentGateway.state === 'running') {
-      setChecks((prev) => ({ ...prev, gateway: { status: 'success', message: 'Running' } }));
-    } else if (currentGateway.state === 'error') {
-      setChecks((prev) => ({ ...prev, gateway: { status: 'error', message: 'Error' } }));
-    }
-  }, [t]);
-
-  useEffect(() => {
-    runChecks();
-  }, [runChecks]);
-
-  useEffect(() => {
-    const allPassed = checks.nodejs.status === 'success'
-      && checks.openclaw.status === 'success'
-      && (checks.gateway.status === 'success' || gatewayStatus.state === 'running');
-    onStatusChange(allPassed);
-  }, [checks, gatewayStatus, onStatusChange]);
-
-  useEffect(() => {
-    if (gatewayStatus.state === 'running') {
-      setChecks((prev) => ({ ...prev, gateway: { status: 'success', message: 'Running' } }));
-    } else if (gatewayStatus.state === 'error') {
-      setChecks((prev) => ({ ...prev, gateway: { status: 'error', message: 'Error' } }));
-    } else if (gatewayStatus.state === 'starting' || gatewayStatus.state === 'reconnecting') {
-      setChecks((prev) => ({ ...prev, gateway: { status: 'checking', message: 'Starting...' } }));
-    }
-  }, [gatewayStatus]);
-
-  useEffect(() => {
-    if (gatewayTimeoutRef.current) {
-      clearTimeout(gatewayTimeoutRef.current);
-      gatewayTimeoutRef.current = null;
-    }
-    if (gatewayStatus.state === 'running' || gatewayStatus.state === 'error') return;
-    gatewayTimeoutRef.current = setTimeout(() => {
-      setChecks((prev) => {
-        if (prev.gateway.status === 'checking') return { ...prev, gateway: { status: 'error', message: 'Timeout' } };
-        return prev;
-      });
-    }, 600 * 1000);
-    return () => {
-      if (gatewayTimeoutRef.current) clearTimeout(gatewayTimeoutRef.current);
-    };
-  }, [gatewayStatus.state]);
-
-  const handleStartGateway = async () => {
-    setChecks((prev) => ({ ...prev, gateway: { status: 'checking', message: 'Starting...' } }));
-    await startGateway();
-  };
-
-  const handleShowLogs = async () => {
-    try {
-      const logs = await hostApiFetch<{ content: string }>('/api/logs?tailLines=100');
-      setLogContent(logs.content);
-      setShowLogs(true);
-    } catch {
-      setLogContent('(Failed to load logs)');
-      setShowLogs(true);
-    }
-  };
-
-  return (
-    <div className="flex flex-col h-full space-y-6 flex-1 justify-center">
-      <div className="text-center space-y-2 mb-4">
-        <h2 className="text-sm font-semibold tracking-tight">{t('runtime.title')}</h2>
-        <p className="text-muted-foreground text-sm">{t('steps.runtime.description')}</p>
-      </div>
-
-      {(isRemoteMode || isCloudOnlyBuild) ? (
-        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6 text-center space-y-3">
-          <div className="w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-2">
-            <CheckCircle2 className="w-6 h-6" />
-          </div>
-          <p className="font-medium">
-            {isRemoteMode ? t('runtime.remoteModeTitle', '已配置远程网关') : t('runtime.cloudOnlyTitle')}
-          </p>
-          <p className="text-sm text-muted-foreground break-all">
-            {isRemoteMode ? remoteGatewayUrl : (cloudWorkspaceId || 'Ready to connect')}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4 w-full">
-          <CheckItem 
-            title="Node.js Environment" 
-            status={checks.nodejs.status} 
-          />
-          <CheckItem 
-            title="OpenClaw Runtime" 
-            status={checks.openclaw.status} 
-          />
-          <CheckItem 
-            title="Gateway Service" 
-            status={checks.gateway.status} 
-            action={checks.gateway.status === 'error' ? <Button variant="outline" size="sm" onClick={handleStartGateway}>Retry</Button> : null}
-          />
-
-          <div className="flex justify-center pt-4">
-            <Button variant="ghost" size="sm" onClick={handleShowLogs} className="text-xs text-muted-foreground">
-              {t('runtime.viewLogs')}
-            </Button>
-          </div>
-
-          {showLogs && (
-            <div className="mt-4 p-4 rounded-xl bg-black/50 border border-border/50 text-left overflow-hidden">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-xs font-medium text-muted-foreground">Logs</span>
-                <button
-                type="button"
-                onClick={() => setShowLogs(false)} 
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                Close
-              </button>
-              </div>
-              <pre className="text-[10px] text-slate-300 font-mono h-32 overflow-auto break-all whitespace-pre-wrap">
-                {logContent || 'No logs available.'}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CheckItem({ title, status, action }: { title: string, status: string, action?: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border border-border/50">
-      <div className="flex items-center gap-3">
-        {status === 'success' && <CheckCircle2 className="w-5 h-5 text-green-500" />}
-        {status === 'checking' && <Loader2 className="w-5 h-5 text-primary animate-spin" />}
-        {status === 'error' && <XCircle className="w-5 h-5 text-red-500" />}
-        <span className="font-medium text-sm">{title}</span>
-      </div>
-      {action}
     </div>
   );
 }
@@ -633,7 +387,11 @@ function ProviderContent({
   const supportsApiKey = selectedProviderData?.supportsApiKey ?? false;
   const useOAuthFlow = isOAuth && !supportsApiKey;
 
-  const canSubmit = selectedProvider && (requiresKey ? apiKey.length > 0 : true) && (showModelIdField ? modelId.trim().length > 0 : true) && !useOAuthFlow;
+  const canSubmit = selectedProvider
+    && (requiresKey ? apiKey.length > 0 : true)
+    && (showBaseUrlField ? baseUrl.trim().length > 0 : true)
+    && (showModelIdField ? modelId.trim().length > 0 : true)
+    && !useOAuthFlow;
 
   const handleValidateAndSave = async () => {
     if (!selectedProvider) return;
@@ -660,7 +418,7 @@ function ProviderContent({
       const snapshot = await fetchProviderSnapshot();
       const accountIdForSave = buildProviderAccountId(selectedProvider as ProviderType, selectedAccountId, snapshot.vendors);
       const effectiveApiKey = resolveProviderApiKeyForSave(selectedProvider, apiKey);
-      
+
       const accountPayload: ProviderAccount = {
         id: accountIdForSave,
         vendorId: selectedProvider as ProviderType,
@@ -744,7 +502,7 @@ function ProviderContent({
                   ) : <span>{selectedProviderData.icon}</span>}
                   <span className="font-medium">{selectedProviderData.name}</span>
                 </>
-              ) : <span className="text-muted-foreground">Select provider...</span>}
+              ) : <span className="text-muted-foreground">{t('provider.selectPlaceholder', { defaultValue: '选择 AI 提供商...' })}</span>}
             </div>
             <ChevronDown className="w-4 h-4 text-muted-foreground" />
           </button>
@@ -779,7 +537,7 @@ function ProviderContent({
             {showBaseUrlField && (
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t('provider.baseUrl')}</Label>
-                <Input value={baseUrl} onChange={e => setBaseUrl(e.target.value)} className="h-11 rounded-xl bg-background/50" />
+                <Input value={baseUrl} onChange={e => { setBaseUrl(e.target.value); setKeyValid(null); onConfiguredChange(false); }} className="h-11 rounded-xl bg-background/50" />
               </div>
             )}
             {showModelIdField && (
@@ -792,11 +550,11 @@ function ProviderContent({
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t('provider.apiKey')}</Label>
                 <div className="relative">
-                  <Input 
-                    type={showKey ? 'text' : 'password'} 
-                    value={apiKey} 
-                    onChange={e => { onApiKeyChange(e.target.value); setKeyValid(null); }} 
-                    className="h-11 rounded-xl bg-background/50 pr-10" 
+                  <Input
+                    type={showKey ? 'text' : 'password'}
+                    value={apiKey}
+                    onChange={e => { onApiKeyChange(e.target.value); setKeyValid(null); }}
+                    className="h-11 rounded-xl bg-background/50 pr-10"
                     placeholder="••••••••••••••••"
                   />
                   <button type="button" onClick={() => setShowKey(!showKey)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -807,9 +565,9 @@ function ProviderContent({
             )}
 
             {!useOAuthFlow && (
-              <Button 
-                onClick={handleValidateAndSave} 
-                disabled={!canSubmit || validating} 
+              <Button
+                onClick={handleValidateAndSave}
+                disabled={!canSubmit || validating}
                 className="w-full h-11 rounded-xl mt-4"
               >
                 {validating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
@@ -831,108 +589,157 @@ function ProviderContent({
 
 interface InstallingContentProps {
   skills: DefaultSkill[];
-  onComplete: (installedSkills: string[]) => void;
-  onSkip: () => void;
+  onFinish: () => void;
+  selectedProvider: string | null;
   isCloudOnlyBuild?: boolean;
 }
 
-function InstallingContent({ skills, onComplete, isCloudOnlyBuild }: InstallingContentProps) {
+type InstallPhase = 'installing' | 'complete' | 'error';
+
+function InstallingContent({ skills, onFinish, selectedProvider, isCloudOnlyBuild }: InstallingContentProps) {
   const { t } = useTranslation('setup');
+  const [phase, setPhase] = useState<InstallPhase>('installing');
   const [overallProgress, setOverallProgress] = useState(0);
+  const [errorMsg, setErrorMsg] = useState('');
   const installStarted = useRef(false);
 
-  useEffect(() => {
-    if (installStarted.current) return;
+  const runInstall = useCallback(async () => {
     installStarted.current = true;
+    setPhase('installing');
+    setOverallProgress(0);
+    setErrorMsg('');
 
     if (isCloudOnlyBuild) {
-      setTimeout(() => {
-        setOverallProgress(100);
-        onComplete([]);
-      }, 700);
+      await new Promise(r => setTimeout(r, 700));
+      setOverallProgress(100);
+      setPhase('complete');
       return;
     }
 
-    const runRealInstall = async () => {
-      try {
-        setOverallProgress(10);
-        const result = await invokeIpc('uv:install-all') as any;
-        if (result.success) {
-          setOverallProgress(100);
-          await new Promise(r => setTimeout(r, 800));
-          onComplete(skills.map(s => s.id));
-        } else {
-          toast.error('Setup failed');
-        }
-      } catch (err) {
-        toast.error('Error');
+    try {
+      setOverallProgress(10);
+      const result = await invokeIpc('uv:install-all') as any;
+      if (result.success) {
+        setOverallProgress(100);
+        await new Promise(r => setTimeout(r, 600));
+        setPhase('complete');
+      } else {
+        setErrorMsg(result.error || t('installing.failed', { defaultValue: '安装失败，请重试' }));
+        setPhase('error');
       }
-    };
-    runRealInstall();
-  }, [isCloudOnlyBuild, skills, onComplete]);
+    } catch (err) {
+      setErrorMsg(String(err));
+      setPhase('error');
+    }
+  }, [isCloudOnlyBuild, t]);
 
+  useEffect(() => {
+    if (installStarted.current) return;
+    runInstall();
+  }, [runInstall]);
+
+  const handleRetry = () => {
+    installStarted.current = false;
+    runInstall();
+  };
+
+  // Complete state — merged inline
+  if (phase === 'complete') {
+    const providerData = providers.find((p) => p.id === selectedProvider);
+    return (
+      <div className="flex flex-col h-full justify-center items-center text-center space-y-6 flex-1">
+        <motion.div
+          initial={{ scale: 0.5, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", damping: 15 }}
+          className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center text-green-500"
+        >
+          <CheckCircle2 className="w-10 h-10" />
+        </motion.div>
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold tracking-tight">{t('complete.title')}</h2>
+          <p className="text-muted-foreground text-sm">{t('complete.subtitle')}</p>
+        </div>
+
+        <div className="p-5 rounded-2xl bg-muted/30 border border-border/50 w-full text-left space-y-3">
+          {providerData && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-muted-foreground">{t('complete.provider')}</span>
+              <span className="font-medium flex items-center gap-2">
+                {getProviderIconUrl(providerData.id) && (
+                  <img src={getProviderIconUrl(providerData.id)} className={cn("w-4 h-4", shouldInvertInDark(providerData.id) && "dark:invert")} alt="" />
+                )}
+                {providerData.name}
+              </span>
+            </div>
+          )}
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-muted-foreground">{t('complete.status', { defaultValue: '状态' })}</span>
+            <span className="text-green-500 font-medium">{t('complete.ready', { defaultValue: '就绪' })}</span>
+          </div>
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-muted-foreground">{t('complete.skills', { defaultValue: '技能包' })}</span>
+            <span className="font-medium">{isCloudOnlyBuild ? '—' : skills.length}</span>
+          </div>
+        </div>
+
+        <Button onClick={onFinish} className="rounded-full px-8 shadow-md w-full mt-2">
+          {t('nav.getStarted')}
+        </Button>
+      </div>
+    );
+  }
+
+  // Error state
+  if (phase === 'error') {
+    return (
+      <div className="flex flex-col h-full justify-center items-center text-center space-y-6 flex-1">
+        <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center text-red-500">
+          <AlertCircle className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold">{t('installing.errorTitle', { defaultValue: '安装遇到问题' })}</h2>
+          <p className="text-muted-foreground text-xs max-w-[260px] mx-auto break-all leading-relaxed">
+            {errorMsg || t('installing.errorDesc', { defaultValue: '请检查网络连接后重试' })}
+          </p>
+        </div>
+        <div className="flex gap-3 w-full">
+          <Button variant="outline" onClick={handleRetry} className="flex-1 rounded-xl">
+            <RotateCcw className="w-4 h-4 mr-2" />
+            {t('installing.retry', { defaultValue: '重试' })}
+          </Button>
+          <Button variant="ghost" onClick={onFinish} className="flex-1 rounded-xl text-muted-foreground">
+            {t('nav.skipSetup')}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Installing state
   return (
-    <div className="flex flex-col h-full justify-center items-center text-center space-y-8">
+    <div className="flex flex-col h-full justify-center items-center text-center space-y-8 flex-1">
       <div className="relative">
         <Loader2 className="w-16 h-16 animate-spin text-primary opacity-20" />
         <div className="absolute inset-0 flex items-center justify-center text-primary font-medium text-sm">
           {overallProgress}%
         </div>
       </div>
-      <div className="space-y-2">
-        <h2 className="text-sm font-semibold">{t('installing.title')}</h2>
-        <p className="text-muted-foreground text-sm">{t('installing.subtitle')}</p>
-      </div>
-    </div>
-  );
-}
 
-interface CompleteContentProps {
-  selectedProvider: string | null;
-  installedSkills: string[];
-  isCloudOnlyBuild?: boolean;
-}
-
-function CompleteContent({ selectedProvider, installedSkills, isCloudOnlyBuild }: CompleteContentProps) {
-  const { t } = useTranslation('setup');
-  const providerData = providers.find((p) => p.id === selectedProvider);
-
-  return (
-    <div className="flex flex-col h-full justify-center items-center text-center space-y-6">
-      <motion.div 
-        initial={{ scale: 0.5, opacity: 0 }} 
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", damping: 15 }}
-        className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 mb-2"
-      >
-        <CheckCircle2 className="w-10 h-10" />
-      </motion.div>
-      <div className="space-y-2">
-        <h2 className="text-sm font-semibold tracking-tight">{t('complete.title')}</h2>
-        <p className="text-muted-foreground">{t('complete.subtitle')}</p>
-      </div>
-      
-      <div className="p-6 rounded-2xl bg-muted/30 border border-border/50 w-full text-left space-y-4">
-        <div className="flex justify-between items-center text-sm">
-          <span className="text-muted-foreground">{t('complete.provider')}</span>
-          <span className="font-medium flex items-center gap-2">
-            {providerData && getProviderIconUrl(providerData.id) && (
-              <img src={getProviderIconUrl(providerData.id)} className={cn("w-4 h-4", shouldInvertInDark(providerData.id) && "dark:invert")} alt="" />
-            )}
-            {providerData?.name || '—'}
-          </span>
+      {/* Animated progress bar */}
+      <div className="w-full space-y-3">
+        <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-primary rounded-full"
+            initial={{ width: '0%' }}
+            animate={{ width: `${overallProgress}%` }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+          />
         </div>
-        <div className="flex justify-between items-center text-sm">
-          <span className="text-muted-foreground">Status</span>
-          <span className="text-green-500 font-medium">Ready</span>
+        <div className="space-y-1">
+          <h2 className="text-sm font-semibold">{t('installing.title')}</h2>
+          <p className="text-muted-foreground text-xs">{t('installing.subtitle')}</p>
         </div>
-        <div className="flex justify-between items-center text-sm">
-          <span className="text-muted-foreground">{t('complete.skills', 'Skills')}</span>
-          <span className="font-medium">{installedSkills.length}</span>
-        </div>
-        {isCloudOnlyBuild ? (
-          <p className="text-xs text-muted-foreground">{t('complete.cloudLayout', 'Cloud build — runtime is managed for you.')}</p>
-        ) : null}
       </div>
     </div>
   );

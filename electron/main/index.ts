@@ -1027,6 +1027,11 @@ async function initialize(): Promise<void> {
         logger.info('Gateway auto-start disabled in settings');
       }
 
+      // Auto-start Code Agent sidecar (independent of gateway).
+      void codeAgentManager.start().catch((error) => {
+        logger.warn('Code agent auto-start failed:', error);
+      });
+
       // Merge MimiClaw context snippets into the workspace bootstrap files.
       // The gateway seeds workspace files asynchronously after its HTTP server
       // is ready, so ensureMimiClawContext will retry until the target files appear.

@@ -9,7 +9,10 @@
       "Bash(curl -I --max-time 20 https://www.baidu.com)",
       "Bash(ssh -T -o ConnectTimeout=15 git@github.com)",
       "Bash(pnpm:*)",
-      "Bash(grep -l \"modal\\\\|dialog\\\\|pending\" /Users/liangpingbo/Desktop/个人/MimiClaw/src/pages/*.tsx)"
+      "Bash(grep -l \"modal\\\\|dialog\\\\|pending\" /Users/liangpingbo/Desktop/个人/MimiClaw/src/pages/*.tsx)",
+      "Bash(npx tsc *)",
+      "Bash(xargs ls *)",
+      "Bash(node *)"
     ]
   }
 }

@@ -88,7 +88,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     justify-content: flex-end;
   `,
   userMessageText: css`
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.5;
     color: ${token.colorText};
     white-space: pre-wrap;

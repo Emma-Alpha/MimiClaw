@@ -158,27 +158,6 @@ function ManagementMenu({
 
 	return (
 		<div ref={menuRef} className={cn("relative", className)}>
-			<Tooltip>
-				<TooltipTrigger asChild>
-					<button
-						type="button"
-						onClick={() => setOpen((state) => !state)}
-						className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-black/5 hover:text-foreground dark:hover:bg-white/10"
-						aria-label={t("sidebar.management", { defaultValue: "管理入口" })}
-					>
-						<Ellipsis className="h-4.5 w-4.5" />
-					</button>
-				</TooltipTrigger>
-				<TooltipContent
-					side="bottom"
-					align="end"
-					className="border-none bg-black/90 px-2.5 py-1.5 text-[12px] text-white shadow-lg dark:bg-black/90"
-				>
-					<TooltipLabel
-						label={t("sidebar.management", { defaultValue: "管理入口" })}
-					/>
-				</TooltipContent>
-			</Tooltip>
 			{open ? (
 				<div className="absolute right-0 top-full z-[140] mt-2 w-48 rounded-xl border border-black/[0.08] bg-white/95 p-1 shadow-xl backdrop-blur dark:border-white/[0.1] dark:bg-[#202329]/95">
 					{items.map((item) => {

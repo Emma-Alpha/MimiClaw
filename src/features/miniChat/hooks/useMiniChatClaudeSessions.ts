@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { type MutableRefObject, useCallback, useState } from "react";
 import {
 	fetchCodeAgentSessionHistory,
 	fetchCodeAgentSessions,
@@ -15,6 +15,7 @@ import {
 
 type Params = {
 	codeWorkspaceRoot: string;
+	forceFreshSessionOnNextSubmitRef: MutableRefObject<boolean>;
 	resetCodeTimelineState: () => void;
 	resetChatSeenState: () => void;
 	pushSdkMessage: (payload: unknown) => void;
@@ -25,6 +26,7 @@ type Params = {
 
 export function useMiniChatClaudeSessions({
 	codeWorkspaceRoot,
+	forceFreshSessionOnNextSubmitRef,
 	resetCodeTimelineState,
 	resetChatSeenState,
 	pushSdkMessage,
@@ -57,6 +59,12 @@ export function useMiniChatClaudeSessions({
 			setActiveClaudeSessionId((current) => {
 				if (current && mapped.some((item) => item.key === current)) {
 					return current;
+				}
+				// If user requested a fresh session (via + button), don't auto-select
+				// an existing session — keep the state empty so the next submission
+				// creates a brand-new session.
+				if (forceFreshSessionOnNextSubmitRef.current) {
+					return "";
 				}
 				return mapped[0]?.key ?? "";
 			});

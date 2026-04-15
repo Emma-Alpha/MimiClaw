@@ -93,6 +93,9 @@
         }
     },
     "provider": {
+        "title": "AI Provider",
+        "remoteModeTitle": "Provider managed by remote gateway",
+        "remoteModeDesc": "You're connected to a remote gateway. The AI provider is managed server-side — no local configuration needed.",
         "label": "Model Provider",
         "cloudOnlyTitle": "Provider settings sync to the cloud",
         "cloudOnlyDesc": "This is a cloud-only build, so local OpenClaw has been removed. Any provider you configure here will sync to your cloud workspace for remote runtime use.",

@@ -373,6 +373,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 		hydrateClaudeSessionHistory,
 	} = useMiniChatClaudeSessions({
 		codeWorkspaceRoot,
+		forceFreshSessionOnNextSubmitRef,
 		resetCodeTimelineState,
 		resetChatSeenState,
 		pushSdkMessage,

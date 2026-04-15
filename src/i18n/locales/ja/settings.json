@@ -309,7 +309,14 @@
       }
     },
     "devMode": "開発者モード",
-    "devModeDesc": "開発者ツールとショートカットを表示"
+    "devModeDesc": "開発者ツールとショートカットを表示",
+    "resetData": "すべてのデータをリセット",
+    "resetDataDesc": "すべての設定・API キー・アカウント情報を削除し、アプリを初期状態に戻して再起動します。",
+    "resetDataBtn": "データをリセット",
+    "resetConfirmTitle": "すべてのデータをリセットしますか？",
+    "resetConfirmMsg": "この操作はすべてのプロバイダー設定・API キー・アプリ設定を削除します。元に戻すことはできません。リセット後にアプリが自動的に再起動します。",
+    "resetConfirmOk": "リセットする",
+    "resetConfirmCancel": "キャンセル"
   },
   "developer": {
     "title": "開発者",
@@ -354,6 +361,10 @@
     "codeAgentDesc": "実験的な Emma-Alpha/claude-code sidecar を管理し、ローカル解析タスクを手動実行します。",
     "codeAgentStatus": "状態",
     "codeAgentHealth": "ヘルス",
+    "codeAgentHealthOk": "正常",
+    "codeAgentHealthError": "エラー",
+    "codeAgentHealthStopped": "未起動",
+    "codeAgentHealthStarting": "起動中",
     "codeAgentRuntime": "ランタイム",
     "codeAgentExecutionMode": "実行モード",
     "codeAgentExecutionModeCli": "Claude CLI",

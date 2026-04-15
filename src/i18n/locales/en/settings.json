@@ -312,7 +312,14 @@
     "devMode": "Developer Mode",
     "devModeDesc": "Show developer tools and shortcuts",
     "telemetry": "Anonymous Usage Data",
-    "telemetryDesc": "Allow providing anonymous basic usage data to improve 极智"
+    "telemetryDesc": "Allow providing anonymous basic usage data to improve 极智",
+    "resetData": "Reset All Data",
+    "resetDataDesc": "Delete all configuration, API keys, and account data, then restart the app from scratch.",
+    "resetDataBtn": "Reset Data",
+    "resetConfirmTitle": "Reset all data?",
+    "resetConfirmMsg": "This will delete all provider configurations, API keys, and app settings. This action cannot be undone. The app will restart automatically.",
+    "resetConfirmOk": "Reset",
+    "resetConfirmCancel": "Cancel"
   },
   "developer": {
     "title": "Developer",
@@ -357,6 +364,10 @@
     "codeAgentDesc": "Manage the experimental Emma-Alpha/claude-code sidecar and run local analysis tasks.",
     "codeAgentStatus": "Status",
     "codeAgentHealth": "Health",
+    "codeAgentHealthOk": "ok",
+    "codeAgentHealthError": "error",
+    "codeAgentHealthStopped": "not started",
+    "codeAgentHealthStarting": "starting",
     "codeAgentRuntime": "Runtime",
     "codeAgentExecutionMode": "Execution mode",
     "codeAgentExecutionModeCli": "Claude CLI",

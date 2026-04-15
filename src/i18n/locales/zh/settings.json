@@ -312,7 +312,14 @@
     "devMode": "开发者模式",
     "devModeDesc": "显示开发者工具和快捷方式",
     "telemetry": "匿名使用数据",
-    "telemetryDesc": "允许提供匿名的基础使用数据，用于改进 极智"
+    "telemetryDesc": "允许提供匿名的基础使用数据，用于改进 极智",
+    "resetData": "重置所有数据",
+    "resetDataDesc": "清除全部配置、API 密钥及账号信息，恢复到初始状态并重启应用。",
+    "resetDataBtn": "重置数据",
+    "resetConfirmTitle": "确认重置所有数据？",
+    "resetConfirmMsg": "此操作将删除所有提供商配置、API 密钥和应用设置，且无法撤销。应用将在重置后自动重启。",
+    "resetConfirmOk": "确认重置",
+    "resetConfirmCancel": "取消"
   },
   "developer": {
     "title": "开发者",
@@ -357,6 +364,10 @@
     "codeAgentDesc": "管理实验性的 Emma-Alpha/claude-code sidecar，并手动运行本地分析任务。",
     "codeAgentStatus": "状态",
     "codeAgentHealth": "健康状态",
+    "codeAgentHealthOk": "正常",
+    "codeAgentHealthError": "异常",
+    "codeAgentHealthStopped": "未启动",
+    "codeAgentHealthStarting": "启动中",
     "codeAgentRuntime": "运行时",
     "codeAgentExecutionMode": "执行模式",
     "codeAgentExecutionModeCli": "Claude CLI",

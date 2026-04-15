@@ -2,7 +2,7 @@
  * Settings Page
  * Application configuration
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type ElementType, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Sun,
   Moon,
@@ -14,11 +14,17 @@ import {
   Eye,
   EyeOff,
   Globe,
+  Palette,
+  Network,
+  Cpu,
+  Info,
 } from 'lucide-react';
+import { Form, type FormGroupItemType } from '@lobehub/ui';
+import { SettingHeader } from './components/SettingHeader';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -87,6 +93,74 @@ import {
 } from '../../../shared/voice-chat';
 
 const CODE_AGENT_WORKSPACE_ROOT_STORAGE_KEY = 'mimiclaw:code-agent-workspace-root';
+
+// ── Form adapter components ─────────────────────────────────────────────────
+// Thin wrappers that translate antd Form's value/onChange contract to our
+// shadcn controls so they work inside @lobehub/ui's <Form> component.
+
+function FormSwitch({
+  checked,
+  onChange,
+  disabled,
+}: {
+  checked?: boolean;
+  onChange?: (v: boolean) => void;
+  disabled?: boolean;
+}) {
+  return <Switch checked={checked} onCheckedChange={onChange} disabled={disabled} />;
+}
+
+function ThemePicker({ value, onChange }: { value?: string; onChange?: (v: string) => void }) {
+  const { t } = useTranslation('settings');
+  return (
+    <div className="inline-flex gap-1 bg-muted/50 p-1 rounded-2xl border border-black/5 dark:border-white/5 shadow-inner">
+      {(
+        [
+          { value: 'light', label: t('appearance.light'), Icon: Sun },
+          { value: 'dark', label: t('appearance.dark'), Icon: Moon },
+          { value: 'system', label: t('appearance.system'), Icon: Monitor },
+        ] as const
+      ).map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange?.(opt.value)}
+          className={cn(
+            'flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium rounded-xl transition-all duration-300',
+            value === opt.value
+              ? 'bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/5'
+              : 'text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5',
+          )}
+        >
+          <opt.Icon className="h-4 w-4" />
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function LanguagePicker({ value, onChange }: { value?: string; onChange?: (v: string) => void }) {
+  return (
+    <div className="inline-flex gap-1 bg-muted/50 p-1 rounded-2xl border border-black/5 dark:border-white/5 shadow-inner">
+      {SUPPORTED_LANGUAGES.map((lang) => (
+        <button
+          key={lang.code}
+          type="button"
+          onClick={() => onChange?.(lang.code)}
+          className={cn(
+            'flex items-center justify-center px-6 py-2 text-sm font-medium rounded-xl transition-all duration-300',
+            value === lang.code
+              ? 'bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/5'
+              : 'text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5',
+          )}
+        >
+          {lang.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function readStoredCodeAgentWorkspaceRoot(): string {
   try {
@@ -191,6 +265,8 @@ export function Settings() {
   const [savingProxy, setSavingProxy] = useState(false);
   const [wsDiagnosticEnabled, setWsDiagnosticEnabled] = useState(false);
   const [cloudGateway, setCloudGateway] = useState<CloudGatewayState | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [cloudGatewayLoading, setCloudGatewayLoading] = useState(false);
   const [showTelemetryViewer, setShowTelemetryViewer] = useState(false);
   const [telemetryEntries, setTelemetryEntries] = useState<UiTelemetryEntry[]>([]);
@@ -239,6 +315,9 @@ export function Settings() {
   const [codeAgentAllowedToolsDraft, setCodeAgentAllowedToolsDraft] = useState(codeAgent.allowedTools.join('\n'));
   const [savingCodeAgentConfig, setSavingCodeAgentConfig] = useState(false);
   const [showCodeAgentApiKey, setShowCodeAgentApiKey] = useState(false);
+
+  type SettingsSection = 'appearance' | 'gateway' | 'updates' | 'developer' | 'about';
+  const [activeSection, setActiveSection] = useState<SettingsSection>('appearance');
 
   const refreshCloudGateway = useCallback(async () => {
     try {
@@ -310,6 +389,27 @@ export function Settings() {
       toast.error(String(err));
     } finally {
       setCloudGatewayLoading(false);
+    }
+  };
+
+  const handleResetAllData = async () => {
+    setResetting(true);
+    try {
+      // Delete all provider accounts (also clears API keys from keychain)
+      const snapshot = await hostApiFetch<{ accounts: { id: string }[] }>('/api/provider-accounts');
+      await Promise.all(
+        snapshot.accounts.map((account) =>
+          hostApiFetch(`/api/provider-accounts/${encodeURIComponent(account.id)}`, { method: 'DELETE' }).catch(() => {})
+        )
+      );
+      // Clear electron-store
+      await invokeIpc('settings:reset');
+      // Relaunch so the setup wizard re-appears
+      await invokeIpc('app:relaunch');
+    } catch (err) {
+      toast.error(String(err));
+      setResetting(false);
+      setShowResetConfirm(false);
     }
   };
 
@@ -897,199 +997,184 @@ export function Settings() {
   };
 
   return (
-    <div className="flex flex-col -m-6 dark:bg-background h-[calc(100vh-2.5rem)] overflow-hidden">
-      <div className="w-full max-w-4xl mx-auto flex flex-col h-full p-8 pt-12">
-
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-start justify-between mb-12 shrink-0 gap-4">
-          <div>
-            <h1 className="text-sm md:text-sm font-semibold text-foreground mb-2 tracking-tight">
-              {t('title')}
-            </h1>
-            <p className="text-[14px] text-muted-foreground font-medium">
-              {t('subtitle')}
-            </p>
-          </div>
+    <div className="flex h-full w-full overflow-hidden">
+      {/* Left sidebar nav – same background as the main sidebar */}
+      <aside className="w-[216px] shrink-0 flex flex-col overflow-y-auto bg-[#f3f3f2] dark:bg-[#1a1c20] border-r border-black/[0.06] dark:border-white/[0.08]">
+        {/* Spacer so nav items clear the absolute-positioned TitleBar (40 px) */}
+        <div style={{ height: 40, flexShrink: 0 }} />
+        <div className="px-3 py-1">
+          {([
+            { key: 'appearance', label: t('appearance.title'), icon: Palette },
+            { key: 'gateway', label: t('gateway.title'), icon: Network },
+            { key: 'updates', label: t('updates.title'), icon: RefreshCw },
+            ...(devModeUnlocked ? [{ key: 'developer', label: t('developer.title'), icon: Cpu }] : []),
+            { key: 'about', label: t('about.title'), icon: Info },
+          ] as Array<{ key: string; label: string; icon: ElementType }>).map((item) => {
+            const Icon = item.icon;
+            const isActive = activeSection === item.key;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setActiveSection(item.key as SettingsSection)}
+                className={cn(
+                  'w-full flex items-center gap-2.5 px-3 py-[7px] rounded-lg text-[13px] font-medium transition-colors text-left',
+                  isActive
+                    ? 'bg-black/[0.07] text-foreground dark:bg-white/[0.10]'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-black/[0.05] dark:hover:bg-white/[0.07]',
+                )}
+              >
+                <Icon className="h-[15px] w-[15px] shrink-0" />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
         </div>
+      </aside>
 
-        {/* Content Area */}
-        <div className="flex-1 overflow-y-auto pr-2 pb-10 min-h-0 -mr-2 space-y-12">
+      {/* Right content area */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl px-8 pt-10 pb-16">
+          <SettingHeader
+            title={
+              activeSection === 'appearance' ? t('appearance.title') :
+              activeSection === 'gateway' ? t('gateway.title') :
+              activeSection === 'updates' ? t('updates.title') :
+              activeSection === 'developer' ? t('developer.title') :
+              t('about.title')
+            }
+          />
 
           {/* Appearance */}
-          <div>
-            <h2 className="text-sm font-semibold text-foreground mb-6 tracking-tight">
-              {t('appearance.title')}
-            </h2>
-            <div className="space-y-8">
-              <div className="flex items-center gap-8">
-                <Label className="text-[14px] font-medium text-foreground/80 min-w-[60px]">{t('appearance.theme')}</Label>
-                <div className="inline-flex gap-1 bg-muted/50 p-1 rounded-2xl border border-white/5 shadow-inner">
-                  <button
-                    type="button"
-                    onClick={() => setTheme('light')}
+          {activeSection === 'appearance' && (
+            <div className="space-y-4">
+              {/* ── General + Pet settings via @lobehub/ui Form ────────────── */}
+              <Form
+                collapsible={false}
+                initialValues={{
+                  theme,
+                  language,
+                  launchAtStartup,
+                  petEnabled,
+                  petAnimation,
+                  xiaojiuEnabled,
+                  jizhiEnabled,
+                }}
+                items={
+                  [
+                    {
+                      title: t('appearance.title'),
+                      children: [
+                        {
+                          label: t('appearance.theme'),
+                          children: <ThemePicker />,
+                          name: 'theme',
+                          minWidth: undefined,
+                        },
+                        {
+                          label: t('appearance.language'),
+                          children: <LanguagePicker />,
+                          name: 'language',
+                          minWidth: undefined,
+                        },
+                        {
+                          label: t('appearance.launchAtStartup'),
+                          desc: t('appearance.launchAtStartupDesc'),
+                          children: <FormSwitch />,
+                          name: 'launchAtStartup',
+                          valuePropName: 'checked',
+                          minWidth: undefined,
+                        },
+                      ],
+                    },
+                    {
+                      title: t('pet.title'),
+                      children: [
+                        {
+                          label: t('pet.title'),
+                          desc: t('pet.description'),
+                          children: <FormSwitch />,
+                          name: 'petEnabled',
+                          valuePropName: 'checked',
+                          minWidth: undefined,
+                        },
+                        {
+                          label: t('pet.animation'),
+                          desc: t('pet.tip'),
+                          children: (
+                            <Select
+                              value={petAnimation}
+                              onChange={(event) => setPetAnimation(event.target.value as PetAnimation)}
+                              disabled={!petEnabled}
+                              className="h-9 rounded-xl bg-black/5 dark:bg-white/5 border-transparent text-[13px] min-w-[180px]"
+                            >
+                              {PET_IDLE_ANIMATIONS.map((animation) => (
+                                <option key={animation} value={animation}>
+                                  {t(PET_ANIMATION_LABEL_KEYS[animation])}
+                                </option>
+                              ))}
+                            </Select>
+                          ),
+                          minWidth: undefined,
+                        },
+                        {
+                          label: t('pet.xiaojiuLabel', { defaultValue: '接入小九' }),
+                          desc: t('pet.xiaojiuDesc', { defaultValue: '启用后可快速调用小九相关功能。' }),
+                          children: <FormSwitch disabled={!petEnabled} />,
+                          name: 'xiaojiuEnabled',
+                          valuePropName: 'checked',
+                          minWidth: undefined,
+                        },
+                        {
+                          label: t('pet.jizhiLabel', { defaultValue: '接入极智' }),
+                          desc: t('pet.jizhiDesc', { defaultValue: '启用后可快速调用极智相关功能。' }),
+                          children: <FormSwitch disabled={!petEnabled} />,
+                          name: 'jizhiEnabled',
+                          valuePropName: 'checked',
+                          minWidth: undefined,
+                        },
+                      ],
+                    },
+                  ] as FormGroupItemType[]
+                }
+                itemsType="group"
+                variant="filled"
+                onValuesChange={(changedValues: Record<string, unknown>) => {
+                  if ('theme' in changedValues) setTheme(changedValues.theme as 'light' | 'dark' | 'system');
+                  if ('language' in changedValues) setLanguage(changedValues.language as string);
+                  if ('launchAtStartup' in changedValues) setLaunchAtStartup(changedValues.launchAtStartup as boolean);
+                  if ('petEnabled' in changedValues) setPetEnabled(changedValues.petEnabled as boolean);
+                  if ('petAnimation' in changedValues) setPetAnimation(changedValues.petAnimation as PetAnimation);
+                  if ('xiaojiuEnabled' in changedValues) setXiaojiuEnabled(changedValues.xiaojiuEnabled as boolean);
+                  if ('jizhiEnabled' in changedValues) setJizhiEnabled(changedValues.jizhiEnabled as boolean);
+                }}
+                itemMinWidth="max(30%, 180px)"
+                style={{ width: '100%' }}
+              />
+
+              <Form.Group
+                title={t('speech.title')}
+                variant="filled"
+                extra={
+                  <Badge
+                    variant="outline"
                     className={cn(
-                      "flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium rounded-xl transition-all duration-300",
-                      theme === 'light'
-                        ? "bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/5"
-                        : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+                      'rounded-full border-none px-3 py-1 text-[12px]',
+                      speechConfig?.configured
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                        : 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
                     )}
                   >
-                    <Sun className="h-4 w-4" />
-                    {t('appearance.light')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTheme('dark')}
-                    className={cn(
-                      "flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium rounded-xl transition-all duration-300",
-                      theme === 'dark'
-                        ? "bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/5"
-                        : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
-                    )}
-                  >
-                    <Moon className="h-4 w-4" />
-                    {t('appearance.dark')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTheme('system')}
-                    className={cn(
-                      "flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium rounded-xl transition-all duration-300",
-                      theme === 'system'
-                        ? "bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/5"
-                        : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
-                    )}
-                  >
-                    <Monitor className="h-4 w-4" />
-                    {t('appearance.system')}
-                  </button>
-                </div>
-              </div>
-              <div className="flex items-center gap-8">
-                <Label className="text-[14px] font-medium text-foreground/80 min-w-[60px]">{t('appearance.language')}</Label>
-                <div className="inline-flex gap-1 bg-muted/50 p-1 rounded-2xl border border-white/5 shadow-inner">
-                  {SUPPORTED_LANGUAGES.map((lang) => (
-                    <button
-                      type="button"
-                      key={lang.code}
-                      onClick={() => setLanguage(lang.code)}
-                      className={cn(
-                        "flex items-center justify-center px-6 py-2 text-sm font-medium rounded-xl transition-all duration-300",
-                        language === lang.code
-                          ? "bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/5"
-                          : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
-                      )}
-                    >
-                      {lang.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-[14px] font-medium text-foreground/80">{t('appearance.launchAtStartup')}</Label>
-                  <p className="text-[13px] text-muted-foreground mt-1">
-                    {t('appearance.launchAtStartupDesc')}
-                  </p>
-                </div>
-                <Switch
-                  checked={launchAtStartup}
-                  onCheckedChange={setLaunchAtStartup}
-                />
-              </div>
-
-              <div className="rounded-3xl bg-muted/40 p-6 border-none">
-                <div className="flex flex-col gap-6">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <Label className="text-[14px] font-semibold text-foreground">{t('pet.title')}</Label>
-                      <p className="text-[13px] text-muted-foreground mt-1">
-                        {t('pet.description')}
-                      </p>
-                    </div>
-                    <Switch
-                      checked={petEnabled}
-                      onCheckedChange={setPetEnabled}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="pet-animation" className="text-[13px] font-medium text-foreground/80">
-                      {t('pet.animation')}
-                    </Label>
-                    <Select
-                      id="pet-animation"
-                      value={petAnimation}
-                      onChange={(event) => setPetAnimation(event.target.value as PetAnimation)}
-                      disabled={!petEnabled}
-                      className="h-10 rounded-xl bg-background border-none shadow-sm text-[13px]"
-                    >
-                      {PET_IDLE_ANIMATIONS.map((animation) => (
-                        <option key={animation} value={animation}>
-                          {t(PET_ANIMATION_LABEL_KEYS[animation])}
-                        </option>
-                      ))}
-                    </Select>
-                    <p className="text-[12px] text-muted-foreground">
-                      {t('pet.tip')}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-4 mt-2 pt-4 border-t border-border/40">
-                    <div>
-                      <Label className="text-[13px] font-medium text-foreground/80">接入小九</Label>
-                      <p className="text-[12px] text-muted-foreground mt-1">
-                        启用后可快速调用小九相关功能。
-                      </p>
-                    </div>
-                    <Switch
-                      checked={xiaojiuEnabled}
-                      onCheckedChange={setXiaojiuEnabled}
-                      disabled={!petEnabled}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between gap-4 mt-0 pt-4 border-t border-border/40">
-                    <div>
-                      <Label className="text-[13px] font-medium text-foreground/80">接入极智</Label>
-                      <p className="text-[12px] text-muted-foreground mt-1">
-                        启用后可快速调用极智相关功能。
-                      </p>
-                    </div>
-                    <Switch
-                      checked={jizhiEnabled}
-                      onCheckedChange={setJizhiEnabled}
-                      disabled={!petEnabled}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-3xl bg-muted/40 p-6 border-none">
-                <div className="flex flex-col gap-6">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <Label className="text-[14px] font-semibold text-foreground">{t('speech.title')}</Label>
-                      <p className="text-[13px] text-muted-foreground mt-1">
-                        {t('speech.description')}
-                      </p>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        'rounded-full border-none px-3 py-1 text-[12px]',
-                        speechConfig?.configured
-                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                          : 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-                      )}
-                    >
-                      {speechLoading
-                        ? t('speech.loading')
-                        : speechConfig?.configured
-                          ? t('speech.configured')
-                          : t('speech.missing')}
-                    </Badge>
-                  </div>
+                    {speechLoading
+                      ? t('speech.loading')
+                      : speechConfig?.configured
+                        ? t('speech.configured')
+                        : t('speech.missing')}
+                  </Badge>
+                }
+              >
+                <div className="flex flex-col gap-6 px-4 pb-4">
+                  <p className="text-[13px] text-muted-foreground">{t('speech.description')}</p>
 
                   <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                     <div className="space-y-2">
@@ -1185,33 +1270,31 @@ export function Settings() {
                     </p>
                   </div>
                 </div>
-              </div>
+              </Form.Group>
 
-              <div className="rounded-3xl bg-muted/40 p-6 border-none">
-                <div className="flex flex-col gap-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <Label className="text-[14px] font-medium text-foreground/80">{t('voiceChat.title')}</Label>
-                      <p className="text-[13px] text-muted-foreground mt-1">
-                        {t('voiceChat.description')}
-                      </p>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        'rounded-full border px-3 py-1 text-[12px]',
-                        voiceChatConfig?.configured
-                          ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                          : 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300',
-                      )}
-                    >
-                      {voiceChatLoading
-                        ? t('voiceChat.loading')
-                        : voiceChatConfig?.configured
-                          ? t('voiceChat.configured')
-                          : t('voiceChat.missing')}
-                    </Badge>
-                  </div>
+              <Form.Group
+                title={t('voiceChat.title')}
+                variant="filled"
+                extra={
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'rounded-full border px-3 py-1 text-[12px]',
+                      voiceChatConfig?.configured
+                        ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                        : 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+                    )}
+                  >
+                    {voiceChatLoading
+                      ? t('voiceChat.loading')
+                      : voiceChatConfig?.configured
+                        ? t('voiceChat.configured')
+                        : t('voiceChat.missing')}
+                  </Badge>
+                }
+              >
+                <div className="flex flex-col gap-5 px-4 pb-4">
+                  <p className="text-[13px] text-muted-foreground">{t('voiceChat.description')}</p>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="space-y-2">
@@ -1291,17 +1374,12 @@ export function Settings() {
                     </p>
                   </div>
                 </div>
-              </div>
+              </Form.Group>
             </div>
-          </div>
-
-          <Separator className="bg-black/5 dark:bg-white/5" />
+          )}
 
           {/* Gateway */}
-          <div>
-            <h2 className="text-sm font-semibold text-foreground mb-6 tracking-tight">
-              {t('gateway.title')}
-            </h2>
+          {activeSection === 'gateway' && (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -1508,33 +1586,59 @@ export function Settings() {
                 />
               </div>
 
-            </div>
-          </div>
+              {/* Reset all data */}
+              <div className="pt-2 border-t border-border/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-[14px] font-medium text-destructive">{t('advanced.resetData')}</Label>
+                    <p className="text-[13px] text-muted-foreground mt-1">
+                      {t('advanced.resetDataDesc')}
+                    </p>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="rounded-full shrink-0"
+                    onClick={() => setShowResetConfirm(true)}
+                    disabled={resetting}
+                  >
+                    {t('advanced.resetDataBtn')}
+                  </Button>
+                </div>
+              </div>
 
+            </div>
+          )}
+
+          <ConfirmDialog
+            open={showResetConfirm}
+            title={t('advanced.resetConfirmTitle')}
+            message={t('advanced.resetConfirmMsg')}
+            confirmLabel={t('advanced.resetConfirmOk')}
+            cancelLabel={t('advanced.resetConfirmCancel')}
+            variant="destructive"
+            onConfirm={handleResetAllData}
+            onCancel={() => setShowResetConfirm(false)}
+            onError={(err) => toast.error(String(err))}
+          />
 
           {/* Developer */}
-          {devModeUnlocked && (
-            <>
-              <Separator className="bg-black/5 dark:bg-white/5" />
-              <div>
-                <h2 className="text-sm font-semibold text-foreground mb-6 tracking-tight">
-                  {t('developer.title')}
-                </h2>
-                <div className="space-y-8">
-                  {/* Gateway Proxy */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="text-[14px] font-medium text-foreground/80">Gateway Proxy</Label>
-                        <p className="text-[13px] text-muted-foreground">
-                          {t('gateway.proxyDesc')}
-                        </p>
-                      </div>
-                      <Switch
-                        checked={proxyEnabledDraft}
-                        onCheckedChange={setProxyEnabledDraft}
-                      />
-                    </div>
+          {activeSection === 'developer' && devModeUnlocked && (
+            <div className="space-y-8">
+              {/* Gateway Proxy */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-[14px] font-medium text-foreground/80">Gateway Proxy</Label>
+                    <p className="text-[13px] text-muted-foreground">
+                      {t('gateway.proxyDesc')}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={proxyEnabledDraft}
+                    onCheckedChange={setProxyEnabledDraft}
+                  />
+                </div>
 
                     {proxyEnabledDraft && (
                       <div className="space-y-4 pt-2">
@@ -1843,12 +1947,25 @@ export function Settings() {
                           variant="outline"
                           className={cn(
                             'rounded-full px-3 py-1',
-                            codeAgentHealth?.ok && 'border-green-500/30 text-green-700 dark:text-green-400 bg-green-500/10',
-                            codeAgentHealth && !codeAgentHealth.ok && 'border-amber-500/30 text-amber-700 dark:text-amber-300 bg-amber-500/10',
-                            !codeAgentHealth && 'bg-white dark:bg-card border-black/5 dark:border-white/5',
+                            // Green: sidecar running and healthy
+                            codeAgentStatus?.state === 'running' && codeAgentHealth?.ok && 'border-green-500/30 text-green-700 dark:text-green-400 bg-green-500/10',
+                            // Amber: sidecar running but health check failed (real problem)
+                            codeAgentStatus?.state === 'running' && codeAgentHealth && !codeAgentHealth.ok && 'border-amber-500/30 text-amber-700 dark:text-amber-300 bg-amber-500/10',
+                            // Red: sidecar process itself crashed
+                            codeAgentStatus?.state === 'error' && 'border-red-500/30 text-red-700 dark:text-red-400 bg-red-500/10',
+                            // Neutral: stopped or starting — not an error, just not running
+                            (codeAgentStatus?.state !== 'running' && codeAgentStatus?.state !== 'error') && 'bg-white dark:bg-card border-black/5 dark:border-white/5',
                           )}
                         >
-                          {t('developer.codeAgentHealth')}: {codeAgentHealth ? (codeAgentHealth.ok ? 'ok' : 'error') : '-'}
+                          {t('developer.codeAgentHealth')}: {(() => {
+                            const state = codeAgentStatus?.state;
+                            if (!state || state === 'stopped') return t('developer.codeAgentHealthStopped', { defaultValue: '未启动' });
+                            if (state === 'starting') return t('developer.codeAgentHealthStarting', { defaultValue: '启动中' });
+                            if (state === 'error') return t('developer.codeAgentHealthError', { defaultValue: 'error' });
+                            if (codeAgentHealth?.ok) return t('developer.codeAgentHealthOk', { defaultValue: 'ok' });
+                            if (codeAgentHealth) return t('developer.codeAgentHealthError', { defaultValue: 'error' });
+                            return '-';
+                          })()}
                         </Badge>
                         <Badge variant="outline" className="rounded-full px-3 py-1 bg-white dark:bg-card border-black/5 dark:border-white/5">
                           {t('developer.codeAgentRuntime')}: {codeAgentStatus?.runtime || codeAgentHealth?.runtime || '-'}
@@ -1873,7 +1990,9 @@ export function Settings() {
                           <p>{t('developer.codeAgentAdapter')}: {codeAgentStatus?.adapter || codeAgentHealth?.adapter || '-'}</p>
                           <p>{t('developer.codeAgentSidecarPath')}: {codeAgentStatus?.sidecarPath || codeAgentHealth?.sidecarPath || '-'}</p>
                           <p>{t('developer.codeAgentVendorPath')}: {codeAgentStatus?.vendorPath || codeAgentHealth?.vendorPath || '-'}</p>
-                          <p>{t('developer.codeAgentSnapshotEntry')}: {codeAgentHealth?.snapshotEntryPath || '-'}</p>
+                          {(codeAgentHealth?.executionMode ?? codeAgentStatus?.executionMode) === 'snapshot' && (
+                            <p>{t('developer.codeAgentSnapshotEntry')}: {codeAgentHealth?.snapshotEntryPath || '-'}</p>
+                          )}
                           <p>{t('developer.codeAgentCliPath')}: {codeAgentHealth?.cliPath || codeAgentStatus?.cliPath || codeAgentConfigDraft.cliPath || '-'}</p>
                           <p>{t('developer.codeAgentConfigSource')}: {codeAgentHealth?.configSource === 'default_provider'
                             ? `${t('developer.codeAgentConfigSourceDefaultProvider')}${codeAgentHealth.configSourceLabel ? ` (${codeAgentHealth.configSourceLabel})` : ''}`
@@ -2298,17 +2417,10 @@ export function Settings() {
                     )}
                   </div>
                 </div>
-              </div>
-            </>
           )}
 
-          <Separator className="bg-black/5 dark:bg-white/5" />
-
           {/* Updates */}
-          <div>
-            <h2 className="text-sm font-semibold text-foreground mb-6 tracking-tight">
-              {t('updates.title')}
-            </h2>
+          {activeSection === 'updates' && (
             <div className="space-y-6">
               <UpdateSettings />
 
@@ -2341,15 +2453,10 @@ export function Settings() {
                 />
               </div>
             </div>
-          </div>
-
-          <Separator className="bg-black/5 dark:bg-white/5" />
+          )}
 
           {/* About */}
-          <div>
-            <h2 className="text-sm font-semibold text-foreground mb-6 tracking-tight">
-              {t('about.title')}
-            </h2>
+          {activeSection === 'about' && (
             <div className="space-y-3 text-[14px] text-muted-foreground">
               <p>
                 <strong className="text-foreground font-semibold">{t('about.appName')}</strong> - {t('about.tagline')}
@@ -2380,7 +2487,7 @@ export function Settings() {
                 </Button>
               </div>
             </div>
-          </div>
+          )}
 
         </div>
       </div>

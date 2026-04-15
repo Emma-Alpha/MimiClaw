@@ -13,7 +13,7 @@ export const typographyTokenOverrides: Record<string, number> = {
 	lineHeight: 1.5,
 	lineHeightSM: 1.35,
 	lineHeightLG: 1.6,
-	fontWeightStrong: 600,
+	fontWeightStrong: 500,
 };
 
 export const typographyCssVarDeclarations = `
