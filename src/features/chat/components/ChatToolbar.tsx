@@ -62,7 +62,8 @@ export function ChatToolbar() {
   );
 
   return (
-    <div className={styles.toolbar}>
+    // biome-ignore lint/suspicious/noExplicitAny: WebkitAppRegion is not in CSSProperties
+    <div className={styles.toolbar} style={{ WebkitAppRegion: 'no-drag' } as any}>
       <div className={styles.agentBadge}>
         <Bot className={styles.agentIcon} />
         <span>{t('toolbar.currentAgent', { agent: currentAgentName })}</span>

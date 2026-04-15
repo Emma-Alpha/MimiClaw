@@ -164,7 +164,6 @@ export function AssistantActions({ className, text }: { className?: string; text
     <span className={className}>
       <ActionIconGroup
         items={items}
-        menu={items}
         onActionClick={({ key }) => {
           if (key === 'copy') copyContent();
         }}

@@ -39,16 +39,13 @@ const useStyles = createStyles(({ token, css }) => ({
     transition: background 0.3s;
   `,
   toolbar: css`
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: flex-end;
-    padding: 16px 24px 8px;
+    display: none;
   `,
   messagesArea: css`
     position: relative;
     flex: 1;
     overflow: hidden;
+    padding-top: 40px;
   `,
   scrollableContent: css`
     height: 100%;

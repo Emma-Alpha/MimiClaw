@@ -1,6 +1,12 @@
 import { createStyles } from 'antd-style';
 
-export const useMessageStyles = createStyles(({ token, css }) => ({
+export const useMessageStyles = createStyles(({ token, css }) => {
+  const unifiedCardRadius = token.borderRadiusLG + 2;
+  const unifiedCardBorder = token.colorBorderSecondary;
+  const unifiedCardBackground = token.colorBgContainer;
+  const unifiedCardBackgroundHover = token.colorFillQuaternary;
+
+  return {
   chatItem: css`
     width: 100%;
     animation: chatSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -22,14 +28,15 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
       .lobe-chat-item {
         width: 100%;
         gap: 8px !important;
-        padding: 10px 0 8px !important;
+        padding: 8px 0 !important;
+        align-items: flex-start !important;
       }
 
       .lobe-chat-item-message {
         margin-left: 0 !important;
         margin-right: 0 !important;
         align-items: flex-start !important;
-        gap: 6px !important;
+        gap: 12px !important;
         width: 100%;
       }
 
@@ -47,15 +54,15 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     :global {
       .lobe-chat-item {
         width: 100%;
-        gap: 4px !important;
-        padding: 8px 0 4px !important;
+        gap: 6px !important;
+        padding: 8px 0 !important;
       }
 
       .lobe-chat-item-message {
         margin-left: 0 !important;
         margin-right: 0 !important;
         align-items: flex-end !important;
-        gap: 2px !important;
+        gap: 6px !important;
       }
     }
   `,
@@ -63,21 +70,21 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 0;
+    gap: 6px;
   `,
   userMediaSection: css`
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 10px;
+    gap: 8px;
   `,
   userMediaSectionWithText: css`
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   `,
   userMediaRow: css`
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
     justify-content: flex-end;
   `,
   userMessageText: css`
@@ -91,19 +98,16 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    margin: 0 0 6px 2px;
+    margin: 0 0 8px 2px;
     min-height: 20px;
   `,
   messageMetaAvatar: css`
-    width: 20px;
-    height: 20px;
     border-radius: 999px;
+    flex-shrink: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid ${token.colorBorderSecondary};
     background: ${token.colorBgContainer};
-    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
   `,
   messageMetaLabel: css`
     font-size: var(--mimi-font-size-sm);
@@ -129,13 +133,13 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     background: ${token.colorPrimaryBg};
   `,
   userAvatar: css`
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     border-radius: 999px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     color: ${token.colorTextSecondary};
     border: 1px solid ${token.colorBorderSecondary};
@@ -263,9 +267,9 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
   mediaPlaceholder: css`
     width: 152px;
     height: 152px;
-    border-radius: 18px;
-    border: 1px dashed ${token.colorBorderSecondary};
-    background: ${token.colorFillQuaternary};
+    border-radius: ${unifiedCardRadius}px;
+    border: 1px dashed ${unifiedCardBorder};
+    background: ${unifiedCardBackgroundHover};
     display: flex;
     align-items: center;
     justify-content: center;
@@ -274,13 +278,13 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
   assistantSection: css`
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     width: 100%;
   `,
   assistantToolStack: css`
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     width: 100%;
   `,
   activityElapsed: css`
@@ -288,7 +292,7 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     color: ${token.colorTextTertiary};
   `,
   assistantActions: css`
-    display: inline-flex;
+    display: flex;
     align-items: center;
     opacity: 0.92;
 
@@ -305,10 +309,9 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     }
   `,
   toolCard: css`
-    border-radius: 18px;
-    border: 1px solid ${token.colorBorderSecondary};
-    background: ${token.colorBgElevated};
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+    border-radius: ${unifiedCardRadius}px;
+    border: 1px solid ${unifiedCardBorder};
+    background: ${unifiedCardBackground};
     overflow: hidden;
   `,
   toolCardHeader: css`
@@ -316,7 +319,7 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     align-items: center;
     gap: 8px;
     width: 100%;
-    padding: 9px 12px;
+    padding: 8px 12px;
     color: ${token.colorTextSecondary};
     cursor: pointer;
     background: none;
@@ -326,7 +329,7 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
 
     &:hover {
       color: ${token.colorText};
-      background: ${token.colorFillQuaternary};
+      background: ${unifiedCardBackgroundHover};
     }
   `,
   toolLabel: css`
@@ -337,8 +340,8 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
   toolCardBody: css`
     margin: 0;
     padding: 0 12px 12px;
-    border-top: 1px solid ${token.colorBorderSecondary};
-    background: ${token.colorFillQuaternary};
+    border-top: 1px solid ${unifiedCardBorder};
+    background: ${unifiedCardBackgroundHover};
     font-family: ${token.fontFamilyCode};
     font-size: var(--mimi-font-size-xs);
     line-height: var(--mimi-line-height-relaxed);
@@ -351,7 +354,7 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     width: 100%;
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
   `,
   toolStatusItem: css`
     display: inline-flex;
@@ -359,12 +362,11 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     gap: 8px;
     min-width: 0;
     max-width: 100%;
-    padding: 7px 11px;
+    padding: 6px 10px;
     border-radius: 999px;
-    border: 1px solid ${token.colorBorderSecondary};
-    background: ${token.colorBgElevated};
+    border: 1px solid ${unifiedCardBorder};
+    background: ${unifiedCardBackground};
     font-size: var(--mimi-font-size-sm);
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03);
     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   `,
   toolStatusRunning: css`
@@ -373,8 +375,8 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     color: ${token.colorText};
   `,
   toolStatusDone: css`
-    border-color: ${token.colorBorderSecondary};
-    background: ${token.colorBgElevated};
+    border-color: ${unifiedCardBorder};
+    background: ${unifiedCardBackground};
     color: ${token.colorTextSecondary};
   `,
   toolStatusError: css`
@@ -404,19 +406,17 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     display: flex;
     align-items: center;
     gap: 12px;
-    border-radius: 18px;
-    border: 1px solid ${token.colorBorderSecondary};
-    padding: 10px 12px;
-    background: ${token.colorBgElevated};
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03);
+    border-radius: ${unifiedCardRadius}px;
+    border: 1px solid ${unifiedCardBorder};
+    padding: 9px 12px;
+    background: ${unifiedCardBackground};
     max-width: 260px;
     cursor: pointer;
-    transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    transition: border-color 0.18s ease, background 0.18s ease;
 
     &:hover {
-      transform: translateY(-1px);
       border-color: ${token.colorBorder};
-      background: ${token.colorFillQuaternary};
+      background: ${unifiedCardBackgroundHover};
     }
   `,
   fileCardMeta: css`
@@ -441,12 +441,11 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     position: relative;
     width: 152px;
     height: 152px;
-    border-radius: 20px;
-    border: 1px solid ${token.colorBorderSecondary};
+    border-radius: ${unifiedCardRadius}px;
+    border: 1px solid ${unifiedCardBorder};
     overflow: hidden;
     cursor: zoom-in;
-    background: ${token.colorBgElevated};
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+    background: ${unifiedCardBackground};
 
     img {
       width: 100%;
@@ -481,12 +480,11 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
   imagePreviewCard: css`
     position: relative;
     max-width: 360px;
-    border-radius: 22px;
-    border: 1px solid ${token.colorBorderSecondary};
+    border-radius: ${unifiedCardRadius}px;
+    border: 1px solid ${unifiedCardBorder};
     overflow: hidden;
     cursor: zoom-in;
-    background: ${token.colorBgElevated};
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+    background: ${unifiedCardBackground};
 
     img {
       display: block;
@@ -541,11 +539,10 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
   videoItem: css`
     position: relative;
     max-width: 360px;
-    border-radius: 22px;
-    border: 1px solid ${token.colorBorderSecondary};
+    border-radius: ${unifiedCardRadius}px;
+    border: 1px solid ${unifiedCardBorder};
     overflow: hidden;
-    background: ${token.colorBgElevated};
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+    background: ${unifiedCardBackground};
 
     video {
       display: block;
@@ -612,10 +609,9 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     max-width: 220px;
   `,
   toolResultCard: css`
-    border-radius: 18px;
-    border: 1px solid ${token.colorBorderSecondary};
-    background: ${token.colorBgElevated};
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03);
+    border-radius: ${unifiedCardRadius}px;
+    border: 1px solid ${unifiedCardBorder};
+    background: ${unifiedCardBackground};
     overflow: hidden;
   `,
   toolResultCardError: css`
@@ -635,7 +631,7 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
 
     &:hover {
       color: ${token.colorText};
-      background: ${token.colorFillQuaternary};
+      background: ${unifiedCardBackgroundHover};
     }
   `,
   toolResultBody: css`
@@ -650,7 +646,8 @@ export const useMessageStyles = createStyles(({ token, css }) => ({
     word-break: break-word;
     margin: 0;
     line-height: var(--mimi-line-height-relaxed);
-    border-top: 1px solid ${token.colorBorderSecondary};
-    background: ${token.colorFillQuaternary};
+    border-top: 1px solid ${unifiedCardBorder};
+    background: ${unifiedCardBackgroundHover};
   `,
-}));
+  };
+});

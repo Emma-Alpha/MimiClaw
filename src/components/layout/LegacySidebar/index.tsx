@@ -984,7 +984,6 @@ export function LegacySidebar() {
 					headerTone="secondary"
 					styles={styles}
 					cx={cx}
-					variant="threadTop"
 				>
 					{visibleThreadWorkspaces.length === 0 ? (
 						<div className={styles.sessionEmpty}>{t("sidebar.empty.thread", { defaultValue: "无线程" })}</div>

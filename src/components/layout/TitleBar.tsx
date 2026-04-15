@@ -4,7 +4,7 @@
  * Windows: drag region with custom controls + management menu.
  * Linux: keep native frame, but still expose overlay controls for consistency.
  */
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
 	Minus,
@@ -30,6 +30,7 @@ type TitleBarProps = {
 	className?: string;
 	hideManagementMenu?: boolean;
 	hideSidebarToggle?: boolean;
+	rightContent?: ReactNode;
 };
 
 type SidebarToggleButtonProps = {
@@ -213,6 +214,7 @@ export function TitleBar({
 	className = "",
 	hideManagementMenu = false,
 	hideSidebarToggle = false,
+	rightContent,
 }: TitleBarProps) {
 	const platform = window.electron?.platform;
 	const { t } = useTranslation("common");
@@ -272,11 +274,13 @@ export function TitleBar({
 						{sidebarToggleControl}
 					</div>
 				)}
-				{hideManagementMenu ? null : (
-					<div className="no-drag pointer-events-auto absolute right-3 top-1/2 -translate-y-1/2">
-						<ManagementMenu />
-					</div>
-				)}
+				<div
+					className="no-drag pointer-events-auto absolute right-3 top-[10px] flex items-center gap-1"
+					style={{ WebkitAppRegion: 'no-drag' } as any}
+				>
+					{rightContent}
+					{hideManagementMenu ? null : <ManagementMenu />}
+				</div>
 			</div>
 		);
 	}
@@ -294,11 +298,13 @@ export function TitleBar({
 						{sidebarToggleControl}
 					</div>
 				)}
-				{hideManagementMenu ? null : (
-					<div className="pointer-events-auto absolute right-3 top-1/2 -translate-y-1/2">
-						<ManagementMenu />
-					</div>
-				)}
+				<div
+					className="pointer-events-auto absolute right-3 top-[10px] flex items-center gap-1"
+					style={{ WebkitAppRegion: 'no-drag' } as any}
+				>
+					{rightContent}
+					{hideManagementMenu ? null : <ManagementMenu />}
+				</div>
 			</div>
 		);
 	}
@@ -313,6 +319,7 @@ export function TitleBar({
 			sidebarShortcutLabel={sidebarShortcutLabel}
 			hideManagementMenu={hideManagementMenu}
 			hideSidebarToggle={hideSidebarToggle}
+			rightContent={rightContent}
 		/>
 	);
 }
@@ -326,6 +333,7 @@ function WindowsTitleBar({
 	sidebarShortcutLabel,
 	hideManagementMenu,
 	hideSidebarToggle,
+	rightContent,
 }: TitleBarProps & {
 	sidebarCollapsed: boolean;
 	onToggleSidebar: () => void;
@@ -377,6 +385,7 @@ function WindowsTitleBar({
 
 			<div className="no-drag flex h-full items-center gap-1 pr-1 pointer-events-auto">
 				{hideManagementMenu ? null : <ManagementMenu />}
+				{rightContent}
 				<button
 					onClick={handleMinimize}
 					className="flex h-full w-11 items-center justify-center text-muted-foreground transition-colors hover:bg-accent"

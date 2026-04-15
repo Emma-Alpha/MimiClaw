@@ -20,14 +20,17 @@ interface ThinkingPanelProps {
 	renderContent?: (content: string) => ReactNode;
 }
 
-const useStyles = createStyles(({ css, token }) => ({
+const useStyles = createStyles(({ css, token }) => {
+	const panelRadius = token.borderRadiusLG + 2;
+
+	return {
 	container: css`
-		border-radius: ${token.borderRadiusLG}px;
+		border-radius: ${panelRadius}px;
 	`,
 	containerCard: css`
 		width: 100%;
 		border: 1px solid ${token.colorBorderSecondary};
-		background: ${token.colorFillQuaternary};
+		background: ${token.colorBgContainer};
 	`,
 	accordionRoot: css`
 		width: 100%;
@@ -45,9 +48,9 @@ const useStyles = createStyles(({ css, token }) => ({
 		align-items: center;
 		justify-content: center;
 		flex: none;
-		width: 20px;
-		height: 20px;
-		border-radius: 10px;
+		width: 18px;
+		height: 18px;
+		border-radius: 9px;
 		border: 1px solid ${token.colorBorderSecondary};
 		background: ${token.colorBgContainer};
 		color: ${token.colorTextTertiary};
@@ -70,7 +73,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		color: ${token.colorTextQuaternary};
 	`,
 	scroll: css`
-		padding: 0 8px 8px;
+		padding: 0 10px 10px;
 	`,
 	bodyDefault: css`
 		font-size: 12px;
@@ -92,7 +95,8 @@ const useStyles = createStyles(({ css, token }) => ({
 			50% { opacity: 0; }
 		}
 	`,
-}));
+	};
+});
 
 export function ThinkingPanel({
 	content = "",
@@ -194,8 +198,8 @@ export function ThinkingPanel({
 			>
 				<AccordionItem
 					itemKey="thinking"
-					paddingBlock={4}
-					paddingInline={4}
+					paddingBlock={6}
+					paddingInline={6}
 					title={(
 						<div className={styles.title}>
 							<span

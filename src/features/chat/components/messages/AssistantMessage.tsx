@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { OpenClaw } from '@lobehub/icons';
 import { ChatItem } from '@lobehub/ui/chat';
-import { Avatar } from "@lobehub/ui";
 import { useResponsive } from "antd-style";
 
 import type { EnhancedMarkdownProps } from '@/lib/markdown-enhancements';
@@ -82,22 +81,18 @@ export function AssistantMessage({
 
   const metaTime = isStreaming ? null : formatMetaTimestamp(message.timestamp);
 
-  const assistantAvatarSize = mobile ? 32: 40;
-  const assistantIconSize = mobile ? 20: 24;
+  const assistantAvatarSize = mobile ? 32 : 40;
+  const assistantIconSize = mobile ? 20 : 24;
 
-  const assistantAvatarNode = (
-    <Avatar  
-    avatar={<OpenClaw.Color size={assistantIconSize} />} 
-    background="transparent"
-    title="极智"
-    size={assistantAvatarSize}
-    />
-  );
-
+  // Meta row: avatar at the Lobe-standard 32/40px, applied via inline style for responsiveness
   const metaRow = (
     <div className={styles.messageMetaRow}>
-      <span className={styles.messageMetaAvatar} title="极智">
-        <OpenClaw.Color size={14} />
+      <span
+        className={styles.messageMetaAvatar}
+        title="极智"
+        style={{ width: assistantAvatarSize, height: assistantAvatarSize }}
+      >
+        <OpenClaw.Color size={assistantIconSize} />
       </span>
       <span className={styles.messageMetaLabel}>极智</span>
       {metaTime ? (
@@ -135,34 +130,61 @@ export function AssistantMessage({
 
   const hasRenderableText = hasText && text.trim().length > 0;
 
+  // Determines whether aboveMessage has visible content (ThinkingPanel / tools / streaming status)
+  // so we can add a gap between aboveMessage and the text content only when needed.
+  const hasAboveMessageContent =
+    (showThinking && !!thinking) ||
+    (isStreaming && streamingTools.length > 0) ||
+    tools.length > 0;
+
   return (
     <>
-      {hasRenderableText ? <ChatItem
-        actions={hasText ? <AssistantActions className={styles.assistantActions} text={text} /> : undefined}
-        avatar={{
-          avatar: assistantAvatarNode,
-          backgroundColor: 'transparent',
-          title: '极智',
-        }}
-        className={cx(styles.chatItem, styles.assistantChatItem)}
-        aboveMessage={
-          <>
-            {metaRow}
-            {assistantAboveMessage}
-          </>
-        }
-        belowMessage={assistantBelowMessage}
-        markdownProps={{ ...markdownProps, animated: isStreaming }}
-        message={text}
-        placement="left"
-        renderMessage={(editableContent) => (
-          <div className={styles.assistantRender}>{editableContent}</div>
-        )}
-        showTitle={false}
-        showAvatar={false}
-        variant="bubble"
-      /> : (
-        <div className={styles.chatItem}>
+      {hasRenderableText ? (
+        <ChatItem
+          // actions removed — AssistantActions is now in belowMessage to maintain vertical flow
+          avatar={{
+            avatar: <OpenClaw.Color size={assistantIconSize} />,
+            backgroundColor: 'transparent',
+            title: '极智',
+          }}
+          className={cx(styles.chatItem, styles.assistantChatItem)}
+          aboveMessage={
+            <>
+              {metaRow}
+              {/* Wrap with margin-bottom only when there is visible content (ThinkingPanel/tools).
+                  @lobehub/ui's messageContainer has no gap between aboveMessage and messageContent,
+                  so we must inject spacing here directly. */}
+              {hasAboveMessageContent ? (
+                <div style={{ marginBottom: 12, width: '100%' }}>
+                  {assistantAboveMessage}
+                </div>
+              ) : (
+                assistantAboveMessage
+              )}
+            </>
+          }
+          belowMessage={
+            <>
+              {hasText && (
+                <div style={{ marginTop: 8, width: '100%' }}>
+                  <AssistantActions className={styles.assistantActions} text={text} />
+                </div>
+              )}
+              {assistantBelowMessage}
+            </>
+          }
+          markdownProps={{ ...markdownProps, animated: isStreaming }}
+          message={text}
+          placement="left"
+          renderMessage={(editableContent) => (
+            <div className={styles.assistantRender}>{editableContent}</div>
+          )}
+          showTitle={false}
+          showAvatar={false}
+          variant="bubble"
+        />
+      ) : (
+        <div className={styles.chatItem} style={{ paddingInline: '12px', paddingBlock: '24px 12px' }}>
           {metaRow}
           {assistantAboveMessage}
           {assistantBelowMessage}
