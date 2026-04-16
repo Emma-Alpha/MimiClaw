@@ -84,7 +84,7 @@ export function ChannelConfigModal({
   const [validating, setValidating] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [isExistingConfig, setIsExistingConfig] = useState(false);
-  const firstInputRef = useRef<HTMLInputElement>(null);
+  const firstInputRef = useRef<import('antd').InputRef>(null);
   const [validationResult, setValidationResult] = useState<{
     valid: boolean;
     errors: string[];
@@ -494,10 +494,10 @@ export function ChannelConfigModal({
             </CardDescription>
           </div>
           <Button
-            variant="ghost"
-            size="icon"
+            type="text"
             onClick={onClose}
             className={styles.closeButton}
+            style={{ padding: 0, width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
           >
             <X style={{ width: 16, height: 16 }} />
           </Button>
@@ -564,7 +564,6 @@ export function ChannelConfigModal({
               </p>
               <div className={styles.qrActions}>
                 <Button
-                  variant="outline"
                   className={styles.outlineButton}
                   onClick={() => {
                     setQrCode(null);
@@ -598,7 +597,6 @@ export function ChannelConfigModal({
                     </p>
                   </div>
                   <Button
-                    variant="outline"
                     className={cx(styles.outlineButton, styles.outlineButtonSm)}
                     onClick={openDocs}
                   >
@@ -707,7 +705,6 @@ export function ChannelConfigModal({
                 <div className={styles.footerButtonGroup}>
                   {meta?.connectionType === 'token' && shouldUseCredentialValidation && (
                     <Button
-                      variant="outline"
                       onClick={handleValidate}
                       disabled={validating}
                       className={styles.outlineButton}
@@ -726,6 +723,7 @@ export function ChannelConfigModal({
                     </Button>
                   )}
                   <Button
+                    type="primary"
                     onClick={() => {
                       void handleConnect();
                     }}
@@ -809,11 +807,9 @@ function ConfigField({ field, value, onChange, showSecret, onToggleSecret }: Con
         />
         {isPassword && (
           <Button
-            type="button"
-            variant="outline"
-            size="icon"
             onClick={onToggleSecret}
             className={styles.eyeButton}
+            style={{ padding: 0, width: 36, height: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
           >
             {showSecret ? <EyeOff style={{ width: 16, height: 16 }} /> : <Eye style={{ width: 16, height: 16 }} />}
           </Button>

@@ -70,7 +70,24 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
+  `,
+  userBubbleRow: css`
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+  `,
+  userBubble: css`
+    max-width: 78%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    border-bottom-right-radius: 5px;
+    background: ${token.colorFillSecondary};
+    color: ${token.colorText};
+    font-size: 14px;
+    line-height: 1.55;
+    word-break: break-word;
+    white-space: pre-wrap;
   `,
   userMediaSection: css`
     display: flex;
@@ -124,7 +141,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: ${token.colorBgContainer};
+    background: transparent;
   `,
   messageMetaLabel: css`
     font-size: var(--mimi-font-size-sm);

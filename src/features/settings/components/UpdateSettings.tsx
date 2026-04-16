@@ -187,21 +187,21 @@ export function UpdateSettings() {
     switch (status) {
       case 'checking':
         return (
-          <Button disabled variant="outline" size="sm">
+          <Button disabled size="small">
             <Loader2 style={{ ...iconSm, marginRight: 8 }} className="animate-spin" />
             {t('updates.action.checking')}
           </Button>
         );
       case 'downloading':
         return (
-          <Button disabled variant="outline" size="sm">
+          <Button disabled size="small">
             <Loader2 style={{ ...iconSm, marginRight: 8 }} className="animate-spin" />
             {t('updates.action.downloading')}
           </Button>
         );
       case 'available':
         return (
-          <Button onClick={downloadUpdate} size="sm">
+          <Button onClick={downloadUpdate} type="primary" size="small">
             <Download style={{ ...iconSm, marginRight: 8 }} />
             {t('updates.action.download')}
           </Button>
@@ -209,28 +209,28 @@ export function UpdateSettings() {
       case 'downloaded':
         if (autoInstallCountdown != null && autoInstallCountdown >= 0) {
           return (
-            <Button onClick={cancelAutoInstall} size="sm" variant="outline">
+            <Button onClick={cancelAutoInstall} size="small">
               <XCircle style={{ ...iconSm, marginRight: 8 }} />
               {t('updates.action.cancelAutoInstall')}
             </Button>
           );
         }
         return (
-          <Button onClick={installUpdate} size="sm" variant="default">
+          <Button onClick={installUpdate} size="small" type="primary">
             <Rocket style={{ ...iconSm, marginRight: 8 }} />
             {t('updates.action.install')}
           </Button>
         );
       case 'error':
         return (
-          <Button onClick={handleCheckForUpdates} variant="outline" size="sm">
+          <Button onClick={handleCheckForUpdates} size="small">
             <RefreshCw style={{ ...iconSm, marginRight: 8 }} />
             {t('updates.action.retry')}
           </Button>
         );
       default:
         return (
-          <Button onClick={handleCheckForUpdates} variant="outline" size="sm">
+          <Button onClick={handleCheckForUpdates} size="small">
             <RefreshCw style={{ ...iconSm, marginRight: 8 }} />
             {t('updates.action.check')}
           </Button>

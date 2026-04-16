@@ -1,8 +1,6 @@
 /**
  * Chat Toolbar
- * Session selector, new session, refresh, and thinking toggle.
- * Rendered in the Header when on the Chat page.
- * Uses @lobehub/ui ActionIcon for icon buttons.
+ * Codex-style session title + agent badge + controls.
  */
 import { useMemo } from 'react';
 import { RefreshCw, Brain, Bot } from 'lucide-react';
@@ -17,31 +15,48 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
+    flex: 1;
+  `,
+  sessionTitle: css`
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: ${token.colorText};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   `,
   agentBadge: css`
-    display: none;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
-    border-radius: 9999px;
+    gap: 5px;
+    border-radius: 6px;
     border: 1px solid ${token.colorBorderSecondary};
-    background: ${token.colorBgContainer};
-    padding: 4px 12px;
-    font-size: var(--mimi-font-size-sm);
-    font-weight: var(--mimi-font-weight-medium);
+    background: ${token.colorFillTertiary};
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 500;
     color: ${token.colorTextSecondary};
-
-    @media (min-width: 640px) {
-      display: flex;
-    }
+    flex-shrink: 0;
+    white-space: nowrap;
   `,
   agentIcon: css`
     color: ${token.colorPrimary};
-    width: 14px;
-    height: 14px;
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
   `,
   thinkingActive: css`
     background: ${token.colorPrimaryBg} !important;
     color: ${token.colorPrimary} !important;
+  `,
+  divider: css`
+    width: 1px;
+    height: 16px;
+    background: ${token.colorBorderSecondary};
+    flex-shrink: 0;
   `,
 }));
 
@@ -54,6 +69,8 @@ export function ChatToolbar() {
   const showThinking = useChatStore((s) => s.showThinking);
   const toggleThinking = useChatStore((s) => s.toggleThinking);
   const currentAgentId = useChatStore((s) => s.currentAgentId);
+  const currentSessionKey = useChatStore((s) => s.currentSessionKey);
+  const sessionLabels = useChatStore((s) => s.sessionLabels);
   const agents = useAgentsStore((s) => s.agents);
 
   const currentAgentName = useMemo(
@@ -61,13 +78,23 @@ export function ChatToolbar() {
     [agents, currentAgentId],
   );
 
+  const sessionTitle = currentSessionKey ? (sessionLabels[currentSessionKey] ?? '') : '';
+
   return (
     // biome-ignore lint/suspicious/noExplicitAny: WebkitAppRegion is not in CSSProperties
     <div className={styles.toolbar} style={{ WebkitAppRegion: 'no-drag' } as any}>
+      {sessionTitle && (
+        <span className={styles.sessionTitle} title={sessionTitle}>
+          {sessionTitle}
+        </span>
+      )}
+
       <div className={styles.agentBadge}>
         <Bot className={styles.agentIcon} />
-        <span>{t('toolbar.currentAgent', { agent: currentAgentName })}</span>
+        <span>{currentAgentName || t('toolbar.currentAgent', { agent: currentAgentName })}</span>
       </div>
+
+      <div className={styles.divider} />
 
       <ActionIcon
         icon={RefreshCw}

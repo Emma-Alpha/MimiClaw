@@ -519,9 +519,8 @@ function ProviderCard({
           <div className={styles.cardActions}>
             {!isDefault && (
               <Button
-                variant="ghost"
-                size="icon"
-                style={{ height: 32, width: 32, borderRadius: 9999, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                type="text"
+                style={{ height: 32, width: 32, borderRadius: 9999, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', padding: 0 }}
                 onClick={onSetDefault}
                 title={t('aiProviders.card.setDefault')}
               >
@@ -529,18 +528,16 @@ function ProviderCard({
               </Button>
             )}
             <Button
-              variant="ghost"
-              size="icon"
-              style={{ height: 32, width: 32, borderRadius: 9999, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+              type="text"
+              style={{ height: 32, width: 32, borderRadius: 9999, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', padding: 0 }}
               onClick={onEdit}
               title={t('aiProviders.card.editKey')}
             >
               <Edit style={{ height: 16, width: 16 }} />
             </Button>
             <Button
-              variant="ghost"
-              size="icon"
-              style={{ height: 32, width: 32, borderRadius: 9999, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+              type="text"
+              style={{ height: 32, width: 32, borderRadius: 9999, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', padding: 0 }}
               onClick={onDelete}
               title={t('aiProviders.card.delete')}
             >
@@ -741,7 +738,6 @@ function ProviderCard({
                   </button>
                 </div>
                 <Button
-                  variant="outline"
                   onClick={handleSaveEdits}
                   style={{
                     borderRadius: 12,
@@ -771,7 +767,7 @@ function ProviderCard({
                   )}
                 </Button>
                 <Button
-                  variant="ghost"
+                  type="text"
                   onClick={onCancelEdit}
                   style={{
                     padding: 0,
@@ -1117,10 +1113,9 @@ function AddProviderDialog({
             {t('aiProviders.dialog.desc')}
           </CardDescription>
           <Button
-            variant="ghost"
-            size="icon"
+            type="text"
             className={styles.dialogCloseBtn}
-            style={{ borderRadius: 9999, height: 32, width: 32 }}
+            style={{ borderRadius: 9999, height: 32, width: 32, padding: 0 }}
             onClick={onClose}
           >
             <X style={{ height: 16, width: 16 }} />
@@ -1391,7 +1386,7 @@ function AddProviderDialog({
                               <XCircle style={{ height: 40, width: 40 }} />
                               <p style={{ fontWeight: 600, fontSize: 14 }}>{t('aiProviders.oauth.authFailed')}</p>
                               <p style={{ fontSize: 13, opacity: 0.8 }}>{oauthError}</p>
-                              <Button variant="outline" size="sm" onClick={handleCancelOAuth} style={{ marginTop: 8, borderRadius: 9999, padding: '0 24px', height: 36 }}>
+                              <Button size="small" onClick={handleCancelOAuth} style={{ marginTop: 8, borderRadius: 9999, padding: '0 24px', height: 36 }}>
                                 Try Again
                               </Button>
                             </div>
@@ -1409,7 +1404,6 @@ function AddProviderDialog({
                                 </p>
                               </div>
                               <Button
-                                variant="secondary"
                                 style={{ width: '100%', borderRadius: 9999, height: 42, fontWeight: 600 }}
                                 onClick={() => invokeIpc('shell:openExternal', oauthData.authorizationUrl)}
                               >
@@ -1429,7 +1423,7 @@ function AddProviderDialog({
                               >
                                 Submit Code
                               </Button>
-                              <Button variant="ghost" style={{ width: '100%', borderRadius: 9999, height: 42, fontWeight: 600 }} onClick={handleCancelOAuth}>
+                              <Button type="text" style={{ width: '100%', borderRadius: 9999, height: 42, fontWeight: 600 }} onClick={handleCancelOAuth}>
                                 Cancel
                               </Button>
                             </div>
@@ -1448,9 +1442,8 @@ function AddProviderDialog({
                                   {oauthData.userCode}
                                 </code>
                                 <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  style={{ height: 40, width: 40, borderRadius: 9999 }}
+                                  type="text"
+                                  style={{ height: 40, width: 40, borderRadius: 9999, padding: 0 }}
                                   onClick={() => {
                                     navigator.clipboard.writeText(oauthData.userCode);
                                     toast.success(t('aiProviders.oauth.codeCopied'));
@@ -1460,7 +1453,6 @@ function AddProviderDialog({
                                 </Button>
                               </div>
                               <Button
-                                variant="secondary"
                                 style={{ width: '100%', borderRadius: 9999, height: 42, fontWeight: 600 }}
                                 onClick={() => invokeIpc('shell:openExternal', oauthData.verificationUri)}
                               >
@@ -1471,7 +1463,7 @@ function AddProviderDialog({
                                 <Loader2 style={{ height: 16, width: 16, color: '#3b82f6', animation: 'spin 1s linear infinite' }} />
                                 <span>{t('aiProviders.oauth.waitingApproval')}</span>
                               </div>
-                              <Button variant="ghost" style={{ width: '100%', borderRadius: 9999, height: 42, fontWeight: 600 }} onClick={handleCancelOAuth}>
+                              <Button type="text" style={{ width: '100%', borderRadius: 9999, height: 42, fontWeight: 600 }} onClick={handleCancelOAuth}>
                                 Cancel
                               </Button>
                             </div>

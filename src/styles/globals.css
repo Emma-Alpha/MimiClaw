@@ -51,6 +51,7 @@
 }
 
 body {
+  margin: 0;
   color: hsl(var(--foreground));
   font-feature-settings: "rlig" 1, "calt" 1;
   -webkit-font-smoothing: antialiased;

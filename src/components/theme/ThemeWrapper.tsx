@@ -17,7 +17,6 @@ import { motion } from 'motion/react';
 import { useSettingsStore } from '@/stores/settings';
 import {
   createMimiThemeConfig,
-  typographyCssVarDeclarations,
 } from '@/styles/typography-tokens';
 
 type ResolvedAppearance = 'light' | 'dark';
@@ -68,11 +67,6 @@ const LobeUiCompatGlobalStyle = createGlobalStyle`
   }
 `;
 
-const TypographyTokenGlobalStyle = createGlobalStyle`
-  :root {
-    ${typographyCssVarDeclarations}
-  }
-`;
 
 export function ThemeWrapper({ children }: ThemeWrapperProps) {
   const theme = useSettingsStore((s) => s.theme);
@@ -110,7 +104,7 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
 
   return (
     <div ref={popupContainerRef} data-ywkf-root style={{ position: 'relative', height: '100%' }}>
-      <StyleProvider>
+     
         <LobeThemeProvider
           appearance={resolvedAppearance}
           defaultAppearance={resolvedAppearance}
@@ -121,7 +115,6 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
           theme={getAntdTheme}
         >
           <LobeConfigProvider motion={motion}>
-            <TypographyTokenGlobalStyle />
             <LobeUiCompatGlobalStyle />
             <AntdConfigProvider getPopupContainer={getPopupContainer}>
               {/* Provide AppElementContext so @lobehub/ui DropdownMenu portals
@@ -130,14 +123,16 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
                 ref={setAppElement}
                 style={{ display: 'contents' }}
               >
+                 <StyleProvider>
                 <AppElementContext.Provider value={appElement}>
                   {children}
                 </AppElementContext.Provider>
+                </StyleProvider>
               </div>
             </AntdConfigProvider>
           </LobeConfigProvider>
         </LobeThemeProvider>
-      </StyleProvider>
+      
     </div>
   );
 }

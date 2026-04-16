@@ -314,8 +314,7 @@ export function XiaojiuChat() {
             </div>
           </div>
           <Button
-            variant="outline"
-            size="sm"
+            size="small"
             style={{ borderRadius: 9999, gap: 8 }}
             onClick={() => requestRefresh()}
             disabled={loading}

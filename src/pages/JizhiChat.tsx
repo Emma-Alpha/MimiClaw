@@ -249,9 +249,8 @@ function AssistantBubble({
         ) : null}
 
         <Button
-          type="button"
-          variant="ghost"
-          size="sm"
+          type="text"
+          size="small"
           style={{ height: 32, borderRadius: 9999, padding: '0 12px', fontSize: 12 }}
           onClick={() => onCopy(message)}
           disabled={!copyText}
@@ -261,9 +260,8 @@ function AssistantBubble({
         </Button>
 
         <Button
-          type="button"
-          variant="ghost"
-          size="sm"
+          type="text"
+          size="small"
           style={{ height: 32, borderRadius: 9999, padding: '0 12px', fontSize: 12 }}
           onClick={() => onRetry(message)}
           disabled={!canRetry}
@@ -657,8 +655,7 @@ export function JizhiChat() {
               </div>
             </div>
             <Button
-              variant="outline"
-              size="sm"
+              size="small"
               style={{ borderRadius: 9999, gap: 8 }}
               onClick={() => requestRefresh()}
               disabled={loading}

@@ -1,9 +1,8 @@
 /**
- * Label Component
- * antd-style based, same API as shadcn/ui label
+ * Label — antd-style token-driven <label> element.
+ * antd has no standalone Label component; this keeps call sites unchanged.
  */
 import * as React from 'react';
-import * as LabelPrimitive from '@radix-ui/react-label';
 import { createStyles } from 'antd-style';
 import { cn } from '@/lib/utils';
 
@@ -20,19 +19,12 @@ const useStyles = createStyles(({ css, token }) => ({
   `,
 }));
 
-const Label = React.forwardRef<
-  React.ElementRef<typeof LabelPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
->(({ className, ...props }, ref) => {
-  const { styles } = useStyles();
-  return (
-    <LabelPrimitive.Root
-      ref={ref}
-      className={cn(styles.label, className)}
-      {...props}
-    />
-  );
-});
-Label.displayName = LabelPrimitive.Root.displayName;
+const Label = React.forwardRef<HTMLLabelElement, React.LabelHTMLAttributes<HTMLLabelElement>>(
+  ({ className, ...props }, ref) => {
+    const { styles } = useStyles();
+    return <label ref={ref} className={cn(styles.label, className)} {...props} />;
+  }
+);
+Label.displayName = 'Label';
 
 export { Label };

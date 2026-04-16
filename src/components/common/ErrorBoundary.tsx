@@ -73,7 +73,7 @@ function ErrorFallback({ error, onReset }: { error: Error | null; onReset: () =>
                 {error.message}
               </pre>
             )}
-            <Button onClick={onReset} className={styles.fullWidth}>
+            <Button type="primary" onClick={onReset} className={styles.fullWidth}>
               <RefreshCw style={{ marginRight: 8, width: 16, height: 16 }} />
               Try Again
             </Button>

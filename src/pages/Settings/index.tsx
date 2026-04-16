@@ -108,7 +108,7 @@ function FormSwitch({
   onChange?: (v: boolean) => void;
   disabled?: boolean;
 }) {
-  return <Switch checked={checked} onCheckedChange={onChange} disabled={disabled} />;
+  return <Switch checked={checked} onChange={onChange} disabled={disabled} />;
 }
 
 function ThemePicker({ value, onChange }: { value?: string; onChange?: (v: string) => void }) {
@@ -1093,16 +1093,14 @@ export function Settings() {
                           children: (
                             <Select
                               value={petAnimation}
-                              onChange={(event) => setPetAnimation(event.target.value as PetAnimation)}
+                              onChange={(val) => setPetAnimation(val as PetAnimation)}
                               disabled={!petEnabled}
-                              style={{ height: 36, borderRadius: 12, background: 'rgba(0,0,0,0.05)', border: 'none', fontSize: 13, minWidth: 180 }}
-                            >
-                              {PET_IDLE_ANIMATIONS.map((animation) => (
-                                <option key={animation} value={animation}>
-                                  {t(PET_ANIMATION_LABEL_KEYS[animation])}
-                                </option>
-                              ))}
-                            </Select>
+                              style={{ borderRadius: 12, fontSize: 13, minWidth: 180 }}
+                              options={PET_IDLE_ANIMATIONS.map((animation) => ({
+                                value: animation,
+                                label: t(PET_ANIMATION_LABEL_KEYS[animation]),
+                              }))}
+                            />
                           ),
                           minWidth: undefined,
                         },
@@ -1193,12 +1191,13 @@ export function Settings() {
                       <Select
                         id="speech-language"
                         value={speechLanguageDraft}
-                        onChange={(event) => setSpeechLanguageDraft(event.target.value as VolcengineSpeechLanguage)}
+                        onChange={(val) => setSpeechLanguageDraft(val as VolcengineSpeechLanguage)}
                         className={styles.fieldSelect}
-                      >
-                        <option value="zh-CN">{t('speech.languages.zhCN')}</option>
-                        <option value="en-US">{t('speech.languages.enUS')}</option>
-                      </Select>
+                        options={[
+                          { value: 'zh-CN', label: t('speech.languages.zhCN') },
+                          { value: 'en-US', label: t('speech.languages.enUS') },
+                        ]}
+                      />
                     </div>
                     <div className={styles.formField}>
                       <Label htmlFor="speech-endpoint" className={styles.fieldLabelSmall}>{t('speech.endpoint')}</Label>
@@ -1237,7 +1236,7 @@ export function Settings() {
 
                   <div className={styles.speechBtnRow}>
                     <Button
-                      type="button"
+                      type="primary"
                       onClick={() => void handleSaveSpeechConfig()}
                       disabled={speechSaving}
                       style={{ borderRadius: 9999, padding: '0 24px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
@@ -1245,8 +1244,6 @@ export function Settings() {
                       {speechSaving ? t('speech.saving') : t('speech.save')}
                     </Button>
                     <Button
-                      type="button"
-                      variant="outline"
                       onClick={() => { void loadSpeechConfig(); }}
                       disabled={speechLoading || speechSaving}
                       style={{ borderRadius: 9999, padding: '0 24px', border: 'none', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
@@ -1340,7 +1337,7 @@ export function Settings() {
 
                   <div className={styles.flexWrapRow}>
                     <Button
-                      type="button"
+                      type="primary"
                       onClick={() => void handleSaveVoiceChatRealtimeConfig()}
                       disabled={voiceChatSaving}
                       style={{ borderRadius: 9999, padding: '0 20px' }}
@@ -1348,8 +1345,6 @@ export function Settings() {
                       {voiceChatSaving ? t('voiceChat.saving') : t('voiceChat.save')}
                     </Button>
                     <Button
-                      type="button"
-                      variant="outline"
                       onClick={() => { void loadVoiceChatRealtimeConfig(); }}
                       disabled={voiceChatLoading || voiceChatSaving}
                       style={{ borderRadius: 9999, padding: '0 20px' }}
@@ -1384,11 +1379,11 @@ export function Settings() {
                     )} />
                     {gatewayStatus.state}
                   </div>
-                  <Button variant="outline" size="sm" onClick={restartGateway} style={{ borderRadius: 9999, height: 32, padding: '0 16px', border: '1px solid rgba(0,0,0,0.1)', background: 'transparent' }}>
+                  <Button size="small" onClick={restartGateway} style={{ borderRadius: 9999, height: 32, padding: '0 16px', border: '1px solid rgba(0,0,0,0.1)', background: 'transparent' }}>
                     <RefreshCw style={{ height: 14, width: 14, marginRight: 6 }} />
                     {t('common:actions.restart')}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleShowLogs} style={{ borderRadius: 9999, height: 32, padding: '0 16px', border: '1px solid rgba(0,0,0,0.1)', background: 'transparent' }}>
+                  <Button size="small" onClick={handleShowLogs} style={{ borderRadius: 9999, height: 32, padding: '0 16px', border: '1px solid rgba(0,0,0,0.1)', background: 'transparent' }}>
                     <FileText style={{ height: 14, width: 14, marginRight: 6 }} />
                     {t('gateway.logs')}
                   </Button>
@@ -1400,11 +1395,11 @@ export function Settings() {
                   <div className={styles.logPanelHeader}>
                     <p className={styles.logPanelTitle}>{t('gateway.appLogs')}</p>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <Button variant="ghost" size="sm" style={{ height: 28, fontSize: 12, borderRadius: 9999 }} onClick={handleOpenLogDir}>
+                      <Button type="text" size="small" style={{ height: 28, fontSize: 12, borderRadius: 9999 }} onClick={handleOpenLogDir}>
                         <ExternalLink style={{ height: 12, width: 12, marginRight: 6 }} />
                         {t('gateway.openFolder')}
                       </Button>
-                      <Button variant="ghost" size="sm" style={{ height: 28, fontSize: 12, borderRadius: 9999 }} onClick={() => setShowLogs(false)}>
+                      <Button type="text" size="small" style={{ height: 28, fontSize: 12, borderRadius: 9999 }} onClick={() => setShowLogs(false)}>
                         {t('common:actions.close')}
                       </Button>
                     </div>
@@ -1418,7 +1413,7 @@ export function Settings() {
                   <Label className={styles.settingLabel}>{t('gateway.autoStart')}</Label>
                   <p className={styles.settingDesc}>{t('gateway.autoStartDesc')}</p>
                 </div>
-                <Switch checked={gatewayAutoStart} onCheckedChange={setGatewayAutoStart} />
+                <Switch checked={gatewayAutoStart} onChange={setGatewayAutoStart} />
               </div>
 
               {/* Remote Gateway */}
@@ -1498,13 +1493,13 @@ export function Settings() {
                   )}
 
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <Button size="sm" variant="outline" disabled={cloudGatewayLoading || cloudGateway.gatewayState === 'running'} onClick={() => void handleCloudGatewayAction('start')} style={{ fontSize: 12, height: 28, borderRadius: 9999 }}>
+                    <Button size="small" disabled={cloudGatewayLoading || cloudGateway.gatewayState === 'running'} onClick={() => void handleCloudGatewayAction('start')} style={{ fontSize: 12, height: 28, borderRadius: 9999 }}>
                       {t('gateway.cloudGatewayStart')}
                     </Button>
-                    <Button size="sm" variant="outline" disabled={cloudGatewayLoading || cloudGateway.gatewayState !== 'running'} onClick={() => void handleCloudGatewayAction('stop')} style={{ fontSize: 12, height: 28, borderRadius: 9999 }}>
+                    <Button size="small" disabled={cloudGatewayLoading || cloudGateway.gatewayState !== 'running'} onClick={() => void handleCloudGatewayAction('stop')} style={{ fontSize: 12, height: 28, borderRadius: 9999 }}>
                       {t('gateway.cloudGatewayStop')}
                     </Button>
-                    <Button size="sm" variant="outline" disabled={cloudGatewayLoading} onClick={() => void handleCloudGatewayAction('restart')} style={{ fontSize: 12, height: 28, borderRadius: 9999 }}>
+                    <Button size="small" disabled={cloudGatewayLoading} onClick={() => void handleCloudGatewayAction('restart')} style={{ fontSize: 12, height: 28, borderRadius: 9999 }}>
                       {t('gateway.cloudGatewayRestart')}
                     </Button>
                   </div>
@@ -1516,7 +1511,7 @@ export function Settings() {
                   <Label className={styles.settingLabel}>{t('advanced.devMode')}</Label>
                   <p className={styles.settingDesc}>{t('advanced.devModeDesc')}</p>
                 </div>
-                <Switch checked={devModeUnlocked} onCheckedChange={setDevModeUnlocked} />
+                <Switch checked={devModeUnlocked} onChange={setDevModeUnlocked} />
               </div>
 
               <div className={styles.settingRow}>
@@ -1524,7 +1519,7 @@ export function Settings() {
                   <Label className={styles.settingLabel}>{t('advanced.telemetry')}</Label>
                   <p className={styles.settingDesc}>{t('advanced.telemetryDesc')}</p>
                 </div>
-                <Switch checked={telemetryEnabled} onCheckedChange={setTelemetryEnabled} />
+                <Switch checked={telemetryEnabled} onChange={setTelemetryEnabled} />
               </div>
 
               {/* Reset all data */}
@@ -1534,7 +1529,7 @@ export function Settings() {
                     <Label className={styles.destructiveLabel}>{t('advanced.resetData')}</Label>
                     <p className={styles.settingDesc}>{t('advanced.resetDataDesc')}</p>
                   </div>
-                  <Button variant="destructive" size="sm" style={{ borderRadius: 9999, flexShrink: 0 }} onClick={() => setShowResetConfirm(true)} disabled={resetting}>
+                  <Button type="primary" danger size="small" style={{ borderRadius: 9999, flexShrink: 0 }} onClick={() => setShowResetConfirm(true)} disabled={resetting}>
                     {t('advanced.resetDataBtn')}
                   </Button>
                 </div>
@@ -1565,7 +1560,7 @@ export function Settings() {
                     <Label className={styles.settingLabelMuted}>Gateway Proxy</Label>
                     <p className={styles.settingDesc}>{t('gateway.proxyDesc')}</p>
                   </div>
-                  <Switch checked={proxyEnabledDraft} onCheckedChange={setProxyEnabledDraft} />
+                  <Switch checked={proxyEnabledDraft} onChange={setProxyEnabledDraft} />
                 </div>
 
                     {proxyEnabledDraft && (
@@ -1600,7 +1595,7 @@ export function Settings() {
                         </div>
 
                         <div className={styles.flexRow} style={{ paddingTop: 8 }}>
-                          <Button variant="outline" onClick={handleSaveProxySettings} disabled={savingProxy} style={{ borderRadius: 12, height: 40, padding: '0 20px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                          <Button onClick={handleSaveProxySettings} disabled={savingProxy} style={{ borderRadius: 12, height: 40, padding: '0 20px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
                             <RefreshCw style={{ height: 16, width: 16, marginRight: 8, animation: savingProxy ? 'spin 1s linear infinite' : undefined }} />
                             {savingProxy ? t('common:status.saving') : t('common:actions.save')}
                           </Button>
@@ -1614,11 +1609,11 @@ export function Settings() {
                     <p className={styles.settingDesc}>{t('developer.gatewayTokenDesc')}</p>
                     <div className={styles.flexWrapRow}>
                       <Input readOnly value={controlUiInfo?.token || ''} placeholder={t('developer.tokenUnavailable')} className={styles.monoInputFull} />
-                      <Button type="button" variant="outline" onClick={refreshControlUiInfo} disabled={!devModeUnlocked} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                      <Button onClick={refreshControlUiInfo} disabled={!devModeUnlocked} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
                         <RefreshCw style={{ height: 16, width: 16, marginRight: 8 }} />
                         {t('common:actions.load')}
                       </Button>
-                      <Button type="button" variant="outline" onClick={handleCopyGatewayToken} disabled={!controlUiInfo?.token} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                      <Button onClick={handleCopyGatewayToken} disabled={!controlUiInfo?.token} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
                         <Copy style={{ height: 16, width: 16, marginRight: 8 }} />
                         {t('common:actions.copy')}
                       </Button>
@@ -1632,7 +1627,7 @@ export function Settings() {
                       {isWindows && <p className={styles.hintText12}>{t('developer.cliPowershell')}</p>}
                       <div className={styles.flexWrapRow}>
                         <Input readOnly value={openclawCliCommand} placeholder={openclawCliError || t('developer.cmdUnavailable')} className={styles.monoInputFull} />
-                        <Button type="button" variant="outline" onClick={handleCopyCliCommand} disabled={!openclawCliCommand} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <Button onClick={handleCopyCliCommand} disabled={!openclawCliCommand} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
                           <Copy style={{ height: 16, width: 16, marginRight: 8 }} />
                           {t('common:actions.copy')}
                         </Button>
@@ -1647,15 +1642,15 @@ export function Settings() {
                         <p className={styles.settingDesc}>{t('developer.doctorDesc')}</p>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <Button type="button" variant="outline" onClick={() => void handleRunOpenClawDoctor('diagnose')} disabled={doctorRunningMode !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <Button onClick={() => void handleRunOpenClawDoctor('diagnose')} disabled={doctorRunningMode !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
                           <RefreshCw style={{ height: 16, width: 16, marginRight: 8, animation: doctorRunningMode === 'diagnose' ? 'spin 1s linear infinite' : undefined }} />
                           {doctorRunningMode === 'diagnose' ? t('common:status.running') : t('developer.runDoctor')}
                         </Button>
-                        <Button type="button" variant="outline" onClick={() => void handleRunOpenClawDoctor('fix')} disabled={doctorRunningMode !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <Button onClick={() => void handleRunOpenClawDoctor('fix')} disabled={doctorRunningMode !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
                           <RefreshCw style={{ height: 16, width: 16, marginRight: 8, animation: doctorRunningMode === 'fix' ? 'spin 1s linear infinite' : undefined }} />
                           {doctorRunningMode === 'fix' ? t('common:status.running') : t('developer.runDoctorFix')}
                         </Button>
-                        <Button type="button" variant="outline" onClick={handleCopyDoctorOutput} disabled={!doctorResult} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <Button onClick={handleCopyDoctorOutput} disabled={!doctorResult} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
                           <Copy style={{ height: 16, width: 16, marginRight: 8 }} />
                           {t('common:actions.copy')}
                         </Button>
@@ -1703,17 +1698,17 @@ export function Settings() {
                         <p className={styles.settingDesc}>{t('developer.codeAgentDesc')}</p>
                       </div>
                       <div className={styles.flexWrapRow}>
-                        <Button type="button" variant="outline" onClick={() => void handleCodeAgentHealthCheck()} disabled={codeAgentBusyAction !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <Button onClick={() => void handleCodeAgentHealthCheck()} disabled={codeAgentBusyAction !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
                           <RefreshCw style={{ height: 16, width: 16, marginRight: 8, animation: codeAgentBusyAction === 'health' ? 'spin 1s linear infinite' : undefined }} />
                           {t('developer.codeAgentCheckHealth')}
                         </Button>
-                        <Button type="button" variant="outline" onClick={() => void handleCodeAgentLifecycleAction('start')} disabled={codeAgentBusyAction !== null || codeAgentStatus?.state === 'running'} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <Button onClick={() => void handleCodeAgentLifecycleAction('start')} disabled={codeAgentBusyAction !== null || codeAgentStatus?.state === 'running'} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
                           {t('developer.codeAgentStart')}
                         </Button>
-                        <Button type="button" variant="outline" onClick={() => void handleCodeAgentLifecycleAction('stop')} disabled={codeAgentBusyAction !== null || codeAgentStatus?.state !== 'running'} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <Button onClick={() => void handleCodeAgentLifecycleAction('stop')} disabled={codeAgentBusyAction !== null || codeAgentStatus?.state !== 'running'} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
                           {t('developer.codeAgentStop')}
                         </Button>
-                        <Button type="button" variant="outline" onClick={() => void handleCodeAgentLifecycleAction('restart')} disabled={codeAgentBusyAction !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <Button onClick={() => void handleCodeAgentLifecycleAction('restart')} disabled={codeAgentBusyAction !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
                           {t('common:actions.restart')}
                         </Button>
                       </div>
@@ -1817,8 +1812,6 @@ export function Settings() {
                             <p className={styles.hintText}>{t('developer.codeAgentConfigAutoMapHint')}</p>
                           </div>
                           <Button
-                            type="button"
-                            variant="outline"
                             onClick={() => void handleSaveCodeAgentConfig()}
                             disabled={savingCodeAgentConfig}
                             style={{ borderRadius: 12, height: 36, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}
@@ -1836,15 +1829,16 @@ export function Settings() {
                             <Select
                               id="code-agent-execution-mode"
                               value={codeAgentConfigDraft.executionMode}
-                              onChange={(event) => setCodeAgentConfigDraft((prev) => ({
+                              onChange={(val) => setCodeAgentConfigDraft((prev) => ({
                                 ...prev,
-                                executionMode: event.target.value as CodeAgentExecutionMode,
+                                executionMode: val as CodeAgentExecutionMode,
                               }))}
                               className={styles.fieldSelect}
-                            >
-                              <option value="cli">{t('developer.codeAgentExecutionModeCli')}</option>
-                              <option value="snapshot">{t('developer.codeAgentExecutionModeSnapshot')}</option>
-                            </Select>
+                              options={[
+                                { value: 'cli', label: t('developer.codeAgentExecutionModeCli') },
+                                { value: 'snapshot', label: t('developer.codeAgentExecutionModeSnapshot') },
+                              ]}
+                            />
                           </div>
 
                           <div className={styles.formField}>
@@ -1854,19 +1848,20 @@ export function Settings() {
                             <Select
                               id="code-agent-permission-mode"
                               value={codeAgentConfigDraft.permissionMode}
-                              onChange={(event) => setCodeAgentConfigDraft((prev) => ({
+                              onChange={(val) => setCodeAgentConfigDraft((prev) => ({
                                 ...prev,
-                                permissionMode: event.target.value as CodeAgentPermissionMode,
+                                permissionMode: val as CodeAgentPermissionMode,
                               }))}
                               className={styles.fieldSelect}
-                            >
-                              <option value="default">{t('developer.codeAgentPermissionDefault')}</option>
-                              <option value="acceptEdits">{t('developer.codeAgentPermissionAcceptEdits')}</option>
-                              <option value="auto">{t('developer.codeAgentPermissionAuto')}</option>
-                              <option value="plan">{t('developer.codeAgentPermissionPlan')}</option>
-                              <option value="dontAsk">{t('developer.codeAgentPermissionDontAsk')}</option>
-                              <option value="bypassPermissions">{t('developer.codeAgentPermissionBypass')}</option>
-                            </Select>
+                              options={[
+                                { value: 'default', label: t('developer.codeAgentPermissionDefault') },
+                                { value: 'acceptEdits', label: t('developer.codeAgentPermissionAcceptEdits') },
+                                { value: 'auto', label: t('developer.codeAgentPermissionAuto') },
+                                { value: 'plan', label: t('developer.codeAgentPermissionPlan') },
+                                { value: 'dontAsk', label: t('developer.codeAgentPermissionDontAsk') },
+                                { value: 'bypassPermissions', label: t('developer.codeAgentPermissionBypass') },
+                              ]}
+                            />
                           </div>
 
                           <div className={styles.formField}>
@@ -2007,8 +2002,7 @@ export function Settings() {
                           {t('developer.codeAgentLatest')}
                         </p>
                         <Button
-                          type="button"
-                          variant="outline"
+                          type="primary"
                           onClick={() => void handleCodeAgentRun()}
                           disabled={codeAgentBusyAction !== null}
                           style={{ borderRadius: 12, height: 40, padding: '0 20px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}
@@ -2036,9 +2030,8 @@ export function Settings() {
                             )}
                           </div>
                           <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
+                            type="text"
+                            size="small"
                             onClick={() => setShowCodeAgentRunDetails((prev) => !prev)}
                             style={{ borderRadius: 9999, height: 32, padding: '0 16px' }}
                             disabled={!codeAgentLastRun}
@@ -2111,7 +2104,7 @@ export function Settings() {
                       </div>
                       <Switch
                         checked={wsDiagnosticEnabled}
-                        onCheckedChange={handleWsDiagnosticToggle}
+                        onChange={handleWsDiagnosticToggle}
                       />
                     </div>
 
@@ -2123,9 +2116,7 @@ export function Settings() {
                         </p>
                       </div>
                       <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
+                        size="small"
                         onClick={() => setShowTelemetryViewer((prev) => !prev)}
                         style={{ borderRadius: 9999, padding: '0 20px', height: 36, background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}
                       >
@@ -2146,11 +2137,11 @@ export function Settings() {
                             {t('developer.telemetrySlow')}: {telemetryStats.slowCount}
                           </Badge>
                           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                            <Button type="button" variant="outline" size="sm" onClick={handleCopyTelemetry} style={{ borderRadius: 9999, height: 32, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.08)' }}>
+                            <Button size="small" onClick={handleCopyTelemetry} style={{ borderRadius: 9999, height: 32, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.08)' }}>
                               <Copy style={{ height: 14, width: 14, marginRight: 6 }} />
                               {t('common:actions.copy')}
                             </Button>
-                            <Button type="button" variant="outline" size="sm" onClick={handleClearTelemetry} style={{ borderRadius: 9999, height: 32, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.08)' }}>
+                            <Button size="small" onClick={handleClearTelemetry} style={{ borderRadius: 9999, height: 32, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.08)' }}>
                               {t('common:actions.clear')}
                             </Button>
                           </div>
@@ -2221,7 +2212,7 @@ export function Settings() {
                 </div>
                 <Switch
                   checked={autoCheckUpdate}
-                  onCheckedChange={setAutoCheckUpdate}
+                  onChange={setAutoCheckUpdate}
                 />
               </div>
 
@@ -2234,7 +2225,7 @@ export function Settings() {
                 </div>
                 <Switch
                   checked={autoDownloadUpdate}
-                  onCheckedChange={(value) => {
+                  onChange={(value) => {
                     setAutoDownloadUpdate(value);
                     updateSetAutoDownload(value);
                   }}
@@ -2253,21 +2244,21 @@ export function Settings() {
               <p>{t('about.version', { version: currentVersion })}</p>
               <div className={styles.aboutLinks}>
                 <Button
-                  variant="link"
+                  type="link"
                   style={{ height: 'auto', padding: 0, fontSize: 14, color: '#3b82f6', fontWeight: 500 }}
                   onClick={() => window.electron.openExternal('https://jizhi.gz4399.com')}
                 >
                   {t('about.docs')}
                 </Button>
                 <Button
-                  variant="link"
+                  type="link"
                   style={{ height: 'auto', padding: 0, fontSize: 14, color: '#3b82f6', fontWeight: 500 }}
                   onClick={() => window.electron.openExternal('https://jizhi.gz4399.com')}
                 >
                   {t('about.github')}
                 </Button>
                 <Button
-                  variant="link"
+                  type="link"
                   style={{ height: 'auto', padding: 0, fontSize: 14, color: '#3b82f6', fontWeight: 500 }}
                   onClick={() => window.electron.openExternal('https://icnnp7d0dymg.feishu.cn/wiki/UyfOwQ2cAiJIP6kqUW8cte5Bnlc')}
                 >

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { File, Folder } from 'lucide-react';
-import { ChatItem } from '@lobehub/ui/chat';
 import type { Descendant } from 'slate';
 
 import type { AttachedFileMeta, RawMessage } from '@/stores/chat';
@@ -156,131 +155,89 @@ export function UserMessage({
     </div>
   ) : null;
 
+  const renderBubbleContent = () => {
+    // MiniChat: rich Slate content (inline path/skill nodes)
+    if (hasRich) {
+      return (
+        <div className={styles.userMessageText}>
+          {hasImagePreviews && (
+            <div className={styles.pathTagRow} style={{ marginBottom: 6 }}>
+              {imagePreviews!.map((img) =>
+                img.preview ? (
+                  <img
+                    key={img.fileName}
+                    src={img.preview}
+                    alt={img.fileName}
+                    title={img.fileName}
+                    style={{ maxWidth: 120, maxHeight: 90, borderRadius: 6, objectFit: 'cover', display: 'block' }}
+                  />
+                ) : (
+                  <span key={img.fileName} style={{ fontSize: 11, opacity: 0.6 }}>{img.fileName}</span>
+                ),
+              )}
+            </div>
+          )}
+          <ReadOnlySlateMessage content={richContent!} />
+        </div>
+      );
+    }
+
+    // MiniChat: path tags + optional plain text
+    if (hasPathTags || hasImagePreviews) {
+      const hasBody = text.trim().length > 0;
+      return (
+        <div className={styles.userMessageText}>
+          {hasImagePreviews && (
+            <div className={styles.pathTagRow} style={{ marginBottom: hasPathTags || hasBody ? 6 : 0 }}>
+              {imagePreviews!.map((img) =>
+                img.preview ? (
+                  <img
+                    key={img.fileName}
+                    src={img.preview}
+                    alt={img.fileName}
+                    title={img.fileName}
+                    style={{ maxWidth: 120, maxHeight: 90, borderRadius: 6, objectFit: 'cover', display: 'block' }}
+                  />
+                ) : (
+                  <span key={img.fileName} style={{ fontSize: 11, opacity: 0.6 }}>{img.fileName}</span>
+                ),
+              )}
+            </div>
+          )}
+          {hasPathTags && (
+            <div className={styles.pathTagRow} style={{ marginBottom: hasBody ? 6 : 0 }}>
+              {pathTags!.map((tag) => (
+                <span key={tag.absolutePath} className={styles.pathTag} title={tag.absolutePath}>
+                  {tag.isDirectory ? (
+                    <Folder size={12} style={{ flexShrink: 0 }} />
+                  ) : (
+                    <File size={12} style={{ flexShrink: 0 }} />
+                  )}
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {tag.name}
+                  </span>
+                </span>
+              ))}
+            </div>
+          )}
+          {hasBody && <span>{text}</span>}
+        </div>
+      );
+    }
+
+    // Default: full-chat plain text
+    return renderUserTextBubble(protocol, { className: styles.userMessageText, text });
+  };
+
   return (
     <div className={cx(styles.userTurn, styles.chatItem)}>
       {mediaSection}
       {effectiveHasText && (
-        <ChatItem
-          avatar={{
-            avatar: <span className={styles.userAvatar}>我</span>,
-            backgroundColor: 'transparent',
-            title: '我',
-          }}
-          className={cx(styles.chatItem, styles.userChatItem)}
-          message={text}
-          placement="right"
-          renderMessage={() => {
-            // MiniChat: rich Slate content (inline path/skill nodes)
-            if (hasRich) {
-              return (
-                <div className={styles.userMessageText}>
-                  {hasImagePreviews && (
-                    <div
-                      className={styles.pathTagRow}
-                      style={{ marginBottom: 6 }}
-                    >
-                      {imagePreviews!.map((img) =>
-                        img.preview ? (
-                          <img
-                            key={img.fileName}
-                            src={img.preview}
-                            alt={img.fileName}
-                            title={img.fileName}
-                            style={{
-                              maxWidth: 120,
-                              maxHeight: 90,
-                              borderRadius: 6,
-                              objectFit: 'cover',
-                              display: 'block',
-                            }}
-                          />
-                        ) : (
-                          <span key={img.fileName} style={{ fontSize: 11, opacity: 0.6 }}>
-                            {img.fileName}
-                          </span>
-                        ),
-                      )}
-                    </div>
-                  )}
-                  <ReadOnlySlateMessage content={richContent!} />
-                </div>
-              );
-            }
-
-            // MiniChat: path tags + optional plain text
-            if (hasPathTags || hasImagePreviews) {
-              const hasBody = text.trim().length > 0;
-              return (
-                <div className={styles.userMessageText}>
-                  {hasImagePreviews && (
-                    <div
-                      className={styles.pathTagRow}
-                      style={{ marginBottom: hasPathTags || hasBody ? 6 : 0 }}
-                    >
-                      {imagePreviews!.map((img) =>
-                        img.preview ? (
-                          <img
-                            key={img.fileName}
-                            src={img.preview}
-                            alt={img.fileName}
-                            title={img.fileName}
-                            style={{
-                              maxWidth: 120,
-                              maxHeight: 90,
-                              borderRadius: 6,
-                              objectFit: 'cover',
-                              display: 'block',
-                            }}
-                          />
-                        ) : (
-                          <span key={img.fileName} style={{ fontSize: 11, opacity: 0.6 }}>
-                            {img.fileName}
-                          </span>
-                        ),
-                      )}
-                    </div>
-                  )}
-                  {hasPathTags && (
-                    <div
-                      className={styles.pathTagRow}
-                      style={{ marginBottom: hasBody ? 6 : 0 }}
-                    >
-                      {pathTags!.map((tag) => (
-                        <span
-                          key={tag.absolutePath}
-                          className={styles.pathTag}
-                          title={tag.absolutePath}
-                        >
-                          {tag.isDirectory ? (
-                            <Folder size={12} style={{ flexShrink: 0 }} />
-                          ) : (
-                            <File size={12} style={{ flexShrink: 0 }} />
-                          )}
-                          <span
-                            style={{
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {tag.name}
-                          </span>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {hasBody && <span>{text}</span>}
-                </div>
-              );
-            }
-
-            // Default: full-chat plain text bubble
-            return renderUserTextBubble(protocol, { className: styles.userMessageText, text });
-          }}
-          showAvatar={false}
-          showTitle={false}
-          variant="bubble"
-        />
+        <div className={styles.userBubbleRow}>
+          <div className={styles.userBubble}>
+            {renderBubbleContent()}
+          </div>
+        </div>
       )}
 
       {lightboxImg && (

@@ -152,10 +152,10 @@ export function UpdateAvailablePopup() {
         </div>
 
         <div className={styles.footer}>
-          <Button onClick={handleDownload} style={{ borderRadius: 9999, padding: '0 24px' }}>
+          <Button type="primary" onClick={handleDownload} style={{ borderRadius: 9999, padding: '0 24px' }}>
             立即下载
           </Button>
-          <Button variant="outline" onClick={handleDismiss} style={{ borderRadius: 9999, padding: '0 24px' }}>
+          <Button onClick={handleDismiss} style={{ borderRadius: 9999, padding: '0 24px' }}>
             稍后提醒
           </Button>
         </div>

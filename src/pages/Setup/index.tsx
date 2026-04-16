@@ -217,7 +217,7 @@ export function Setup() {
                 <div className={styles.navFooter}>
                   <div className={styles.navLeft}>
                     {!isFirstStep && (
-                      <Button variant="ghost" onClick={handleBack} className={styles.btnGhostMuted}>
+                      <Button type="text" onClick={handleBack} className={styles.btnGhostMuted}>
                         <ChevronLeft style={{ width: 16, height: 16, marginRight: 4 }} />
                         {t('nav.back')}
                       </Button>
@@ -229,6 +229,7 @@ export function Setup() {
                       {t('nav.skipSetup')}
                     </button>
                     <Button
+                      type="primary"
                       onClick={handleNext}
                       disabled={!canProceed}
                       className={styles.btnRoundedFull}
@@ -560,6 +561,7 @@ function ProviderContent({
 
             {!useOAuthFlow && (
               <Button
+                type="primary"
                 onClick={handleValidateAndSave}
                 disabled={!canSubmit || validating}
                 className={styles.btnWideXl}
@@ -678,7 +680,7 @@ function InstallingContent({ skills, onFinish, selectedProvider, isCloudOnlyBuil
           </div>
         </div>
 
-        <Button onClick={onFinish} className={styles.btnRoundedFullWide}>
+        <Button type="primary" onClick={onFinish} className={styles.btnRoundedFullWide}>
           {t('nav.getStarted')}
         </Button>
       </div>
@@ -699,11 +701,11 @@ function InstallingContent({ skills, onFinish, selectedProvider, isCloudOnlyBuil
           </p>
         </div>
         <div className={styles.errorButtons}>
-          <Button variant="outline" onClick={handleRetry} className={styles.btnFlexRounded}>
+          <Button onClick={handleRetry} className={styles.btnFlexRounded}>
             <RotateCcw style={{ width: 16, height: 16, marginRight: 8 }} />
             {t('installing.retry', { defaultValue: '重试' })}
           </Button>
-          <Button variant="ghost" onClick={onFinish} className={styles.btnFlexRoundedMuted}>
+          <Button type="text" onClick={onFinish} className={styles.btnFlexRoundedMuted}>
             {t('nav.skipSetup')}
           </Button>
         </div>

@@ -29,23 +29,27 @@ import { BackBottomButton } from '@/components/common/BackBottomButton';
 const useStyles = createStyles(({ token, css }) => ({
   chatPage: css`
     --chat-window-side-gap: 24px;
-    --chat-window-content-width: min(880px, calc(100% - (var(--chat-window-side-gap) * 2)));
+    --chat-window-content-width: min(860px, calc(100% - (var(--chat-window-side-gap) * 2)));
     --chat-dock-inline-padding: 12px;
     position: relative;
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: hsl(var(--background));
-    transition: background 0.3s;
+    background: ${token.colorBgContainer};
   `,
   toolbar: css`
-    display: none;
+    display: flex;
+    align-items: center;
+    height: 44px;
+    flex-shrink: 0;
+    padding: 0 var(--chat-window-side-gap);
+    border-bottom: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorBgContainer};
   `,
   messagesArea: css`
     position: relative;
     flex: 1;
     overflow: hidden;
-    padding-top: 40px;
   `,
   scrollableContent: css`
     height: 100%;
@@ -59,7 +63,7 @@ const useStyles = createStyles(({ token, css }) => ({
   timelineVirtualItem: css`
     max-width: var(--chat-window-content-width);
     margin: 0 auto;
-    padding: 0 0 32px; /* Removed double horizontal padding, added vertical breathing room */
+    padding: 0 0 20px;
     box-sizing: border-box;
     width: 100%;
   `,
@@ -130,38 +134,51 @@ const useStyles = createStyles(({ token, css }) => ({
     align-items: center;
     justify-content: center;
     text-align: center;
-    height: 60vh;
+    height: 100%;
+    padding: 48px var(--chat-window-side-gap);
+    max-width: var(--chat-window-content-width);
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
   `,
   welcomeTitle: css`
-    font-size: var(--mimi-font-size-base);
-    font-family: Georgia, Cambria, "Times New Roman", Times, serif;
-    color: ${token.colorTextSecondary};
-    margin-bottom: 32px;
-    font-weight: var(--mimi-font-weight-regular);
-    letter-spacing: -0.02em;
+    font-size: 22px;
+    font-weight: 600;
+    color: ${token.colorText};
+    margin-bottom: 8px;
+    letter-spacing: -0.025em;
+  `,
+  welcomeSubtitle: css`
+    font-size: 14px;
+    color: ${token.colorTextTertiary};
+    margin-bottom: 40px;
+    font-weight: 400;
   `,
   welcomeActions: css`
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    max-width: 512px;
+    gap: 8px;
+    max-width: 480px;
     width: 100%;
   `,
   welcomeChip: css`
-    padding: 6px 16px;
-    border-radius: 9999px;
+    padding: 7px 14px;
+    border-radius: 8px;
     border: 1px solid ${token.colorBorderSecondary};
-    font-size: var(--mimi-font-size-md);
-    font-weight: var(--mimi-font-weight-medium);
+    font-size: 13px;
+    font-weight: 450;
     color: ${token.colorTextSecondary};
-    background: ${token.colorFillQuaternary};
-    cursor: default;
-    transition: background 0.15s;
+    background: ${token.colorBgContainer};
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    text-align: left;
 
     &:hover {
-      background: ${token.colorFillSecondary};
+      background: ${token.colorFillTertiary};
+      border-color: ${token.colorBorder};
+      color: ${token.colorText};
     }
   `,
   interruptedHint: css`
@@ -526,7 +543,8 @@ function WelcomeScreen() {
 
   return (
     <div className={styles.welcomeRoot}>
-      <h1 className={styles.welcomeTitle}>{t('welcome.subtitle')}</h1>
+      <h1 className={styles.welcomeTitle}>{t('welcome.title', { defaultValue: '有什么可以帮你？' })}</h1>
+      <p className={styles.welcomeSubtitle}>{t('welcome.subtitle')}</p>
       <div className={styles.welcomeActions}>
         {quickActions.map(({ key, label }) => (
           <button type="button" key={key} className={styles.welcomeChip}>{label}</button>

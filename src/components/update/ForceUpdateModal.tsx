@@ -281,7 +281,7 @@ export function ForceUpdateModal() {
 
             <div className={styles.actions}>
               <Button
-                type="button"
+                type="primary"
                 className={styles.primaryBtn}
                 onClick={primaryAction}
                 disabled={status === "checking" || status === "downloading"}

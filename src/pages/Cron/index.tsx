@@ -242,7 +242,7 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
             <CardTitle className={styles.dialogTitle}>{job ? t('dialog.editTitle') : t('dialog.createTitle')}</CardTitle>
             <CardDescription className={styles.dialogDesc}>{t('dialog.description')}</CardDescription>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className={styles.dialogCloseBtn}>
+          <Button type="text" onClick={onClose} className={styles.dialogCloseBtn} style={{ padding: 0, width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
             <X style={{ width: 16, height: 16 }} />
           </Button>
         </CardHeader>
@@ -280,9 +280,8 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
                 {schedulePresets.map((preset) => (
                   <Button
                     key={preset.value}
-                    type="button"
-                    variant={schedule === preset.value ? 'default' : 'outline'}
-                    size="sm"
+                    type={schedule === preset.value ? 'primary' : 'default'}
+                    size="small"
                     onClick={() => setSchedule(preset.value)}
                     className={cx(
                       styles.presetBtnBase,
@@ -307,9 +306,8 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
                 {schedulePreview ? `${t('card.next')}: ${schedulePreview}` : t('dialog.cronPlaceholder')}
               </p>
               <Button
-                type="button"
-                variant="ghost"
-                size="sm"
+                type="text"
+                size="small"
                 onClick={() => setUseCustom(!useCustom)}
                 className={styles.toggleCustomBtn}
               >
@@ -324,15 +322,15 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
               <Label className={styles.enableLabel}>{t('dialog.enableImmediately')}</Label>
               <p className={styles.enableDesc}>{t('dialog.enableImmediatelyDesc')}</p>
             </div>
-            <Switch checked={enabled} onCheckedChange={setEnabled} />
+            <Switch checked={enabled} onChange={setEnabled} />
           </div>
 
           {/* Actions */}
           <div className={styles.dialogFooter}>
-            <Button variant="outline" onClick={onClose} className={styles.dialogCancelBtn}>
+            <Button onClick={onClose} className={styles.dialogCancelBtn}>
               {t('common:actions.cancel', 'Cancel')}
             </Button>
-            <Button onClick={handleSubmit} disabled={saving} className={styles.dialogSubmitBtn}>
+            <Button type="primary" onClick={handleSubmit} disabled={saving} className={styles.dialogSubmitBtn}>
               {saving ? (
                 <>
                   <Loader2 style={{ width: 16, height: 16, marginRight: 8 }} className="animate-spin" />
@@ -416,7 +414,7 @@ function CronJobCard({ job, onToggle, onEdit, onDelete, onTrigger }: CronJobCard
         <div className={styles.jobCardRight} onClick={e => e.stopPropagation()}>
           <Switch
             checked={job.enabled}
-            onCheckedChange={onToggle}
+            onChange={onToggle}
           />
         </div>
       </div>
@@ -469,8 +467,8 @@ function CronJobCard({ job, onToggle, onEdit, onDelete, onTrigger }: CronJobCard
         {/* Actions */}
         <div className={styles.jobCardActions}>
           <Button
-            variant="ghost"
-            size="sm"
+            type="text"
+            size="small"
             onClick={handleTrigger}
             disabled={triggering}
             className={styles.jobCardTriggerBtn}
@@ -483,8 +481,8 @@ function CronJobCard({ job, onToggle, onEdit, onDelete, onTrigger }: CronJobCard
             {t('card.runNow')}
           </Button>
           <Button
-            variant="ghost"
-            size="sm"
+            type="text"
+            size="small"
             onClick={handleDelete}
             className={styles.jobCardDeleteBtn}
           >
@@ -559,7 +557,6 @@ export function Cron() {
           </div>
           <div className={styles.headerActions}>
             <Button
-              variant="outline"
               onClick={fetchJobs}
               disabled={!isGatewayRunning}
               className={styles.headerRefreshBtn}
@@ -568,6 +565,7 @@ export function Cron() {
               {t('refresh')}
             </Button>
             <Button
+              type="primary"
               onClick={() => {
                 setEditingJob(undefined);
                 setShowDialog(true);
@@ -657,6 +655,7 @@ export function Cron() {
               <h3 className={styles.emptyTitle}>{t('empty.title')}</h3>
               <p className={styles.emptyDesc}>{t('empty.description')}</p>
               <Button
+                type="primary"
                 onClick={() => {
                   setEditingJob(undefined);
                   setShowDialog(true);

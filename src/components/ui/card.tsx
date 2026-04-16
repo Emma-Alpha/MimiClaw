@@ -1,41 +1,36 @@
 /**
- * Card Component
- * antd-style based, same API as shadcn/ui card
+ * Card compound components — antd Card as the outer shell.
+ * Keeps CardHeader / CardContent / CardFooter / CardTitle / CardDescription
+ * sub-component API so call sites don't need to change.
  */
 import * as React from 'react';
+import { Card as AntdCard } from 'antd';
 import { createStyles } from 'antd-style';
 import { cn } from '@/lib/utils';
 
-const useStyles = createStyles(({ css, token }) => ({
-  card: css`
-    border-radius: ${token.borderRadiusLG}px;
-    border: 1px solid ${token.colorBorderSecondary};
-    background: ${token.colorBgContainer};
-    color: ${token.colorText};
-    box-shadow: ${token.boxShadowTertiary};
-  `,
-  cardHeader: css`
+const useSubStyles = createStyles(({ css, token }) => ({
+  header: css`
     display: flex;
     flex-direction: column;
     gap: 6px;
     padding: 24px;
   `,
-  cardTitle: css`
+  title: css`
     font-size: ${token.fontSizeSM}px;
     font-weight: 600;
     line-height: 1;
     letter-spacing: -0.015em;
     color: ${token.colorText};
   `,
-  cardDescription: css`
+  description: css`
     font-size: ${token.fontSizeSM}px;
     color: ${token.colorTextSecondary};
   `,
-  cardContent: css`
+  content: css`
     padding: 24px;
     padding-top: 0;
   `,
-  cardFooter: css`
+  footer: css`
     display: flex;
     align-items: center;
     padding: 24px;
@@ -43,60 +38,62 @@ const useStyles = createStyles(({ css, token }) => ({
   `,
 }));
 
-const Card = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
-  const { styles } = useStyles();
-  return <div ref={ref} className={cn(styles.card, className)} {...props} />;
-});
+// ─── Card root ────────────────────────────────────────────────────────────────
+
+const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, children, style, ...props }, _ref) => (
+    <AntdCard
+      className={className}
+      style={style}
+      styles={{ body: { padding: 0 } }}
+      {...props}
+    >
+      {children}
+    </AntdCard>
+  )
+);
 Card.displayName = 'Card';
 
-const CardHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
-  const { styles } = useStyles();
-  return <div ref={ref} className={cn(styles.cardHeader, className)} {...props} />;
-});
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => {
+    const { styles } = useSubStyles();
+    return <div ref={ref} className={cn(styles.header, className)} {...props} />;
+  }
+);
 CardHeader.displayName = 'CardHeader';
 
-const CardTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => {
-  const { styles } = useStyles();
-  return <h3 ref={ref} className={cn(styles.cardTitle, className)} {...props} />;
-});
+const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
+  ({ className, ...props }, ref) => {
+    const { styles } = useSubStyles();
+    return <h3 ref={ref} className={cn(styles.title, className)} {...props} />;
+  }
+);
 CardTitle.displayName = 'CardTitle';
 
-const CardDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => {
-  const { styles } = useStyles();
-  return <p ref={ref} className={cn(styles.cardDescription, className)} {...props} />;
-});
+const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
+  ({ className, ...props }, ref) => {
+    const { styles } = useSubStyles();
+    return <p ref={ref} className={cn(styles.description, className)} {...props} />;
+  }
+);
 CardDescription.displayName = 'CardDescription';
 
-const CardContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
-  const { styles } = useStyles();
-  return <div ref={ref} className={cn(styles.cardContent, className)} {...props} />;
-});
+const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => {
+    const { styles } = useSubStyles();
+    return <div ref={ref} className={cn(styles.content, className)} {...props} />;
+  }
+);
 CardContent.displayName = 'CardContent';
 
-const CardFooter = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
-  const { styles } = useStyles();
-  return (
-    <div ref={ref} className={cn(styles.cardFooter, className)} {...props} />
-  );
-});
+const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => {
+    const { styles } = useSubStyles();
+    return <div ref={ref} className={cn(styles.footer, className)} {...props} />;
+  }
+);
 CardFooter.displayName = 'CardFooter';
 
 export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent };

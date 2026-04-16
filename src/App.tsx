@@ -301,7 +301,7 @@ function App() {
 	return (
 		<ErrorBoundary>
 			<ThemeWrapper>
-				<TooltipProvider delayDuration={300}>
+				<TooltipProvider>
 					{!isPetRoute &&
 					!isPetBubbleRoute &&
 					!isMiniChatRoute &&

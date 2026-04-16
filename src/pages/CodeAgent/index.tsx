@@ -296,8 +296,6 @@ export function CodeAgent() {
                 </div>
                 <div className={styles.statusButtonGroup}>
                   <Button
-                    type="button"
-                    variant="outline"
                     onClick={() => void handleCodeAgentHealthCheck()}
                     disabled={codeAgentBusyAction !== null}
                     style={{ borderRadius: 12 }}
@@ -306,8 +304,6 @@ export function CodeAgent() {
                     {t('settings:developer.codeAgentCheckHealth')}
                   </Button>
                   <Button
-                    type="button"
-                    variant="outline"
                     onClick={() => void handleCodeAgentLifecycleAction('start')}
                     disabled={codeAgentBusyAction !== null || codeAgentStatus?.state === 'running'}
                     style={{ borderRadius: 12 }}
@@ -315,8 +311,6 @@ export function CodeAgent() {
                     {t('settings:developer.codeAgentStart')}
                   </Button>
                   <Button
-                    type="button"
-                    variant="outline"
                     onClick={() => void handleCodeAgentLifecycleAction('stop')}
                     disabled={codeAgentBusyAction !== null || codeAgentStatus?.state !== 'running'}
                     style={{ borderRadius: 12 }}
@@ -324,8 +318,6 @@ export function CodeAgent() {
                     {t('settings:developer.codeAgentStop')}
                   </Button>
                   <Button
-                    type="button"
-                    variant="outline"
                     onClick={() => void handleCodeAgentLifecycleAction('restart')}
                     disabled={codeAgentBusyAction !== null}
                     style={{ borderRadius: 12 }}
@@ -390,8 +382,6 @@ export function CodeAgent() {
                   <p className={styles.sectionSubtitle}>{t('settings:developer.codeAgentConfigAutoMapHint')}</p>
                 </div>
                 <Button
-                  type="button"
-                  variant="outline"
                   onClick={() => void handleSaveCodeAgentConfig()}
                   disabled={savingCodeAgentConfig}
                   style={{ borderRadius: 12 }}
@@ -407,15 +397,16 @@ export function CodeAgent() {
                   <Select
                     id="code-agent-execution-mode"
                     value={codeAgentConfigDraft.executionMode}
-                    onChange={(event) => setCodeAgentConfigDraft((prev) => ({
+                    onChange={(val) => setCodeAgentConfigDraft((prev) => ({
                       ...prev,
-                      executionMode: event.target.value as CodeAgentExecutionMode,
+                      executionMode: val as CodeAgentExecutionMode,
                     }))}
-                    style={{ height: 40, borderRadius: 12 }}
-                  >
-                    <option value="cli">{t('settings:developer.codeAgentExecutionModeCli')}</option>
-                    <option value="snapshot">{t('settings:developer.codeAgentExecutionModeSnapshot')}</option>
-                  </Select>
+                    style={{ borderRadius: 12 }}
+                    options={[
+                      { value: 'cli', label: t('settings:developer.codeAgentExecutionModeCli') },
+                      { value: 'snapshot', label: t('settings:developer.codeAgentExecutionModeSnapshot') },
+                    ]}
+                  />
                 </div>
 
                 <div className={styles.formField}>
@@ -423,19 +414,20 @@ export function CodeAgent() {
                   <Select
                     id="code-agent-permission-mode"
                     value={codeAgentConfigDraft.permissionMode}
-                    onChange={(event) => setCodeAgentConfigDraft((prev) => ({
+                    onChange={(val) => setCodeAgentConfigDraft((prev) => ({
                       ...prev,
-                      permissionMode: event.target.value as CodeAgentPermissionMode,
+                      permissionMode: val as CodeAgentPermissionMode,
                     }))}
-                    style={{ height: 40, borderRadius: 12 }}
-                  >
-                    <option value="default">{t('settings:developer.codeAgentPermissionDefault')}</option>
-                    <option value="acceptEdits">{t('settings:developer.codeAgentPermissionAcceptEdits')}</option>
-                    <option value="auto">{t('settings:developer.codeAgentPermissionAuto')}</option>
-                    <option value="plan">{t('settings:developer.codeAgentPermissionPlan')}</option>
-                    <option value="dontAsk">{t('settings:developer.codeAgentPermissionDontAsk')}</option>
-                    <option value="bypassPermissions">{t('settings:developer.codeAgentPermissionBypass')}</option>
-                  </Select>
+                    style={{ borderRadius: 12 }}
+                    options={[
+                      { value: 'default', label: t('settings:developer.codeAgentPermissionDefault') },
+                      { value: 'acceptEdits', label: t('settings:developer.codeAgentPermissionAcceptEdits') },
+                      { value: 'auto', label: t('settings:developer.codeAgentPermissionAuto') },
+                      { value: 'plan', label: t('settings:developer.codeAgentPermissionPlan') },
+                      { value: 'dontAsk', label: t('settings:developer.codeAgentPermissionDontAsk') },
+                      { value: 'bypassPermissions', label: t('settings:developer.codeAgentPermissionBypass') },
+                    ]}
+                  />
                 </div>
 
                 <div className={styles.formField}>
@@ -564,25 +556,20 @@ export function CodeAgent() {
 
               <div className={styles.runButtonsFlex}>
                 <Button
-                  type="button"
                   onClick={() => setCodeAgentPrompt('请先快速理解当前工作区的结构、技术栈和关键入口文件，然后给我一个简短概览。')}
-                  variant="outline"
                   style={{ borderRadius: 12 }}
                 >
                   解释当前项目
                 </Button>
                 <Button
-                  type="button"
                   onClick={() => setCodeAgentPrompt('请检查当前工作区里最可能导致最近问题的代码位置，并给出排查结论。')}
-                  variant="outline"
-                  style={{ borderRadius: 12 }}
                 >
                   分析最近问题
                 </Button>
               </div>
 
               <Button
-                type="button"
+                type="primary"
                 onClick={() => void handleCodeAgentRun()}
                 disabled={codeAgentBusyAction !== null}
                 className={styles.runMainButton}
@@ -603,9 +590,7 @@ export function CodeAgent() {
                   )}
                 </div>
                 <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
+                  size="small"
                   onClick={() => setShowCodeAgentRunDetails((prev) => !prev)}
                   style={{ borderRadius: 9999 }}
                   disabled={!codeAgentLastRun}

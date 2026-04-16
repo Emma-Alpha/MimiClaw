@@ -229,9 +229,7 @@ function SkillDetailDialog({ skill, isOpen, onClose, onToggle, onUninstall, onOp
                   className={styles.pathInput}
                 />
                 <Button
-                  variant="outline"
-                  size="icon"
-                  style={{ height: 38, width: 38, borderColor: 'rgba(0,0,0,0.1)' }}
+                  style={{ height: 38, width: 38, borderColor: 'rgba(0,0,0,0.1)', padding: 0 }}
                   disabled={!skill.baseDir}
                   onClick={handleCopyPath}
                   title={t('detail.copyPath')}
@@ -239,9 +237,7 @@ function SkillDetailDialog({ skill, isOpen, onClose, onToggle, onUninstall, onOp
                   <Copy style={{ width: 14, height: 14 }} />
                 </Button>
                 <Button
-                  variant="outline"
-                  size="icon"
-                  style={{ height: 38, width: 38, borderColor: 'rgba(0,0,0,0.1)' }}
+                  style={{ height: 38, width: 38, borderColor: 'rgba(0,0,0,0.1)', padding: 0 }}
                   disabled={!skill.baseDir}
                   onClick={() => onOpenFolder?.(skill)}
                   title={t('detail.openActualFolder')}
@@ -286,8 +282,8 @@ function SkillDetailDialog({ skill, isOpen, onClose, onToggle, onUninstall, onOp
                     </h3>
                   </div>
                   <Button
-                    variant="ghost"
-                    size="sm"
+                    type="text"
+                    size="small"
                     className={styles.addEnvBtn}
                     onClick={handleAddEnv}
                   >
@@ -318,9 +314,9 @@ function SkillDetailDialog({ skill, isOpen, onClose, onToggle, onUninstall, onOp
                         placeholder={t('detail.valuePlaceholder', 'Value')}
                       />
                       <Button
-                        variant="ghost"
-                        size="icon"
+                        type="text"
                         className={styles.envRemoveBtn}
+                        style={{ padding: 0, width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                         onClick={() => handleRemoveEnv(index)}
                       >
                         <Trash2 style={{ width: 16, height: 16 }} />
@@ -334,11 +330,11 @@ function SkillDetailDialog({ skill, isOpen, onClose, onToggle, onUninstall, onOp
             {/* External Links */}
             {skill.slug && !skill.isBundled && !skill.isCore && (
               <div className={styles.detailExternalLinks}>
-                <Button variant="outline" size="sm" className={styles.externalLinkBtn} onClick={handleOpenClawhub}>
+                <Button size="small" className={styles.externalLinkBtn} onClick={handleOpenClawhub}>
                   <Globe style={{ width: 12, height: 12 }} />
                   ClawHub
                 </Button>
-                <Button variant="outline" size="sm" className={styles.externalLinkBtn} onClick={handleOpenEditor}>
+                <Button size="small" className={styles.externalLinkBtn} onClick={handleOpenEditor}>
                   <FileCode style={{ width: 12, height: 12 }} />
                   {t('detail.openManual')}
                 </Button>
@@ -360,7 +356,6 @@ function SkillDetailDialog({ skill, isOpen, onClose, onToggle, onUninstall, onOp
 
             {!skill.isCore && (
               <Button
-                variant="outline"
                 style={{ flex: 1, height: 42, fontSize: 13, borderRadius: 9999, fontWeight: 600 }}
                 className={styles.toggleBtn}
                 onClick={() => {
@@ -674,24 +669,21 @@ export function Skills() {
 
           <div className={styles.actionButtons}>
             <Button
-              variant="outline"
-              size="sm"
+              size="small"
               onClick={() => bulkToggleVisible(true)}
               className={styles.actionBarBtn}
             >
               {t('actions.enableVisible')}
             </Button>
             <Button
-              variant="outline"
-              size="sm"
+              size="small"
               onClick={() => bulkToggleVisible(false)}
               className={styles.actionBarBtn}
             >
               {t('actions.disableVisible')}
             </Button>
             <Button
-              variant="outline"
-              size="sm"
+              size="small"
               onClick={() => {
                 setInstallQuery('');
                 setInstallSheetOpen(true);
@@ -701,11 +693,11 @@ export function Skills() {
               {t('actions.installSkill')}
             </Button>
             <Button
-              variant="outline"
-              size="icon"
+              type="text"
               onClick={fetchSkills}
               disabled={!isGatewayRunning}
               className={styles.actionBarRefreshBtn}
+              style={{ padding: 0, width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
               title={t('refresh')}
             >
               <RefreshCw style={{ width: 16, height: 16 }} className={loading ? 'animate-spin' : ''} />
@@ -772,7 +764,7 @@ export function Skills() {
                     )}
                     <Switch
                       checked={skill.enabled}
-                      onCheckedChange={(checked) => handleToggle(skill.id, checked)}
+                      onChange={(checked) => handleToggle(skill.id, checked)}
                       disabled={skill.isCore}
                     />
                   </div>
@@ -801,7 +793,6 @@ export function Skills() {
                 inputClassName={styles.marketplaceSearchInputEl}
               />
               <Button
-                variant="outline"
                 disabled
                 className={styles.marketplaceSourceBtn}
               >
@@ -859,8 +850,9 @@ export function Skills() {
                         )}
                         {isInstalled ? (
                           <Button
-                            variant="destructive"
-                            size="sm"
+                            type="primary"
+                            danger
+                            size="small"
                             onClick={() => handleUninstall(skill.slug)}
                             disabled={isInstallLoading}
                             className={styles.uninstallBtn}
@@ -869,8 +861,8 @@ export function Skills() {
                           </Button>
                         ) : (
                           <Button
-                            variant="default"
-                            size="sm"
+                            type="primary"
+                            size="small"
                             onClick={() => handleInstall(skill.slug)}
                             disabled={isInstallLoading}
                             className={styles.installBtn}

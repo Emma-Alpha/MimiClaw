@@ -23,17 +23,11 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     --mimi-sidebar-chip-hover-bg: color-mix(in srgb, var(--ant-color-text) 12%, transparent);
 
     display: flex;
-    width: 268px;
+    width: 248px;
     flex-shrink: 0;
     flex-direction: column;
     border-right: 1px solid var(--mimi-sidebar-border);
-    /* Codex-like sidebar material:
-       1. native macOS vibrancy from the BrowserWindow
-       2. renderer tint mixed with transparency for softer depth */
     background: var(--mimi-sidebar-surface-solid);
-    background: var(--mimi-sidebar-surface);
-    -webkit-backdrop-filter: saturate(160%) blur(18px);
-    backdrop-filter: saturate(160%) blur(18px);
 
     ${darkMode(`
       --mimi-sidebar-surface: color-mix(in srgb, var(--ant-color-bg-layout) 78%, transparent);
@@ -65,22 +59,22 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     display: flex;
     width: 100%;
     align-items: center;
-    gap: 0.625rem;
-    border-radius: 0.5rem;
-    padding: 0.375rem 0.5rem;
+    gap: 0.5rem;
+    border-radius: 0.375rem;
+    padding: 0.3rem 0.5rem;
     text-align: left;
     font-size: 13px;
-    font-weight: 500;
-    color: hsl(var(--foreground) / 0.8);
-    transition: background-color 0.2s ease, color 0.2s ease;
+    font-weight: 400;
+    color: hsl(var(--foreground) / 0.75);
+    transition: background-color 0.15s ease, color 0.15s ease;
 
     &:hover {
       background: var(--mimi-sidebar-hover-bg);
-      color: hsl(var(--foreground));
+      color: hsl(var(--foreground) / 0.9);
     }
 
     ${darkMode(`
-      color: hsl(var(--foreground) / 0.9);
+      color: hsl(var(--foreground) / 0.85);
     `)}
   `,
   primaryActionIcon: css`
@@ -149,11 +143,11 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     `)}
   `,
   threadsArea: css`
-    margin-top: 1rem;
+    margin-top: 0.5rem;
     min-height: 0;
     flex: 1;
     overflow-y: auto;
-    padding: 0 0.75rem;
+    padding: 0 0.5rem;
   `,
   folderSection: css`
     border-radius: 0.75rem;
@@ -408,9 +402,9 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     position: relative;
     width: 100%;
     border-radius: 0.375rem;
-    padding: 0.375rem 1.75rem 0.375rem 1.75rem;
+    padding: 0.3rem 1.75rem 0.3rem 1.75rem;
     text-align: left;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition: background-color 0.15s ease, color 0.15s ease;
 
     &:hover [data-subitem-pin='true'] {
       opacity: 1;
@@ -422,10 +416,10 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     color: hsl(var(--foreground));
   `,
   sessionButtonIdle: css`
-    color: hsl(var(--foreground) / 0.8);
+    color: hsl(var(--foreground) / 0.75);
 
     &:hover {
-      background: var(--mimi-sidebar-active-bg);
+      background: var(--mimi-sidebar-hover-bg);
     }
   `,
   sessionMainRow: css`
@@ -451,13 +445,14 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 12px;
+    font-size: 12.5px;
+    font-weight: 400;
   `,
   sessionTime: css`
     margin-left: auto;
     flex-shrink: 0;
-    font-size: 10px;
-    color: hsl(var(--muted-foreground) / 0.7);
+    font-size: 10.5px;
+    color: hsl(var(--muted-foreground) / 0.6);
   `,
   sessionSubtitle: css`
     overflow: hidden;
@@ -806,15 +801,17 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
   settingsLink: css`
     display: flex;
     align-items: center;
-    gap: 0.625rem;
-    border-radius: 0.5rem;
-    padding: 0.5rem 0.625rem;
-    font-size: 14px;
-    color: hsl(var(--foreground) / 0.82);
-    transition: background-color 0.2s ease, color 0.2s ease;
+    gap: 0.5rem;
+    border-radius: 0.375rem;
+    padding: 0.375rem 0.5rem;
+    font-size: 13px;
+    font-weight: 400;
+    color: hsl(var(--foreground) / 0.75);
+    transition: background-color 0.15s ease, color 0.15s ease;
 
     &:hover {
       background: var(--mimi-sidebar-hover-bg);
+      color: hsl(var(--foreground) / 0.9);
     }
   `,
   settingsLinkActive: css`

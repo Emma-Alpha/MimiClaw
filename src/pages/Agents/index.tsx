@@ -127,7 +127,6 @@ export function Agents() {
           </div>
           <div className={styles.headerActions}>
             <Button
-              variant="outline"
               onClick={handleRefresh}
               style={{
                 height: 36,
@@ -145,6 +144,7 @@ export function Agents() {
               {t('refresh')}
             </Button>
             <Button
+              type="primary"
               onClick={() => setShowAddDialog(true)}
               style={{
                 height: 36,
@@ -307,9 +307,8 @@ function AgentCard({
           <div className={styles.agentActions}>
             {!agent.isDefault && (
               <Button
-                variant="ghost"
-                size="icon"
-                style={{ height: 28, width: 28 }}
+                type="text"
+                style={{ height: 28, width: 28, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                 className={styles.agentActionBtnHoverable}
                 onClick={onDelete}
                 title={t('deleteAgent')}
@@ -318,9 +317,8 @@ function AgentCard({
               </Button>
             )}
             <Button
-              variant="ghost"
-              size="icon"
-              style={{ height: 28, width: 28 }}
+              type="text"
+              style={{ height: 28, width: 28, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
               className={agent.isDefault ? undefined : styles.agentActionBtnHoverable}
               onClick={onOpenSettings}
               title={t('settings')}
@@ -429,7 +427,6 @@ function AddAgentDialog({
           </div>
           <div className={styles.dialogFormRow}>
             <Button
-              variant="outline"
               onClick={onClose}
               style={{
                 height: 36,
@@ -446,6 +443,7 @@ function AddAgentDialog({
               {t('common:actions.cancel')}
             </Button>
             <Button
+              type="primary"
               onClick={() => void handleSubmit()}
               disabled={saving || !name.trim()}
               style={{
@@ -533,8 +531,7 @@ function AgentSettingsModal({
             </CardDescription>
           </div>
           <Button
-            variant="ghost"
-            size="icon"
+            type="text"
             onClick={onClose}
             style={{
               borderRadius: 9999,
@@ -542,6 +539,10 @@ function AgentSettingsModal({
               width: 32,
               marginRight: -8,
               marginTop: -8,
+              padding: 0,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
             <X style={{ height: 16, width: 16 }} />
@@ -561,7 +562,6 @@ function AgentSettingsModal({
                 />
                 {!agent.isDefault && (
                   <Button
-                    variant="outline"
                     onClick={() => void handleSaveName()}
                     disabled={savingName || !name.trim() || name.trim() === agent.name}
                     style={{

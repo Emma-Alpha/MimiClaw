@@ -240,8 +240,7 @@ export function Models() {
                     <div className={styles.usageControlsLeft}>
                       <div className={styles.usageToggleGroup}>
                         <Button
-                          variant={usageGroupBy === 'model' ? 'secondary' : 'ghost'}
-                          size="sm"
+                          size="small"
                           onClick={() => {
                             setUsageGroupBy('model');
                             setUsagePage(1);
@@ -251,8 +250,7 @@ export function Models() {
                           {t('dashboard:recentTokenHistory.groupByModel')}
                         </Button>
                         <Button
-                          variant={usageGroupBy === 'day' ? 'secondary' : 'ghost'}
-                          size="sm"
+                          size="small"
                           onClick={() => {
                             setUsageGroupBy('day');
                             setUsagePage(1);
@@ -264,8 +262,7 @@ export function Models() {
                       </div>
                       <div className={styles.usageToggleGroup}>
                         <Button
-                          variant={usageWindow === '7d' ? 'secondary' : 'ghost'}
-                          size="sm"
+                          size="small"
                           onClick={() => {
                             setUsageWindow('7d');
                             setUsagePage(1);
@@ -275,8 +272,7 @@ export function Models() {
                           {t('dashboard:recentTokenHistory.last7Days')}
                         </Button>
                         <Button
-                          variant={usageWindow === '30d' ? 'secondary' : 'ghost'}
-                          size="sm"
+                          size="small"
                           onClick={() => {
                             setUsageWindow('30d');
                             setUsagePage(1);
@@ -286,8 +282,7 @@ export function Models() {
                           {t('dashboard:recentTokenHistory.last30Days')}
                         </Button>
                         <Button
-                          variant={usageWindow === 'all' ? 'secondary' : 'ghost'}
-                          size="sm"
+                          size="small"
                           onClick={() => {
                             setUsageWindow('all');
                             setUsagePage(1);
@@ -368,8 +363,7 @@ export function Models() {
                           )}
                           {devModeUnlocked && entry.content && (
                             <Button
-                              variant="outline"
-                              size="sm"
+                              size="small"
                               className={styles.viewContentBtn}
                               onClick={() => setSelectedUsageEntry(entry)}
                             >
@@ -387,8 +381,7 @@ export function Models() {
                     </p>
                     <div className={styles.paginationButtons}>
                       <Button
-                        variant="outline"
-                        size="sm"
+                        size="small"
                         onClick={() => setUsagePage((page) => Math.max(1, page - 1))}
                         disabled={safeUsagePage <= 1}
                         className={styles.paginationBtn}
@@ -397,8 +390,7 @@ export function Models() {
                         {t('dashboard:recentTokenHistory.prev')}
                       </Button>
                       <Button
-                        variant="outline"
-                        size="sm"
+                        size="small"
                         onClick={() => setUsagePage((page) => Math.min(usageTotalPages, page + 1))}
                         disabled={safeUsagePage >= usageTotalPages}
                         className={styles.paginationBtn}
@@ -567,11 +559,11 @@ function UsageContentPopup({
             </p>
           </div>
           <Button
-            variant="ghost"
-            size="icon"
+            type="text"
             className={styles.popupCloseBtn}
             onClick={onClose}
             aria-label={closeLabel}
+            style={{ padding: 0, width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
           >
             <X style={{ width: 16, height: 16 }} />
           </Button>
@@ -582,7 +574,7 @@ function UsageContentPopup({
           </pre>
         </div>
         <div className={styles.popupFooter}>
-          <Button variant="outline" onClick={onClose}>
+          <Button onClick={onClose}>
             {closeLabel}
           </Button>
         </div>

@@ -28,7 +28,7 @@ import {
 import { Button, type MenuProps } from "antd";
 import { ComposerAttachmentPreview, ImageLightbox } from "@/features/chat/components/composer";
 import { StyledDropdown } from "@/components/common/StyledDropdown";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip } from "@/components/ui/tooltip";
 import { invokeIpc } from "@/lib/api-client";
 import {
 	type UnifiedComposerInputValue,
@@ -533,30 +533,27 @@ export function MiniChatComposer({
 	);
 
 	const renderScreenshotButton = () => (
-		<Tooltip>
-			<TooltipTrigger asChild>
-				<span className={styles.screenshotTooltipTrigger}>
-					<button
-						type="button"
-						className={styles.codexControlIconButton}
-						onClick={onScreenshot}
-						disabled={disabled}
-						title="截图"
-					>
-						<Camera size={13} />
-					</button>
-				</span>
-			</TooltipTrigger>
-			<TooltipContent
-				side="top"
-				sideOffset={8}
-				className={styles.screenshotTooltipContent}
-			>
+		<Tooltip
+			title={
 				<span className={styles.screenshotTooltipRow}>
 					<span>截屏</span>
 					<span className={styles.screenshotTooltipKey}>{screenshotShortcutLabel}</span>
 				</span>
-			</TooltipContent>
+			}
+			placement="top"
+			overlayClassName={styles.screenshotTooltipContent}
+		>
+			<span className={styles.screenshotTooltipTrigger}>
+				<button
+					type="button"
+					className={styles.codexControlIconButton}
+					onClick={onScreenshot}
+					disabled={disabled}
+					title="截图"
+				>
+					<Camera size={13} />
+				</button>
+			</span>
 		</Tooltip>
 	);
 

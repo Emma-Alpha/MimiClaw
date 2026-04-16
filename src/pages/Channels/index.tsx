@@ -241,7 +241,6 @@ export function Channels() {
 
           <div className={styles.headerActions}>
             <Button
-              variant="outline"
               onClick={handleRefresh}
               disabled={gatewayStatus.state !== 'running'}
               className={styles.refreshBtn}
@@ -305,8 +304,7 @@ export function Channels() {
 
                       <div className={styles.groupHeaderRight}>
                         <Button
-                          size="sm"
-                          variant="outline"
+                          size="small"
                           className={styles.addAccountBtn}
                           onClick={() => {
                             const shouldUseGeneratedAccountId = !usesPluginManagedQrAccounts(group.channelType);
@@ -329,11 +327,11 @@ export function Channels() {
                           {t('account.add')}
                         </Button>
                         <Button
-                          size="icon"
-                          variant="ghost"
+                          type="text"
                           className={styles.deleteGroupBtn}
                           onClick={() => setDeleteTarget({ channelType: group.channelType })}
                           title={t('account.deleteChannel')}
+                          style={{ padding: 0, width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                         >
                           <Trash2 style={{ width: 16, height: 16 }} />
                         </Button>
@@ -373,8 +371,7 @@ export function Channels() {
                                   ))}
                                 </select>
                                 <Button
-                                  size="sm"
-                                  variant="outline"
+                                  size="small"
                                   className={styles.editAccountBtn}
                                   onClick={() => {
                                     void (async () => {
@@ -400,11 +397,11 @@ export function Channels() {
                                   {t('account.edit')}
                                 </Button>
                                 <Button
-                                  size="icon"
-                                  variant="ghost"
+                                  type="text"
                                   className={styles.deleteAccountBtn}
                                   onClick={() => setDeleteTarget({ channelType: group.channelType, accountId: account.accountId })}
                                   title={t('account.delete')}
+                                  style={{ padding: 0, width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                 >
                                   <Trash2 style={{ width: 16, height: 16 }} />
                                 </Button>

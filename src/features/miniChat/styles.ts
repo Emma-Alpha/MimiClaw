@@ -1023,11 +1023,12 @@ export const useMiniChatStyles = createStyles(
 		border-radius: 10px;
 	`,
 		emptyState: css`
+		flex: 1;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		padding: 42px 16px 20px;
+		padding: 24px 16px;
 		text-align: center;
 	`,
 		emptyIcon: css`
@@ -1085,6 +1086,8 @@ export const useMiniChatStyles = createStyles(
 			height: 100%;
 			max-width: var(--mini-chat-content-width);
 			margin: 0 auto;
+			display: flex;
+			flex-direction: column;
 		`,
 		timelineVirtualItem: css`
 			width: 100%;
@@ -1162,6 +1165,24 @@ export const useMiniChatStyles = createStyles(
 			100% {
 				opacity: 1;
 				transform: translateY(0) scale(1);
+			}
+		}
+
+		:global {
+			.lobe-chat-item {
+				width: 100%;
+				gap: 4px !important;
+				padding: 8px 0 4px !important;
+			}
+			.lobe-chat-item-message {
+				margin-left: 0 !important;
+				margin-right: 0 !important;
+				align-items: flex-start !important;
+				gap: 2px !important;
+			}
+			.lobe-chat-item-message-item {
+				padding: 8px 12px !important;
+				max-width: 100% !important;
 			}
 		}
 	`,
