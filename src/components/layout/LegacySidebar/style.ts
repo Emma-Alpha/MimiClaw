@@ -14,11 +14,15 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     flex-shrink: 0;
     flex-direction: column;
     border-right: 1px solid rgba(0, 0, 0, 0.06);
-    background: #f3f3f2;
+    /* Semi-transparent background: on macOS with native vibrancy the desktop
+       blurs through; on other platforms this gives a clean frosted look */
+    background: rgba(243, 243, 242, 0.82);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
 
     ${darkMode(`
-      border-right-color: rgba(255, 255, 255, 0.08);
-      background: #1a1c20;
+      border-right-color: rgba(255, 255, 255, 0.06);
+      background: rgba(26, 28, 32, 0.80);
     `)}
   `,
   topSpacer: css`

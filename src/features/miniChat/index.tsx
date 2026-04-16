@@ -469,8 +469,19 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 		void syncCodeAgentContext();
 	}, [codeWorkspaceRoot]);
 
+	// Guard: when the user requested a fresh session (+ button), block any
+	// sdk-message events that arrive from other running sessions (e.g. cron jobs)
+	// until the user actually submits a message and a new session is created.
+	const guardedPushSdkMessage = useCallback(
+		(payload: unknown) => {
+			if (forceFreshSessionOnNextSubmitRef.current) return;
+			pushSdkMessage(payload);
+		},
+		[pushSdkMessage],
+	);
+
 	useMiniChatCodeAgentEvents({
-		pushSdkMessage,
+		pushSdkMessage: guardedPushSdkMessage,
 		resetCodeAgentStreaming,
 		setCodeAgentStatus,
 		setCodeRunActive,
@@ -1236,7 +1247,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 
 			<MiniChatTimeline
 				embedded={embeddedCodeAssistant}
-				timelineItems={timelineItems}
+				timelineItems={embeddedCodeAssistant ? [] : timelineItems}
 				sending={sending}
 				streamingText={liveStreamingText}
 				pendingFinal={pendingFinal}

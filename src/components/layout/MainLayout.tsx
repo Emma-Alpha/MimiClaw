@@ -23,7 +23,7 @@ export function MainLayout() {
     || pathname.startsWith('/chat/');
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background relative">
+    <div className="flex h-screen flex-col overflow-hidden relative">
       <JizhiSessionBridge />
       <RemoteMessengerSessionBridge />
       <VoiceChatSessionBridge />
@@ -36,7 +36,7 @@ export function MainLayout() {
         <Sidebar />
         <main
           className={cn(
-            'flex min-h-0 min-w-0 flex-1 flex-col relative',
+            'flex min-h-0 min-w-0 flex-1 flex-col relative bg-background',
             fullBleed ? 'overflow-hidden p-0' : 'overflow-hidden',
           )}
         >

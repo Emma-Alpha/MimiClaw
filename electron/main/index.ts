@@ -387,6 +387,12 @@ function createWindow(): BrowserWindow {
     trafficLightPosition: isMac ? { x: 16, y: 16 } : undefined,
     frame: isMac || !useCustomTitleBar,
     show: false,
+    // macOS: native sidebar vibrancy (blurs the desktop behind the window)
+    ...(isMac ? {
+      vibrancy: 'sidebar' as const,
+      visualEffectState: 'active' as const,
+      backgroundColor: '#00000000',
+    } : {}),
   });
 
   // Handle external links

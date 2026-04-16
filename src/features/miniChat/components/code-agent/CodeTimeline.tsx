@@ -15,7 +15,7 @@ import { ApiRetryNotice } from "./ApiRetryNotice";
 import { TaskStart, TaskEnd } from "./TaskBoundary";
 import { ResultSummary } from "./ResultSummary";
 import { StatusIndicator } from "./StatusIndicator";
-import { ReadOnlySlateMessage } from "../ReadOnlySlateMessage";
+import { ReadOnlySlateMessage } from "@/components/common/ReadOnlySlateMessage";
 import { useMiniChatStyles } from "../../styles";
 
 interface Props {
@@ -42,23 +42,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		padding-left: 10px;
 		margin-left: 2px;
 	`,
-	userBubbleContainer: css`
-		display: flex;
-		justify-content: flex-end;
-		margin: 8px 0;
-	`,
-	userBubble: css`
-		font-size: 13px;
-		color: ${token.colorText};
-		background: ${token.colorBgContainer};
-		padding: 8px 12px;
-		border-radius: 12px 12px 0 12px;
-		max-width: 85%;
-		border: 1px solid color-mix(in srgb, ${token.colorBgContainer} 66%, transparent);
-		word-break: break-word;
-		white-space: pre-wrap;
-	`,
-	userImageList: css`
+userImageList: css`
 		display: flex;
 		flex-wrap: wrap;
 		gap: 6px;
@@ -190,7 +174,7 @@ export function CodeTimeline({
 	spinnerMode,
 }: Props) {
 	const { styles } = useStyles();
-	const { styles: miniChatStyles, cx } = useMiniChatStyles();
+	const { styles: miniChatStyles } = useMiniChatStyles();
 	const hasVendorStatusText = vendorStatusText.trim().length > 0;
 	const hasLiveCursor =
 		isThinking
@@ -238,7 +222,6 @@ export function CodeTimeline({
 
 			case "user":
 				return (
-				
 					<ChatItem
 						key={item.id}
 						avatar={{
@@ -246,12 +229,14 @@ export function CodeTimeline({
 							backgroundColor: "transparent",
 							title: "You",
 						}}
-						className={cx(miniChatStyles.chatItem, styles.userBubbleContainer)}
+						className={miniChatStyles.chatItemUser}
 						message={item.text || ""}
 						placement="right"
-						renderMessage={() => <div className={miniChatStyles.userMessageText}>
-							<UserMessageContent item={item} styles={styles} />
-						</div>}
+						renderMessage={() => (
+							<div className={miniChatStyles.userMessageText}>
+								<UserMessageContent item={item} styles={styles} />
+							</div>
+						)}
 						showTitle={false}
 						showAvatar={false}
 						variant="bubble"

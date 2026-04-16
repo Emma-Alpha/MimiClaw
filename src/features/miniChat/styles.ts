@@ -975,13 +975,13 @@ export const useMiniChatStyles = createStyles(
 		min-width: 0;
 	`,
 		userAvatar: css`
-		width: 22px;
-		height: 22px;
+		width: 20px;
+		height: 20px;
 		border-radius: 999px;
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 11px;
+		font-size: 10px;
 		font-weight: 600;
 		color: ${token.colorTextSecondary};
 		border: 1px solid ${token.colorBorderSecondary};
@@ -1008,8 +1008,8 @@ export const useMiniChatStyles = createStyles(
 		background: ${token.colorBgElevated};
 	`,
 		userMessageText: css`
-		font-size: 13px;
-		line-height: 1.5;
+		font-size: var(--mimi-font-size-base);
+		line-height: var(--mimi-line-height-base);
 		color: ${token.colorText};
 		white-space: pre-wrap;
 		word-break: break-word;
@@ -1110,43 +1110,43 @@ export const useMiniChatStyles = createStyles(
 		messageMetaRow: css`
 		display: inline-flex;
 		align-items: center;
-		gap: 5px;
-		margin: 1px 0 4px 2px;
-		min-height: 18px;
+		gap: 6px;
+		margin: 0 0 8px 2px;
+		min-height: 20px;
 	`,
 		messageMetaAvatar: css`
-		width: 18px;
-		height: 18px;
+		width: 20px;
+		height: 20px;
 		border-radius: 999px;
+		flex-shrink: 0;
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		border: 1px solid rgba(15, 23, 42, 0.12);
-		background: rgba(255, 255, 255, 0.92);
-		box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+		background: ${token.colorBgContainer};
+		border: 1px solid ${token.colorBorderSecondary};
 	`,
 		messageMetaLabel: css`
-		font-size: 11px;
-		font-weight: 600;
+		font-size: var(--mimi-font-size-sm);
+		font-weight: var(--mimi-font-weight-semibold);
 		letter-spacing: 0.01em;
-		color: rgba(15, 23, 42, 0.78);
+		color: ${token.colorTextSecondary};
 	`,
 		messageMetaDot: css`
-		font-size: 10px;
-		color: rgba(15, 23, 42, 0.38);
+		font-size: var(--mimi-font-size-xs);
+		color: ${token.colorTextQuaternary};
 	`,
 		messageMetaTime: css`
-		font-size: 11px;
-		color: rgba(15, 23, 42, 0.52);
+		font-size: var(--mimi-font-size-xs);
+		color: ${token.colorTextTertiary};
 		font-variant-numeric: tabular-nums;
 	`,
 		messageMetaStreaming: css`
-		font-size: 10px;
-		font-weight: 500;
-		padding: 1px 6px;
+		font-size: var(--mimi-font-size-xs);
+		font-weight: var(--mimi-font-weight-medium);
+		padding: 2px 7px;
 		border-radius: 999px;
-		color: rgba(37, 99, 235, 0.9);
-		background: rgba(37, 99, 235, 0.12);
+		color: ${token.colorPrimary};
+		background: ${token.colorPrimaryBg};
 	`,
 		chatItem: css`
 		width: 100%;
@@ -1164,28 +1164,16 @@ export const useMiniChatStyles = createStyles(
 				transform: translateY(0) scale(1);
 			}
 		}
-
-		:global {
-			.lobe-chat-item {
-				width: 100%;
-				gap: 4px !important;
-				padding: 8px 0 4px !important;
-			}
-			.lobe-chat-item-message {
-				margin-left: 0 !important;
-				margin-right: 0 !important;
-				align-items: flex-start !important;
-				gap: 2px !important;
-			}
-			.lobe-chat-item-message-item {
-				padding: 8px 12px !important;
-				max-width: 100% !important;
-			}
-		}
+	`,
+		chatItemUser: css`
+		width: 100%;
+		animation: chatSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+		transform-origin: bottom right;
+		transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
 	`,
 		markdownBubble: css`
-		font-size: 13px;
-		line-height: 1.5 !important;
+		font-size: var(--mimi-font-size-base);
+		line-height: var(--mimi-line-height-relaxed) !important;
 		color: ${token.colorText};
 		overflow-wrap: anywhere;
 		letter-spacing: 0;
@@ -1193,6 +1181,37 @@ export const useMiniChatStyles = createStyles(
 		& p {
 			margin: 0 !important;
 		}
+
+		& p + p {
+			margin-top: 0.9em !important;
+		}
+
+		pre {
+			margin: 0.75em 0 !important;
+			border-radius: ${token.borderRadiusLG}px;
+			overflow: hidden;
+			border: 1px solid ${token.colorBorderSecondary} !important;
+		}
+
+		:not(pre) > code {
+			padding: 0.15em 0.4em;
+			border-radius: ${token.borderRadiusSM}px;
+			background: ${token.colorFillTertiary};
+			font-family: ${token.fontFamilyCode};
+			font-size: 0.92em;
+		}
+	`,
+		pathTag: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		max-width: 220px;
+		padding: 3px 8px;
+		border-radius: 14px;
+		font-size: var(--mimi-font-size-sm);
+		border: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorFillTertiary};
+		color: ${token.colorText};
 	`,
 	inputDock: css`
 		padding: 10px 12px 12px;

@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { File } from 'lucide-react';
+import { File, Folder } from 'lucide-react';
 import { ChatItem } from '@lobehub/ui/chat';
+import type { Descendant } from 'slate';
 
 import type { AttachedFileMeta, RawMessage } from '@/stores/chat';
+import { ReadOnlySlateMessage } from '@/components/common/ReadOnlySlateMessage';
 import { renderUserTextBubble } from './protocols/user';
 import {
   FileCard,
@@ -14,22 +16,54 @@ import { imageSrc } from './media-utils';
 import { useMessageStyles } from './styles';
 import type { ExtractedImage, LightboxImage, MessageProtocol } from './types';
 
+export interface UserMessagePathTag {
+  absolutePath: string;
+  name: string;
+  isDirectory: boolean;
+}
+
+export interface UserMessageImagePreview {
+  preview: string | null;
+  fileName: string;
+}
+
+function hasInlineElements(content: Descendant[]): boolean {
+  for (const node of content) {
+    if (typeof node === 'object' && node !== null) {
+      const t = (node as { type?: string }).type;
+      if (t === 'path' || t === 'skill') return true;
+      if ('children' in node && Array.isArray((node as { children: unknown[] }).children)) {
+        if (hasInlineElements((node as { children: Descendant[] }).children)) return true;
+      }
+    }
+  }
+  return false;
+}
+
 interface UserMessageProps {
-  attachedFiles: AttachedFileMeta[];
-  hasText: boolean;
-  images: ExtractedImage[];
-  message: RawMessage;
-  protocol: MessageProtocol;
-  text: string;
+  text?: string;
+  // Full-chat props (optional, default to empty)
+  attachedFiles?: AttachedFileMeta[];
+  hasText?: boolean;
+  images?: ExtractedImage[];
+  message?: RawMessage;
+  protocol?: MessageProtocol;
+  // MiniChat extension props
+  imagePreviews?: UserMessageImagePreview[];
+  pathTags?: UserMessagePathTag[];
+  richContent?: Descendant[];
 }
 
 export function UserMessage({
-  attachedFiles,
-  hasText,
-  images,
+  text = '',
+  attachedFiles = [],
+  images = [],
   message,
-  protocol,
-  text,
+  protocol = 'generic',
+  hasText,
+  imagePreviews,
+  pathTags,
+  richContent,
 }: UserMessageProps) {
   void message;
   const { styles, cx } = useMessageStyles();
@@ -39,12 +73,18 @@ export function UserMessage({
   const nonVideoFiles = attachedFiles.filter((f) => !f.mimeType.startsWith('video/'));
 
   const hasMedia = images.length > 0 || nonVideoFiles.length > 0 || videoFiles.length > 0;
+  const hasRich = !!richContent && richContent.length > 0 && hasInlineElements(richContent);
+  const hasPathTags = !!pathTags && pathTags.length > 0;
+  const hasImagePreviews = !!imagePreviews && imagePreviews.length > 0;
+
+  const effectiveHasText =
+    hasText ?? (text.trim().length > 0 || hasRich || hasPathTags || hasImagePreviews);
 
   const mediaSection = hasMedia ? (
     <div
       className={cx(
         styles.userMediaSection,
-        hasText && styles.userMediaSectionWithText,
+        effectiveHasText && styles.userMediaSectionWithText,
       )}
     >
       {images.length > 0 && (
@@ -52,7 +92,6 @@ export function UserMessage({
           {images.map((img, i) => {
             const src = imageSrc(img);
             if (!src) return null;
-
             return (
               <ImageThumbnail
                 key={`content-img-${src ?? img.mimeType}-${i}`}
@@ -120,7 +159,7 @@ export function UserMessage({
   return (
     <div className={cx(styles.userTurn, styles.chatItem)}>
       {mediaSection}
-      {hasText && (
+      {effectiveHasText && (
         <ChatItem
           avatar={{
             avatar: <span className={styles.userAvatar}>我</span>,
@@ -130,7 +169,114 @@ export function UserMessage({
           className={cx(styles.chatItem, styles.userChatItem)}
           message={text}
           placement="right"
-          renderMessage={() => renderUserTextBubble(protocol, { className: styles.userMessageText, text })}
+          renderMessage={() => {
+            // MiniChat: rich Slate content (inline path/skill nodes)
+            if (hasRich) {
+              return (
+                <div className={styles.userMessageText}>
+                  {hasImagePreviews && (
+                    <div
+                      className={styles.pathTagRow}
+                      style={{ marginBottom: 6 }}
+                    >
+                      {imagePreviews!.map((img) =>
+                        img.preview ? (
+                          <img
+                            key={img.fileName}
+                            src={img.preview}
+                            alt={img.fileName}
+                            title={img.fileName}
+                            style={{
+                              maxWidth: 120,
+                              maxHeight: 90,
+                              borderRadius: 6,
+                              objectFit: 'cover',
+                              display: 'block',
+                            }}
+                          />
+                        ) : (
+                          <span key={img.fileName} style={{ fontSize: 11, opacity: 0.6 }}>
+                            {img.fileName}
+                          </span>
+                        ),
+                      )}
+                    </div>
+                  )}
+                  <ReadOnlySlateMessage content={richContent!} />
+                </div>
+              );
+            }
+
+            // MiniChat: path tags + optional plain text
+            if (hasPathTags || hasImagePreviews) {
+              const hasBody = text.trim().length > 0;
+              return (
+                <div className={styles.userMessageText}>
+                  {hasImagePreviews && (
+                    <div
+                      className={styles.pathTagRow}
+                      style={{ marginBottom: hasPathTags || hasBody ? 6 : 0 }}
+                    >
+                      {imagePreviews!.map((img) =>
+                        img.preview ? (
+                          <img
+                            key={img.fileName}
+                            src={img.preview}
+                            alt={img.fileName}
+                            title={img.fileName}
+                            style={{
+                              maxWidth: 120,
+                              maxHeight: 90,
+                              borderRadius: 6,
+                              objectFit: 'cover',
+                              display: 'block',
+                            }}
+                          />
+                        ) : (
+                          <span key={img.fileName} style={{ fontSize: 11, opacity: 0.6 }}>
+                            {img.fileName}
+                          </span>
+                        ),
+                      )}
+                    </div>
+                  )}
+                  {hasPathTags && (
+                    <div
+                      className={styles.pathTagRow}
+                      style={{ marginBottom: hasBody ? 6 : 0 }}
+                    >
+                      {pathTags!.map((tag) => (
+                        <span
+                          key={tag.absolutePath}
+                          className={styles.pathTag}
+                          title={tag.absolutePath}
+                        >
+                          {tag.isDirectory ? (
+                            <Folder size={12} style={{ flexShrink: 0 }} />
+                          ) : (
+                            <File size={12} style={{ flexShrink: 0 }} />
+                          )}
+                          <span
+                            style={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {tag.name}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {hasBody && <span>{text}</span>}
+                </div>
+              );
+            }
+
+            // Default: full-chat plain text bubble
+            return renderUserTextBubble(protocol, { className: styles.userMessageText, text });
+          }}
           showAvatar={false}
           showTitle={false}
           variant="bubble"

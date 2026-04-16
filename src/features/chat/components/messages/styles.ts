@@ -94,6 +94,23 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     white-space: pre-wrap;
     word-break: break-word;
   `,
+  pathTagRow: css`
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  `,
+  pathTag: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 220px;
+    padding: 3px 8px;
+    border-radius: 14px;
+    font-size: var(--mimi-font-size-sm);
+    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorFillTertiary};
+    color: ${token.colorText};
+  `,
   messageMetaRow: css`
     display: inline-flex;
     align-items: center;

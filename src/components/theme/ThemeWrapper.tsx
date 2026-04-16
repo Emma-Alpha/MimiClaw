@@ -3,7 +3,7 @@
  * Provides antd v6 + antd-style theme context using @4399ywkf/theme-system color algorithms.
  * Bridges the existing useSettingsStore theme ('light' | 'dark' | 'system') to antd-style.
  */
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { ConfigProvider as AntdConfigProvider } from 'antd';
 import { ConfigProvider as LobeConfigProvider, ThemeProvider as LobeThemeProvider } from '@lobehub/ui';
 // @ts-expect-error – internal path, not in public types
@@ -83,8 +83,12 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
   const resolvedAppearance = resolveAppearance(theme);
 
   // Sync data-theme attribute for antd CSS variable mode
-  useEffect(() => {
+  // and the .dark class for Tailwind CSS variables (darkMode: ['class'])
+  // useLayoutEffect fires synchronously before the browser paints, preventing
+  // a flash of wrong text colors on first render in dark mode.
+  useLayoutEffect(() => {
     document.documentElement.dataset.theme = resolvedAppearance;
+    document.documentElement.classList.toggle('dark', resolvedAppearance === 'dark');
   }, [resolvedAppearance]);
 
   const getAntdTheme = useCallback<GetAntdTheme>(

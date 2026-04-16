@@ -12,7 +12,15 @@
       "Bash(grep -l \"modal\\\\|dialog\\\\|pending\" /Users/liangpingbo/Desktop/个人/MimiClaw/src/pages/*.tsx)",
       "Bash(npx tsc *)",
       "Bash(xargs ls *)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Read(//private/tmp/**)",
+      "Bash(cp /Applications/Codex.app/Contents/Resources/app.asar .)",
+      "Bash(npx --yes @electron/asar extract app.asar codex_extracted)",
+      "Bash(ls /tmp/codex_extracted/webview/assets/*.css)",
+      "Bash(grep -r \"backdrop-filter\\\\|backdrop_filter\\\\|blur\\\\|sidebar\\\\|--sidebar\\\\|nav.*background\\\\|sidebar.*background\" /tmp/codex_extracted/webview/assets/*.css)",
+      "Bash(ls /tmp/codex_extracted/webview/assets/*.js)",
+      "Bash(xargs -I{} sh -c 'wc -c \"{}\" | awk \"{print \\\\$1, \\\\\"{}\\\\\"}')",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('main:', d.get\\('main'\\)\\); print\\('module:', d.get\\('module'\\)\\); print\\('exports:', list\\(d.get\\('exports',{}\\).keys\\(\\)\\)[:5]\\)\")"
     ]
   }
 }

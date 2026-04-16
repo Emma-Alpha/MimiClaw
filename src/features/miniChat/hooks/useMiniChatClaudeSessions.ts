@@ -85,6 +85,13 @@ export function useMiniChatClaudeSessions({
 
 			try {
 				const result = await fetchCodeAgentSessionHistory(workspaceRoot, sessionId, 300);
+
+				// If the user requested a fresh session while this fetch was in-flight,
+				// discard the stale history so old messages don't bleed into the new thread.
+				if (forceFreshSessionOnNextSubmitRef.current) {
+					return false;
+				}
+
 				const replayContextUsage = deriveContextUsageFromRawMessages(
 					result.rawSdkMessages,
 					null,
