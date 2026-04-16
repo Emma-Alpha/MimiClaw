@@ -9,6 +9,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
   return {
   chatItem: css`
     width: 100%;
+    box-sizing: border-box;
     animation: chatSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     transform-origin: bottom center;
 
@@ -27,6 +28,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     :global {
       .lobe-chat-item {
         width: 100%;
+        box-sizing: border-box !important;
         gap: 8px !important;
         padding: 8px 0 !important;
         align-items: flex-start !important;
@@ -38,11 +40,13 @@ export const useMessageStyles = createStyles(({ token, css }) => {
         align-items: flex-start !important;
         gap: 12px !important;
         width: 100%;
+        box-sizing: border-box !important;
       }
 
       .lobe-chat-item-message-item {
         width: 100% !important;
         max-width: 100% !important;
+        box-sizing: border-box !important;
         padding: 0 !important;
         background: transparent !important;
         border: none !important;
@@ -54,6 +58,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     :global {
       .lobe-chat-item {
         width: 100%;
+        box-sizing: border-box !important;
         gap: 6px !important;
         padding: 8px 0 !important;
       }
@@ -68,6 +73,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
   `,
   userTurn: css`
     width: 100%;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -76,6 +82,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     display: flex;
     justify-content: flex-end;
     width: 100%;
+    box-sizing: border-box;
   `,
   userBubble: css`
     max-width: 78%;
@@ -184,6 +191,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     min-height: 1.5em;
     width: 100%;
     max-width: 100%;
+    box-sizing: border-box;
     font-size: var(--mimi-font-size-base);
     line-height: var(--mimi-line-height-relaxed);
     color: ${token.colorText};
@@ -314,12 +322,14 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     flex-direction: column;
     gap: 8px;
     width: 100%;
+    box-sizing: border-box;
   `,
   assistantToolStack: css`
     display: flex;
     flex-direction: column;
     gap: 6px;
     width: 100%;
+    box-sizing: border-box;
   `,
   activityElapsed: css`
     font-size: var(--mimi-font-size-sm);
@@ -353,6 +363,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     align-items: center;
     gap: 8px;
     width: 100%;
+    box-sizing: border-box;
     padding: 8px 12px;
     color: ${token.colorTextSecondary};
     cursor: pointer;
@@ -386,6 +397,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
   `,
   toolStatusBar: css`
     width: 100%;
+    box-sizing: border-box;
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
@@ -656,6 +668,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     align-items: center;
     gap: 6px;
     width: 100%;
+    box-sizing: border-box;
     padding: 8px 12px;
     color: ${token.colorTextSecondary};
     background: none;

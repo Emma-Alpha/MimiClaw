@@ -184,7 +184,7 @@ export function AssistantMessage({
           variant="bubble"
         />
       ) : (
-        <div className={styles.chatItem} style={{ paddingInline: '12px', paddingBlock: '24px 12px' }}>
+        <div className={styles.chatItem} style={{ paddingInline: '12px', paddingBlock: '24px 12px', boxSizing: 'border-box' }}>
           {metaRow}
           {assistantAboveMessage}
           {assistantBelowMessage}
