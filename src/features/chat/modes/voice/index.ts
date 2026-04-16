@@ -1,1 +1,1 @@
-export { VoiceChatHistory } from '@/pages/VoiceChatHistory';
+export { VoiceChatHistory } from './VoiceChatHistory';

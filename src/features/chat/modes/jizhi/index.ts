@@ -1,1 +1,1 @@
-export { JizhiChat } from '@/pages/JizhiChat';
+export { JizhiChat } from './JizhiChat';
