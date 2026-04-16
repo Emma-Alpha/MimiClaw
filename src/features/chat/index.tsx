@@ -72,18 +72,21 @@ const useStyles = createStyles(({ token, css }) => ({
   scrollableContent: css`
     height: 100%;
     overflow-y: auto;
-    padding: 12px var(--chat-window-side-gap) 24px;
+    padding: 12px 0 24px;
   `,
   scrollableInner: css`
-    max-width: var(--chat-window-content-width);
+    max-width: calc(860px + (var(--chat-window-side-gap) * 2));
+    width: 100%;
     margin: 0 auto;
+    padding-inline: var(--chat-window-side-gap);
+    box-sizing: border-box;
   `,
   timelineVirtualItem: css`
-    max-width: var(--chat-window-content-width);
-    margin: 0 auto;
-    padding: 0 0 20px;
-    box-sizing: border-box;
+    max-width: calc(860px + (var(--chat-window-side-gap) * 2));
     width: 100%;
+    margin: 0 auto;
+    padding: 0 var(--chat-window-side-gap) 20px;
+    box-sizing: border-box;
   `,
   backBottomAnchor: css`
     position: absolute;

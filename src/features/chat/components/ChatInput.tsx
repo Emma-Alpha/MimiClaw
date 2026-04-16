@@ -35,9 +35,9 @@ const useStyles = createStyles(({ token, css }) => ({
 	wrapper: css`
     box-sizing: border-box;
     width: 100%;
-    max-width: var(--chat-window-content-width, 800px);
+    max-width: calc(860px + (var(--chat-window-side-gap, 24px) * 2));
     margin: 0 auto;
-    padding: 8px 12px 12px;
+    padding: 8px var(--chat-window-side-gap, 24px) 12px;
     flex-shrink: 0;
     position: relative;
     z-index: 6;
