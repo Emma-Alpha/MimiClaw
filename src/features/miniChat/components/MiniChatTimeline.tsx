@@ -6,7 +6,10 @@ import { ChatItem } from "@lobehub/ui/chat";
 import { useMiniChatStyles } from "../styles";
 import type { TimelineItem } from "../types";
 import { extractText } from "../utils";
-import { CodeTimeline } from "./code-agent/CodeTimeline";
+import { CodeAgentItem, CodeTimeline } from "./code-agent/CodeTimeline";
+import { ThinkingBlock } from "./code-agent/ThinkingBlock";
+import { StreamingText } from "./code-agent/StreamingText";
+import { StatusIndicator } from "./code-agent/StatusIndicator";
 import { TypingIndicator } from "./TypingIndicator";
 import { useFileReferenceMarkdownProps } from "./file-reference-markdown";
 import { BackBottomButton } from "@/components/common/BackBottomButton";
@@ -264,22 +267,61 @@ function MiniChatTimelineImpl({
 		});
 	}
 
-	if (codeSending || codeAgentItems.length > 0 || hasActiveCodeStream) {
+	// Flatten code agent items as individual VList rows for virtualisation
+	for (const item of codeAgentItems) {
+		if (item.kind === "init") continue;
+		if (item.kind === "tool-use" && item.tool.toolName.toLowerCase() === "todowrite") continue;
 		timelineRows.push({
-			key: "code:timeline",
+			key: `code:${item.id}`,
+			node: <CodeAgentItem item={item} workspaceRoot={codeWorkspaceRoot} />,
+		});
+	}
+
+	// Live streaming state as separate VList rows
+	if (isThinking || streamingThinkingText) {
+		timelineRows.push({
+			key: "code:live-thinking",
 			node: (
-				<CodeTimeline
-					items={codeAgentItems}
-					streamingThinkingText={streamingThinkingText}
-					streamingAssistantText={streamingAssistantText}
-					vendorStatusText={effectiveVendorStatusText}
-					isThinking={isThinking}
-					isStreaming={isCodeStreaming}
-					workspaceRoot={codeWorkspaceRoot}
-					spinnerMode={spinnerMode}
+				<ThinkingBlock
+					text={streamingThinkingText}
+					isStreaming={isThinking}
+					isRedacted={false}
 				/>
 			),
 		});
+	}
+
+	if (isCodeStreaming || streamingAssistantText) {
+		timelineRows.push({
+			key: "code:live-streaming",
+			node: (
+				<StreamingText
+					text={streamingAssistantText}
+					isStreaming={isCodeStreaming}
+					workspaceRoot={codeWorkspaceRoot}
+				/>
+			),
+		});
+	}
+
+	if (codeSending || hasActiveCodeStream) {
+		const isBusy =
+			!!spinnerMode || isThinking || isCodeStreaming
+			|| effectiveVendorStatusText.trim().length > 0;
+		const hasLiveCursor =
+			isThinking || isCodeStreaming
+			|| Boolean(streamingThinkingText) || Boolean(streamingAssistantText);
+		if (isBusy) {
+			timelineRows.push({
+				key: "code:status",
+				node: (
+					<StatusIndicator
+						text={effectiveVendorStatusText}
+						showCursor={!hasLiveCursor}
+					/>
+				),
+			});
+		}
 	}
 
 	if (timelineBottomReserve > 0) {
@@ -339,7 +381,15 @@ function MiniChatTimelineImpl({
 				<VList<TimelineRenderRow>
 					ref={vListRef}
 					data={timelineRows}
-					style={{ height: "100%", paddingBottom: 18, paddingTop: 18 }}
+					style={{
+						position: 'absolute',
+						top: 0,
+						left: 0,
+						right: 0,
+						bottom: 0,
+						height: 'auto',
+						paddingBottom: 18,
+					}}
 					onScroll={handleScroll}
 				>
 					{(row) => (

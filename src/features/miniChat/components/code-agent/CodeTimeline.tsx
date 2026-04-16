@@ -163,6 +163,128 @@ function UserMessageContent({
 	);
 }
 
+/**
+ * Renders a single CodeAgentTimelineItem. Used both by CodeTimeline (legacy)
+ * and directly as individual VList rows in MiniChatTimeline for virtualisation.
+ */
+export function CodeAgentItem({
+	item,
+	workspaceRoot,
+}: {
+	item: CodeAgentTimelineItem;
+	workspaceRoot?: string;
+}) {
+	const { styles } = useStyles();
+	const { styles: miniChatStyles } = useMiniChatStyles();
+
+	switch (item.kind) {
+		case "init":
+			return null;
+
+		case "thinking":
+			return (
+				<ThinkingBlock
+					text={item.data.text}
+					isStreaming={item.data.isStreaming}
+					isRedacted={item.data.isRedacted}
+				/>
+			);
+
+		case "assistant-text":
+			return (
+				<StreamingText
+					text={item.text}
+					isStreaming={item.isStreaming}
+					workspaceRoot={workspaceRoot}
+				/>
+			);
+
+		case "tool-use":
+			if (item.tool.toolName.toLowerCase() === "todowrite") return null;
+			return <ToolUseLine tool={item.tool} />;
+
+		case "diff":
+			return <DiffView files={item.files} workspaceRoot={workspaceRoot} />;
+
+		case "user":
+			return (
+				<ChatItem
+					avatar={{
+						avatar: <span className={miniChatStyles.userAvatar}>我</span>,
+						backgroundColor: "transparent",
+						title: "You",
+					}}
+					className={miniChatStyles.chatItemUser}
+					message={item.text || ""}
+					placement="right"
+					renderMessage={() => (
+						<div className={miniChatStyles.userMessageText}>
+							<UserMessageContent item={item} styles={styles} />
+						</div>
+					)}
+					showTitle={false}
+					showAvatar={false}
+					variant="bubble"
+				/>
+			);
+
+		case "system-notice":
+			return <SystemNotice text={item.text} variant={item.variant} />;
+
+		case "compact-boundary":
+			return <CompactBoundary preTokens={item.preTokens} trigger={item.trigger} />;
+
+		case "rate-limit":
+			return (
+				<RateLimitNotice
+					resetsAt={item.resetsAt}
+					utilization={item.utilization}
+					status={item.status}
+				/>
+			);
+
+		case "api-retry":
+			return (
+				<ApiRetryNotice
+					attempt={item.attempt}
+					maxRetries={item.maxRetries}
+					delayMs={item.delayMs}
+					error={item.error}
+				/>
+			);
+
+		case "hook":
+			return (
+				<HookNotice
+					hookName={item.hookName}
+					hookEvent={item.hookEvent}
+					outcome={item.outcome}
+					stdout={item.stdout}
+					exitCode={item.exitCode}
+				/>
+			);
+
+		case "task-start":
+			return <TaskStart taskId={item.taskId} description={item.description} />;
+
+		case "task-end":
+			return <TaskEnd taskId={item.taskId} status={item.status} summary={item.summary} />;
+
+		case "result":
+			return (
+				<ResultSummary
+					isError={item.isError}
+					numTurns={item.numTurns}
+					totalCostUsd={item.totalCostUsd}
+					durationMs={item.durationMs}
+				/>
+			);
+
+		default:
+			return null;
+	}
+}
+
 export function CodeTimeline({
 	items,
 	streamingThinkingText = "",
@@ -174,160 +296,12 @@ export function CodeTimeline({
 	spinnerMode,
 }: Props) {
 	const { styles } = useStyles();
-	const { styles: miniChatStyles } = useMiniChatStyles();
 	const hasVendorStatusText = vendorStatusText.trim().length > 0;
 	const hasLiveCursor =
 		isThinking
 		|| isStreaming
 		|| Boolean(streamingThinkingText)
 		|| Boolean(streamingAssistantText);
-
-	const renderItem = (item: CodeAgentTimelineItem, inTask = false) => {
-		const wrap = (el: React.ReactNode) =>
-			inTask ? <div className={styles.taskIndent}>{el}</div> : el;
-
-		switch (item.kind) {
-			case "init":
-				// Session init info is shown in the dynamic island header, not inline
-				return null;
-
-			case "thinking":
-				return wrap(
-					<ThinkingBlock
-						key={item.id}
-						text={item.data.text}
-						isStreaming={item.data.isStreaming}
-						isRedacted={item.data.isRedacted}
-					/>,
-				);
-
-			case "assistant-text":
-				return wrap(
-					<StreamingText
-						key={item.id}
-						text={item.text}
-						isStreaming={item.isStreaming}
-						workspaceRoot={workspaceRoot}
-					/>,
-				);
-
-			case "tool-use":
-				if (item.tool.toolName.toLowerCase() === "todowrite") return null;
-				return wrap(<ToolUseLine key={item.id} tool={item.tool} />);
-
-			case "diff":
-				return wrap(
-					<DiffView key={item.id} files={item.files} workspaceRoot={workspaceRoot} />,
-				);
-
-			case "user":
-				return (
-					<ChatItem
-						key={item.id}
-						avatar={{
-							avatar: <span className={miniChatStyles.userAvatar}>我</span>,
-							backgroundColor: "transparent",
-							title: "You",
-						}}
-						className={miniChatStyles.chatItemUser}
-						message={item.text || ""}
-						placement="right"
-						renderMessage={() => (
-							<div className={miniChatStyles.userMessageText}>
-								<UserMessageContent item={item} styles={styles} />
-							</div>
-						)}
-						showTitle={false}
-						showAvatar={false}
-						variant="bubble"
-					/>
-				);
-
-			case "system-notice":
-				return (
-					<SystemNotice
-						key={item.id}
-						text={item.text}
-						variant={item.variant}
-					/>
-				);
-
-			case "compact-boundary":
-				return (
-					<CompactBoundary
-						key={item.id}
-						preTokens={item.preTokens}
-						trigger={item.trigger}
-					/>
-				);
-
-			case "rate-limit":
-				return (
-					<RateLimitNotice
-						key={item.id}
-						resetsAt={item.resetsAt}
-						utilization={item.utilization}
-						status={item.status}
-					/>
-				);
-
-			case "api-retry":
-				return (
-					<ApiRetryNotice
-						key={item.id}
-						attempt={item.attempt}
-						maxRetries={item.maxRetries}
-						delayMs={item.delayMs}
-						error={item.error}
-					/>
-				);
-
-			case "hook":
-				return (
-					<HookNotice
-						key={item.id}
-						hookName={item.hookName}
-						hookEvent={item.hookEvent}
-						outcome={item.outcome}
-						stdout={item.stdout}
-						exitCode={item.exitCode}
-					/>
-				);
-
-			case "task-start":
-				return (
-					<TaskStart
-						key={item.id}
-						taskId={item.taskId}
-						description={item.description}
-					/>
-				);
-
-			case "task-end":
-				return (
-					<TaskEnd
-						key={item.id}
-						taskId={item.taskId}
-						status={item.status}
-						summary={item.summary}
-					/>
-				);
-
-			case "result":
-				return (
-					<ResultSummary
-						key={item.id}
-						isError={item.isError}
-						numTurns={item.numTurns}
-						totalCostUsd={item.totalCostUsd}
-						durationMs={item.durationMs}
-					/>
-				);
-
-			default:
-				return null;
-		}
-	};
 
 	const isBusy =
 		!!spinnerMode
@@ -337,9 +311,10 @@ export function CodeTimeline({
 
 	return (
 		<div className={styles.root}>
-			{items.map((item) => renderItem(item))}
+			{items.map((item) => (
+				<CodeAgentItem key={item.id} item={item} workspaceRoot={workspaceRoot} />
+			))}
 
-			{/* Live thinking stream */}
 			{(isThinking || streamingThinkingText) && (
 				<ThinkingBlock
 					key="live-thinking"
@@ -349,7 +324,6 @@ export function CodeTimeline({
 				/>
 			)}
 
-			{/* Live assistant text stream */}
 			{(isStreaming || streamingAssistantText) && (
 				<StreamingText
 					text={streamingAssistantText}
@@ -358,13 +332,12 @@ export function CodeTimeline({
 				/>
 			)}
 
-			{/* ✶ Status indicator – visible for all busy spinner modes */}
-				{isBusy && (
-					<StatusIndicator
-						text={vendorStatusText}
-						showCursor={!hasLiveCursor}
-					/>
-				)}
-			</div>
+			{isBusy && (
+				<StatusIndicator
+					text={vendorStatusText}
+					showCursor={!hasLiveCursor}
+				/>
+			)}
+		</div>
 	);
 }

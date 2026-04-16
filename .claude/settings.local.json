@@ -30,7 +30,10 @@
       "Bash(grep -h \"from.*@/\" /Users/liangpingbo/Desktop/4399/frontend/lobe-chat/src/features/NavPanel/*.tsx /Users/liangpingbo/Desktop/4399/frontend/lobe-chat/src/features/NavPanel/components/*.tsx)",
       "Bash(grep -h \"useTranslation\\\\|i18n\\\\|i18next\" /Users/liangpingbo/Desktop/4399/frontend/lobe-chat/src/features/NavPanel/components/*.tsx)",
       "Bash(grep -h \"\\\\.module\\\\.css\\\\|\\\\.css\\\\|createStyles\\\\|createStaticStyles\" /Users/liangpingbo/Desktop/4399/frontend/lobe-chat/src/features/NavPanel/components/*.tsx)",
-      "Bash(grep -h \"\\\\.module\\\\.css\\\\|\\\\.css\\\\|createStyles\\\\|createStaticStyles\" /Users/liangpingbo/Desktop/4399/frontend/MimiClaw/src/features/chat/*.tsx)"
+      "Bash(grep -h \"\\\\.module\\\\.css\\\\|\\\\.css\\\\|createStyles\\\\|createStaticStyles\" /Users/liangpingbo/Desktop/4399/frontend/MimiClaw/src/features/chat/*.tsx)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(ls src/*.css src/**/*.css)"
     ]
   }
 }

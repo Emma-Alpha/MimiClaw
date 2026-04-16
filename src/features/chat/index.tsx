@@ -67,6 +67,7 @@ const useStyles = createStyles(({ token, css }) => ({
   messagesArea: css`
     position: relative;
     flex: 1;
+    min-height: 0;
     overflow: hidden;
   `,
   scrollableContent: css`
@@ -494,7 +495,14 @@ export function Chat() {
           <VList<TimelineRenderRow>
             ref={vListRef}
             data={timelineRows}
-            style={{ height: '100%', paddingTop: 12 }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 'auto',
+            }}
             onScroll={handleScroll}
           >
             {(row) => (
