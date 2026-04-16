@@ -29,6 +29,7 @@ import { toast } from 'sonner';
 import { invokeIpc } from '@/lib/api-client';
 import { hostApiFetch } from '@/lib/host-api';
 import { resolveCloudOnlyMode } from '@/lib/app-env';
+import { useSetupStyles } from './styles';
 
 interface SetupStep {
   id: string;
@@ -99,6 +100,7 @@ const providers = SETUP_PROVIDERS;
 
 export function Setup() {
   const { t } = useTranslation(['setup', 'channels']);
+  const { styles } = useSetupStyles();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<number>(STEP.WELCOME);
   const isCloudOnlyBuild = resolveCloudOnlyMode();
@@ -150,30 +152,33 @@ export function Setup() {
   }, [markSetupComplete, navigate, t]);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground relative">
+    <div className={styles.pageRoot}>
       {/* Subtle background decoration */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background pointer-events-none" />
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className={styles.bgGradient} />
+      <div className={styles.bgBlob1} />
+      <div className={styles.bgBlob2} />
 
       <TitleBar hideSidebarToggle />
-      <div className="flex-1 flex flex-col items-center justify-center p-4 z-10">
+      <div className={styles.centerArea}>
 
         {/* Step progress indicator */}
-        <div className="mb-8 flex gap-2 items-center">
+        <div className={styles.stepProgress}>
           {steps.map((s, i) => (
             <div
               key={s.id}
-              className={cn(
-                "h-1.5 rounded-full transition-all duration-500",
-                i === safeStepIndex ? "w-8 bg-primary" : i < safeStepIndex ? "w-2 bg-primary/40" : "w-2 bg-border"
-              )}
+              className={
+                i === safeStepIndex
+                  ? styles.stepDotActive
+                  : i < safeStepIndex
+                    ? styles.stepDotPast
+                    : styles.stepDotFuture
+              }
             />
           ))}
         </div>
 
         {/* Floating Setup Card */}
-        <div className="w-full max-w-[480px] bg-card/60 backdrop-blur-2xl border border-white/10 dark:border-white/5 rounded-[32px] shadow-2xl shadow-black/5 overflow-hidden">
+        <div className={styles.setupCard}>
           <AnimatePresence mode="wait" custom={currentStep}>
             <motion.div
               key={safeStepIndex}
@@ -181,9 +186,9 @@ export function Setup() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.98 }}
               transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-              className="p-8 sm:p-10 flex flex-col min-h-[400px]"
+              className={styles.stepContent}
             >
-              <div className="flex-1 flex flex-col">
+              <div className={styles.stepContentInner}>
                 {safeStepIndex === STEP.WELCOME && <WelcomeContent />}
                 {safeStepIndex === STEP.PROVIDER && (
                   <ProviderContent
@@ -209,30 +214,27 @@ export function Setup() {
 
               {/* Navigation Footer — hidden during Installing (controlled inline) */}
               {safeStepIndex !== STEP.INSTALLING && (
-                <div className="mt-10 flex items-center justify-between pt-4 border-t border-border/40">
-                  <div className="flex gap-2">
+                <div className={styles.navFooter}>
+                  <div className={styles.navLeft}>
                     {!isFirstStep && (
-                      <Button variant="ghost" onClick={handleBack} className="text-muted-foreground hover:text-foreground">
-                        <ChevronLeft className="h-4 w-4 mr-1" />
+                      <Button variant="ghost" onClick={handleBack} className={styles.btnGhostMuted}>
+                        <ChevronLeft style={{ width: 16, height: 16, marginRight: 4 }} />
                         {t('nav.back')}
                       </Button>
                     )}
                   </div>
-                  <div className="flex gap-2 items-center">
+                  <div className={styles.navRight}>
                     {/* Skip is secondary — subtle text link to reduce misclick risk */}
-                    <button
-                      onClick={handleSkip}
-                      className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors px-2 py-2"
-                    >
+                    <button onClick={handleSkip} className={styles.skipButton}>
                       {t('nav.skipSetup')}
                     </button>
                     <Button
                       onClick={handleNext}
                       disabled={!canProceed}
-                      className="rounded-full px-6 shadow-md"
+                      className={styles.btnRoundedFull}
                     >
                       {t('nav.next')}
-                      <ChevronRight className="h-4 w-4 ml-1" />
+                      <ChevronRight style={{ width: 16, height: 16, marginLeft: 4 }} />
                     </Button>
                   </div>
                 </div>
@@ -249,38 +251,32 @@ export function Setup() {
 
 function WelcomeContent() {
   const { t } = useTranslation('setup');
+  const { styles } = useSetupStyles();
   const { language, setLanguage } = useSettingsStore();
 
   return (
-    <div className="flex flex-col items-center justify-center text-center space-y-8 flex-1 py-4">
-      <div className="relative">
-        <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full" />
+    <div className={styles.welcomeRoot}>
+      <div className={styles.welcomeIconWrapper}>
+        <div className={styles.welcomeIconGlow} />
         <img
           src={mimiclawIcon}
           alt="Logo"
-          className="relative h-24 w-24 rounded-[28px] object-cover shadow-2xl ring-1 ring-white/10"
+          className={styles.welcomeIcon}
         />
       </div>
 
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold tracking-tight">{t('welcome.title')}</h2>
-        <p className="text-muted-foreground text-sm max-w-[280px] mx-auto leading-relaxed">
-          {t('welcome.description')}
-        </p>
+      <div className={styles.welcomeTextGroup}>
+        <h2 className={styles.welcomeTitle}>{t('welcome.title')}</h2>
+        <p className={styles.welcomeDesc}>{t('welcome.description')}</p>
       </div>
 
-      <div className="pt-4 w-full max-w-[240px]">
-        <div className="flex bg-muted/50 p-1 rounded-2xl border border-white/5 shadow-inner">
+      <div className={styles.langSwitcherWrapper}>
+        <div className={styles.langSwitcher}>
           {SUPPORTED_LANGUAGES.map((lang) => (
             <button
               key={lang.code}
               onClick={() => setLanguage(lang.code)}
-              className={cn(
-                "flex-1 py-2 text-sm font-medium rounded-xl transition-all duration-300",
-                language === lang.code
-                  ? "bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/5"
-                  : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
-              )}
+              className={language === lang.code ? styles.langBtnActive : styles.langBtnInactive}
             >
               {lang.label}
             </button>
@@ -312,6 +308,7 @@ function ProviderContent({
   isRemoteMode,
 }: ProviderContentProps) {
   const { t } = useTranslation(['setup', 'settings']);
+  const { styles, cx } = useSetupStyles();
   const devModeUnlocked = useSettingsStore((state) => state.devModeUnlocked);
   const [showKey, setShowKey] = useState(false);
   const [validating, setValidating] = useState(false);
@@ -466,49 +463,49 @@ function ProviderContent({
 
   if (isRemoteMode) {
     return (
-      <div className="flex flex-col h-full justify-center space-y-6">
-        <div className="text-center space-y-2 mb-4">
-          <h2 className="text-sm font-semibold tracking-tight">{t('provider.title')}</h2>
+      <div className={styles.providerRemoteRoot}>
+        <div className={styles.providerHeader}>
+          <h2 className={styles.providerTitle}>{t('provider.title')}</h2>
         </div>
-        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6 text-center space-y-3">
-          <CheckCircle2 className="w-8 h-8 text-primary mx-auto mb-2" />
-          <p className="font-medium">{t('provider.remoteModeTitle')}</p>
-          <p className="text-sm text-muted-foreground">{t('provider.remoteModeDesc')}</p>
+        <div className={styles.providerRemoteBox}>
+          <CheckCircle2 style={{ width: 32, height: 32, color: 'var(--ant-color-primary)', margin: '0 auto 8px' }} />
+          <p className={styles.providerRemoteTitle}>{t('provider.remoteModeTitle')}</p>
+          <p className={styles.providerRemoteDesc}>{t('provider.remoteModeDesc')}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full flex-1">
-      <div className="text-center space-y-2 mb-6">
-        <h2 className="text-sm font-semibold tracking-tight">{t('provider.title')}</h2>
-        <p className="text-muted-foreground text-sm">{t('provider.description')}</p>
+    <div className={styles.providerRoot}>
+      <div className={styles.providerHeader}>
+        <h2 className={styles.providerTitle}>{t('provider.title')}</h2>
+        <p className={styles.providerDesc}>{t('provider.description')}</p>
       </div>
 
-      <div className="space-y-5 flex-1">
-        <div className="space-y-2 relative" ref={providerMenuRef}>
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">{t('provider.label')}</Label>
+      <div className={styles.providerFields}>
+        <div className={styles.providerSelectorWrapper} ref={providerMenuRef}>
+          <Label className={styles.providerFieldLabel}>{t('provider.label')}</Label>
           <button
             type="button"
             onClick={() => setProviderMenuOpen(!providerMenuOpen)}
-            className="w-full h-12 px-4 rounded-xl border border-input bg-background/50 hover:bg-accent/50 transition-colors flex items-center justify-between"
+            className={styles.providerSelector}
           >
-            <div className="flex items-center gap-3">
+            <div className={styles.providerSelectorLeft}>
               {selectedProviderData ? (
                 <>
                   {getProviderIconUrl(selectedProviderData.id) ? (
                     <img src={getProviderIconUrl(selectedProviderData.id)} alt="" className={cn("w-5 h-5", shouldInvertInDark(selectedProviderData.id) && "dark:invert")} />
                   ) : <span>{selectedProviderData.icon}</span>}
-                  <span className="font-medium">{selectedProviderData.name}</span>
+                  <span style={{ fontWeight: 500 }}>{selectedProviderData.name}</span>
                 </>
-              ) : <span className="text-muted-foreground">{t('provider.selectPlaceholder', { defaultValue: '选择 AI 提供商...' })}</span>}
+              ) : <span className={styles.providerSelectorPlaceholder}>{t('provider.selectPlaceholder', { defaultValue: '选择 AI 提供商...' })}</span>}
             </div>
-            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            <ChevronDown style={{ width: 16, height: 16, color: 'var(--ant-color-text-secondary)' }} />
           </button>
 
           {providerMenuOpen && (
-            <div className="absolute z-50 top-full left-0 right-0 mt-2 p-2 rounded-xl border border-border bg-popover shadow-xl max-h-56 overflow-auto">
+            <div className={styles.providerDropdown}>
               {providers.map(p => (
                 <button
                   key={p.id}
@@ -517,10 +514,7 @@ function ProviderContent({
                     setProviderMenuOpen(false);
                     setKeyValid(null);
                   }}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
-                    selectedProvider === p.id ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted"
-                  )}
+                  className={selectedProvider === p.id ? styles.providerDropdownItemActive : styles.providerDropdownItemInactive}
                 >
                   {getProviderIconUrl(p.id) ? (
                     <img src={getProviderIconUrl(p.id)} alt="" className={cn("w-4 h-4", shouldInvertInDark(p.id) && "dark:invert")} />
@@ -533,32 +527,32 @@ function ProviderContent({
         </div>
 
         {selectedProvider && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {showBaseUrlField && (
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t('provider.baseUrl')}</Label>
-                <Input value={baseUrl} onChange={e => { setBaseUrl(e.target.value); setKeyValid(null); onConfiguredChange(false); }} className="h-11 rounded-xl bg-background/50" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <Label className={styles.providerFieldSmallLabel}>{t('provider.baseUrl')}</Label>
+                <Input value={baseUrl} onChange={e => { setBaseUrl(e.target.value); setKeyValid(null); onConfiguredChange(false); }} className={styles.inputXl} />
               </div>
             )}
             {showModelIdField && (
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t('provider.modelId')}</Label>
-                <Input value={modelId} onChange={e => setModelId(e.target.value)} className="h-11 rounded-xl bg-background/50" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <Label className={styles.providerFieldSmallLabel}>{t('provider.modelId')}</Label>
+                <Input value={modelId} onChange={e => setModelId(e.target.value)} className={styles.inputXl} />
               </div>
             )}
             {!useOAuthFlow && (
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t('provider.apiKey')}</Label>
-                <div className="relative">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <Label className={styles.providerFieldSmallLabel}>{t('provider.apiKey')}</Label>
+                <div className={styles.providerKeyRow}>
                   <Input
                     type={showKey ? 'text' : 'password'}
                     value={apiKey}
                     onChange={e => { onApiKeyChange(e.target.value); setKeyValid(null); }}
-                    className="h-11 rounded-xl bg-background/50 pr-10"
+                    className={styles.inputXlRight}
                     placeholder="••••••••••••••••"
                   />
-                  <button type="button" onClick={() => setShowKey(!showKey)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <button type="button" onClick={() => setShowKey(!showKey)} className={styles.providerEyeBtn}>
+                    {showKey ? <EyeOff style={{ width: 16, height: 16 }} /> : <Eye style={{ width: 16, height: 16 }} />}
                   </button>
                 </div>
               </div>
@@ -568,15 +562,15 @@ function ProviderContent({
               <Button
                 onClick={handleValidateAndSave}
                 disabled={!canSubmit || validating}
-                className="w-full h-11 rounded-xl mt-4"
+                className={styles.btnWideXl}
               >
-                {validating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                {validating ? <Loader2 style={{ width: 16, height: 16, marginRight: 8 }} className="animate-spin" /> : null}
                 {t('provider.validateSave')}
               </Button>
             )}
 
             {keyValid !== null && (
-              <p className={cn("text-xs text-center font-medium", keyValid ? "text-green-500" : "text-red-500")}>
+              <p className={cx(styles.providerValidMsg, keyValid ? styles.providerValidMsgOk : styles.providerValidMsgErr)}>
                 {keyValid ? `✓ ${t('provider.valid')}` : `✗ ${t('provider.invalid')}`}
               </p>
             )}
@@ -598,6 +592,7 @@ type InstallPhase = 'installing' | 'complete' | 'error';
 
 function InstallingContent({ skills, onFinish, selectedProvider, isCloudOnlyBuild }: InstallingContentProps) {
   const { t } = useTranslation('setup');
+  const { styles } = useSetupStyles();
   const [phase, setPhase] = useState<InstallPhase>('installing');
   const [overallProgress, setOverallProgress] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
@@ -647,25 +642,25 @@ function InstallingContent({ skills, onFinish, selectedProvider, isCloudOnlyBuil
   if (phase === 'complete') {
     const providerData = providers.find((p) => p.id === selectedProvider);
     return (
-      <div className="flex flex-col h-full justify-center items-center text-center space-y-6 flex-1">
+      <div className={styles.completeRoot}>
         <motion.div
           initial={{ scale: 0.5, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: "spring", damping: 15 }}
-          className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center text-green-500"
+          className={styles.completeIconCircle}
         >
-          <CheckCircle2 className="w-10 h-10" />
+          <CheckCircle2 style={{ width: 40, height: 40 }} />
         </motion.div>
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold tracking-tight">{t('complete.title')}</h2>
-          <p className="text-muted-foreground text-sm">{t('complete.subtitle')}</p>
+        <div className={styles.completeTextGroup}>
+          <h2 className={styles.completeTitle}>{t('complete.title')}</h2>
+          <p className={styles.completeSubtitle}>{t('complete.subtitle')}</p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-muted/30 border border-border/50 w-full text-left space-y-3">
+        <div className={styles.completeSummaryBox}>
           {providerData && (
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">{t('complete.provider')}</span>
-              <span className="font-medium flex items-center gap-2">
+            <div className={styles.completeSummaryRow}>
+              <span className={styles.completeSummaryLabel}>{t('complete.provider')}</span>
+              <span className={styles.completeSummaryValue}>
                 {getProviderIconUrl(providerData.id) && (
                   <img src={getProviderIconUrl(providerData.id)} className={cn("w-4 h-4", shouldInvertInDark(providerData.id) && "dark:invert")} alt="" />
                 )}
@@ -673,17 +668,17 @@ function InstallingContent({ skills, onFinish, selectedProvider, isCloudOnlyBuil
               </span>
             </div>
           )}
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-muted-foreground">{t('complete.status', { defaultValue: '状态' })}</span>
-            <span className="text-green-500 font-medium">{t('complete.ready', { defaultValue: '就绪' })}</span>
+          <div className={styles.completeSummaryRow}>
+            <span className={styles.completeSummaryLabel}>{t('complete.status', { defaultValue: '状态' })}</span>
+            <span className={styles.completeStatusValue}>{t('complete.ready', { defaultValue: '就绪' })}</span>
           </div>
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-muted-foreground">{t('complete.skills', { defaultValue: '技能包' })}</span>
-            <span className="font-medium">{isCloudOnlyBuild ? '—' : skills.length}</span>
+          <div className={styles.completeSummaryRow}>
+            <span className={styles.completeSummaryLabel}>{t('complete.skills', { defaultValue: '技能包' })}</span>
+            <span className={styles.completeSummaryValue}>{isCloudOnlyBuild ? '—' : skills.length}</span>
           </div>
         </div>
 
-        <Button onClick={onFinish} className="rounded-full px-8 shadow-md w-full mt-2">
+        <Button onClick={onFinish} className={styles.btnRoundedFullWide}>
           {t('nav.getStarted')}
         </Button>
       </div>
@@ -693,22 +688,22 @@ function InstallingContent({ skills, onFinish, selectedProvider, isCloudOnlyBuil
   // Error state
   if (phase === 'error') {
     return (
-      <div className="flex flex-col h-full justify-center items-center text-center space-y-6 flex-1">
-        <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center text-red-500">
-          <AlertCircle className="w-8 h-8" />
+      <div className={styles.errorRoot}>
+        <div className={styles.errorIconCircle}>
+          <AlertCircle style={{ width: 32, height: 32 }} />
         </div>
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold">{t('installing.errorTitle', { defaultValue: '安装遇到问题' })}</h2>
-          <p className="text-muted-foreground text-xs max-w-[260px] mx-auto break-all leading-relaxed">
+        <div className={styles.errorTextGroup}>
+          <h2 className={styles.errorTitle}>{t('installing.errorTitle', { defaultValue: '安装遇到问题' })}</h2>
+          <p className={styles.errorDesc}>
             {errorMsg || t('installing.errorDesc', { defaultValue: '请检查网络连接后重试' })}
           </p>
         </div>
-        <div className="flex gap-3 w-full">
-          <Button variant="outline" onClick={handleRetry} className="flex-1 rounded-xl">
-            <RotateCcw className="w-4 h-4 mr-2" />
+        <div className={styles.errorButtons}>
+          <Button variant="outline" onClick={handleRetry} className={styles.btnFlexRounded}>
+            <RotateCcw style={{ width: 16, height: 16, marginRight: 8 }} />
             {t('installing.retry', { defaultValue: '重试' })}
           </Button>
-          <Button variant="ghost" onClick={onFinish} className="flex-1 rounded-xl text-muted-foreground">
+          <Button variant="ghost" onClick={onFinish} className={styles.btnFlexRoundedMuted}>
             {t('nav.skipSetup')}
           </Button>
         </div>
@@ -718,27 +713,27 @@ function InstallingContent({ skills, onFinish, selectedProvider, isCloudOnlyBuil
 
   // Installing state
   return (
-    <div className="flex flex-col h-full justify-center items-center text-center space-y-8 flex-1">
-      <div className="relative">
-        <Loader2 className="w-16 h-16 animate-spin text-primary opacity-20" />
-        <div className="absolute inset-0 flex items-center justify-center text-primary font-medium text-sm">
+    <div className={styles.installingRoot}>
+      <div className={styles.installingSpinnerWrapper}>
+        <Loader2 style={{ width: 64, height: 64, color: 'var(--ant-color-primary)', opacity: 0.2 }} className="animate-spin" />
+        <div className={styles.installingProgressText}>
           {overallProgress}%
         </div>
       </div>
 
       {/* Animated progress bar */}
-      <div className="w-full space-y-3">
-        <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+      <div className={styles.installingProgressBarWrapper}>
+        <div className={styles.installingTrack}>
           <motion.div
-            className="h-full bg-primary rounded-full"
+            className={styles.installingBar}
             initial={{ width: '0%' }}
             animate={{ width: `${overallProgress}%` }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
           />
         </div>
-        <div className="space-y-1">
-          <h2 className="text-sm font-semibold">{t('installing.title')}</h2>
-          <p className="text-muted-foreground text-xs">{t('installing.subtitle')}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <h2 className={styles.installingTitle}>{t('installing.title')}</h2>
+          <p className={styles.installingSubtitle}>{t('installing.subtitle')}</p>
         </div>
       </div>
     </div>

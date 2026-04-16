@@ -1,44 +1,83 @@
 /* eslint-disable react-refresh/only-export-components */
 /**
  * Badge Component
- * Based on shadcn/ui badge
+ * antd-style based, same API as shadcn/ui badge
  */
 import * as React from 'react';
-import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@/lib/utils';
+import { createStyles } from 'antd-style';
 
-const badgeVariants = cva(
-  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
-  {
-    variants: {
-      variant: {
-        default:
-          'border-transparent bg-primary text-primary-foreground hover:bg-primary/80',
-        secondary:
-          'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        destructive:
-          'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80',
-        outline: 'text-foreground',
-        success:
-          'border-transparent bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
-        warning:
-          'border-transparent bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100',
-      },
-    },
-    defaultVariants: {
-      variant: 'default',
-    },
-  }
-);
+type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning';
 
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
+const useStyles = createStyles(({ css, token }) => ({
+  base: css`
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    transition: background-color 0.15s, color 0.15s;
+    &:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px ${token.colorBgContainer}, 0 0 0 4px ${token.colorPrimary};
+    }
+  `,
+  variantDefault: css`
+    background: ${token.colorPrimary};
+    color: #fff;
+    &:hover { background: ${token.colorPrimaryHover}; }
+  `,
+  variantSecondary: css`
+    background: ${token.colorFillSecondary};
+    color: ${token.colorText};
+    &:hover { background: ${token.colorFill}; }
+  `,
+  variantDestructive: css`
+    background: ${token.colorError};
+    color: #fff;
+    &:hover { background: ${token.colorErrorHover}; }
+  `,
+  variantOutline: css`
+    border-color: ${token.colorBorder};
+    color: ${token.colorText};
+    background: transparent;
+  `,
+  variantSuccess: css`
+    background: ${token.colorSuccessBg};
+    color: ${token.colorSuccess};
+    border-color: transparent;
+  `,
+  variantWarning: css`
+    background: ${token.colorWarningBg};
+    color: ${token.colorWarning};
+    border-color: transparent;
+  `,
+}));
 
-function Badge({ className, variant, ...props }: BadgeProps) {
-  return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
-  );
+export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: BadgeVariant;
 }
 
-export { Badge, badgeVariants };
+function Badge({ className, variant = 'default', ...props }: BadgeProps) {
+  const { styles, cx } = useStyles();
+
+  const variantClass = {
+    default: styles.variantDefault,
+    secondary: styles.variantSecondary,
+    destructive: styles.variantDestructive,
+    outline: styles.variantOutline,
+    success: styles.variantSuccess,
+    warning: styles.variantWarning,
+  }[variant];
+
+  return <div className={cx(styles.base, variantClass, className)} {...props} />;
+}
+
+/** @deprecated */
+export function badgeVariants({ variant = 'default', className = '' }: { variant?: BadgeVariant; className?: string } = {}) {
+  void variant;
+  return className;
+}
+
+export { Badge };

@@ -8,7 +8,6 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TitleBar } from '@/components/layout/TitleBar';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useSettingsStore } from '@/stores/settings';
 import { hostApiFetch, type CloudSession } from '@/lib/host-api';
@@ -16,6 +15,7 @@ import { getXiaojiuOAuthConfig } from '@/lib/cloud-api';
 import { subscribeHostEvent } from '@/lib/host-events';
 import logoPng from '@/assets/logo.png';
 import { AnimatedCharacters } from '@/components/ui/animated-characters';
+import { useStyles } from './styles';
 
 type ActiveField = 'username' | 'password' | null;
 type LoginTab = 'xiaojiu' | 'password';
@@ -41,6 +41,7 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string)
 }
 
 export function Login() {
+  const { styles } = useStyles();
   const { t } = useTranslation('common');
   const navigate = useNavigate();
   const loginCloud = useSettingsStore((s) => s.loginCloud);
@@ -133,19 +134,19 @@ export function Login() {
   const busy = loading || oauthLoading;
 
   return (
-    <div className="min-h-screen max-h-screen overflow-hidden grid lg:grid-cols-[55%_45%] bg-white text-slate-900">
-      <TitleBar className="absolute top-0 left-0 right-0 z-50 bg-transparent" hideSidebarToggle hideManagementMenu />
+    <div className={styles.root}>
+      <TitleBar style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 50, background: 'transparent' }} hideSidebarToggle hideManagementMenu />
 
       {/* Left Content Section with Animated Characters */}
-      <div className="relative hidden lg:flex flex-col bg-[linear-gradient(180deg,#f7f1e7_0%,#f4efe5_34%,#eef6f1_100%)] p-12 pt-20">
+      <div className={styles.leftSection}>
         {/* Logo */}
-        <div className="relative z-20 flex items-center gap-3.5">
-          <img src={logoPng} alt="极智" className="h-12 w-12 object-contain" />
-          <span className="text-sm font-bold tracking-tight text-slate-900">极智</span>
+        <div className={styles.logoWrap}>
+          <img src={logoPng} alt="极智" className={styles.logoImg} />
+          <span className={styles.logoText}>极智</span>
         </div>
 
         {/* Characters — centered in remaining space */}
-        <div className="relative z-20 flex flex-1 items-center justify-center">
+        <div className={styles.charactersWrap}>
           <AnimatedCharacters
             isTyping={activeField === 'username'}
             showPassword={showPassword}
@@ -154,33 +155,31 @@ export function Login() {
         </div>
 
         {/* Decorative blurs */}
-        <div className="absolute left-[-10%] top-[-10%] h-[30rem] w-[30rem] rounded-full bg-[#f7d8bf]/40 blur-3xl pointer-events-none" />
-        <div className="absolute right-[-5%] top-[20%] h-[25rem] w-[25rem] rounded-full bg-[#d3eadc]/50 blur-3xl pointer-events-none" />
+        <div className={styles.decorBlur1} />
+        <div className={styles.decorBlur2} />
       </div>
 
       {/* Right Login Section */}
-      <div className="flex items-center justify-center p-8 bg-white relative pt-20">
-        <div className="w-full max-w-[400px]">
+      <div className={styles.rightSection}>
+        <div className={styles.formContainer}>
           {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center justify-center gap-3.5 mb-10">
-            <img src={logoPng} alt="极智" className="h-12 w-12 object-contain" />
-            <span className="text-sm font-bold tracking-tight text-slate-900">极智</span>
+          <div className={styles.mobileLogoWrap}>
+            <img src={logoPng} alt="极智" className={styles.logoImg} />
+            <span className={styles.logoText}>极智</span>
           </div>
 
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-[14px] font-bold tracking-tight text-slate-900 mb-2">
+          <div className={styles.header}>
+            <h1 className={styles.headerTitle}>
               欢迎使用极智
             </h1>
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-6 border-b border-slate-200 mb-8">
+          <div className={styles.tabs}>
             <button
               type="button"
-              className={`pb-3 text-sm font-medium transition-colors relative ${
-                activeTab === 'xiaojiu' ? 'text-[#3478f6]' : 'text-slate-500 hover:text-slate-800'
-              }`}
+              className={activeTab === 'xiaojiu' ? styles.tabBtnActive : styles.tabBtnInactive}
               onClick={() => {
                 setActiveTab('xiaojiu');
                 setActiveField(null);
@@ -189,14 +188,12 @@ export function Login() {
             >
               小九认证
               {activeTab === 'xiaojiu' && (
-                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#3478f6] rounded-t-full" />
+                <div className={styles.tabIndicator} />
               )}
             </button>
             <button
               type="button"
-              className={`pb-3 text-sm font-medium transition-colors relative ${
-                activeTab === 'password' ? 'text-[#3478f6]' : 'text-slate-500 hover:text-slate-800'
-              }`}
+              className={activeTab === 'password' ? styles.tabBtnActive : styles.tabBtnInactive}
               onClick={() => {
                 setActiveTab('password');
                 setErrorMsg('');
@@ -204,13 +201,13 @@ export function Login() {
             >
               账号密码
               {activeTab === 'password' && (
-                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#3478f6] rounded-t-full" />
+                <div className={styles.tabIndicator} />
               )}
             </button>
           </div>
 
           {/* Tab Content */}
-          <div className="relative min-h-[240px]">
+          <div className={styles.tabContent}>
             <AnimatePresence initial={false}>
               {activeTab === 'xiaojiu' && (
                 <motion.div
@@ -219,30 +216,30 @@ export function Login() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.3, ease: 'easeInOut' }}
-                  className="absolute inset-0 py-2"
+                  className={styles.tabPane}
                 >
-                  <Button
+                  <button
                     type="button"
-                    className="w-full h-12 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-[14px] font-medium rounded-lg shadow-sm transition-all flex items-center justify-center gap-2"
+                    className={styles.oauthBtn}
                     onClick={handleXiaojiuLogin}
                     disabled={busy}
                   >
                     {oauthLoading ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <Loader2 style={{ width: 20, height: 20 }} className="animate-spin" />
                     ) : (
-                      <img src={logoPng} alt="小九" className="h-5 w-5 rounded-md object-cover" />
+                      <img src={logoPng} alt="小九" style={{ height: 20, width: 20, borderRadius: 6, objectFit: 'cover' }} />
                     )}
                     使用小九认证登录
-                  </Button>
+                  </button>
 
                   {errorMsg ? (
-                    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                    <div className={styles.errorBox}>
                       {errorMsg}
                     </div>
                   ) : null}
 
                   {oauthNotice ? (
-                    <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700">
+                    <div className={styles.noticeBox}>
                       {oauthNotice}
                     </div>
                   ) : null}
@@ -256,10 +253,10 @@ export function Login() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   transition={{ duration: 0.3, ease: 'easeInOut' }}
-                  className="absolute inset-0 py-2"
+                  className={styles.tabPane}
                 >
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="space-y-4">
+                  <form onSubmit={handleSubmit} className={styles.form}>
+                    <div className={styles.inputGroup}>
                       <Input
                         id="username"
                         type="text"
@@ -273,10 +270,10 @@ export function Login() {
                         onFocus={() => setActiveField('username')}
                         onBlur={() => setActiveField(null)}
                         disabled={busy}
-                        className="h-12 rounded-lg border-slate-300 text-[14px] px-4 focus-visible:ring-[#3478f6] focus-visible:border-[#3478f6]"
+                        style={{ height: 48, borderRadius: 8, fontSize: 14, padding: '0 16px' }}
                       />
 
-                      <div className="relative">
+                      <div className={styles.inputWrap}>
                         <Input
                           id="password"
                           type={showPassword ? 'text' : 'password'}
@@ -290,7 +287,7 @@ export function Login() {
                           onFocus={() => setActiveField('password')}
                           onBlur={() => setActiveField(null)}
                           disabled={busy}
-                          className="h-12 rounded-lg border-slate-300 text-[14px] px-4 pr-12 focus-visible:ring-[#3478f6] focus-visible:border-[#3478f6]"
+                          style={{ height: 48, borderRadius: 8, fontSize: 14, padding: '0 48px 0 16px' }}
                         />
                         <button
                           type="button"
@@ -298,27 +295,27 @@ export function Login() {
                           onMouseDown={(event) => event.preventDefault()}
                           onClick={() => setShowPassword(!showPassword)}
                           disabled={busy}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                          className={styles.passwordToggle}
                         >
-                          {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                          {showPassword ? <EyeOff style={{ width: 20, height: 20 }} /> : <Eye style={{ width: 20, height: 20 }} />}
                         </button>
                       </div>
                     </div>
 
                     {errorMsg ? (
-                      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                      <div className={styles.errorBox}>
                         {errorMsg}
                       </div>
                     ) : null}
 
-                    <Button
+                    <button
                       type="submit"
-                      className="w-full h-12 bg-[#3478f6] hover:bg-[#2b66d3] text-white text-[14px] font-medium rounded-lg shadow-sm transition-all"
+                      className={styles.submitBtn}
                       disabled={busy || !username.trim() || !password.trim()}
                     >
-                      {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+                      {loading ? <Loader2 style={{ width: 20, height: 20, marginRight: 8 }} className="animate-spin" /> : null}
                       登录
-                    </Button>
+                    </button>
                   </form>
                 </motion.div>
               )}

@@ -10,7 +10,7 @@ interface SettingHeaderProps {
 export function SettingHeader({ title, extra }: SettingHeaderProps) {
   return (
     <div style={{ paddingTop: 12, marginBottom: 32 }}>
-      <div className="flex items-center justify-between" style={{ marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <Text strong fontSize={24}>{title}</Text>
         {extra}
       </div>

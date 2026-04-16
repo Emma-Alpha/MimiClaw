@@ -2,7 +2,6 @@
  * Status Badge Component
  * Displays connection/state status with color coding
  */
-import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
 export type Status = 'connected' | 'disconnected' | 'connecting' | 'error' | 'running' | 'stopped' | 'starting' | 'reconnecting';
@@ -13,32 +12,33 @@ interface StatusBadgeProps {
   showDot?: boolean;
 }
 
-const statusConfig: Record<Status, { label: string; variant: 'success' | 'secondary' | 'warning' | 'destructive' }> = {
-  connected: { label: 'Connected', variant: 'success' },
-  running: { label: 'Running', variant: 'success' },
-  disconnected: { label: 'Disconnected', variant: 'secondary' },
-  stopped: { label: 'Stopped', variant: 'secondary' },
-  connecting: { label: 'Connecting', variant: 'warning' },
-  starting: { label: 'Starting', variant: 'warning' },
-  reconnecting: { label: 'Reconnecting', variant: 'warning' },
-  error: { label: 'Error', variant: 'destructive' },
+const statusConfig: Record<Status, { label: string; variant: 'success' | 'secondary' | 'warning' | 'destructive'; dotColor: string }> = {
+  connected:    { label: 'Connected',    variant: 'success',     dotColor: '#16a34a' },
+  running:      { label: 'Running',      variant: 'success',     dotColor: '#16a34a' },
+  disconnected: { label: 'Disconnected', variant: 'secondary',   dotColor: '#9ca3af' },
+  stopped:      { label: 'Stopped',      variant: 'secondary',   dotColor: '#9ca3af' },
+  connecting:   { label: 'Connecting',   variant: 'warning',     dotColor: '#ca8a04' },
+  starting:     { label: 'Starting',     variant: 'warning',     dotColor: '#ca8a04' },
+  reconnecting: { label: 'Reconnecting', variant: 'warning',     dotColor: '#ca8a04' },
+  error:        { label: 'Error',        variant: 'destructive',  dotColor: '#dc2626' },
 };
 
 export function StatusBadge({ status, label, showDot = true }: StatusBadgeProps) {
   const config = statusConfig[status];
   const displayLabel = label || config.label;
-  
+
   return (
-    <Badge variant={config.variant} className="gap-1.5">
+    <Badge variant={config.variant} style={{ gap: 6 }}>
       {showDot && (
         <span
-          className={cn(
-            'h-1.5 w-1.5 rounded-full',
-            config.variant === 'success' && 'bg-green-600',
-            config.variant === 'secondary' && 'bg-gray-400',
-            config.variant === 'warning' && 'bg-yellow-600 animate-pulse',
-            config.variant === 'destructive' && 'bg-red-600'
-          )}
+          style={{
+            display: 'inline-block',
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            backgroundColor: config.dotColor,
+            animation: config.variant === 'warning' ? 'pulse 2s cubic-bezier(0.4,0,0.6,1) infinite' : undefined,
+          }}
         />
       )}
       {displayLabel}

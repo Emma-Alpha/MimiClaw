@@ -3,7 +3,7 @@
  * Keeps focus within the renderer to avoid Windows focus loss after native dialogs.
  */
 import { useEffect, useRef, useState } from 'react';
-import { cn } from '@/lib/utils';
+import { createStyles } from 'antd-style';
 import { Button } from '@/components/ui/button';
 
 interface ConfirmDialogProps {
@@ -17,6 +17,45 @@ interface ConfirmDialogProps {
   onCancel: () => void;
   onError?: (error: unknown) => void;
 }
+
+const useStyles = createStyles(({ css, token }) => ({
+  overlay: css`
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+  `,
+  dialog: css`
+    margin: 0 16px;
+    max-width: 448px;
+    border-radius: ${token.borderRadiusLG}px;
+    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorBgContainer};
+    padding: 24px;
+    box-shadow: ${token.boxShadowSecondary};
+    outline: none;
+  `,
+  title: css`
+    font-size: ${token.fontSizeSM}px;
+    font-weight: 600;
+    color: ${token.colorText};
+    margin: 0;
+  `,
+  message: css`
+    margin-top: 8px;
+    font-size: ${token.fontSizeSM}px;
+    color: ${token.colorTextSecondary};
+  `,
+  footer: css`
+    margin-top: 24px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  `,
+}));
 
 export function ConfirmDialog({
   open,
@@ -32,6 +71,7 @@ export function ConfirmDialog({
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [confirming, setConfirming] = useState(false);
   const [prevOpen, setPrevOpen] = useState(open);
+  const { styles } = useStyles();
 
   // Reset confirming when dialog closes (during render to avoid setState-in-effect)
   if (prevOpen !== open) {
@@ -73,24 +113,18 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className={styles.overlay}
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
       onKeyDown={handleKeyDown}
     >
-      <div
-        className={cn(
-          'mx-4 max-w-md rounded-lg border bg-card p-6 shadow-lg',
-          'focus:outline-none'
-        )}
-        tabIndex={-1}
-      >
-        <h2 id="confirm-dialog-title" className="text-sm font-semibold">
+      <div className={styles.dialog} tabIndex={-1}>
+        <h2 id="confirm-dialog-title" className={styles.title}>
           {title}
         </h2>
-        <p className="mt-2 text-sm text-muted-foreground">{message}</p>
-        <div className="mt-6 flex justify-end gap-2">
+        <p className={styles.message}>{message}</p>
+        <div className={styles.footer}>
           <Button
             ref={cancelRef}
             variant="outline"

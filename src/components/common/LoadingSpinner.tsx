@@ -3,6 +3,7 @@
  * Displays a spinning loader animation
  */
 import { Loader2 } from 'lucide-react';
+import { createStyles } from 'antd-style';
 import { cn } from '@/lib/utils';
 
 interface LoadingSpinnerProps {
@@ -10,16 +11,34 @@ interface LoadingSpinnerProps {
   className?: string;
 }
 
-const sizeClasses = {
-  sm: 'h-4 w-4',
-  md: 'h-8 w-8',
-  lg: 'h-12 w-12',
-};
+const sizeMap = { sm: 16, md: 32, lg: 48 };
+
+const useStyles = createStyles(({ css, token }) => ({
+  wrap: css`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  `,
+  icon: css`
+    color: ${token.colorPrimary};
+  `,
+  fullHeight: css`
+    display: flex;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+  `,
+}));
 
 export function LoadingSpinner({ size = 'md', className }: LoadingSpinnerProps) {
+  const { styles } = useStyles();
+  const px = sizeMap[size];
   return (
-    <div className={cn('flex items-center justify-center', className)}>
-      <Loader2 className={cn('animate-spin text-primary', sizeClasses[size])} />
+    <div className={cn(styles.wrap, className)}>
+      <Loader2
+        className={cn('animate-spin', styles.icon)}
+        style={{ width: px, height: px }}
+      />
     </div>
   );
 }
@@ -28,8 +47,9 @@ export function LoadingSpinner({ size = 'md', className }: LoadingSpinnerProps) 
  * Full page loading spinner
  */
 export function PageLoader() {
+  const { styles } = useStyles();
   return (
-    <div className="flex h-full items-center justify-center">
+    <div className={styles.fullHeight}>
       <LoadingSpinner size="lg" />
     </div>
   );

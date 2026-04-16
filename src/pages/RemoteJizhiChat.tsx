@@ -6,12 +6,14 @@ import {
   REMOTE_MESSENGER_URL,
   REMOTE_MESSENGER_PARTITION,
 } from '@/lib/remote-jizhi-chat';
+import { useStyles } from './RemoteJizhiChat.styles';
 
 type WebviewElement = HTMLElement & {
   insertCSS: (css: string) => Promise<string>;
 };
 
 export function RemoteJizhiChat() {
+  const { styles } = useStyles();
   const webviewRef = useRef<WebviewElement>(null);
 
   useEffect(() => {
@@ -65,14 +67,13 @@ export function RemoteJizhiChat() {
   }, []);
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-1 flex-col bg-background">
+    <div className={styles.root}>
       <webview
         ref={webviewRef}
-        className="min-h-0 flex-1 w-full border-0"
+        className={styles.webview}
         src={REMOTE_MESSENGER_URL}
         allowpopups
         partition={REMOTE_MESSENGER_PARTITION}
-        style={{ display: 'flex' }}
       />
     </div>
   );

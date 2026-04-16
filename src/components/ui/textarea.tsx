@@ -1,22 +1,53 @@
-import * as React from "react"
+/**
+ * Textarea Component
+ * antd-style based, same API as shadcn/ui textarea
+ */
+import * as React from 'react';
+import { createStyles } from 'antd-style';
+import { cn } from '@/lib/utils';
 
-import { cn } from "@/lib/utils"
+const useStyles = createStyles(({ css, token }) => ({
+  textarea: css`
+    display: flex;
+    min-height: 80px;
+    width: 100%;
+    border-radius: ${token.borderRadius}px;
+    border: 1px solid ${token.colorBorder};
+    background: ${token.colorBgContainer};
+    padding: 8px 12px;
+    font-size: ${token.fontSizeSM}px;
+    color: ${token.colorText};
+    outline: none;
+    resize: vertical;
+    transition: border-color 0.15s, box-shadow 0.15s;
+
+    &::placeholder {
+      color: ${token.colorTextPlaceholder};
+    }
+    &:focus-visible {
+      border-color: ${token.colorPrimary};
+      box-shadow: 0 0 0 2px ${token.colorPrimaryBg};
+    }
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+  `,
+}));
 
 const Textarea = React.forwardRef<
   HTMLTextAreaElement,
-  React.ComponentProps<"textarea">
+  React.ComponentProps<'textarea'>
 >(({ className, ...props }, ref) => {
+  const { styles } = useStyles();
   return (
     <textarea
-      className={cn(
-        "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-        className
-      )}
+      className={cn(styles.textarea, className)}
       ref={ref}
       {...props}
     />
-  )
-})
-Textarea.displayName = "Textarea"
+  );
+});
+Textarea.displayName = 'Textarea';
 
-export { Textarea }
+export { Textarea };

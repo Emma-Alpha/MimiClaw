@@ -7,6 +7,7 @@ import {
 	type MouseEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { useStyles } from "./PetFloating.styles";
 import { toast } from "sonner";
 import {
 	DEFAULT_PET_ANIMATION,
@@ -45,19 +46,19 @@ const MOVE_THROTTLE_MS = 16;
 /** Minimum ms between two toggleMiniChat calls to prevent double-click ghost windows. */
 const TOGGLE_DEBOUNCE_MS = 400;
 
-function PetThinkingBubble({ label }: { label: string }) {
+function PetThinkingBubble({ label, styles }: { label: string; styles: Record<string, string> }) {
 	return (
 		<div
-			className="pointer-events-none absolute top-[16%] left-1/2 z-20 flex h-[34px] min-w-[120px] -translate-x-1/2 scale-[0.65] items-center justify-center overflow-hidden rounded-full border border-white/[0.08] px-4 text-[14px] font-medium text-white/60 shadow-[0_6px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[24px]"
+			className={styles.thinkingBubble}
 			style={{
 				background: "rgba(10, 10, 10, 0.94)",
 				transformOrigin: "center bottom",
 				animation: "pet-claw-wave-in 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
 			}}
 		>
-			<span className="relative z-10">{label}</span>
+			<span className={styles.thinkingBubbleText}>{label}</span>
 			<div
-				className="absolute inset-0"
+				className={styles.thinkingBubbleShimmer}
 				style={{
 					background:
 						"linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 45%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 55%, transparent 100%)",
@@ -153,7 +154,7 @@ function PetVoiceWaveformCanvas({
 		};
 	}, [analyser, barCount]);
 
-	return <canvas ref={canvasRef} className="block h-6 w-14 shrink-0" />;
+	return <canvas ref={canvasRef} style={{ display: 'block', height: 24, width: 56, flexShrink: 0 }} />;
 }
 
 function PetRecordingBubble({
@@ -164,6 +165,7 @@ function PetRecordingBubble({
 	onConfirm,
 	onMouseEnter,
 	onMouseLeave,
+	styles,
 }: {
 	analyser: AnalyserNode | null;
 	transcript: string;
@@ -172,10 +174,11 @@ function PetRecordingBubble({
 	onConfirm: () => void;
 	onMouseEnter: () => void;
 	onMouseLeave: () => void;
+	styles: Record<string, string>;
 }) {
 	return (
 		<div
-			className="pointer-events-auto absolute top-[16%] left-1/2 z-20 flex -translate-x-1/2 scale-[0.65] items-center gap-1 rounded-full border border-white/[0.08] p-1 shadow-[0_6px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[24px]"
+			className={styles.recordingBubble}
 			style={{
 				background: "rgba(10, 10, 10, 0.94)",
 				transformOrigin: "center bottom",
@@ -192,7 +195,7 @@ function PetRecordingBubble({
 		>
 			<button
 				type="button"
-				className="flex h-6 w-6 items-center justify-center rounded-full border-0 text-white/90 transition-all duration-150 hover:bg-white/[0.35] hover:text-white"
+				className={styles.recordingCancelBtn}
 				style={{ background: "rgba(255, 255, 255, 0.22)" }}
 				onClick={onCancel}
 				aria-label="取消录音"
@@ -201,15 +204,15 @@ function PetRecordingBubble({
 					<path d="M18 6L6 18M6 6l12 12" />
 				</svg>
 			</button>
-			<div className="flex min-w-0 items-center gap-2 px-1">
+			<div className={styles.recordingInner}>
 				<PetVoiceWaveformCanvas analyser={analyser} />
-				<span className="max-w-[120px] truncate text-[13px] font-medium text-white/80">
+				<span className={styles.recordingTranscript}>
 					{transcript || label}
 				</span>
 			</div>
 			<button
 				type="button"
-				className="flex h-6 w-6 items-center justify-center rounded-full border-0 bg-white text-[#111] transition-all duration-150 hover:bg-[#e8e8e8]"
+				className={styles.recordingConfirmBtn}
 				onClick={onConfirm}
 				aria-label="结束录音并发送"
 			>
@@ -231,6 +234,7 @@ function PetRecordingBubble({
 }
 
 export function PetFloating() {
+	const { styles } = useStyles();
 	const { i18n } = useTranslation("settings");
 	const videoRef = useRef<HTMLVideoElement | null>(null);
 	const initSettings = useSettingsStore((state) => state.init);
@@ -778,7 +782,7 @@ export function PetFloating() {
 	}, []);
 
 	return (
-		<div className="relative flex h-screen w-screen items-end justify-center overflow-visible bg-transparent">
+		<div className={styles.root}>
 			<style>{`
 				@keyframes pet-claw-shimmer {
 					0% { background-position: 100% 0; }
@@ -794,7 +798,7 @@ export function PetFloating() {
 			<div
 				role="button"
 				tabIndex={0}
-				className="relative z-10 cursor-pointer border-0 bg-transparent p-0 select-none"
+				className={styles.interactiveArea}
 				onMouseEnter={handleVideoMouseEnter}
 				onMouseLeave={handleVideoMouseLeave}
 				onMouseDown={handleVideoMouseDown}
@@ -814,7 +818,7 @@ export function PetFloating() {
 				}}
 			>
 				{statusOverlay?.variant === "thinking" ? (
-					<PetThinkingBubble label={statusOverlay.label} />
+					<PetThinkingBubble label={statusOverlay.label} styles={styles} />
 				) : null}
 				{statusOverlay?.variant === "recording" ? (
 					<PetRecordingBubble
@@ -829,12 +833,13 @@ export function PetFloating() {
 						onConfirm={() => {
 							void invokeIpc("pet:recordingCommand", { action: "confirm" });
 						}}
+						styles={styles}
 					/>
 				) : null}
 				<video
 					key={displayAnimation}
 					ref={videoRef}
-					className="h-[200px] w-[200px] object-contain pointer-events-none"
+					className={styles.petVideo}
 					style={{ clipPath: "inset(2px)" }}
 					src={PET_ANIMATION_SOURCES[displayAnimation]}
 					autoPlay

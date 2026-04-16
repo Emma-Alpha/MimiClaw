@@ -4,12 +4,12 @@ import { Mic, MicOff, Volume2, VolumeX, Phone, X, AlertTriangle } from 'lucide-r
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { invokeIpc } from '@/lib/api-client';
+import { useStyles } from './VoiceDialog.styles';
 import {
   appendVoiceChatMessage,
   fetchVoiceChatConfig,
   finalizeVoiceChatSession,
 } from '@/lib/voice-chat';
-import { cn } from '@/lib/utils';
 import { PET_ANIMATION_SOURCES } from '@/lib/pet-floating';
 import { float32ToPcm16Bytes, mixToMono, resampleLinear } from '@/lib/volcengine-speech';
 import type { VoiceChatConfigState } from '../../shared/voice-chat';
@@ -192,10 +192,11 @@ function VoiceBars({ analyser }: { analyser: AnalyserNode | null }) {
     };
   }, [analyser]);
 
-  return <canvas ref={canvasRef} className="h-[52px] w-[180px]" />;
+  return <canvas ref={canvasRef} style={{ height: 52, width: 180 }} />;
 }
 
 export function VoiceDialog() {
+  const { styles } = useStyles();
   const [config, setConfig] = useState<VoiceChatConfigState | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [stage, setStage] = useState<VoiceStage>('idle');
@@ -775,17 +776,17 @@ export function VoiceDialog() {
   const canStart = config?.configured && stage !== 'connecting' && !realtimeSessionId;
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#EDEDED] text-[#111111] dark:bg-[#111111] dark:text-[#E5E5E5]">
+    <div className={styles.root}>
       <div
-        className="relative flex h-14 items-center justify-between px-4 bg-[#EDEDED] dark:bg-[#111111] z-10"
+        className={styles.titleBar}
         style={{ WebkitAppRegion: 'drag' } as CSSProperties}
       >
-        <div className="flex-1 flex justify-center">
-          <h1 className="text-[14px] font-medium text-[#111111] dark:text-[#E5E5E5]">语音通话</h1>
+        <div className={styles.titleCenter}>
+          <h1 className={styles.titleText}>语音通话</h1>
         </div>
         <button
           type="button"
-          className="absolute right-4 flex h-8 w-8 items-center justify-center rounded-full text-[#111111] dark:text-[#E5E5E5] opacity-60 hover:opacity-100 transition-opacity"
+          className={styles.closeBtn}
           style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
           onClick={() => {
             void handleHangup('completed').finally(() => {
@@ -794,18 +795,18 @@ export function VoiceDialog() {
           }}
           aria-label="关闭语音窗"
         >
-          <X className="h-5 w-5" />
+          <X style={{ width: 20, height: 20 }} />
         </button>
       </div>
 
-      <div className="flex flex-1 flex-col px-4 pb-8 relative">
-        <div className="flex flex-1 flex-col items-center min-h-0 px-2 pb-[100px] pt-2">
-          <div className="relative flex flex-col items-center w-full max-w-[340px] min-h-0 flex-1">
+      <div className={styles.body}>
+        <div className={styles.mainArea}>
+          <div className={styles.innerWrap}>
             {/* 动态波纹背景 - 说话时显示 */}
             {stage === 'speaking' || stage === 'listening' ? (
-              <div className="absolute left-1/2 top-[60px] flex -translate-x-1/2 items-center justify-center">
+              <div className={styles.rippleWrap}>
                 <motion.div
-                  className="absolute h-[180px] w-[180px] rounded-full bg-emerald-500/10 dark:bg-emerald-500/20"
+                  style={{ position: 'absolute', height: 180, width: 180, borderRadius: 9999, background: 'rgba(16,185,129,0.1)' }}
                   animate={{
                     scale: [1, 1.2, 1],
                     opacity: [0.5, 0.2, 0.5],
@@ -817,7 +818,7 @@ export function VoiceDialog() {
                   }}
                 />
                 <motion.div
-                  className="absolute h-[220px] w-[220px] rounded-full bg-emerald-500/5 dark:bg-emerald-500/10"
+                  style={{ position: 'absolute', height: 220, width: 220, borderRadius: 9999, background: 'rgba(16,185,129,0.05)' }}
                   animate={{
                     scale: [1, 1.3, 1],
                     opacity: [0.3, 0.1, 0.3],
@@ -833,10 +834,10 @@ export function VoiceDialog() {
             ) : null}
 
             {/* 头像区域 */}
-            <div className="relative z-10 flex h-[120px] w-[120px] items-center justify-center rounded-full bg-white dark:bg-[#1C1C1E] shadow-lg overflow-hidden border-2 border-emerald-500/20">
+            <div className={styles.avatarWrap}>
               <video
                 key={displayAnimation}
-                className="h-[100px] w-[100px] object-contain"
+                className={styles.avatarVideo}
                 src={PET_ANIMATION_SOURCES[displayAnimation]}
                 autoPlay
                 loop
@@ -845,21 +846,21 @@ export function VoiceDialog() {
               />
             </div>
 
-            <div className="mt-6 min-h-[30px] text-center">
-              <span className="text-[14px] text-[#111111]/60 dark:text-[#E5E5E5]/60 tracking-wider">
+            <div className={styles.stageLabel}>
+              <span>
                 {stage === 'connecting' ? '连接中...' : getStageCopy(stage)}
               </span>
             </div>
 
-            <div className="mt-3 w-full flex-1 min-h-0">
-              <div className="mx-auto flex h-full max-h-[160px] w-full max-w-[280px] items-start justify-center overflow-y-auto px-2 text-center">
-                <div className="my-auto w-full break-words">
+            <div className={styles.transcriptArea}>
+              <div className={styles.transcriptScroll}>
+                <div className={styles.transcriptInner}>
               {assistantLiveText || assistantStableText ? (
-                    <div className="text-[14px] font-medium leading-relaxed text-[#111111] dark:text-[#E5E5E5]">
+                    <div className={styles.assistantText}>
                   {assistantLiveText || assistantStableText}
                 </div>
               ) : userLiveText || userStableText ? (
-                    <div className="text-[14px] leading-relaxed text-[#111111]/70 dark:text-[#E5E5E5]/70">
+                    <div className={styles.userText}>
                   {userLiveText || userStableText}
                 </div>
               ) : null}
@@ -868,34 +869,34 @@ export function VoiceDialog() {
             </div>
 
             {/* 语音波形图 */}
-            <div className="mt-4 flex h-[40px] shrink-0 items-center justify-center opacity-80">
+            <div className={styles.waveformWrap}>
               <VoiceBars analyser={recordingAnalyser} />
             </div>
           </div>
         </div>
 
         {errorInfo ? (
-          <div className="absolute top-4 left-4 right-4 z-50 rounded-xl bg-white dark:bg-[#1C1C1E] p-4 shadow-lg border border-red-500/20">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-[#111111] dark:text-[#E5E5E5]">
+          <div className={styles.errorPanel}>
+            <div className={styles.errorInner}>
+              <AlertTriangle className={styles.errorIcon} style={{ width: 20, height: 20 }} />
+              <div className={styles.errorContent}>
+                <p className={styles.errorTitle}>
                   {formatErrorTitle(errorInfo.kind)}
                 </p>
-                <p className="mt-1 text-[13px] leading-5 text-[#111111]/60 dark:text-[#E5E5E5]/60">
+                <p className={styles.errorMessage}>
                   {errorInfo.message}
                 </p>
-                <div className="mt-3 flex gap-3">
+                <div className={styles.errorActions}>
                   <button
                     type="button"
-                    className="flex-1 rounded-lg bg-[#07C160] py-2 text-[14px] font-medium text-white transition hover:bg-[#06AD56]"
+                    className={styles.errorBtnRetry}
                     onClick={() => void handleRetry()}
                   >
                     重试
                   </button>
                   <button
                     type="button"
-                    className="flex-1 rounded-lg bg-[#F2F2F2] dark:bg-[#2C2C2E] py-2 text-[14px] font-medium text-[#111111] dark:text-[#E5E5E5] transition hover:bg-[#E5E5E5] dark:hover:bg-[#3A3A3C]"
+                    className={styles.errorBtnSettings}
                     onClick={() => {
                       void invokeIpc('pet:openMainWindow');
                       void invokeIpc('voice:closeDialog');
@@ -910,48 +911,40 @@ export function VoiceDialog() {
         ) : null}
 
         {/* 底部控制栏 */}
-        <div className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-6 px-4">
-          <div className="flex flex-col items-center gap-2">
+        <div className={styles.controls}>
+          <div className={styles.controlItem}>
             <button
               type="button"
-              className={cn(
-                'flex h-[56px] w-[56px] items-center justify-center rounded-full transition-all duration-300',
-                micMuted
-                  ? 'bg-white dark:bg-[#2C2C2E] text-[#111111] dark:text-[#E5E5E5] shadow-sm'
-                  : 'bg-[#07C160] bg-opacity-10 text-[#07C160] hover:bg-opacity-20'
-              )}
+              className={micMuted ? styles.ctrlBtnMuted : styles.ctrlBtnActive}
               onClick={() => setMicMuted((value) => !value)}
             >
-              {micMuted ? <MicOff className="h-6 w-6 opacity-80" /> : <Mic className="h-6 w-6" />}
+              {micMuted ? <MicOff style={{ width: 24, height: 24, opacity: 0.8 }} /> : <Mic style={{ width: 24, height: 24 }} />}
             </button>
-            <span className="text-[12px] text-[#111111]/50 dark:text-[#E5E5E5]/50">
+            <span className={styles.controlLabel}>
               {micMuted ? '麦克风已关' : '静音'}
             </span>
           </div>
 
-          <div className="flex flex-col items-center gap-2">
+          <div className={styles.controlItem}>
             {!realtimeSessionId ? (
               <button
                 type="button"
                 disabled={!canStart || loadingConfig}
-                className={cn(
-                  'flex h-[64px] w-[64px] items-center justify-center rounded-full text-white shadow-md transition-transform hover:scale-105 active:scale-95',
-                  loadingConfig || !config?.configured ? 'bg-[#07C160]/50' : 'bg-[#07C160]'
-                )}
+                className={styles.callBtnStart}
                 onClick={() => void handleStart()}
               >
-                <Phone className="h-7 w-7 fill-current" />
+                <Phone style={{ width: 28, height: 28, fill: "currentColor" }} />
               </button>
             ) : (
               <button
                 type="button"
-                className="flex h-[64px] w-[64px] items-center justify-center rounded-full bg-[#FA5151] text-white shadow-md transition-transform hover:scale-105 active:scale-95"
+                className={styles.callBtnHangup}
                 onClick={() => void handleHangup('completed')}
               >
-                <Phone className="h-7 w-7 fill-current rotate-[135deg]" />
+                <Phone style={{ width: 28, height: 28, fill: "currentColor", transform: 'rotate(135deg)' }} />
               </button>
             )}
-            <span className="text-[12px] text-[#111111]/50 dark:text-[#E5E5E5]/50">
+            <span className={styles.controlLabel}>
               {!realtimeSessionId
                 ? loadingConfig
                   ? '加载中...'
@@ -962,24 +955,19 @@ export function VoiceDialog() {
             </span>
           </div>
 
-          <div className="flex flex-col items-center gap-2">
+          <div className={styles.controlItem}>
             <button
               type="button"
-              className={cn(
-                'flex h-[56px] w-[56px] items-center justify-center rounded-full transition-all duration-300',
-                speakerMuted
-                  ? 'bg-white dark:bg-[#2C2C2E] text-[#111111] dark:text-[#E5E5E5] shadow-sm'
-                  : 'bg-[#07C160] bg-opacity-10 text-[#07C160] hover:bg-opacity-20'
-              )}
+              className={speakerMuted ? styles.ctrlBtnMuted : styles.ctrlBtnActive}
               onClick={() => setSpeakerMuted((value) => !value)}
             >
               {speakerMuted ? (
-                <VolumeX className="h-6 w-6 opacity-80" />
+                <VolumeX style={{ width: 24, height: 24, opacity: 0.8 }} />
               ) : (
-                <Volume2 className="h-6 w-6" />
+                <Volume2 style={{ width: 24, height: 24 }} />
               )}
             </button>
-            <span className="text-[12px] text-[#111111]/50 dark:text-[#E5E5E5]/50">
+            <span className={styles.controlLabel}>
               {speakerMuted ? '扬声器已关' : '免提'}
             </span>
           </div>

@@ -1,30 +1,73 @@
 /**
  * Switch Component
- * Based on shadcn/ui switch
+ * antd-style based, same API as shadcn/ui switch
  */
 import * as React from 'react';
 import * as SwitchPrimitives from '@radix-ui/react-switch';
+import { createStyles } from 'antd-style';
 import { cn } from '@/lib/utils';
+
+const useStyles = createStyles(({ css, token }) => ({
+  root: css`
+    display: inline-flex;
+    height: 24px;
+    width: 44px;
+    flex-shrink: 0;
+    cursor: pointer;
+    align-items: center;
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    transition: background-color 0.2s;
+    outline: none;
+
+    &:focus-visible {
+      box-shadow: 0 0 0 2px ${token.colorBgContainer}, 0 0 0 4px ${token.colorPrimary};
+    }
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+    &[data-state="checked"] {
+      background: ${token.colorPrimary};
+    }
+    &[data-state="unchecked"] {
+      background: ${token.colorBorder};
+    }
+  `,
+  thumb: css`
+    pointer-events: none;
+    display: block;
+    height: 20px;
+    width: 20px;
+    border-radius: 9999px;
+    background: ${token.colorBgContainer};
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    transition: transform 0.2s;
+
+    &[data-state="checked"] {
+      transform: translateX(20px);
+    }
+    &[data-state="unchecked"] {
+      transform: translateX(0);
+    }
+  `,
+}));
 
 const Switch = React.forwardRef<
   React.ElementRef<typeof SwitchPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root>
->(({ className, ...props }, ref) => (
-  <SwitchPrimitives.Root
-    className={cn(
-      'peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input',
-      className
-    )}
-    {...props}
-    ref={ref}
-  >
-    <SwitchPrimitives.Thumb
-      className={cn(
-        'pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0'
-      )}
-    />
-  </SwitchPrimitives.Root>
-));
+>(({ className, ...props }, ref) => {
+  const { styles } = useStyles();
+  return (
+    <SwitchPrimitives.Root
+      className={cn(styles.root, className)}
+      {...props}
+      ref={ref}
+    >
+      <SwitchPrimitives.Thumb className={styles.thumb} />
+    </SwitchPrimitives.Root>
+  );
+});
 Switch.displayName = SwitchPrimitives.Root.displayName;
 
 export { Switch };

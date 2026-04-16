@@ -30,12 +30,13 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useCronStore } from '@/stores/cron';
 import { useGatewayStore } from '@/stores/gateway';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { formatRelativeTime, cn } from '@/lib/utils';
+import { formatRelativeTime } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { CronJob, CronJobCreateInput, ScheduleType } from '@/types/cron';
 import { CHANNEL_ICONS, type ChannelType } from '@/types/channel';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
+import { useCronStyles } from './styles';
 
 // Common cron schedule presets
 const schedulePresets: { key: string; value: string; type: ScheduleType }[] = [
@@ -179,6 +180,7 @@ interface TaskDialogProps {
 
 function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
   const { t } = useTranslation('cron');
+  const { styles, cx } = useCronStyles();
   const [saving, setSaving] = useState(false);
 
   const [name, setName] = useState(job?.name || '');
@@ -233,48 +235,48 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
-      <Card className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-3xl border-0 shadow-2xl bg-[#f3f1e9] dark:bg-card overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <CardHeader className="flex flex-row items-start justify-between pb-2 shrink-0">
+    <div className={styles.dialogOverlay} onClick={onClose}>
+      <Card className={styles.dialogCard} onClick={(e) => e.stopPropagation()}>
+        <CardHeader className={styles.dialogHeader}>
           <div>
-            <CardTitle className="text-sm font-serif font-normal">{job ? t('dialog.editTitle') : t('dialog.createTitle')}</CardTitle>
-            <CardDescription className="text-[14px] mt-1 text-foreground/70">{t('dialog.description')}</CardDescription>
+            <CardTitle className={styles.dialogTitle}>{job ? t('dialog.editTitle') : t('dialog.createTitle')}</CardTitle>
+            <CardDescription className={styles.dialogDesc}>{t('dialog.description')}</CardDescription>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-8 w-8 -mr-2 -mt-2 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5">
-            <X className="h-4 w-4" />
+          <Button variant="ghost" size="icon" onClick={onClose} className={styles.dialogCloseBtn}>
+            <X style={{ width: 16, height: 16 }} />
           </Button>
         </CardHeader>
-        <CardContent className="space-y-6 pt-4 overflow-y-auto flex-1 p-6">
+        <CardContent className={styles.dialogBody}>
           {/* Name */}
-          <div className="space-y-2.5">
-            <Label htmlFor="name" className="text-[14px] text-foreground/80 font-bold">{t('dialog.taskName')}</Label>
+          <div className={styles.dialogField}>
+            <Label htmlFor="name" className={styles.dialogLabel}>{t('dialog.taskName')}</Label>
             <Input
               id="name"
               placeholder={t('dialog.taskNamePlaceholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="h-[44px] rounded-xl font-mono text-[13px] bg-[#eeece3] dark:bg-muted border-black/10 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary shadow-sm transition-all text-foreground placeholder:text-foreground/40"
+              className={styles.dialogInput}
             />
           </div>
 
           {/* Message */}
-          <div className="space-y-2.5">
-            <Label htmlFor="message" className="text-[14px] text-foreground/80 font-bold">{t('dialog.message')}</Label>
+          <div className={styles.dialogField}>
+            <Label htmlFor="message" className={styles.dialogLabel}>{t('dialog.message')}</Label>
             <Textarea
               id="message"
               placeholder={t('dialog.messagePlaceholder')}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={3}
-              className="rounded-xl font-mono text-[13px] bg-[#eeece3] dark:bg-muted border-black/10 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary shadow-sm transition-all text-foreground placeholder:text-foreground/40 resize-none"
+              className={styles.dialogTextarea}
             />
           </div>
 
           {/* Schedule */}
-          <div className="space-y-2.5">
-            <Label className="text-[14px] text-foreground/80 font-bold">{t('dialog.schedule')}</Label>
+          <div className={styles.dialogField}>
+            <Label className={styles.dialogLabel}>{t('dialog.schedule')}</Label>
             {!useCustom ? (
-              <div className="grid grid-cols-2 gap-2">
+              <div className={styles.presetGrid}>
                 {schedulePresets.map((preset) => (
                   <Button
                     key={preset.value}
@@ -282,14 +284,12 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
                     variant={schedule === preset.value ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setSchedule(preset.value)}
-                    className={cn(
-                      "justify-start h-10 rounded-xl font-medium text-[13px] transition-all",
-                      schedule === preset.value
-                        ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm border-transparent"
-                        : "bg-[#eeece3] dark:bg-muted border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 text-foreground/80 hover:text-foreground"
+                    className={cx(
+                      styles.presetBtnBase,
+                      schedule === preset.value ? styles.presetBtnActive : styles.presetBtnInactive
                     )}
                   >
-                    <Timer className="h-4 w-4 mr-2 opacity-70" />
+                    <Timer style={{ width: 16, height: 16, marginRight: 8, opacity: 0.7 }} />
                     {t(`presets.${preset.key}` as const)}
                   </Button>
                 ))}
@@ -299,11 +299,11 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
                 placeholder={t('dialog.cronPlaceholder')}
                 value={customSchedule}
                 onChange={(e) => setCustomSchedule(e.target.value)}
-                className="h-[44px] rounded-xl font-mono text-[13px] bg-[#eeece3] dark:bg-muted border-black/10 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary shadow-sm transition-all text-foreground placeholder:text-foreground/40"
+                className={styles.dialogInput}
               />
             )}
-            <div className="flex items-center justify-between mt-2">
-              <p className="text-[12px] text-muted-foreground/80 font-medium">
+            <div className={styles.scheduleFooter}>
+              <p className={styles.schedulePreview}>
                 {schedulePreview ? `${t('card.next')}: ${schedulePreview}` : t('dialog.cronPlaceholder')}
               </p>
               <Button
@@ -311,7 +311,7 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
                 variant="ghost"
                 size="sm"
                 onClick={() => setUseCustom(!useCustom)}
-                className="text-[12px] h-7 px-2 text-foreground/60 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-lg"
+                className={styles.toggleCustomBtn}
               >
                 {useCustom ? t('dialog.usePresets') : t('dialog.useCustomCron')}
               </Button>
@@ -319,30 +319,28 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
           </div>
 
           {/* Enabled */}
-          <div className="flex items-center justify-between bg-[#eeece3] dark:bg-muted p-4 rounded-2xl shadow-sm border border-black/5 dark:border-white/5">
+          <div className={styles.enableRow}>
             <div>
-              <Label className="text-[14px] text-foreground/80 font-bold">{t('dialog.enableImmediately')}</Label>
-              <p className="text-[13px] text-muted-foreground mt-0.5">
-                {t('dialog.enableImmediatelyDesc')}
-              </p>
+              <Label className={styles.enableLabel}>{t('dialog.enableImmediately')}</Label>
+              <p className={styles.enableDesc}>{t('dialog.enableImmediatelyDesc')}</p>
             </div>
             <Switch checked={enabled} onCheckedChange={setEnabled} />
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4">
-            <Button variant="outline" onClick={onClose} className="rounded-full px-6 h-[42px] text-[13px] font-semibold border-black/20 dark:border-white/20 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 text-foreground/80 hover:text-foreground shadow-sm">
+          <div className={styles.dialogFooter}>
+            <Button variant="outline" onClick={onClose} className={styles.dialogCancelBtn}>
               {t('common:actions.cancel', 'Cancel')}
             </Button>
-            <Button onClick={handleSubmit} disabled={saving} className="rounded-full px-6 h-[42px] text-[13px] font-semibold shadow-sm border border-transparent transition-all">
+            <Button onClick={handleSubmit} disabled={saving} className={styles.dialogSubmitBtn}>
               {saving ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 style={{ width: 16, height: 16, marginRight: 8 }} className="animate-spin" />
                   {t('common:status.saving', 'Saving...')}
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  <CheckCircle2 style={{ width: 16, height: 16, marginRight: 8 }} />
                   {job ? t('dialog.saveChanges') : t('dialog.createTitle')}
                 </>
               )}
@@ -365,6 +363,7 @@ interface CronJobCardProps {
 
 function CronJobCard({ job, onToggle, onEdit, onDelete, onTrigger }: CronJobCardProps) {
   const { t } = useTranslation('cron');
+  const { styles, cx } = useCronStyles();
   const [triggering, setTriggering] = useState(false);
 
   const handleTrigger = async (e: React.MouseEvent) => {
@@ -388,33 +387,33 @@ function CronJobCard({ job, onToggle, onEdit, onDelete, onTrigger }: CronJobCard
 
   return (
     <div
-      className="group flex flex-col p-5 rounded-2xl bg-transparent border border-transparent hover:bg-black/5 dark:hover:bg-white/5 transition-all relative overflow-hidden cursor-pointer"
+      className={cx(styles.jobCard, 'job-card')}
       onClick={onEdit}
     >
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-4">
-          <div className="h-[46px] w-[46px] shrink-0 flex items-center justify-center text-foreground bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-full shadow-sm group-hover:scale-105 transition-transform">
-            <Clock className={cn("h-5 w-5", job.enabled ? "text-foreground" : "text-muted-foreground")} />
+      <div className={styles.jobCardTop}>
+        <div className={styles.jobCardLeft}>
+          <div className={styles.jobCardIconCircle}>
+            <Clock style={{ width: 20, height: 20, color: job.enabled ? 'inherit' : 'var(--ant-color-text-secondary)' }} />
           </div>
-          <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-[14px] font-semibold text-foreground truncate">{job.name}</h3>
+          <div className={styles.jobCardNameCol}>
+            <div className={styles.jobCardNameRow}>
+              <h3 className={styles.jobCardName}>{job.name}</h3>
               <div
-                className={cn(
-                  "w-2 h-2 rounded-full shrink-0",
-                  job.enabled ? "bg-green-500" : "bg-muted-foreground"
+                className={cx(
+                  styles.jobCardStatusDot,
+                  job.enabled ? styles.jobCardStatusDotActive : styles.jobCardStatusDotPaused
                 )}
                 title={job.enabled ? t('stats.active') : t('stats.paused')}
               />
             </div>
-            <p className="text-[13px] text-muted-foreground flex items-center gap-1.5">
-              <Timer className="h-3.5 w-3.5" />
+            <p className={styles.jobCardScheduleRow}>
+              <Timer style={{ width: 14, height: 14 }} />
               {parseCronSchedule(job.schedule, t)}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+        <div className={styles.jobCardRight} onClick={e => e.stopPropagation()}>
           <Switch
             checked={job.enabled}
             onCheckedChange={onToggle}
@@ -422,38 +421,36 @@ function CronJobCard({ job, onToggle, onEdit, onDelete, onTrigger }: CronJobCard
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col justify-end mt-2 pl-[62px]">
-        <div className="flex items-start gap-2 mb-3">
-          <MessageSquare className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
-          <p className="text-[13.5px] text-muted-foreground line-clamp-2 leading-[1.5]">
-            {job.message}
-          </p>
+      <div className={styles.jobCardBody}>
+        <div className={styles.jobCardMessageRow}>
+          <MessageSquare style={{ width: 14, height: 14, marginTop: 2, color: 'var(--ant-color-text-secondary)', flexShrink: 0 }} />
+          <p className={styles.jobCardMessage}>{job.message}</p>
         </div>
 
         {/* Metadata */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-muted-foreground/80 font-medium mb-3">
+        <div className={styles.jobCardMeta}>
           {job.target && (
-            <span className="flex items-center gap-1.5">
+            <span className={styles.jobCardMetaItem}>
               {CHANNEL_ICONS[job.target.channelType as ChannelType]}
               {job.target.channelName}
             </span>
           )}
 
           {job.lastRun && (
-            <span className="flex items-center gap-1.5">
-              <History className="h-3.5 w-3.5" />
+            <span className={styles.jobCardMetaItem}>
+              <History style={{ width: 14, height: 14 }} />
               {t('card.last')}: {formatRelativeTime(job.lastRun.time)}
               {job.lastRun.success ? (
-                <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                <CheckCircle2 style={{ width: 14, height: 14, color: '#22c55e' }} />
               ) : (
-                <XCircle className="h-3.5 w-3.5 text-red-500" />
+                <XCircle style={{ width: 14, height: 14, color: '#ef4444' }} />
               )}
             </span>
           )}
 
           {job.nextRun && job.enabled && (
-            <span className="flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5" />
+            <span className={styles.jobCardMetaItem}>
+              <Calendar style={{ width: 14, height: 14 }} />
               {t('card.next')}: {new Date(job.nextRun).toLocaleString()}
             </span>
           )}
@@ -461,25 +458,27 @@ function CronJobCard({ job, onToggle, onEdit, onDelete, onTrigger }: CronJobCard
 
         {/* Last Run Error */}
         {job.lastRun && !job.lastRun.success && job.lastRun.error && (
-          <div className="flex items-start gap-2 p-2.5 mb-3 rounded-xl bg-destructive/10 border border-destructive/20 text-[13px] text-destructive">
-            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-            <span className="line-clamp-2">{job.lastRun.error}</span>
+          <div className={styles.jobCardErrorBox}>
+            <AlertCircle style={{ width: 16, height: 16, marginTop: 2, flexShrink: 0 }} />
+            <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+              {job.lastRun.error}
+            </span>
           </div>
         )}
 
         {/* Actions */}
-        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity mt-auto">
+        <div className={styles.jobCardActions}>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleTrigger}
             disabled={triggering}
-            className="h-8 px-3 text-foreground/70 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-[13px] font-medium transition-colors"
+            className={styles.jobCardTriggerBtn}
           >
             {triggering ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+              <Loader2 style={{ width: 14, height: 14, marginRight: 6 }} className="animate-spin" />
             ) : (
-              <Play className="h-3.5 w-3.5 mr-1.5" />
+              <Play style={{ width: 14, height: 14, marginRight: 6 }} />
             )}
             {t('card.runNow')}
           </Button>
@@ -487,9 +486,9 @@ function CronJobCard({ job, onToggle, onEdit, onDelete, onTrigger }: CronJobCard
             variant="ghost"
             size="sm"
             onClick={handleDelete}
-            className="h-8 px-3 text-destructive/70 hover:text-destructive hover:bg-destructive/10 rounded-lg text-[13px] font-medium transition-colors"
+            className={styles.jobCardDeleteBtn}
           >
-            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+            <Trash2 style={{ width: 14, height: 14, marginRight: 6 }} />
             {t('common:actions.delete', 'Delete')}
           </Button>
         </div>
@@ -500,6 +499,7 @@ function CronJobCard({ job, onToggle, onEdit, onDelete, onTrigger }: CronJobCard
 
 export function Cron() {
   const { t } = useTranslation('cron');
+  const { styles } = useCronStyles();
   const { jobs, loading, error, fetchJobs, createJob, updateJob, toggleJob, deleteJob, triggerJob } = useCronStore();
   const gatewayStatus = useGatewayStore((state) => state.status);
   const [showDialog, setShowDialog] = useState(false);
@@ -538,37 +538,33 @@ export function Cron() {
     }
   }, [toggleJob, t]);
 
-
-
   if (loading) {
     return (
-      <div className="flex flex-col -m-6 dark:bg-background min-h-[calc(100vh-2.5rem)] items-center justify-center">
+      <div className={styles.loadingWrapper}>
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col -m-6 dark:bg-background h-[calc(100vh-2.5rem)] overflow-hidden">
-      <div className="w-full max-w-5xl mx-auto flex flex-col h-full p-10 pt-16">
+    <div className={styles.pageRoot}>
+      <div className={styles.pageInner}>
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-start justify-between mb-12 shrink-0 gap-4">
+        <div className={styles.header}>
           <div>
-            <h1 className="text-sm md:text-sm font-serif text-foreground mb-3 font-normal tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
+            <h1 className={styles.headerTitle} style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
               {t('title')}
             </h1>
-            <p className="text-[14px] text-foreground/70 font-medium">
-              {t('subtitle')}
-            </p>
+            <p className={styles.headerSubtitle}>{t('subtitle')}</p>
           </div>
-          <div className="flex items-center gap-3 md:mt-2">
+          <div className={styles.headerActions}>
             <Button
               variant="outline"
               onClick={fetchJobs}
               disabled={!isGatewayRunning}
-              className="h-9 text-[13px] font-medium rounded-full px-4 border-black/10 dark:border-white/10 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 shadow-none text-foreground/80 hover:text-foreground transition-colors"
+              className={styles.headerRefreshBtn}
             >
-              <RefreshCw className="h-3.5 w-3.5 mr-2" />
+              <RefreshCw style={{ width: 14, height: 14, marginRight: 8 }} />
               {t('refresh')}
             </Button>
             <Button
@@ -577,109 +573,103 @@ export function Cron() {
                 setShowDialog(true);
               }}
               disabled={!isGatewayRunning}
-              className="h-9 text-[13px] font-medium rounded-full px-4 shadow-none"
+              className={styles.headerNewTaskBtn}
             >
-              <Plus className="h-3.5 w-3.5 mr-2" />
+              <Plus style={{ width: 14, height: 14, marginRight: 8 }} />
               {t('newTask')}
             </Button>
           </div>
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto pr-2 pb-10 min-h-0 -mr-2">
+        <div className={styles.contentArea}>
           {/* Gateway Warning */}
           {!isGatewayRunning && (
-            <div className="mb-8 p-4 rounded-xl border border-yellow-500/50 bg-yellow-500/10 flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-              <span className="text-yellow-700 dark:text-yellow-400 text-sm font-medium">
-                {t('gatewayWarning')}
-              </span>
+            <div className={styles.gatewayWarning}>
+              <AlertCircle className={styles.gatewayWarningIcon} />
+              <span className={styles.gatewayWarningText}>{t('gatewayWarning')}</span>
             </div>
           )}
 
           {/* Error Display */}
           {error && (
-            <div className="mb-8 p-4 rounded-xl border border-destructive/50 bg-destructive/10 flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-destructive" />
-              <span className="text-destructive text-sm font-medium">
-                {error}
-              </span>
+            <div className={styles.errorBanner}>
+              <AlertCircle style={{ width: 20, height: 20 }} />
+              <span className={styles.errorText}>{error}</span>
             </div>
           )}
 
           {/* Statistics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className="p-5 rounded-[24px] bg-black/5 dark:bg-white/5 border border-transparent flex flex-col justify-between min-h-[130px] relative overflow-hidden group hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="h-11 w-11 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Clock className="h-5 w-5 text-primary" />
+          <div className={styles.statsGrid}>
+            <div className={styles.statCard}>
+              <div className={styles.statIconRow}>
+                <div className={styles.statIconCircle} style={{ background: 'rgba(var(--ant-color-primary-rgb, 22,119,255), 0.1)' }}>
+                  <Clock style={{ width: 20, height: 20, color: 'var(--ant-color-primary)' }} />
                 </div>
               </div>
-              <div className="mt-4 flex items-baseline gap-3">
-                <p className="text-[14px] leading-none font-serif text-foreground">{safeJobs.length}</p>
-                <p className="text-[14px] font-medium text-muted-foreground">{t('stats.total')}</p>
+              <div className={styles.statBottom}>
+                <p className={styles.statValue}>{safeJobs.length}</p>
+                <p className={styles.statLabel}>{t('stats.total')}</p>
               </div>
             </div>
 
-            <div className="p-5 rounded-[24px] bg-black/5 dark:bg-white/5 border border-transparent flex flex-col justify-between min-h-[130px] relative overflow-hidden group hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="h-11 w-11 rounded-full bg-green-500/10 flex items-center justify-center">
-                  <Play className="h-5 w-5 text-green-600 dark:text-green-500 ml-0.5" />
+            <div className={styles.statCard}>
+              <div className={styles.statIconRow}>
+                <div className={styles.statIconCircle} style={{ background: 'rgba(34,197,94,0.1)' }}>
+                  <Play style={{ width: 20, height: 20, color: '#16a34a', marginLeft: 2 }} />
                 </div>
               </div>
-              <div className="mt-4 flex items-baseline gap-3">
-                <p className="text-[14px] leading-none font-serif text-foreground">{activeJobs.length}</p>
-                <p className="text-[14px] font-medium text-muted-foreground">{t('stats.active')}</p>
+              <div className={styles.statBottom}>
+                <p className={styles.statValue}>{activeJobs.length}</p>
+                <p className={styles.statLabel}>{t('stats.active')}</p>
               </div>
             </div>
 
-            <div className="p-5 rounded-[24px] bg-black/5 dark:bg-white/5 border border-transparent flex flex-col justify-between min-h-[130px] relative overflow-hidden group hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="h-11 w-11 rounded-full bg-yellow-500/10 flex items-center justify-center">
-                  <Pause className="h-5 w-5 text-yellow-600 dark:text-yellow-500" />
+            <div className={styles.statCard}>
+              <div className={styles.statIconRow}>
+                <div className={styles.statIconCircle} style={{ background: 'rgba(234,179,8,0.1)' }}>
+                  <Pause style={{ width: 20, height: 20, color: '#ca8a04' }} />
                 </div>
               </div>
-              <div className="mt-4 flex items-baseline gap-3">
-                <p className="text-[14px] leading-none font-serif text-foreground">{pausedJobs.length}</p>
-                <p className="text-[14px] font-medium text-muted-foreground">{t('stats.paused')}</p>
+              <div className={styles.statBottom}>
+                <p className={styles.statValue}>{pausedJobs.length}</p>
+                <p className={styles.statLabel}>{t('stats.paused')}</p>
               </div>
             </div>
 
-            <div className="p-5 rounded-[24px] bg-black/5 dark:bg-white/5 border border-transparent flex flex-col justify-between min-h-[130px] relative overflow-hidden group hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="h-11 w-11 rounded-full bg-destructive/10 flex items-center justify-center">
-                  <XCircle className="h-5 w-5 text-destructive" />
+            <div className={styles.statCard}>
+              <div className={styles.statIconRow}>
+                <div className={styles.statIconCircle} style={{ background: 'rgba(255,77,79,0.1)' }}>
+                  <XCircle style={{ width: 20, height: 20, color: 'var(--ant-color-error)' }} />
                 </div>
               </div>
-              <div className="mt-4 flex items-baseline gap-3">
-                <p className="text-[14px] leading-none font-serif text-foreground">{failedJobs.length}</p>
-                <p className="text-[14px] font-medium text-muted-foreground">{t('stats.failed')}</p>
+              <div className={styles.statBottom}>
+                <p className={styles.statValue}>{failedJobs.length}</p>
+                <p className={styles.statLabel}>{t('stats.failed')}</p>
               </div>
             </div>
           </div>
 
           {/* Jobs List */}
           {safeJobs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-black/5 dark:bg-white/5 rounded-3xl border border-transparent border-dashed">
-              <Clock className="h-10 w-10 mb-4 opacity-50" />
-              <h3 className="text-sm font-medium mb-2 text-foreground">{t('empty.title')}</h3>
-              <p className="text-[14px] text-center mb-6 max-w-md">
-                {t('empty.description')}
-              </p>
+            <div className={styles.emptyState}>
+              <Clock className={styles.emptyIcon} style={{ width: 40, height: 40 }} />
+              <h3 className={styles.emptyTitle}>{t('empty.title')}</h3>
+              <p className={styles.emptyDesc}>{t('empty.description')}</p>
               <Button
                 onClick={() => {
                   setEditingJob(undefined);
                   setShowDialog(true);
                 }}
                 disabled={!isGatewayRunning}
-                className="rounded-full px-6 h-10"
+                className={styles.emptyCreateBtn}
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus style={{ width: 16, height: 16, marginRight: 8 }} />
                 {t('empty.create')}
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            <div className={styles.jobGrid}>
               {safeJobs.map((job) => (
                 <CronJobCard
                   key={job.id}

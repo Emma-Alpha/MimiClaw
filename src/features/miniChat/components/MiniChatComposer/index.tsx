@@ -400,14 +400,14 @@ export function MiniChatComposer({
 		{
 			key: "file",
 			label: "上传文件",
-			icon: <Paperclip className="h-3.5 w-3.5" />,
+			icon: <Paperclip style={{ width: 14, height: 14 }} />,
 			onClick: onUploadFile,
 			disabled,
 		},
 		{
 			key: "folder",
 			label: "上传文件夹",
-			icon: <FolderOpen className="h-3.5 w-3.5" />,
+			icon: <FolderOpen style={{ width: 14, height: 14 }} />,
 			onClick: onUploadFolder,
 			disabled,
 		},
@@ -421,7 +421,7 @@ export function MiniChatComposer({
 					<span className={styles.attachmentMenuShortcut}>{screenshotShortcutLabel}</span>
 				</span>
 			),
-			icon: <Camera className="h-3.5 w-3.5" />,
+			icon: <Camera style={{ width: 14, height: 14 }} />,
 			onClick: onScreenshot,
 			disabled,
 		});

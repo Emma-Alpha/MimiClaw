@@ -22,7 +22,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import {
   useProviderStore,
   type ProviderAccount,
@@ -47,14 +46,13 @@ import {
 } from '@/lib/provider-accounts';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useProviderStyles } from './styles';
 import { useTranslation } from 'react-i18next';
 import { invokeIpc } from '@/lib/api-client';
 import { useSettingsStore } from '@/stores/settings';
 import { hostApiFetch } from '@/lib/host-api';
 import { subscribeHostEvent } from '@/lib/host-events';
 
-const inputClasses = 'h-[44px] rounded-xl font-mono text-[13px] bg-[#eeece3] dark:bg-muted border-black/10 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:border-blue-500 shadow-sm transition-all text-foreground placeholder:text-foreground/40';
-const labelClasses = 'text-[14px] text-foreground/80 font-bold';
 type ArkMode = 'apikey' | 'codeplan';
 
 function normalizeFallbackProviderIds(ids?: string[]): string[] {
@@ -117,6 +115,7 @@ function getAuthModeLabel(
 
 export function ProvidersSettings() {
   const { t } = useTranslation('settings');
+  const { styles } = useProviderStyles();
   const devModeUnlocked = useSettingsStore((state) => state.devModeUnlocked);
   const {
     statuses,
@@ -201,35 +200,35 @@ export function ProvidersSettings() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-serif text-foreground font-normal tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
+    <div className={styles.container}>
+      <div className={styles.headerRow}>
+        <h2 className={styles.sectionTitle}>
           {t('aiProviders.title', 'AI Providers')}
         </h2>
-        <Button onClick={() => setShowAddDialog(true)} className="rounded-full px-5 h-9 shadow-none font-medium text-[13px]">
-          <Plus className="h-4 w-4 mr-2" />
+        <Button onClick={() => setShowAddDialog(true)} style={{ borderRadius: 9999, padding: '0 20px', height: 36, boxShadow: 'none', fontWeight: 500, fontSize: 13 }}>
+          <Plus style={{ height: 16, width: 16, marginRight: 8 }} />
           {t('aiProviders.add')}
         </Button>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12 text-muted-foreground bg-black/5 dark:bg-white/5 rounded-3xl border border-transparent border-dashed">
-          <Loader2 className="h-6 w-6 animate-spin" />
+        <div className={styles.loadingState}>
+          <Loader2 style={{ height: 24, width: 24, animation: 'spin 1s linear infinite' }} />
         </div>
       ) : displayProviders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-black/5 dark:bg-white/5 rounded-3xl border border-transparent border-dashed">
-          <Key className="h-12 w-12 mb-4 opacity-50" />
-          <h3 className="text-[14px] font-medium mb-1 text-foreground">{t('aiProviders.empty.title')}</h3>
-          <p className="text-[13px] text-center mb-6 max-w-sm">
+        <div className={styles.emptyState}>
+          <Key className={styles.emptyIcon} style={{ height: 48, width: 48 }} />
+          <h3 className={styles.emptyTitle}>{t('aiProviders.empty.title')}</h3>
+          <p style={{ fontSize: 13, textAlign: 'center', marginBottom: 24, maxWidth: 384 }}>
             {t('aiProviders.empty.desc')}
           </p>
-          <Button onClick={() => setShowAddDialog(true)} className="rounded-full px-6 h-10 bg-[#0a84ff] hover:bg-[#007aff] text-white">
-            <Plus className="h-4 w-4 mr-2" />
+          <Button onClick={() => setShowAddDialog(true)} style={{ borderRadius: 9999, padding: '0 24px', height: 40, background: '#0a84ff', color: 'white', border: 'none' }}>
+            <Plus style={{ height: 16, width: 16, marginRight: 8 }} />
             {t('aiProviders.empty.cta')}
           </Button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className={styles.providerList}>
           {displayProviders.map((item) => (
             <ProviderCard
               key={item.account.id}
@@ -314,6 +313,7 @@ function ProviderCard({
   devModeUnlocked,
 }: ProviderCardProps) {
   const { t, i18n } = useTranslation('settings');
+  const { styles } = useProviderStyles();
   const { account, vendor, status } = item;
   const [newKey, setNewKey] = useState('');
   const [baseUrl, setBaseUrl] = useState(account.baseUrl || '');
@@ -448,63 +448,60 @@ function ProviderCard({
     }
   };
 
-  const currentInputClasses = isDefault
-    ? "h-[40px] rounded-xl font-mono text-[13px] bg-white dark:bg-card border-black/10 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-blue-500/50 shadow-sm"
-    : inputClasses;
-
-  const currentLabelClasses = isDefault ? "text-[13px] text-muted-foreground" : labelClasses;
-  const currentSectionLabelClasses = isDefault ? "text-[14px] font-bold text-foreground/80" : labelClasses;
-
   return (
     <div
       className={cn(
-        "group flex flex-col p-4 rounded-2xl transition-all relative overflow-hidden hover:bg-black/5 dark:hover:bg-white/5",
-        isDefault
-          ? "bg-black/[0.04] dark:bg-white/[0.06] border border-transparent"
-          : "bg-transparent border border-transparent"
+        'group',
+        styles.providerCard,
+        isDefault && styles.providerCardDefault,
       )}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="h-[42px] w-[42px] shrink-0 flex items-center justify-center text-foreground border border-black/5 dark:border-white/10 rounded-full bg-black/5 dark:bg-white/5 shadow-sm group-hover:scale-105 transition-transform">
+      <div className={styles.cardTopRow}>
+        <div className={styles.cardLeft}>
+          <div className={styles.providerIcon}>
             {getProviderIconUrl(account.vendorId) ? (
-              <img src={getProviderIconUrl(account.vendorId)} alt={typeInfo?.name || account.vendorId} className={cn('h-5 w-5', shouldInvertInDark(account.vendorId) && 'dark:invert')} />
+              <img
+                src={getProviderIconUrl(account.vendorId)}
+                alt={typeInfo?.name || account.vendorId}
+                className={styles.providerIconImg}
+                style={shouldInvertInDark(account.vendorId) ? { filter: 'invert(1)' } : undefined}
+              />
             ) : (
-              <span className="text-sm">{vendor?.icon || typeInfo?.icon || '⚙️'}</span>
+              <span style={{ fontSize: 14 }}>{vendor?.icon || typeInfo?.icon || '⚙️'}</span>
             )}
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-[14px]">{account.label}</span>
+          <div className={styles.providerInfo}>
+            <div className={styles.providerNameRow}>
+              <span className={styles.providerName}>{account.label}</span>
               {isDefault && (
-                <span className="flex items-center gap-1 font-mono text-[10px] font-medium px-2 py-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.08] border-0 shadow-none text-foreground/70">
-                  <Check className="h-3 w-3" />
+                <span className={styles.defaultBadge}>
+                  <Check style={{ height: 12, width: 12 }} />
                   {t('aiProviders.card.default')}
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 mt-0.5 text-[13px] text-muted-foreground">
-              <span className="capitalize">{vendor?.name || account.vendorId}</span>
-              <span className="w-1 h-1 rounded-full bg-black/20 dark:bg-white/20" />
+            <div className={styles.providerMeta}>
+              <span style={{ textTransform: 'capitalize' }}>{vendor?.name || account.vendorId}</span>
+              <span className={styles.metaDot} />
               <span>{getAuthModeLabel(account.authMode, t)}</span>
               {account.model && (
                 <>
-                  <span className="w-1 h-1 rounded-full bg-black/20 dark:bg-white/20" />
-                  <span className="truncate max-w-[200px]">{account.model}</span>
+                  <span className={styles.metaDot} />
+                  <span className={styles.metaTruncate}>{account.model}</span>
                 </>
               )}
-              <span className="w-1 h-1 rounded-full bg-black/20 dark:bg-white/20" />
-              <span className="flex items-center gap-1">
+              <span className={styles.metaDot} />
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 {hasConfiguredCredentials(account, status) ? (
-                  <><div className="w-1.5 h-1.5 rounded-full bg-green-500" /> {t('aiProviders.card.configured')}</>
+                  <><div className={cn(styles.statusDot, styles.statusDotGreen)} /> {t('aiProviders.card.configured')}</>
                 ) : (
-                  <><div className="w-1.5 h-1.5 rounded-full bg-red-500" /> {t('aiProviders.dialog.apiKeyMissing')}</>
+                  <><div className={cn(styles.statusDot, styles.statusDotRed)} /> {t('aiProviders.dialog.apiKeyMissing')}</>
                 )}
               </span>
               {((account.fallbackModels?.length ?? 0) > 0 || (account.fallbackAccountIds?.length ?? 0) > 0) && (
                 <>
-                  <span className="w-1 h-1 rounded-full bg-black/20 dark:bg-white/20" />
-                  <span className="truncate max-w-[150px]" title={t('aiProviders.sections.fallback')}>
+                  <span className={styles.metaDot} />
+                  <span className={styles.metaTruncate} style={{ maxWidth: 150 }} title={t('aiProviders.sections.fallback')}>
                     {t('aiProviders.sections.fallback')}: {[
                       ...normalizeFallbackModels(account.fallbackModels),
                       ...normalizeFallbackProviderIds(account.fallbackAccountIds)
@@ -519,97 +516,87 @@ function ProviderCard({
         </div>
 
         {!isEditing && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className={styles.cardActions}>
             {!isDefault && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 rounded-full text-muted-foreground hover:text-blue-600 hover:bg-white dark:hover:bg-card shadow-sm"
+                style={{ height: 32, width: 32, borderRadius: 9999, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                 onClick={onSetDefault}
                 title={t('aiProviders.card.setDefault')}
               >
-                <Check className="h-4 w-4" />
+                <Check style={{ height: 16, width: 16 }} />
               </Button>
             )}
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-white dark:hover:bg-card shadow-sm"
+              style={{ height: 32, width: 32, borderRadius: 9999, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
               onClick={onEdit}
               title={t('aiProviders.card.editKey')}
             >
-              <Edit className="h-4 w-4" />
+              <Edit style={{ height: 16, width: 16 }} />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-white dark:hover:bg-card shadow-sm"
+              style={{ height: 32, width: 32, borderRadius: 9999, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
               onClick={onDelete}
               title={t('aiProviders.card.delete')}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 style={{ height: 16, width: 16 }} />
             </Button>
           </div>
         )}
       </div>
 
       {isEditing && (
-        <div className="space-y-6 mt-4 pt-4 border-t border-black/5 dark:border-white/5">
+        <div className={styles.editArea}>
           {effectiveDocsUrl && (
-            <div className="flex justify-end -mt-2 mb-2">
-              <a
-                href={effectiveDocsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[12px] text-blue-500 hover:text-blue-600 font-medium inline-flex items-center gap-1"
-              >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -8, marginBottom: 8 }}>
+              <a href={effectiveDocsUrl} target="_blank" rel="noopener noreferrer" className={styles.linkBlue}>
                 {t('aiProviders.dialog.customDoc')}
-                <ExternalLink className="h-3 w-3" />
+                <ExternalLink style={{ height: 12, width: 12 }} />
               </a>
             </div>
           )}
           {canEditModelConfig && (
-            <div className="space-y-3">
-              <p className={currentSectionLabelClasses}>{t('aiProviders.sections.model')}</p>
+            <div className={styles.editSection}>
+              <p className={isDefault ? styles.fieldLabelLight : styles.sectionLabel}>{t('aiProviders.sections.model')}</p>
               {typeInfo?.showBaseUrl && (
-                <div className="space-y-1.5">
-                  <Label className={currentLabelClasses}>{t('aiProviders.dialog.baseUrl')}</Label>
+                <div className={styles.editSubSection}>
+                  <Label className={isDefault ? styles.fieldLabelLight : styles.fieldLabel}>{t('aiProviders.dialog.baseUrl')}</Label>
                   <Input
                     value={baseUrl}
                     onChange={(e) => setBaseUrl(e.target.value)}
                     placeholder={getProtocolBaseUrlPlaceholder(apiProtocol)}
-                    className={currentInputClasses}
+                    className={isDefault ? styles.monoInputDefault : styles.monoInput}
                   />
                 </div>
               )}
               {showModelIdField && (
-                <div className="space-y-1.5 pt-2">
-                  <Label className={currentLabelClasses}>{t('aiProviders.dialog.modelId')}</Label>
+                <div className={styles.editSubSection} style={{ paddingTop: 8 }}>
+                  <Label className={isDefault ? styles.fieldLabelLight : styles.fieldLabel}>{t('aiProviders.dialog.modelId')}</Label>
                   <Input
                     value={modelId}
                     onChange={(e) => setModelId(e.target.value)}
                     placeholder={typeInfo?.modelIdPlaceholder || 'provider/model-id'}
-                    className={currentInputClasses}
+                    className={isDefault ? styles.monoInputDefault : styles.monoInput}
                   />
                 </div>
               )}
               {account.vendorId === 'ark' && codePlanPreset && (
-                <div className="space-y-1.5 pt-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label className={currentLabelClasses}>{t('aiProviders.dialog.codePlanPreset')}</Label>
+                <div className={styles.editSubSection} style={{ paddingTop: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <Label className={isDefault ? styles.fieldLabelLight : styles.fieldLabel}>{t('aiProviders.dialog.codePlanPreset')}</Label>
                     {typeInfo?.codePlanDocsUrl && (
-                      <a
-                        href={typeInfo.codePlanDocsUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[12px] text-blue-500 hover:text-blue-600 font-medium inline-flex items-center gap-1"
-                      >
+                      <a href={typeInfo.codePlanDocsUrl} target="_blank" rel="noopener noreferrer" className={styles.linkBlue}>
                         {t('aiProviders.dialog.codePlanDoc')}
-                        <ExternalLink className="h-3 w-3" />
+                        <ExternalLink style={{ height: 12, width: 12 }} />
                       </a>
                     )}
                   </div>
-                  <div className="flex gap-2 text-[13px]">
+                  <div className={styles.segmentGroup}>
                     <button
                       type="button"
                       onClick={() => {
@@ -619,7 +606,7 @@ function ProviderCard({
                           setModelId(typeInfo?.defaultModelId || '');
                         }
                       }}
-                      className={cn("flex-1 py-1.5 px-3 rounded-lg border transition-colors", arkMode === 'apikey' ? "bg-white dark:bg-card border-black/20 dark:border-white/20 shadow-sm font-medium" : "border-transparent bg-black/5 dark:bg-white/5 text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10")}
+                      className={cn(styles.segmentBtn, arkMode === 'apikey' && styles.segmentBtnActive)}
                     >
                       {t('aiProviders.authModes.apiKey')}
                     </button>
@@ -630,40 +617,38 @@ function ProviderCard({
                         setBaseUrl(codePlanPreset.baseUrl);
                         setModelId(codePlanPreset.modelId);
                       }}
-                      className={cn("flex-1 py-1.5 px-3 rounded-lg border transition-colors", arkMode === 'codeplan' ? "bg-white dark:bg-card border-black/20 dark:border-white/20 shadow-sm font-medium" : "border-transparent bg-black/5 dark:bg-white/5 text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10")}
+                      className={cn(styles.segmentBtn, arkMode === 'codeplan' && styles.segmentBtnActive)}
                     >
                       {t('aiProviders.dialog.codePlanMode')}
                     </button>
                   </div>
                   {arkMode === 'codeplan' && (
-                    <p className="text-[12px] text-muted-foreground">
-                      {t('aiProviders.dialog.codePlanPresetDesc')}
-                    </p>
+                    <p className={styles.helpText}>{t('aiProviders.dialog.codePlanPresetDesc')}</p>
                   )}
                 </div>
               )}
               {account.vendorId === 'custom' && (
-                <div className="space-y-1.5 pt-2">
-                  <Label className={currentLabelClasses}>{t('aiProviders.dialog.protocol', 'Protocol')}</Label>
-                  <div className="flex gap-2 text-[13px]">
+                <div className={styles.editSubSection} style={{ paddingTop: 8 }}>
+                  <Label className={isDefault ? styles.fieldLabelLight : styles.fieldLabel}>{t('aiProviders.dialog.protocol', 'Protocol')}</Label>
+                  <div className={styles.segmentGroup}>
                     <button
                       type="button"
                       onClick={() => setApiProtocol('openai-completions')}
-                      className={cn("flex-1 py-1.5 px-3 rounded-lg border transition-colors", apiProtocol === 'openai-completions' ? "bg-white dark:bg-card border-black/20 dark:border-white/20 shadow-sm font-medium" : "border-transparent bg-black/5 dark:bg-white/5 text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10")}
+                      className={cn(styles.segmentBtn, apiProtocol === 'openai-completions' && styles.segmentBtnActive)}
                     >
                       {t('aiProviders.protocols.openaiCompletions', 'OpenAI Completions')}
                     </button>
                     <button
                       type="button"
                       onClick={() => setApiProtocol('openai-responses')}
-                      className={cn("flex-1 py-1.5 px-3 rounded-lg border transition-colors", apiProtocol === 'openai-responses' ? "bg-white dark:bg-card border-black/20 dark:border-white/20 shadow-sm font-medium" : "border-transparent bg-black/5 dark:bg-white/5 text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10")}
+                      className={cn(styles.segmentBtn, apiProtocol === 'openai-responses' && styles.segmentBtnActive)}
                     >
                       {t('aiProviders.protocols.openaiResponses', 'OpenAI Responses')}
                     </button>
                     <button
                       type="button"
                       onClick={() => setApiProtocol('anthropic-messages')}
-                      className={cn("flex-1 py-1.5 px-3 rounded-lg border transition-colors", apiProtocol === 'anthropic-messages' ? "bg-white dark:bg-card border-black/20 dark:border-white/20 shadow-sm font-medium" : "border-transparent bg-black/5 dark:bg-white/5 text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10")}
+                      className={cn(styles.segmentBtn, apiProtocol === 'anthropic-messages' && styles.segmentBtnActive)}
                     >
                       {t('aiProviders.protocols.anthropic', 'Anthropic')}
                     </button>
@@ -672,46 +657,39 @@ function ProviderCard({
               )}
             </div>
           )}
-          <div className="space-y-3">
-            <button
-              onClick={() => setShowFallback(!showFallback)}
-              className="flex items-center justify-between w-full text-[14px] font-bold text-foreground/80 hover:text-foreground transition-colors"
-            >
+          <div className={styles.editSection}>
+            <button onClick={() => setShowFallback(!showFallback)} className={styles.fallbackToggle}>
               <span>{t('aiProviders.sections.fallback')}</span>
-              <ChevronDown className={cn("h-4 w-4 transition-transform", showFallback && "rotate-180")} />
+              <ChevronDown style={{ height: 16, width: 16, transition: 'transform 0.2s', transform: showFallback ? 'rotate(180deg)' : 'rotate(0deg)' }} />
             </button>
             {showFallback && (
-              <div className="space-y-3 pt-2">
-                <div className="space-y-1.5">
-                  <Label className={currentLabelClasses}>{t('aiProviders.dialog.fallbackModelIds')}</Label>
+              <div className={styles.fallbackContent}>
+                <div className={styles.editSubSection}>
+                  <Label className={isDefault ? styles.fieldLabelLight : styles.fieldLabel}>{t('aiProviders.dialog.fallbackModelIds')}</Label>
                   <textarea
                     value={fallbackModelsText}
                     onChange={(e) => setFallbackModelsText(e.target.value)}
                     placeholder={t('aiProviders.dialog.fallbackModelIdsPlaceholder')}
-                    className={isDefault
-                      ? "min-h-24 w-full rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-card px-3 py-2 text-[13px] font-mono outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 shadow-sm"
-                      : "min-h-24 w-full rounded-xl border border-black/10 dark:border-white/10 bg-[#eeece3] dark:bg-muted px-3 py-2 text-[13px] font-mono outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:border-blue-500 shadow-sm transition-all text-foreground placeholder:text-foreground/40"}
+                    className={isDefault ? styles.fallbackTextareaDefault : styles.fallbackTextarea}
                   />
-                  <p className="text-[12px] text-muted-foreground">
-                    {t('aiProviders.dialog.fallbackModelIdsHelp')}
-                  </p>
+                  <p className={styles.helpText}>{t('aiProviders.dialog.fallbackModelIdsHelp')}</p>
                 </div>
-                <div className="space-y-2 pt-1">
-                  <Label className={currentLabelClasses}>{t('aiProviders.dialog.fallbackProviders')}</Label>
+                <div className={styles.editSubSection} style={{ paddingTop: 4 }}>
+                  <Label className={isDefault ? styles.fieldLabelLight : styles.fieldLabel}>{t('aiProviders.dialog.fallbackProviders')}</Label>
                   {fallbackOptions.length === 0 ? (
-                    <p className="text-[13px] text-muted-foreground">{t('aiProviders.dialog.noFallbackOptions')}</p>
+                    <p style={{ fontSize: 13, color: 'var(--ant-color-text-secondary)' }}>{t('aiProviders.dialog.noFallbackOptions')}</p>
                   ) : (
-                    <div className={cn("space-y-2 rounded-xl border border-black/10 dark:border-white/10 p-3 shadow-sm", isDefault ? "bg-white dark:bg-card" : "bg-[#eeece3] dark:bg-muted")}>
+                    <div className={isDefault ? styles.checkboxListDefault : styles.checkboxList}>
                       {fallbackOptions.map((candidate) => (
-                        <label key={candidate.account.id} className="flex items-center gap-3 text-[13px] cursor-pointer group/label">
+                        <label key={candidate.account.id} className={styles.checkboxRow}>
                           <input
                             type="checkbox"
                             checked={fallbackProviderIds.includes(candidate.account.id)}
                             onChange={() => toggleFallbackProvider(candidate.account.id)}
-                            className="rounded border-black/20 dark:border-white/20 text-blue-500 focus:ring-blue-500/50"
+                            style={{ accentColor: '#3b82f6' }}
                           />
-                          <span className="font-medium group-hover/label:text-blue-500 transition-colors">{candidate.account.label}</span>
-                          <span className="text-[12px] text-muted-foreground">
+                          <span style={{ fontWeight: 500 }}>{candidate.account.label}</span>
+                          <span style={{ fontSize: 12, color: 'var(--ant-color-text-secondary)' }}>
                             {candidate.account.model || candidate.vendor?.name || candidate.account.vendorId}
                           </span>
                         </label>
@@ -722,64 +700,57 @@ function ProviderCard({
               </div>
             )}
           </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="space-y-0.5">
-                <Label className={currentSectionLabelClasses}>{t('aiProviders.dialog.apiKey')}</Label>
-                <p className="text-[12px] text-muted-foreground">
+          <div className={styles.editSection}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Label className={isDefault ? styles.fieldLabelLight : styles.sectionLabel}>{t('aiProviders.dialog.apiKey')}</Label>
+                <p className={styles.helpText}>
                   {hasConfiguredCredentials(account, status)
                     ? t('aiProviders.dialog.apiKeyConfigured')
                     : t('aiProviders.dialog.apiKeyMissing')}
                 </p>
               </div>
               {hasConfiguredCredentials(account, status) ? (
-                <div className="flex items-center gap-1.5 text-[11px] font-medium text-green-600 dark:text-green-500 bg-green-500/10 px-2 py-1 rounded-md">
-                  <div className="w-1.5 h-1.5 rounded-full bg-current" />
+                <div className={styles.configuredBadge}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
                   {t('aiProviders.card.configured')}
                 </div>
               ) : null}
             </div>
             {typeInfo?.apiKeyUrl && (
-              <div className="flex justify-start">
-                <a
-                  href={typeInfo.apiKeyUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[13px] text-blue-500 hover:text-blue-600 hover:underline flex items-center gap-1"
-                  tabIndex={-1}
-                >
-                  {t('aiProviders.oauth.getApiKey')} <ExternalLink className="h-3 w-3" />
+              <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                <a href={typeInfo.apiKeyUrl} target="_blank" rel="noopener noreferrer" className={styles.linkBlue13} tabIndex={-1}>
+                  {t('aiProviders.oauth.getApiKey')} <ExternalLink style={{ height: 12, width: 12 }} />
                 </a>
               </div>
             )}
-            <div className="space-y-1.5 pt-1">
-              <Label className={currentLabelClasses}>{t('aiProviders.dialog.replaceApiKey')}</Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
+            <div className={styles.editSubSection} style={{ paddingTop: 4 }}>
+              <Label className={isDefault ? styles.fieldLabelLight : styles.fieldLabel}>{t('aiProviders.dialog.replaceApiKey')}</Label>
+              <div className={styles.keyInputRow}>
+                <div className={styles.keyInputWrap}>
                   <Input
                     type={showKey ? 'text' : 'password'}
                     placeholder={typeInfo?.requiresApiKey ? typeInfo?.placeholder : (typeInfo?.id === 'ollama' ? t('aiProviders.notRequired') : t('aiProviders.card.editKey'))}
                     value={newKey}
                     onChange={(e) => setNewKey(e.target.value)}
-                    className={cn(currentInputClasses, 'pr-10')}
+                    className={isDefault ? styles.monoInputDefault : styles.monoInput}
+                    style={{ paddingRight: 40 }}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowKey(!showKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  <button type="button" onClick={() => setShowKey(!showKey)} className={styles.eyeBtn}>
+                    {showKey ? <EyeOff style={{ height: 16, width: 16 }} /> : <Eye style={{ height: 16, width: 16 }} />}
                   </button>
                 </div>
                 <Button
                   variant="outline"
                   onClick={handleSaveEdits}
-                  className={cn(
-                    "rounded-xl px-4 border-black/10 dark:border-white/10",
-                    isDefault
-                      ? "h-[40px] bg-white dark:bg-card hover:bg-black/5 dark:hover:bg-white/10"
-                      : "h-[44px] bg-[#eeece3] dark:bg-muted hover:bg-black/5 dark:hover:bg-white/10 shadow-sm"
-                  )}
+                  style={{
+                    borderRadius: 12,
+                    padding: '0 16px',
+                    height: isDefault ? 40 : 44,
+                    borderColor: 'rgba(0,0,0,0.1)',
+                    background: isDefault ? 'white' : '#eeece3',
+                    boxShadow: isDefault ? undefined : '0 1px 2px rgba(0,0,0,0.05)',
+                  }}
                   disabled={
                     validating
                     || saving
@@ -794,27 +765,28 @@ function ProviderCard({
                   }
                 >
                   {validating || saving ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 style={{ height: 16, width: 16, animation: 'spin 1s linear infinite' }} />
                   ) : (
-                    <Check className="h-4 w-4 text-green-500" />
+                    <Check style={{ height: 16, width: 16, color: '#22c55e' }} />
                   )}
                 </Button>
                 <Button
                   variant="ghost"
                   onClick={onCancelEdit}
-                  className={cn(
-                    "p-0 rounded-xl",
-                    isDefault
-                      ? "h-[40px] w-[40px] hover:bg-black/5 dark:hover:bg-white/10"
-                      : "h-[44px] w-[44px] bg-[#eeece3] dark:bg-muted border border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 shadow-sm text-muted-foreground hover:text-foreground"
-                  )}
+                  style={{
+                    padding: 0,
+                    borderRadius: 12,
+                    height: isDefault ? 40 : 44,
+                    width: isDefault ? 40 : 44,
+                    border: isDefault ? undefined : '1px solid rgba(0,0,0,0.1)',
+                    background: isDefault ? undefined : '#eeece3',
+                    boxShadow: isDefault ? undefined : '0 1px 2px rgba(0,0,0,0.05)',
+                  }}
                 >
-                  <X className="h-4 w-4" />
+                  <X style={{ height: 16, width: 16 }} />
                 </Button>
               </div>
-              <p className="text-[12px] text-muted-foreground">
-                {t('aiProviders.dialog.replaceApiKeyHelp')}
-              </p>
+              <p className={styles.helpText}>{t('aiProviders.dialog.replaceApiKeyHelp')}</p>
             </div>
           </div>
         </div>
@@ -850,6 +822,7 @@ function AddProviderDialog({
   devModeUnlocked,
 }: AddProviderDialogProps) {
   const { t, i18n } = useTranslation('settings');
+  const { styles } = useProviderStyles();
   const [selectedType, setSelectedType] = useState<ProviderType | null>(null);
   const [name, setName] = useState('');
   const [apiKey, setApiKey] = useState('');
@@ -1136,25 +1109,26 @@ function AddProviderDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl border-0 shadow-2xl bg-[#f3f1e9] dark:bg-card overflow-hidden">
-        <CardHeader className="relative pb-2 shrink-0">
-          <CardTitle className="text-sm font-serif font-normal">{t('aiProviders.dialog.title')}</CardTitle>
-          <CardDescription className="text-[14px] mt-1 text-foreground/70">
+    <div className={styles.dialogOverlay}>
+      <Card className={styles.dialogCard}>
+        <CardHeader className={styles.dialogHeader}>
+          <CardTitle className={styles.dialogTitle}>{t('aiProviders.dialog.title')}</CardTitle>
+          <CardDescription className={styles.dialogDesc}>
             {t('aiProviders.dialog.desc')}
           </CardDescription>
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-4 top-4 rounded-full h-8 w-8 -mr-2 -mt-2 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+            className={styles.dialogCloseBtn}
+            style={{ borderRadius: 9999, height: 32, width: 32 }}
             onClick={onClose}
           >
-            <X className="h-4 w-4" />
+            <X style={{ height: 16, width: 16 }} />
           </Button>
         </CardHeader>
-        <CardContent className="overflow-y-auto flex-1 p-6">
+        <CardContent className={styles.dialogBody}>
           {!selectedType ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className={styles.typeGrid}>
               {availableTypes.map((type) => (
                 <button
                   key={type.id}
@@ -1165,31 +1139,39 @@ function AddProviderDialog({
                     setModelId(type.defaultModelId || '');
                     setArkMode('apikey');
                   }}
-                  className="p-4 rounded-2xl border border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-center group"
+                  className={styles.typeBtn}
                 >
-                  <div className="h-12 w-12 mx-auto mb-3 flex items-center justify-center bg-black/5 dark:bg-white/5 rounded-xl shadow-sm border border-black/5 dark:border-white/5 group-hover:scale-105 transition-transform">
+                  <div className={styles.typeBtnIcon}>
                     {getProviderIconUrl(type.id) ? (
-                      <img src={getProviderIconUrl(type.id)} alt={type.name} className={cn('h-6 w-6', shouldInvertInDark(type.id) && 'dark:invert')} />
+                      <img
+                        src={getProviderIconUrl(type.id)}
+                        alt={type.name}
+                        style={{ height: 24, width: 24, ...(shouldInvertInDark(type.id) ? { filter: 'invert(1)' } : {}) }}
+                      />
                     ) : (
-                      <span className="text-sm">{type.icon}</span>
+                      <span style={{ fontSize: 14 }}>{type.icon}</span>
                     )}
                   </div>
-                  <p className="font-medium text-[13px]">{type.id === 'custom' ? t('aiProviders.custom') : type.name}</p>
+                  <p className={styles.typeBtnName}>{type.id === 'custom' ? t('aiProviders.custom') : type.name}</p>
                 </button>
               ))}
             </div>
           ) : (
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-card border border-black/5 dark:border-white/5 shadow-sm">
-                <div className="h-10 w-10 shrink-0 flex items-center justify-center bg-black/5 dark:bg-white/5 rounded-xl">
+            <div className={styles.sectionGap6} style={{ gap: 24 }}>
+              <div className={styles.selectedProviderHeader}>
+                <div className={styles.selectedProviderIcon}>
                   {getProviderIconUrl(selectedType!) ? (
-                    <img src={getProviderIconUrl(selectedType!)} alt={typeInfo?.name} className={cn('h-6 w-6', shouldInvertInDark(selectedType!) && 'dark:invert')} />
+                    <img
+                      src={getProviderIconUrl(selectedType!)}
+                      alt={typeInfo?.name}
+                      style={{ height: 24, width: 24, ...(shouldInvertInDark(selectedType!) ? { filter: 'invert(1)' } : {}) }}
+                    />
                   ) : (
-                    <span className="text-sm">{typeInfo?.icon}</span>
+                    <span style={{ fontSize: 14 }}>{typeInfo?.icon}</span>
                   )}
                 </div>
                 <div>
-                  <p className="font-semibold text-[14px]">{typeInfo?.id === 'custom' ? t('aiProviders.custom') : typeInfo?.name}</p>
+                  <p style={{ fontWeight: 600, fontSize: 14 }}>{typeInfo?.id === 'custom' ? t('aiProviders.custom') : typeInfo?.name}</p>
                   <button
                     onClick={() => {
                       setSelectedType(null);
@@ -1198,57 +1180,46 @@ function AddProviderDialog({
                       setModelId('');
                       setArkMode('apikey');
                     }}
-                    className="text-[13px] text-blue-500 hover:text-blue-600 font-medium"
+                    style={{ fontSize: 13, color: '#3b82f6', fontWeight: 500, cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
                   >
                     {t('aiProviders.dialog.change')}
                   </button>
                   {effectiveDocsUrl && (
                     <>
-                      <span className="mx-2 text-foreground/20">|</span>
-                      <a
-                        href={effectiveDocsUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[13px] text-blue-500 hover:text-blue-600 font-medium inline-flex items-center gap-1"
-                      >
+                      <span style={{ margin: '0 8px', opacity: 0.2 }}>|</span>
+                      <a href={effectiveDocsUrl} target="_blank" rel="noopener noreferrer" className={styles.linkBlue13}>
                         {t('aiProviders.dialog.customDoc')}
-                        <ExternalLink className="h-3 w-3" />
+                        <ExternalLink style={{ height: 12, width: 12 }} />
                       </a>
                     </>
                   )}
                 </div>
               </div>
 
-              <div className="space-y-6 bg-transparent p-0">
-                <div className="space-y-2.5">
-                  <Label htmlFor="name" className={labelClasses}>{t('aiProviders.dialog.displayName')}</Label>
+              <div className={styles.sectionGap6} style={{ gap: 24, background: 'transparent', padding: 0 }}>
+                <div className={styles.formGroup}>
+                  <Label htmlFor="name" className={styles.fieldLabel}>{t('aiProviders.dialog.displayName')}</Label>
                   <Input
                     id="name"
                     placeholder={typeInfo?.id === 'custom' ? t('aiProviders.custom') : typeInfo?.name}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className={inputClasses}
+                    className={styles.monoInput}
                   />
                 </div>
 
                 {/* Auth mode toggle for providers supporting both */}
                 {isOAuth && supportsApiKey && (
-                  <div className="flex rounded-xl border border-black/10 dark:border-white/10 overflow-hidden text-[13px] font-medium shadow-sm bg-[#eeece3] dark:bg-muted p-1 gap-1">
+                  <div className={styles.authModeToggle}>
                     <button
                       onClick={() => setAuthMode('oauth')}
-                      className={cn(
-                        'flex-1 py-2 px-3 rounded-lg transition-colors',
-                        authMode === 'oauth' ? 'bg-black/5 dark:bg-white/10 text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5'
-                      )}
+                      className={cn(styles.authModeBtn, authMode === 'oauth' && styles.authModeBtnActive)}
                     >
                       {t('aiProviders.oauth.loginMode')}
                     </button>
                     <button
                       onClick={() => setAuthMode('apikey')}
-                      className={cn(
-                        'flex-1 py-2 px-3 rounded-lg transition-colors',
-                        authMode === 'apikey' ? 'bg-black/5 dark:bg-white/10 text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5'
-                      )}
+                      className={cn(styles.authModeBtn, authMode === 'apikey' && styles.authModeBtnActive)}
                     >
                       {t('aiProviders.oauth.apikeyMode')}
                     </button>
@@ -1257,22 +1228,16 @@ function AddProviderDialog({
 
                 {/* API Key input — shown for non-OAuth providers or when apikey mode is selected */}
                 {(!isOAuth || (supportsApiKey && authMode === 'apikey')) && (
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="apiKey" className={labelClasses}>{t('aiProviders.dialog.apiKey')}</Label>
+                  <div className={styles.formGroup}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Label htmlFor="apiKey" className={styles.fieldLabel}>{t('aiProviders.dialog.apiKey')}</Label>
                       {typeInfo?.apiKeyUrl && (
-                        <a
-                          href={typeInfo.apiKeyUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[13px] text-blue-500 hover:text-blue-600 font-medium flex items-center gap-1"
-                          tabIndex={-1}
-                        >
-                          {t('aiProviders.oauth.getApiKey')} <ExternalLink className="h-3 w-3" />
+                        <a href={typeInfo.apiKeyUrl} target="_blank" rel="noopener noreferrer" className={styles.linkBlue13} tabIndex={-1}>
+                          {t('aiProviders.oauth.getApiKey')} <ExternalLink style={{ height: 12, width: 12 }} />
                         </a>
                       )}
                     </div>
-                    <div className="relative">
+                    <div className={styles.inputWithEye}>
                       <Input
                         id="apiKey"
                         type={showKey ? 'text' : 'password'}
@@ -1282,41 +1247,36 @@ function AddProviderDialog({
                           setApiKey(e.target.value);
                           setValidationError(null);
                         }}
-                        className={inputClasses}
+                        className={styles.monoInput}
+                        style={{ paddingRight: 40 }}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowKey(!showKey)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      <button type="button" onClick={() => setShowKey(!showKey)} className={styles.eyeBtn}>
+                        {showKey ? <EyeOff style={{ height: 16, width: 16 }} /> : <Eye style={{ height: 16, width: 16 }} />}
                       </button>
                     </div>
                     {validationError && (
-                      <p className="text-[13px] text-red-500 font-medium">{validationError}</p>
+                      <p className={styles.errorText}>{validationError}</p>
                     )}
-                    <p className="text-[12px] text-muted-foreground">
-                      {t('aiProviders.dialog.apiKeyStored')}
-                    </p>
+                    <p className={styles.helpText}>{t('aiProviders.dialog.apiKeyStored')}</p>
                   </div>
                 )}
 
                 {typeInfo?.showBaseUrl && (
-                  <div className="space-y-2.5">
-                    <Label htmlFor="baseUrl" className={labelClasses}>{t('aiProviders.dialog.baseUrl')}</Label>
+                  <div className={styles.formGroup}>
+                    <Label htmlFor="baseUrl" className={styles.fieldLabel}>{t('aiProviders.dialog.baseUrl')}</Label>
                     <Input
                       id="baseUrl"
                       placeholder={getProtocolBaseUrlPlaceholder(apiProtocol)}
                       value={baseUrl}
                       onChange={(e) => setBaseUrl(e.target.value)}
-                      className={inputClasses}
+                      className={styles.monoInput}
                     />
                   </div>
                 )}
 
                 {showModelIdField && (
-                  <div className="space-y-2.5">
-                    <Label htmlFor="modelId" className={labelClasses}>{t('aiProviders.dialog.modelId')}</Label>
+                  <div className={styles.formGroup}>
+                    <Label htmlFor="modelId" className={styles.fieldLabel}>{t('aiProviders.dialog.modelId')}</Label>
                     <Input
                       id="modelId"
                       placeholder={typeInfo?.modelIdPlaceholder || 'provider/model-id'}
@@ -1325,28 +1285,22 @@ function AddProviderDialog({
                         setModelId(e.target.value);
                         setValidationError(null);
                       }}
-                      className={inputClasses}
+                      className={styles.monoInput}
                     />
                   </div>
                 )}
                 {selectedType === 'ark' && codePlanPreset && (
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label className={labelClasses}>{t('aiProviders.dialog.codePlanPreset')}</Label>
+                  <div className={styles.formGroup}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <Label className={styles.fieldLabel}>{t('aiProviders.dialog.codePlanPreset')}</Label>
                       {typeInfo?.codePlanDocsUrl && (
-                        <a
-                          href={typeInfo.codePlanDocsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[13px] text-blue-500 hover:text-blue-600 font-medium inline-flex items-center gap-1"
-                          tabIndex={-1}
-                        >
+                        <a href={typeInfo.codePlanDocsUrl} target="_blank" rel="noopener noreferrer" className={styles.linkBlue13} tabIndex={-1}>
                           {t('aiProviders.dialog.codePlanDoc')}
-                          <ExternalLink className="h-3 w-3" />
+                          <ExternalLink style={{ height: 12, width: 12 }} />
                         </a>
                       )}
                     </div>
-                    <div className="flex gap-2 text-[13px]">
+                    <div className={styles.segmentGroup}>
                       <button
                         type="button"
                         onClick={() => {
@@ -1357,7 +1311,7 @@ function AddProviderDialog({
                           }
                           setValidationError(null);
                         }}
-                        className={cn("flex-1 py-1.5 px-3 rounded-lg border transition-colors", arkMode === 'apikey' ? "bg-white dark:bg-card border-black/20 dark:border-white/20 shadow-sm font-medium" : "border-transparent bg-black/5 dark:bg-white/5 text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10")}
+                        className={cn(styles.segmentBtn, arkMode === 'apikey' && styles.segmentBtnActive)}
                       >
                         {t('aiProviders.authModes.apiKey')}
                       </button>
@@ -1369,60 +1323,58 @@ function AddProviderDialog({
                           setModelId(codePlanPreset.modelId);
                           setValidationError(null);
                         }}
-                        className={cn("flex-1 py-1.5 px-3 rounded-lg border transition-colors", arkMode === 'codeplan' ? "bg-white dark:bg-card border-black/20 dark:border-white/20 shadow-sm font-medium" : "border-transparent bg-black/5 dark:bg-white/5 text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10")}
+                        className={cn(styles.segmentBtn, arkMode === 'codeplan' && styles.segmentBtnActive)}
                       >
                         {t('aiProviders.dialog.codePlanMode')}
                       </button>
                     </div>
                     {arkMode === 'codeplan' && (
-                      <p className="text-[12px] text-muted-foreground">
-                        {t('aiProviders.dialog.codePlanPresetDesc')}
-                      </p>
+                      <p className={styles.helpText}>{t('aiProviders.dialog.codePlanPresetDesc')}</p>
                     )}
                   </div>
                 )}
                 {selectedType === 'custom' && (
-                <div className="space-y-2.5">
-                  <Label className={labelClasses}>{t('aiProviders.dialog.protocol', 'Protocol')}</Label>
-                  <div className="flex gap-2 text-[13px]">
+                <div className={styles.formGroup}>
+                  <Label className={styles.fieldLabel}>{t('aiProviders.dialog.protocol', 'Protocol')}</Label>
+                  <div className={styles.segmentGroup}>
                     <button
                       type="button"
-                        onClick={() => setApiProtocol('openai-completions')}
-                        className={cn("flex-1 py-1.5 px-3 rounded-lg border transition-colors", apiProtocol === 'openai-completions' ? "bg-white dark:bg-card border-black/20 dark:border-white/20 shadow-sm font-medium" : "border-transparent bg-black/5 dark:bg-white/5 text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10")}
+                      onClick={() => setApiProtocol('openai-completions')}
+                      className={cn(styles.segmentBtn, apiProtocol === 'openai-completions' && styles.segmentBtnActive)}
                     >
                       {t('aiProviders.protocols.openaiCompletions', 'OpenAI Completions')}
                     </button>
                     <button
                       type="button"
                       onClick={() => setApiProtocol('openai-responses')}
-                      className={cn("flex-1 py-1.5 px-3 rounded-lg border transition-colors", apiProtocol === 'openai-responses' ? "bg-white dark:bg-card border-black/20 dark:border-white/20 shadow-sm font-medium" : "border-transparent bg-black/5 dark:bg-white/5 text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10")}
+                      className={cn(styles.segmentBtn, apiProtocol === 'openai-responses' && styles.segmentBtnActive)}
                     >
                       {t('aiProviders.protocols.openaiResponses', 'OpenAI Responses')}
                     </button>
                     <button
                       type="button"
                       onClick={() => setApiProtocol('anthropic-messages')}
-                      className={cn("flex-1 py-1.5 px-3 rounded-lg border transition-colors", apiProtocol === 'anthropic-messages' ? "bg-white dark:bg-card border-black/20 dark:border-white/20 shadow-sm font-medium" : "border-transparent bg-black/5 dark:bg-white/5 text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10")}
-                      >
-                        {t('aiProviders.protocols.anthropic', 'Anthropic')}
-                      </button>
-                    </div>
+                      className={cn(styles.segmentBtn, apiProtocol === 'anthropic-messages' && styles.segmentBtnActive)}
+                    >
+                      {t('aiProviders.protocols.anthropic', 'Anthropic')}
+                    </button>
                   </div>
+                </div>
                 )}
                 {/* Device OAuth Trigger — only shown when in OAuth mode */}
                 {useOAuthFlow && (
-                  <div className="space-y-4 pt-2">
-                    <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-5 text-center">
-                      <p className="text-[13px] font-medium text-blue-600 dark:text-blue-400 mb-4 block">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
+                    <div className={styles.oauthBox}>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: '#2563eb', marginBottom: 16, display: 'block' }}>
                         {t('aiProviders.oauth.loginPrompt')}
                       </p>
                       <Button
                         onClick={handleStartOAuth}
                         disabled={oauthFlowing}
-                        className="w-full rounded-full h-[42px] font-semibold bg-[#0a84ff] hover:bg-[#007aff] text-white shadow-sm"
+                        style={{ width: '100%', borderRadius: 9999, height: 42, fontWeight: 600, background: '#0a84ff', color: 'white', border: 'none', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                       >
                         {oauthFlowing ? (
-                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t('aiProviders.oauth.waiting')}</>
+                          <><Loader2 style={{ height: 16, width: 16, marginRight: 8, animation: 'spin 1s linear infinite' }} />{t('aiProviders.oauth.waiting')}</>
                         ) : (
                           t('aiProviders.oauth.loginButton')
                         )}
@@ -1431,105 +1383,95 @@ function AddProviderDialog({
 
                     {/* OAuth Active State Modal / Inline View */}
                     {oauthFlowing && (
-                      <div className="mt-4 p-5 border border-black/10 dark:border-white/10 rounded-2xl bg-white dark:bg-card shadow-sm relative overflow-hidden">
-                        {/* Background pulse effect */}
-                        <div className="absolute inset-0 bg-blue-500/5 animate-pulse" />
-
-                        <div className="relative z-10 flex flex-col items-center justify-center text-center space-y-5">
+                      <div className={styles.oauthFlowArea} style={{ marginTop: 16 }}>
+                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(59,130,246,0.05)', animation: 'pulse 2s cubic-bezier(0.4,0,0.6,1) infinite' }} />
+                        <div className={styles.oauthFlowInner}>
                           {oauthError ? (
-                            <div className="text-red-500 space-y-3">
-                              <XCircle className="h-10 w-10 mx-auto" />
-                              <p className="font-semibold text-[14px]">{t('aiProviders.oauth.authFailed')}</p>
-                              <p className="text-[13px] opacity-80">{oauthError}</p>
-                              <Button variant="outline" size="sm" onClick={handleCancelOAuth} className="mt-2 rounded-full px-6 h-9">
+                            <div style={{ color: '#ef4444', display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+                              <XCircle style={{ height: 40, width: 40 }} />
+                              <p style={{ fontWeight: 600, fontSize: 14 }}>{t('aiProviders.oauth.authFailed')}</p>
+                              <p style={{ fontSize: 13, opacity: 0.8 }}>{oauthError}</p>
+                              <Button variant="outline" size="sm" onClick={handleCancelOAuth} style={{ marginTop: 8, borderRadius: 9999, padding: '0 24px', height: 36 }}>
                                 Try Again
                               </Button>
                             </div>
                           ) : !oauthData ? (
-                            <div className="space-y-4 py-6">
-                              <Loader2 className="h-10 w-10 animate-spin text-blue-500 mx-auto" />
-                              <p className="text-[13px] font-medium text-muted-foreground animate-pulse">{t('aiProviders.oauth.requestingCode')}</p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center', padding: '24px 0' }}>
+                              <Loader2 style={{ height: 40, width: 40, color: '#3b82f6', animation: 'spin 1s linear infinite' }} />
+                              <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--ant-color-text-secondary)' }}>{t('aiProviders.oauth.requestingCode')}</p>
                             </div>
                           ) : oauthData.mode === 'manual' ? (
-                            <div className="space-y-4 w-full">
-                              <div className="space-y-2">
-                                <h3 className="font-semibold text-[14px] text-foreground">Complete OpenAI Login</h3>
-                                <p className="text-[13px] text-muted-foreground text-left bg-black/5 dark:bg-white/5 p-4 rounded-xl">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <h3 style={{ fontWeight: 600, fontSize: 14 }}>Complete OpenAI Login</h3>
+                                <p style={{ fontSize: 13, textAlign: 'left', background: 'rgba(0,0,0,0.05)', padding: 16, borderRadius: 12 }}>
                                   {oauthData.message || 'Open the authorization page, complete login, then paste the callback URL or code below.'}
                                 </p>
                               </div>
-
                               <Button
                                 variant="secondary"
-                                className="w-full rounded-full h-[42px] font-semibold"
+                                style={{ width: '100%', borderRadius: 9999, height: 42, fontWeight: 600 }}
                                 onClick={() => invokeIpc('shell:openExternal', oauthData.authorizationUrl)}
                               >
-                                <ExternalLink className="h-4 w-4 mr-2" />
+                                <ExternalLink style={{ height: 16, width: 16, marginRight: 8 }} />
                                 Open Authorization Page
                               </Button>
-
                               <Input
                                 placeholder="Paste callback URL or code"
                                 value={manualCodeInput}
                                 onChange={(e) => setManualCodeInput(e.target.value)}
-                                className={inputClasses}
+                                className={styles.monoInput}
                               />
-
                               <Button
-                                className="w-full rounded-full h-[42px] font-semibold bg-[#0a84ff] hover:bg-[#007aff] text-white"
+                                style={{ width: '100%', borderRadius: 9999, height: 42, fontWeight: 600, background: '#0a84ff', color: 'white', border: 'none' }}
                                 onClick={handleSubmitManualOAuthCode}
                                 disabled={!manualCodeInput.trim()}
                               >
                                 Submit Code
                               </Button>
-
-                              <Button variant="ghost" className="w-full rounded-full h-[42px] font-semibold text-muted-foreground" onClick={handleCancelOAuth}>
+                              <Button variant="ghost" style={{ width: '100%', borderRadius: 9999, height: 42, fontWeight: 600 }} onClick={handleCancelOAuth}>
                                 Cancel
                               </Button>
                             </div>
                           ) : (
-                            <div className="space-y-5 w-full">
-                              <div className="space-y-2">
-                                <h3 className="font-semibold text-[14px] text-foreground">{t('aiProviders.oauth.approveLogin')}</h3>
-                                <div className="text-[13px] text-muted-foreground text-left mt-2 space-y-1.5 bg-black/5 dark:bg-white/5 p-4 rounded-xl">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 20, width: '100%' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <h3 style={{ fontWeight: 600, fontSize: 14 }}>{t('aiProviders.oauth.approveLogin')}</h3>
+                                <div style={{ fontSize: 13, textAlign: 'left', marginTop: 8, background: 'rgba(0,0,0,0.05)', padding: 16, borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
                                   <p>1. {t('aiProviders.oauth.step1')}</p>
                                   <p>2. {t('aiProviders.oauth.step2')}</p>
                                   <p>3. {t('aiProviders.oauth.step3')}</p>
                                 </div>
                               </div>
-
-                              <div className="flex items-center justify-center gap-3 p-4 bg-[#eeece3] dark:bg-muted border border-black/5 dark:border-white/5 rounded-xl shadow-inner">
-                                <code className="text-sm font-mono tracking-[0.2em] font-bold text-foreground">
+                              <div className={styles.userCodeBox}>
+                                <code style={{ fontSize: 14, fontFamily: 'monospace', letterSpacing: '0.2em', fontWeight: 700 }}>
                                   {oauthData.userCode}
                                 </code>
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-10 w-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10"
+                                  style={{ height: 40, width: 40, borderRadius: 9999 }}
                                   onClick={() => {
                                     navigator.clipboard.writeText(oauthData.userCode);
                                     toast.success(t('aiProviders.oauth.codeCopied'));
                                   }}
                                 >
-                                  <Copy className="h-5 w-5" />
+                                  <Copy style={{ height: 20, width: 20 }} />
                                 </Button>
                               </div>
-
                               <Button
                                 variant="secondary"
-                                className="w-full rounded-full h-[42px] font-semibold"
+                                style={{ width: '100%', borderRadius: 9999, height: 42, fontWeight: 600 }}
                                 onClick={() => invokeIpc('shell:openExternal', oauthData.verificationUri)}
                               >
-                                <ExternalLink className="h-4 w-4 mr-2" />
+                                <ExternalLink style={{ height: 16, width: 16, marginRight: 8 }} />
                                 {t('aiProviders.oauth.openLoginPage')}
                               </Button>
-
-                              <div className="flex items-center justify-center gap-2 text-[13px] font-medium text-muted-foreground pt-2">
-                                <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, fontWeight: 500, color: 'var(--ant-color-text-secondary)', paddingTop: 8 }}>
+                                <Loader2 style={{ height: 16, width: 16, color: '#3b82f6', animation: 'spin 1s linear infinite' }} />
                                 <span>{t('aiProviders.oauth.waitingApproval')}</span>
                               </div>
-
-                              <Button variant="ghost" className="w-full rounded-full h-[42px] font-semibold text-muted-foreground" onClick={handleCancelOAuth}>
+                              <Button variant="ghost" style={{ width: '100%', borderRadius: 9999, height: 42, fontWeight: 600 }} onClick={handleCancelOAuth}>
                                 Cancel
                               </Button>
                             </div>
@@ -1541,16 +1483,27 @@ function AddProviderDialog({
                 )}
               </div>
 
-              <Separator className="bg-black/10 dark:bg-white/10" />
+              <div className={styles.separator} />
 
-              <div className="flex justify-end gap-3">
+              <div className={styles.dialogFooter}>
                 <Button
                   onClick={handleAdd}
-                  className={cn("rounded-full px-8 h-[42px] text-[13px] font-semibold bg-[#0a84ff] hover:bg-[#007aff] text-white shadow-sm", useOAuthFlow && "hidden")}
+                  style={{
+                    borderRadius: 9999,
+                    padding: '0 32px',
+                    height: 42,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    background: '#0a84ff',
+                    color: 'white',
+                    border: 'none',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                    display: useOAuthFlow ? 'none' : undefined,
+                  }}
                   disabled={!selectedType || saving || (showModelIdField && modelId.trim().length === 0)}
                 >
                   {saving ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader2 style={{ height: 16, width: 16, animation: 'spin 1s linear infinite', marginRight: 8 }} />
                   ) : null}
                   {t('aiProviders.dialog.add')}
                 </Button>

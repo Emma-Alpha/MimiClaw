@@ -4,7 +4,7 @@
  * Windows: drag region with custom controls + management menu.
  * Linux: keep native frame, but still expose overlay controls for consistency.
  */
-import { useState, useEffect, useMemo, useRef, useCallback, type ReactNode } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
 	Minus,
@@ -21,13 +21,182 @@ import {
 	Clock,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { createStyles } from "antd-style";
 import { invokeIpc } from "@/lib/api-client";
 import { useSettingsStore } from "@/stores/settings";
-import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+void Ellipsis;
+
+const useStyles = createStyles(({ token, css }) => ({
+	sidebarToggleBtn: css`
+		pointer-events: auto;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		border-radius: ${token.borderRadiusSM}px;
+		border: none;
+		background: transparent;
+		color: ${token.colorTextSecondary};
+		cursor: pointer;
+		transition: background 0.15s ease, color 0.15s ease;
+
+		&:hover {
+			background: rgba(0, 0, 0, 0.07);
+			color: ${token.colorText};
+		}
+	`,
+	managementMenuWrap: css`
+		position: relative;
+	`,
+	managementMenuDropdown: css`
+		position: absolute;
+		right: 0;
+		top: calc(100% + 8px);
+		z-index: 140;
+		width: 192px;
+		border-radius: ${token.borderRadiusLG}px;
+		border: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorBgElevated};
+		padding: 4px;
+		box-shadow: ${token.boxShadowSecondary};
+	`,
+	managementMenuItem: css`
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		width: 100%;
+		border-radius: ${token.borderRadius}px;
+		padding: 8px 10px;
+		font-size: 13px;
+		text-align: left;
+		border: none;
+		background: transparent;
+		cursor: pointer;
+		color: ${token.colorTextSecondary};
+		transition: background 0.12s ease, color 0.12s ease;
+
+		&:hover {
+			background: ${token.colorFillSecondary};
+			color: ${token.colorText};
+		}
+	`,
+	managementMenuItemActive: css`
+		background: ${token.colorFillTertiary};
+		color: ${token.colorText};
+	`,
+	managementMenuIcon: css`
+		color: ${token.colorTextTertiary};
+	`,
+	// macOS title bar
+	macTitleBar: css`
+		height: 40px;
+		width: 100%;
+		flex-shrink: 0;
+		background: transparent;
+		position: absolute;
+		top: 0;
+		left: 0;
+		z-index: 100;
+	`,
+	macSidebarToggleArea: css`
+		position: absolute;
+		left: 80px;
+		top: 10px;
+		pointer-events: auto;
+	`,
+	macRightArea: css`
+		pointer-events: auto;
+		position: absolute;
+		right: 12px;
+		top: 10px;
+		display: flex;
+		align-items: center;
+		gap: 4px;
+	`,
+	// Linux title bar
+	linuxTitleBar: css`
+		height: 40px;
+		width: 100%;
+		flex-shrink: 0;
+		background: transparent;
+		position: absolute;
+		top: 0;
+		left: 0;
+		z-index: 100;
+		pointer-events: none;
+	`,
+	linuxSidebarToggleArea: css`
+		pointer-events: auto;
+		position: absolute;
+		left: 12px;
+		top: 10px;
+	`,
+	linuxRightArea: css`
+		pointer-events: auto;
+		position: absolute;
+		right: 12px;
+		top: 10px;
+		display: flex;
+		align-items: center;
+		gap: 4px;
+	`,
+	// Windows title bar
+	winTitleBar: css`
+		display: flex;
+		height: 40px;
+		width: 100%;
+		flex-shrink: 0;
+		align-items: center;
+		justify-content: space-between;
+		background: transparent;
+		position: absolute;
+		top: 0;
+		left: 0;
+		z-index: 100;
+	`,
+	winLeft: css`
+		display: flex;
+		height: 100%;
+		align-items: center;
+		padding-left: 8px;
+	`,
+	winRight: css`
+		display: flex;
+		height: 100%;
+		align-items: center;
+		gap: 4px;
+		padding-right: 4px;
+		pointer-events: auto;
+	`,
+	winControlBtn: css`
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		width: 44px;
+		border: none;
+		background: transparent;
+		color: ${token.colorTextSecondary};
+		cursor: pointer;
+		transition: background 0.12s ease, color 0.12s ease;
+
+		&:hover {
+			background: ${token.colorFillSecondary};
+			color: ${token.colorText};
+		}
+	`,
+	winCloseBtn: css`
+		&:hover {
+			background: #ef4444;
+			color: #fff;
+		}
+	`,
+}));
 
 type TitleBarProps = {
 	className?: string;
+	style?: React.CSSProperties;
 	hideManagementMenu?: boolean;
 	hideSidebarToggle?: boolean;
 	rightContent?: ReactNode;
@@ -55,30 +224,12 @@ function isEditableTarget(target: EventTarget | null): boolean {
 	return target.getAttribute("role") === "textbox";
 }
 
-function TooltipLabel({
-	label,
-	shortcut,
-}: {
-	label: string;
-	shortcut?: string;
-}) {
-	return (
-		<div className="flex items-center gap-2 whitespace-nowrap">
-			<span>{label}</span>
-			{shortcut ? (
-				<span className="rounded-[4px] bg-white/18 px-1.5 py-[1px] text-[11px] font-medium tracking-wide text-white/95">
-					{shortcut}
-				</span>
-			) : null}
-		</div>
-	);
-}
-
 function SidebarToggleButton({
 	sidebarCollapsed,
 	onToggle,
 	ariaLabel,
 }: SidebarToggleButtonProps) {
+	const { styles } = useStyles();
 	return (
 		<button
 			type="button"
@@ -88,14 +239,14 @@ function SidebarToggleButton({
 				onToggle();
 			}}
 			style={{ WebkitAppRegion: 'no-drag' } as any}
-			className="no-drag pointer-events-auto flex h-7 w-7 items-center justify-center rounded-md text-foreground/75 transition-all duration-150 hover:bg-black/[0.07] hover:text-foreground dark:hover:bg-white/[0.12]"
+			className={styles.sidebarToggleBtn}
 			aria-label={ariaLabel}
 			title={ariaLabel}
 		>
 			{sidebarCollapsed ? (
-				<PanelLeft className="h-[16px] w-[16px]" />
+				<PanelLeft style={{ width: 16, height: 16 }} />
 			) : (
-				<PanelLeftClose className="h-[16px] w-[16px]" />
+				<PanelLeftClose style={{ width: 16, height: 16 }} />
 			)}
 		</button>
 	);
@@ -106,6 +257,8 @@ function ManagementMenu({
 }: {
 	className?: string;
 }) {
+	void className;
+	const { styles, cx } = useStyles();
 	const { t } = useTranslation("common");
 	const navigate = useNavigate();
 	const location = useLocation();
@@ -117,27 +270,27 @@ function ManagementMenu({
 			{
 				to: "/models",
 				label: t("sidebar.models"),
-				icon: <Cpu className="h-[15px] w-[15px]" strokeWidth={2} />,
+				icon: <Cpu style={{ width: 15, height: 15 }} strokeWidth={2} />,
 			},
 			{
 				to: "/agents",
 				label: t("sidebar.agents"),
-				icon: <Bot className="h-[15px] w-[15px]" strokeWidth={2} />,
+				icon: <Bot style={{ width: 15, height: 15 }} strokeWidth={2} />,
 			},
 			{
 				to: "/channels",
 				label: t("sidebar.channels"),
-				icon: <Network className="h-[15px] w-[15px]" strokeWidth={2} />,
+				icon: <Network style={{ width: 15, height: 15 }} strokeWidth={2} />,
 			},
 			{
 				to: "/skills",
 				label: t("sidebar.skills"),
-				icon: <Puzzle className="h-[15px] w-[15px]" strokeWidth={2} />,
+				icon: <Puzzle style={{ width: 15, height: 15 }} strokeWidth={2} />,
 			},
 			{
 				to: "/cron",
 				label: t("sidebar.cronTasks"),
-				icon: <Clock className="h-[15px] w-[15px]" strokeWidth={2} />,
+				icon: <Clock style={{ width: 15, height: 15 }} strokeWidth={2} />,
 			},
 		],
 		[t],
@@ -157,9 +310,9 @@ function ManagementMenu({
 	}, [open]);
 
 	return (
-		<div ref={menuRef} className={cn("relative", className)}>
+		<div ref={menuRef} className={styles.managementMenuWrap}>
 			{open ? (
-				<div className="absolute right-0 top-full z-[140] mt-2 w-48 rounded-xl border border-black/[0.08] bg-white/95 p-1 shadow-xl backdrop-blur dark:border-white/[0.1] dark:bg-[#202329]/95">
+				<div className={styles.managementMenuDropdown}>
 					{items.map((item) => {
 						const isActive = location.pathname === item.to
 							|| location.pathname.startsWith(`${item.to}/`);
@@ -171,14 +324,12 @@ function ManagementMenu({
 									navigate(item.to);
 									setOpen(false);
 								}}
-								className={cn(
-									"flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors",
-									isActive
-										? "bg-black/[0.07] text-foreground dark:bg-white/[0.14]"
-										: "text-foreground/80 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]",
+								className={cx(
+									styles.managementMenuItem,
+									isActive && styles.managementMenuItemActive,
 								)}
 							>
-								<span className="text-muted-foreground">{item.icon}</span>
+								<span className={styles.managementMenuIcon}>{item.icon}</span>
 								<span>{item.label}</span>
 							</button>
 						);
@@ -191,10 +342,12 @@ function ManagementMenu({
 
 export function TitleBar({
 	className = "",
+	style,
 	hideManagementMenu = false,
 	hideSidebarToggle = false,
 	rightContent,
 }: TitleBarProps) {
+	const { styles, cx } = useStyles();
 	const platform = window.electron?.platform;
 	const { t } = useTranslation("common");
 	const sidebarCollapsed = useSettingsStore((state) => state.sidebarCollapsed);
@@ -243,18 +396,19 @@ export function TitleBar({
 	if (platform === "darwin") {
 		return (
 			<div
-				className={`drag-region h-10 w-full shrink-0 bg-transparent absolute top-0 left-0 z-[100] ${className}`.trim()}
+				className={cx(styles.macTitleBar, className)}
+				style={{ WebkitAppRegion: 'drag', ...style } as any}
 			>
 				{hideSidebarToggle ? null : (
 					<div
-						className="absolute left-[80px] top-[10px] pointer-events-auto"
+						className={styles.macSidebarToggleArea}
 						style={{ WebkitAppRegion: 'no-drag' } as any}
 					>
 						{sidebarToggleControl}
 					</div>
 				)}
 				<div
-					className="no-drag pointer-events-auto absolute right-3 top-[10px] flex items-center gap-1"
+					className={styles.macRightArea}
 					style={{ WebkitAppRegion: 'no-drag' } as any}
 				>
 					{rightContent}
@@ -266,19 +420,17 @@ export function TitleBar({
 
 	if (platform !== "win32") {
 		return (
-			<div
-				className={`pointer-events-none h-10 w-full shrink-0 bg-transparent absolute top-0 left-0 z-[100] ${className}`.trim()}
-			>
+			<div className={cx(styles.linuxTitleBar, className)} style={style}>
 				{hideSidebarToggle ? null : (
 					<div
-						className="pointer-events-auto absolute left-3 top-[10px]"
+						className={styles.linuxSidebarToggleArea}
 						style={{ WebkitAppRegion: 'no-drag' } as any}
 					>
 						{sidebarToggleControl}
 					</div>
 				)}
 				<div
-					className="pointer-events-auto absolute right-3 top-[10px] flex items-center gap-1"
+					className={styles.linuxRightArea}
 					style={{ WebkitAppRegion: 'no-drag' } as any}
 				>
 					{rightContent}
@@ -322,6 +474,7 @@ function WindowsTitleBar({
 	hideManagementMenu: boolean;
 	hideSidebarToggle?: boolean;
 }) {
+	const { styles, cx } = useStyles();
 	const [maximized, setMaximized] = useState(false);
 
 	useEffect(() => {
@@ -348,9 +501,10 @@ function WindowsTitleBar({
 
 	return (
 		<div
-			className={`drag-region flex h-10 w-full shrink-0 items-center justify-between bg-transparent absolute top-0 left-0 z-[100] ${className}`.trim()}
+			className={cx(styles.winTitleBar, className)}
+			style={{ WebkitAppRegion: 'drag' } as any}
 		>
-			<div className="no-drag flex h-full items-center pl-2">
+			<div className={styles.winLeft} style={{ WebkitAppRegion: 'no-drag' } as any}>
 				{hideSidebarToggle ? null : (
 					<SidebarToggleButton
 						sidebarCollapsed={sidebarCollapsed}
@@ -362,36 +516,36 @@ function WindowsTitleBar({
 				)}
 			</div>
 
-			<div className="no-drag flex h-full items-center gap-1 pr-1 pointer-events-auto">
+			<div className={styles.winRight} style={{ WebkitAppRegion: 'no-drag' } as any}>
 				{hideManagementMenu ? null : <ManagementMenu />}
 				{rightContent}
 				<button
 					onClick={handleMinimize}
-					className="flex h-full w-11 items-center justify-center text-muted-foreground transition-colors hover:bg-accent"
+					className={styles.winControlBtn}
 					title="Minimize"
 					type="button"
 				>
-					<Minus className="h-4 w-4" />
+					<Minus style={{ width: 16, height: 16 }} />
 				</button>
 				<button
 					onClick={handleMaximize}
-					className="flex h-full w-11 items-center justify-center text-muted-foreground transition-colors hover:bg-accent"
+					className={styles.winControlBtn}
 					title={maximized ? "Restore" : "Maximize"}
 					type="button"
 				>
 					{maximized ? (
-						<Copy className="h-3.5 w-3.5" />
+						<Copy style={{ width: 14, height: 14 }} />
 					) : (
-						<Square className="h-3.5 w-3.5" />
+						<Square style={{ width: 14, height: 14 }} />
 					)}
 				</button>
 				<button
 					onClick={handleClose}
-					className="flex h-full w-11 items-center justify-center text-muted-foreground transition-colors hover:bg-red-500 hover:text-white"
+					className={cx(styles.winControlBtn, styles.winCloseBtn)}
 					title="Close"
 					type="button"
 				>
-					<X className="h-4 w-4" />
+					<X style={{ width: 16, height: 16 }} />
 				</button>
 			</div>
 		</div>

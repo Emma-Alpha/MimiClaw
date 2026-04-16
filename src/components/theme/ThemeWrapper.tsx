@@ -10,7 +10,6 @@ import { ConfigProvider as LobeConfigProvider, ThemeProvider as LobeThemeProvide
 import AppElementContext from '@lobehub/ui/es/ThemeProvider/AppElementContext';
 import {
   StyleProvider,
-  ThemeProvider as AntdThemeProvider,
   createGlobalStyle,
   type GetAntdTheme,
 } from 'antd-style';

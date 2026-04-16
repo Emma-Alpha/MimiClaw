@@ -20,12 +20,15 @@ import {
   type UsageHistoryEntry,
   type UsageWindow,
 } from './usage-history';
+import { useModelsStyles } from './styles';
+
 const DEFAULT_USAGE_FETCH_MAX_ATTEMPTS = 2;
 const WINDOWS_USAGE_FETCH_MAX_ATTEMPTS = 3;
 const USAGE_FETCH_RETRY_DELAY_MS = 1500;
 
 export function Models() {
   const { t } = useTranslation(['dashboard', 'settings']);
+  const { styles } = useModelsStyles();
   const gatewayStatus = useGatewayStore((state) => state.status);
   const devModeUnlocked = useSettingsStore((state) => state.devModeUnlocked);
   const isGatewayRunning = gatewayStatus.state === 'running';
@@ -193,50 +196,49 @@ export function Models() {
   const usageLoading = isGatewayRunning && fetchState.status === 'loading';
 
   return (
-    <div className="flex flex-col -m-6 dark:bg-background h-[calc(100vh-2.5rem)] overflow-hidden">
-      <div className="w-full max-w-5xl mx-auto flex flex-col h-full p-10 pt-16">
-        
+    <div className={styles.pageRoot}>
+      <div className={styles.inner}>
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-start justify-between mb-12 shrink-0 gap-4">
+        <div className={styles.headerRow}>
           <div>
-            <h1 className="text-sm md:text-sm font-serif text-foreground mb-3 font-normal tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
+            <h1 className={styles.pageTitle}>
               {t('dashboard:models.title')}
             </h1>
-            <p className="text-[14px] text-foreground/70 font-medium">
+            <p className={styles.pageSubtitle}>
               {t('dashboard:models.subtitle')}
             </p>
           </div>
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto pr-2 pb-10 min-h-0 -mr-2 space-y-12">
-          
+        <div className={styles.scrollArea}>
+
           {/* AI Providers Section */}
           <ProvidersSettings />
 
           {/* Token Usage History Section */}
           <div>
-            <h2 className="text-sm font-serif text-foreground mb-6 font-normal tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
+            <h2 className={styles.sectionTitle}>
               {t('dashboard:recentTokenHistory.title', 'Token Usage History')}
             </h2>
             <div>
               {usageLoading ? (
-                <div className="flex items-center justify-center py-12 text-muted-foreground bg-black/5 dark:bg-white/5 rounded-3xl border border-transparent border-dashed">
+                <div className={styles.usageStateBox}>
                   <FeedbackState state="loading" title={t('dashboard:recentTokenHistory.loading')} />
                 </div>
               ) : visibleUsageHistory.length === 0 ? (
-                <div className="flex items-center justify-center py-12 text-muted-foreground bg-black/5 dark:bg-white/5 rounded-3xl border border-transparent border-dashed">
+                <div className={styles.usageStateBox}>
                   <FeedbackState state="empty" title={t('dashboard:recentTokenHistory.empty')} />
                 </div>
               ) : filteredUsageHistory.length === 0 ? (
-                <div className="flex items-center justify-center py-12 text-muted-foreground bg-black/5 dark:bg-white/5 rounded-3xl border border-transparent border-dashed">
+                <div className={styles.usageStateBox}>
                   <FeedbackState state="empty" title={t('dashboard:recentTokenHistory.emptyForWindow')} />
                 </div>
               ) : (
-                <div className="space-y-6">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex rounded-xl bg-transparent p-1 border border-black/10 dark:border-white/10">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                  <div className={styles.usageControls}>
+                    <div className={styles.usageControlsLeft}>
+                      <div className={styles.usageToggleGroup}>
                         <Button
                           variant={usageGroupBy === 'model' ? 'secondary' : 'ghost'}
                           size="sm"
@@ -244,7 +246,7 @@ export function Models() {
                             setUsageGroupBy('model');
                             setUsagePage(1);
                           }}
-                          className={usageGroupBy === 'model' ? "rounded-lg bg-black/5 dark:bg-white/10 text-foreground" : "rounded-lg text-muted-foreground"}
+                          className={usageGroupBy === 'model' ? styles.usageToggleActive : styles.usageToggleInactive}
                         >
                           {t('dashboard:recentTokenHistory.groupByModel')}
                         </Button>
@@ -255,12 +257,12 @@ export function Models() {
                             setUsageGroupBy('day');
                             setUsagePage(1);
                           }}
-                          className={usageGroupBy === 'day' ? "rounded-lg bg-black/5 dark:bg-white/10 text-foreground" : "rounded-lg text-muted-foreground"}
+                          className={usageGroupBy === 'day' ? styles.usageToggleActive : styles.usageToggleInactive}
                         >
                           {t('dashboard:recentTokenHistory.groupByTime')}
                         </Button>
                       </div>
-                      <div className="flex rounded-xl bg-transparent p-1 border border-black/10 dark:border-white/10">
+                      <div className={styles.usageToggleGroup}>
                         <Button
                           variant={usageWindow === '7d' ? 'secondary' : 'ghost'}
                           size="sm"
@@ -268,7 +270,7 @@ export function Models() {
                             setUsageWindow('7d');
                             setUsagePage(1);
                           }}
-                          className={usageWindow === '7d' ? "rounded-lg bg-black/5 dark:bg-white/10 text-foreground" : "rounded-lg text-muted-foreground"}
+                          className={usageWindow === '7d' ? styles.usageToggleActive : styles.usageToggleInactive}
                         >
                           {t('dashboard:recentTokenHistory.last7Days')}
                         </Button>
@@ -279,7 +281,7 @@ export function Models() {
                             setUsageWindow('30d');
                             setUsagePage(1);
                           }}
-                          className={usageWindow === '30d' ? "rounded-lg bg-black/5 dark:bg-white/10 text-foreground" : "rounded-lg text-muted-foreground"}
+                          className={usageWindow === '30d' ? styles.usageToggleActive : styles.usageToggleInactive}
                         >
                           {t('dashboard:recentTokenHistory.last30Days')}
                         </Button>
@@ -290,13 +292,13 @@ export function Models() {
                             setUsageWindow('all');
                             setUsagePage(1);
                           }}
-                          className={usageWindow === 'all' ? "rounded-lg bg-black/5 dark:bg-white/10 text-foreground" : "rounded-lg text-muted-foreground"}
+                          className={usageWindow === 'all' ? styles.usageToggleActive : styles.usageToggleInactive}
                         >
                           {t('dashboard:recentTokenHistory.allTime')}
                         </Button>
                       </div>
                     </div>
-                    <p className="text-[13px] font-medium text-muted-foreground">
+                    <p className={styles.usageCountText}>
                       {t('dashboard:recentTokenHistory.showingLast', { count: filteredUsageHistory.length })}
                     </p>
                   </div>
@@ -310,51 +312,65 @@ export function Models() {
                     cacheLabel={t('dashboard:recentTokenHistory.cacheShort')}
                   />
 
-                  <div className="space-y-3 pt-2">
+                  <div className={styles.usageEntryList}>
                     {pagedUsageHistory.map((entry) => (
                       <div
                         key={`${entry.sessionId}-${entry.timestamp}`}
-                        className="rounded-2xl bg-transparent border border-black/10 dark:border-white/10 p-5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                        className={styles.usageEntry}
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="font-semibold text-[14px] text-foreground truncate">
+                        <div className={styles.usageEntryTop}>
+                          <div className={styles.usageEntryLeft}>
+                            <p className={styles.usageEntryModel}>
                               {entry.model || t('dashboard:recentTokenHistory.unknownModel')}
                             </p>
-                            <p className="text-[13px] text-muted-foreground truncate mt-0.5">
+                            <p className={styles.usageEntryMeta}>
                               {[entry.provider, entry.agentId, entry.sessionId].filter(Boolean).join(' • ')}
                             </p>
                           </div>
-                          <div className="text-right shrink-0">
-                            <p className="font-bold text-[14px]">
+                          <div className={styles.usageEntryRight}>
+                            <p className={styles.usageEntryTotal}>
                               <AnimatedNumber
                                 value={entry.totalTokens}
                                 duration={800}
                                 formatter={(v) => formatTokenCount(Math.round(v))}
                               />
                             </p>
-                            <p className="text-[12px] text-muted-foreground mt-0.5">
+                            <p className={styles.usageEntryTime}>
                               {formatUsageTimestamp(entry.timestamp)}
                             </p>
                           </div>
                         </div>
-                        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[12.5px] font-medium text-muted-foreground">
-                          <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-sky-500"></div>{t('dashboard:recentTokenHistory.input', { value: formatTokenCount(entry.inputTokens) })}</span>
-                          <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-violet-500"></div>{t('dashboard:recentTokenHistory.output', { value: formatTokenCount(entry.outputTokens) })}</span>
+                        <div className={styles.usageTokenDetails}>
+                          <span className={styles.tokenDetailItem}>
+                            <div className={styles.tokenDotSky} />
+                            {t('dashboard:recentTokenHistory.input', { value: formatTokenCount(entry.inputTokens) })}
+                          </span>
+                          <span className={styles.tokenDetailItem}>
+                            <div className={styles.tokenDotViolet} />
+                            {t('dashboard:recentTokenHistory.output', { value: formatTokenCount(entry.outputTokens) })}
+                          </span>
                           {entry.cacheReadTokens > 0 && (
-                            <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500"></div>{t('dashboard:recentTokenHistory.cacheRead', { value: formatTokenCount(entry.cacheReadTokens) })}</span>
+                            <span className={styles.tokenDetailItem}>
+                              <div className={styles.tokenDotAmber} />
+                              {t('dashboard:recentTokenHistory.cacheRead', { value: formatTokenCount(entry.cacheReadTokens) })}
+                            </span>
                           )}
                           {entry.cacheWriteTokens > 0 && (
-                            <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500"></div>{t('dashboard:recentTokenHistory.cacheWrite', { value: formatTokenCount(entry.cacheWriteTokens) })}</span>
+                            <span className={styles.tokenDetailItem}>
+                              <div className={styles.tokenDotAmber} />
+                              {t('dashboard:recentTokenHistory.cacheWrite', { value: formatTokenCount(entry.cacheWriteTokens) })}
+                            </span>
                           )}
                           {typeof entry.costUsd === 'number' && Number.isFinite(entry.costUsd) && (
-                            <span className="flex items-center gap-1.5 ml-auto text-foreground/80 bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded-md">{t('dashboard:recentTokenHistory.cost', { amount: entry.costUsd.toFixed(4) })}</span>
+                            <span className={styles.costBadge}>
+                              {t('dashboard:recentTokenHistory.cost', { amount: entry.costUsd.toFixed(4) })}
+                            </span>
                           )}
                           {devModeUnlocked && entry.content && (
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-6 rounded-full px-2.5 text-[11.5px] border-black/10 dark:border-white/10"
+                              className={styles.viewContentBtn}
                               onClick={() => setSelectedUsageEntry(entry)}
                             >
                               {t('dashboard:recentTokenHistory.viewContent')}
@@ -365,19 +381,19 @@ export function Models() {
                     ))}
                   </div>
 
-                  <div className="flex items-center justify-between gap-3 pt-2">
-                    <p className="text-[13px] font-medium text-muted-foreground">
+                  <div className={styles.paginationRow}>
+                    <p className={styles.paginationText}>
                       {t('dashboard:recentTokenHistory.page', { current: safeUsagePage, total: usageTotalPages })}
                     </p>
-                    <div className="flex items-center gap-2">
+                    <div className={styles.paginationButtons}>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setUsagePage((page) => Math.max(1, page - 1))}
                         disabled={safeUsagePage <= 1}
-                        className="rounded-full px-4 h-9 border-black/10 dark:border-white/10 bg-transparent hover:bg-black/5 dark:hover:bg-white/5"
+                        className={styles.paginationBtn}
                       >
-                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        <ChevronLeft style={{ width: 16, height: 16, marginRight: 4 }} />
                         {t('dashboard:recentTokenHistory.prev')}
                       </Button>
                       <Button
@@ -385,10 +401,10 @@ export function Models() {
                         size="sm"
                         onClick={() => setUsagePage((page) => Math.min(usageTotalPages, page + 1))}
                         disabled={safeUsagePage >= usageTotalPages}
-                        className="rounded-full px-4 h-9 border-black/10 dark:border-white/10 bg-transparent hover:bg-black/5 dark:hover:bg-white/5"
+                        className={styles.paginationBtn}
                       >
                         {t('dashboard:recentTokenHistory.next')}
-                        <ChevronRight className="h-4 w-4 ml-1" />
+                        <ChevronRight style={{ width: 16, height: 16, marginLeft: 4 }} />
                       </Button>
                     </div>
                   </div>
@@ -448,9 +464,11 @@ function UsageBarChart({
   outputLabel: string;
   cacheLabel: string;
 }) {
+  const { styles } = useModelsStyles();
+
   if (groups.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-black/10 dark:border-white/10 p-8 text-center text-[14px] font-medium text-muted-foreground">
+      <div className={styles.chartEmpty}>
         {emptyLabel}
       </div>
     );
@@ -459,26 +477,26 @@ function UsageBarChart({
   const maxTokens = Math.max(...groups.map((group) => group.totalTokens), 1);
 
   return (
-    <div className="space-y-4 bg-transparent p-5 rounded-2xl border border-black/10 dark:border-white/10">
-      <div className="flex flex-wrap gap-4 text-[13px] font-medium text-muted-foreground mb-2">
-        <span className="inline-flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-sky-500" />
+    <div className={styles.chartContainer}>
+      <div className={styles.chartLegend}>
+        <span className={styles.chartLegendItem}>
+          <span className={styles.chartLegendDotSky} />
           {inputLabel}
         </span>
-        <span className="inline-flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-violet-500" />
+        <span className={styles.chartLegendItem}>
+          <span className={styles.chartLegendDotViolet} />
           {outputLabel}
         </span>
-        <span className="inline-flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+        <span className={styles.chartLegendItem}>
+          <span className={styles.chartLegendDotAmber} />
           {cacheLabel}
         </span>
       </div>
       {groups.map((group) => (
-        <div key={group.label} className="space-y-1.5">
-          <div className="flex items-center justify-between gap-3 text-[13.5px]">
-            <span className="truncate font-semibold text-foreground">{group.label}</span>
-            <span className="text-muted-foreground font-medium">
+        <div key={group.label} className={styles.chartRow}>
+          <div className={styles.chartRowHeader}>
+            <span className={styles.chartLabel}>{group.label}</span>
+            <span className={styles.chartTotal}>
               {totalLabel}: <AnimatedNumber
                 value={group.totalTokens}
                 duration={900}
@@ -486,9 +504,9 @@ function UsageBarChart({
               />
             </span>
           </div>
-          <div className="h-3.5 overflow-hidden rounded-full bg-black/5 dark:bg-white/5">
+          <div className={styles.chartTrack}>
             <div
-              className="flex h-full overflow-hidden rounded-full"
+              className={styles.chartFill}
               style={{
                 width: group.totalTokens > 0
                   ? `${Math.max((group.totalTokens / maxTokens) * 100, 6)}%`
@@ -497,19 +515,19 @@ function UsageBarChart({
             >
               {group.inputTokens > 0 && (
                 <div
-                  className="h-full bg-sky-500"
+                  className={styles.chartSegmentSky}
                   style={{ width: `${(group.inputTokens / group.totalTokens) * 100}%` }}
                 />
               )}
               {group.outputTokens > 0 && (
                 <div
-                  className="h-full bg-violet-500"
+                  className={styles.chartSegmentViolet}
                   style={{ width: `${(group.outputTokens / group.totalTokens) * 100}%` }}
                 />
               )}
               {group.cacheTokens > 0 && (
                 <div
-                  className="h-full bg-amber-500"
+                  className={styles.chartSegmentAmber}
                   style={{ width: `${(group.cacheTokens / group.totalTokens) * 100}%` }}
                 />
               )}
@@ -536,32 +554,34 @@ function UsageContentPopup({
   closeLabel: string;
   unknownModelLabel: string;
 }) {
+  const { styles } = useModelsStyles();
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" role="dialog" aria-modal="true">
-      <div className="w-full max-w-3xl rounded-2xl border border-black/10 dark:border-white/10 bg-background shadow-xl">
-        <div className="flex items-start justify-between gap-3 border-b border-black/10 dark:border-white/10 px-5 py-4">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground">{title}</p>
-            <p className="text-xs text-muted-foreground truncate mt-0.5">
+    <div className={styles.popupOverlay} role="dialog" aria-modal="true">
+      <div className={styles.popupCard}>
+        <div className={styles.popupHeader}>
+          <div className={styles.popupHeaderLeft}>
+            <p className={styles.popupTitle}>{title}</p>
+            <p className={styles.popupSubtitle}>
               {(entry.model || unknownModelLabel)} • {formatUsageTimestamp(entry.timestamp)}
             </p>
           </div>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 rounded-full"
+            className={styles.popupCloseBtn}
             onClick={onClose}
             aria-label={closeLabel}
           >
-            <X className="h-4 w-4" />
+            <X style={{ width: 16, height: 16 }} />
           </Button>
         </div>
-        <div className="max-h-[65vh] overflow-y-auto px-5 py-4">
-          <pre className="whitespace-pre-wrap break-words text-sm text-foreground font-mono">
+        <div className={styles.popupBody}>
+          <pre className={styles.popupPre}>
             {entry.content}
           </pre>
         </div>
-        <div className="flex justify-end border-t border-black/10 dark:border-white/10 px-5 py-3">
+        <div className={styles.popupFooter}>
           <Button variant="outline" onClick={onClose}>
             {closeLabel}
           </Button>

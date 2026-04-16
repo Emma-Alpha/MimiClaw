@@ -4,10 +4,121 @@
  */
 import { useEffect, useCallback, useMemo } from 'react';
 import { Download, RefreshCw, Loader2, Rocket, XCircle } from 'lucide-react';
+import { createStyles } from 'antd-style';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useUpdateStore } from '@/stores/update';
 import { useTranslation } from 'react-i18next';
+
+const useStyles = createStyles(({ css, token }) => ({
+  root: css`
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  `,
+  row: css`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  `,
+  versionStack: css`
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  `,
+  label: css`
+    font-size: ${token.fontSizeSM}px;
+    font-weight: 500;
+    color: ${token.colorText};
+  `,
+  versionValue: css`
+    font-size: ${token.fontSizeSM}px;
+    font-weight: 700;
+    color: ${token.colorText};
+  `,
+  statusRow: css`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-top: 1px solid ${token.colorBorderSecondary};
+    border-bottom: 1px solid ${token.colorBorderSecondary};
+  `,
+  statusText: css`
+    font-size: ${token.fontSizeSM}px;
+    color: ${token.colorTextSecondary};
+  `,
+  progressStack: css`
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  `,
+  progressRow: css`
+    display: flex;
+    justify-content: space-between;
+    font-size: ${token.fontSizeSM}px;
+    color: ${token.colorText};
+  `,
+  progressCaption: css`
+    font-size: 12px;
+    color: ${token.colorTextSecondary};
+    text-align: center;
+  `,
+  updateInfo: css`
+    border-radius: ${token.borderRadiusLG}px;
+    background: ${token.colorFillTertiary};
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  `,
+  updateInfoRow: css`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  `,
+  updateInfoTitle: css`
+    font-weight: 500;
+    color: ${token.colorText};
+  `,
+  updateInfoDate: css`
+    font-size: ${token.fontSizeSM}px;
+    color: ${token.colorTextSecondary};
+  `,
+  releaseNotes: css`
+    font-size: ${token.fontSizeSM}px;
+    color: ${token.colorTextSecondary};
+  `,
+  releaseNotesTitle: css`
+    font-weight: 500;
+    color: ${token.colorText};
+    margin-bottom: 4px;
+  `,
+  releaseNotesPre: css`
+    white-space: pre-wrap;
+  `,
+  errorBox: css`
+    border-radius: ${token.borderRadiusLG}px;
+    background: ${token.colorErrorBg};
+    padding: 16px;
+    font-size: ${token.fontSizeSM}px;
+    color: ${token.colorError};
+  `,
+  errorTitle: css`
+    font-weight: 500;
+    margin-bottom: 4px;
+  `,
+  helpText: css`
+    font-size: 12px;
+    color: ${token.colorTextTertiary};
+  `,
+  initRow: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: ${token.colorTextSecondary};
+  `,
+}));
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -17,28 +128,19 @@ function formatBytes(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+const iconSm = { width: 16, height: 16 };
+
 export function UpdateSettings() {
   const { t } = useTranslation('settings');
+  const { styles } = useStyles();
   const {
-    status,
-    currentVersion,
-    updateInfo,
-    progress,
-    error,
-    isInitialized,
-    autoInstallCountdown,
-    init,
-    checkForUpdates,
-    downloadUpdate,
-    installUpdate,
-    cancelAutoInstall,
-    clearError,
+    status, currentVersion, updateInfo, progress, error,
+    isInitialized, autoInstallCountdown,
+    init, checkForUpdates, downloadUpdate, installUpdate,
+    cancelAutoInstall, clearError,
   } = useUpdateStore();
 
-  // Initialize on mount
-  useEffect(() => {
-    init();
-  }, [init]);
+  useEffect(() => { init(); }, [init]);
 
   const handleCheckForUpdates = useCallback(async () => {
     clearError();
@@ -51,15 +153,15 @@ export function UpdateSettings() {
     switch (status) {
       case 'checking':
       case 'downloading':
-        return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
+        return <Loader2 className="animate-spin" style={{ ...iconSm, color: 'var(--ant-color-text-secondary)' }} />;
       case 'available':
-        return <Download className="h-4 w-4 text-primary" />;
+        return <Download style={{ ...iconSm, color: 'var(--ant-color-primary)' }} />;
       case 'downloaded':
-        return <Rocket className="h-4 w-4 text-primary" />;
+        return <Rocket style={{ ...iconSm, color: 'var(--ant-color-primary)' }} />;
       case 'error':
-        return <RefreshCw className="h-4 w-4 text-destructive" />;
+        return <RefreshCw style={{ ...iconSm, color: 'var(--ant-color-error)' }} />;
       default:
-        return <RefreshCw className="h-4 w-4 text-muted-foreground" />;
+        return <RefreshCw style={{ ...iconSm, color: 'var(--ant-color-text-secondary)' }} />;
     }
   };
 
@@ -68,23 +170,16 @@ export function UpdateSettings() {
       return t('updates.status.autoInstalling', { seconds: autoInstallCountdown });
     }
     switch (status) {
-      case 'checking':
-        return t('updates.status.checking');
-      case 'downloading':
-        return t('updates.status.downloading');
-      case 'available':
-        return t('updates.status.available', { version: updateInfo?.version });
+      case 'checking': return t('updates.status.checking');
+      case 'downloading': return t('updates.status.downloading');
+      case 'available': return t('updates.status.available', { version: updateInfo?.version });
       case 'downloaded':
-        if (isMacOS) {
-          return t('updates.status.downloadedMac', { version: updateInfo?.version });
-        }
-        return t('updates.status.downloaded', { version: updateInfo?.version });
-      case 'error':
-        return error || t('updates.status.failed');
-      case 'not-available':
-        return t('updates.status.latest');
-      default:
-        return t('updates.status.check');
+        return isMacOS
+          ? t('updates.status.downloadedMac', { version: updateInfo?.version })
+          : t('updates.status.downloaded', { version: updateInfo?.version });
+      case 'error': return error || t('updates.status.failed');
+      case 'not-available': return t('updates.status.latest');
+      default: return t('updates.status.check');
     }
   };
 
@@ -93,21 +188,21 @@ export function UpdateSettings() {
       case 'checking':
         return (
           <Button disabled variant="outline" size="sm">
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <Loader2 style={{ ...iconSm, marginRight: 8 }} className="animate-spin" />
             {t('updates.action.checking')}
           </Button>
         );
       case 'downloading':
         return (
           <Button disabled variant="outline" size="sm">
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <Loader2 style={{ ...iconSm, marginRight: 8 }} className="animate-spin" />
             {t('updates.action.downloading')}
           </Button>
         );
       case 'available':
         return (
           <Button onClick={downloadUpdate} size="sm">
-            <Download className="h-4 w-4 mr-2" />
+            <Download style={{ ...iconSm, marginRight: 8 }} />
             {t('updates.action.download')}
           </Button>
         );
@@ -115,28 +210,28 @@ export function UpdateSettings() {
         if (autoInstallCountdown != null && autoInstallCountdown >= 0) {
           return (
             <Button onClick={cancelAutoInstall} size="sm" variant="outline">
-              <XCircle className="h-4 w-4 mr-2" />
+              <XCircle style={{ ...iconSm, marginRight: 8 }} />
               {t('updates.action.cancelAutoInstall')}
             </Button>
           );
         }
         return (
           <Button onClick={installUpdate} size="sm" variant="default">
-            <Rocket className="h-4 w-4 mr-2" />
+            <Rocket style={{ ...iconSm, marginRight: 8 }} />
             {t('updates.action.install')}
           </Button>
         );
       case 'error':
         return (
           <Button onClick={handleCheckForUpdates} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <RefreshCw style={{ ...iconSm, marginRight: 8 }} />
             {t('updates.action.retry')}
           </Button>
         );
       default:
         return (
           <Button onClick={handleCheckForUpdates} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <RefreshCw style={{ ...iconSm, marginRight: 8 }} />
             {t('updates.action.check')}
           </Button>
         );
@@ -145,76 +240,68 @@ export function UpdateSettings() {
 
   if (!isInitialized) {
     return (
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
+      <div className={styles.initRow}>
+        <Loader2 style={iconSm} className="animate-spin" />
         <span>Loading...</span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {/* Current Version */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <p className="text-sm font-medium">{t('updates.currentVersion')}</p>
-          <p className="text-sm font-bold">v{currentVersion}</p>
+    <div className={styles.root}>
+      <div className={styles.row}>
+        <div className={styles.versionStack}>
+          <p className={styles.label}>{t('updates.currentVersion')}</p>
+          <p className={styles.versionValue}>v{currentVersion}</p>
         </div>
         {renderStatusIcon()}
       </div>
 
-      {/* Status */}
-      <div className="flex items-center justify-between py-3 border-t border-b">
-        <p className="text-sm text-muted-foreground">{renderStatusText()}</p>
+      <div className={styles.statusRow}>
+        <p className={styles.statusText}>{renderStatusText()}</p>
         {renderAction()}
       </div>
 
-      {/* Download Progress */}
       {status === 'downloading' && progress && (
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span>
-              {formatBytes(progress.transferred)} / {formatBytes(progress.total)}
-            </span>
+        <div className={styles.progressStack}>
+          <div className={styles.progressRow}>
+            <span>{formatBytes(progress.transferred)} / {formatBytes(progress.total)}</span>
             <span>{formatBytes(progress.bytesPerSecond)}/s</span>
           </div>
-          <Progress value={progress.percent} className="h-2" />
-          <p className="text-xs text-muted-foreground text-center">
+          <Progress value={progress.percent} />
+          <p className={styles.progressCaption}>
             {Math.round(progress.percent)}% complete
           </p>
         </div>
       )}
 
-      {/* Update Info */}
       {updateInfo && (status === 'available' || status === 'downloaded') && (
-        <div className="rounded-lg bg-muted p-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="font-medium">Version {updateInfo.version}</p>
+        <div className={styles.updateInfo}>
+          <div className={styles.updateInfoRow}>
+            <p className={styles.updateInfoTitle}>Version {updateInfo.version}</p>
             {updateInfo.releaseDate && (
-              <p className="text-sm text-muted-foreground">
+              <p className={styles.updateInfoDate}>
                 {new Date(updateInfo.releaseDate).toLocaleDateString()}
               </p>
             )}
           </div>
           {updateInfo.releaseNotes && (
-            <div className="text-sm text-muted-foreground prose prose-sm max-w-none">
-              <p className="font-medium text-foreground mb-1">{t('updates.whatsNew')}</p>
-              <p className="whitespace-pre-wrap">{updateInfo.releaseNotes}</p>
+            <div className={styles.releaseNotes}>
+              <p className={styles.releaseNotesTitle}>{t('updates.whatsNew')}</p>
+              <p className={styles.releaseNotesPre}>{updateInfo.releaseNotes}</p>
             </div>
           )}
         </div>
       )}
 
-      {/* Error Details */}
       {status === 'error' && error && (
-        <div className="rounded-lg bg-red-50 dark:bg-red-900/10 p-4 text-red-600 dark:text-red-400 text-sm">
-          <p className="font-medium mb-1">{t('updates.errorDetails')}</p>
+        <div className={styles.errorBox}>
+          <p className={styles.errorTitle}>{t('updates.errorDetails')}</p>
           <p>{error}</p>
         </div>
       )}
 
-      {/* Help Text */}
-      <p className="text-xs text-muted-foreground">
+      <p className={styles.helpText}>
         {isMacOS ? t('updates.helpMac') : t('updates.help')}
       </p>
     </div>

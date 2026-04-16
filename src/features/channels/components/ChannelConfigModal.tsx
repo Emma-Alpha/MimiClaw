@@ -22,7 +22,6 @@ import { useChannelsStore } from '@/stores/channels';
 
 import { hostApiFetch } from '@/lib/host-api';
 import { subscribeHostEvent } from '@/lib/host-events';
-import { cn } from '@/lib/utils';
 import {
   CHANNEL_ICONS,
   CHANNEL_NAMES,
@@ -43,6 +42,7 @@ import dingtalkIcon from '@/assets/channels/dingtalk.svg';
 import feishuIcon from '@/assets/channels/feishu.svg';
 import wecomIcon from '@/assets/channels/wecom.svg';
 import qqIcon from '@/assets/channels/qq.svg';
+import { useChannelConfigModalStyles } from './styles';
 
 interface ChannelConfigModalProps {
   initialSelectedType?: ChannelType | null;
@@ -58,11 +58,6 @@ interface ChannelConfigModalProps {
   onChannelSaved?: (channelType: ChannelType) => void | Promise<void>;
 }
 
-const inputClasses = 'h-[44px] rounded-xl font-mono text-[13px] bg-[#eeece3] dark:bg-muted border-black/10 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:border-blue-500 shadow-sm transition-all text-foreground placeholder:text-foreground/40';
-const labelClasses = 'text-[14px] text-foreground/80 font-bold';
-const outlineButtonClasses = 'h-9 text-[13px] font-medium rounded-full px-4 border-black/10 dark:border-white/10 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 shadow-none text-foreground/80 hover:text-foreground';
-const primaryButtonClasses = 'h-9 text-[13px] font-medium rounded-full px-4 shadow-none';
-
 export function ChannelConfigModal({
   initialSelectedType = null,
   configuredTypes = [],
@@ -77,6 +72,7 @@ export function ChannelConfigModal({
   onChannelSaved,
 }: ChannelConfigModalProps) {
   const { t } = useTranslation('channels');
+  const { styles, cx } = useChannelConfigModalStyles();
   const { channels, addChannel, fetchChannels } = useChannelsStore();
   const [selectedType, setSelectedType] = useState<ChannelType | null>(initialSelectedType);
   const [configValues, setConfigValues] = useState<Record<string, string>>({});
@@ -470,7 +466,7 @@ export function ChannelConfigModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+      className={styles.overlay}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
           onClose();
@@ -478,20 +474,20 @@ export function ChannelConfigModal({
       }}
     >
       <Card
-        className="w-full max-w-3xl max-h-[90vh] flex flex-col rounded-3xl border-0 shadow-2xl bg-[#f3f1e9] dark:bg-card overflow-hidden"
+        className={styles.card}
         onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => event.stopPropagation()}
       >
-        <CardHeader className="flex flex-row items-start justify-between pb-2 shrink-0">
+        <CardHeader className={styles.cardHeader}>
           <div>
-            <CardTitle className="text-sm font-serif font-normal tracking-tight">
+            <CardTitle className={styles.cardTitle}>
               {selectedType
                 ? isExistingConfig
                   ? t('dialog.updateTitle', { name: CHANNEL_NAMES[selectedType] })
                   : t('dialog.configureTitle', { name: CHANNEL_NAMES[selectedType] })
                 : t('dialog.addTitle')}
             </CardTitle>
-            <CardDescription className="text-[14px] mt-1 text-foreground/70">
+            <CardDescription className={styles.cardDescription}>
               {selectedType && isExistingConfig
                 ? t('dialog.existingDesc')
                 : meta ? t(meta.description.replace('channels:', '')) : t('dialog.selectDesc')}
@@ -501,14 +497,14 @@ export function ChannelConfigModal({
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="rounded-full h-8 w-8 -mr-2 -mt-2 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+            className={styles.closeButton}
           >
-            <X className="h-4 w-4" />
+            <X style={{ width: 16, height: 16 }} />
           </Button>
         </CardHeader>
-        <CardContent className="space-y-6 pt-4 overflow-y-auto flex-1 p-6">
+        <CardContent className={styles.cardContent}>
           {!selectedType ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className={styles.channelGrid}>
               {getPrimaryChannels().map((type) => {
                 const channelMeta = CHANNEL_META[type];
                 const isConfigured = configuredTypes.includes(type);
@@ -516,37 +512,35 @@ export function ChannelConfigModal({
                   <button
                     key={type}
                     onClick={() => setSelectedType(type)}
-                    className={cn(
-                      'group flex items-start gap-4 p-4 rounded-2xl transition-all text-left border relative overflow-hidden bg-[#eeece3] dark:bg-muted shadow-sm',
-                      isConfigured
-                        ? 'border-green-500/40 bg-green-500/5 dark:bg-green-500/10'
-                        : 'border-black/5 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5'
+                    className={cx(
+                      styles.channelButton,
+                      isConfigured && styles.channelButtonConfigured
                     )}
                   >
-                    <div className="h-[46px] w-[46px] shrink-0 flex items-center justify-center text-foreground bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-full shadow-sm">
+                    <div className={styles.channelLogoWrap}>
                       <ChannelLogo type={type} />
                     </div>
-                    <div className="flex flex-col flex-1 min-w-0 py-0.5 mt-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-[14px] font-semibold text-foreground truncate">{channelMeta.name}</p>
+                    <div className={styles.channelInfo}>
+                      <div className={styles.channelNameRow}>
+                        <p className={styles.channelName}>{channelMeta.name}</p>
                         {channelMeta.isPlugin && (
                           <Badge
                             variant="secondary"
-                            className="font-mono text-[10px] font-medium px-2 py-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.08] border-0 shadow-none text-foreground/70"
+                            className={styles.pluginBadge}
                           >
                             {t('pluginBadge')}
                           </Badge>
                         )}
                       </div>
-                      <p className="text-[13.5px] text-muted-foreground line-clamp-2 leading-[1.5]">
+                      <p className={styles.channelDesc}>
                         {t(channelMeta.description.replace('channels:', ''))}
                       </p>
-                      <p className="text-[12px] font-medium text-muted-foreground/80 mt-2">
+                      <p className={styles.channelConnType}>
                         {channelMeta.connectionType === 'qr' ? t('dialog.qrCode') : t('dialog.token')}
                       </p>
                     </div>
                     {isConfigured && (
-                      <Badge className="absolute top-3 right-3 text-[10px] font-medium rounded-full bg-green-600 hover:bg-green-600">
+                      <Badge className={styles.configuredBadge}>
                         {t('configuredBadge')}
                       </Badge>
                     )}
@@ -555,23 +549,23 @@ export function ChannelConfigModal({
               })}
             </div>
           ) : qrCode ? (
-            <div className="text-center space-y-6">
-              <div className="bg-[#eeece3] dark:bg-muted p-4 rounded-3xl inline-block shadow-sm border border-black/10 dark:border-white/10">
+            <div className={styles.qrCenter}>
+              <div className={styles.qrBox}>
                 {qrCode.startsWith('data:image') || qrCode.startsWith('http://') || qrCode.startsWith('https://') ? (
-                  <img src={qrCode} alt="Scan QR Code" className="w-64 h-64 object-contain rounded-2xl" />
+                  <img src={qrCode} alt="Scan QR Code" className={styles.qrImage} />
                 ) : (
-                  <div className="w-64 h-64 bg-white dark:bg-background rounded-2xl flex items-center justify-center">
-                    <QrCode className="h-32 w-32 text-gray-400" />
+                  <div className={styles.qrFallback}>
+                    <QrCode style={{ width: 128, height: 128, color: "#9ca3af" }} />
                   </div>
                 )}
               </div>
-              <p className="text-[14px] text-muted-foreground">
+              <p className={styles.qrDesc}>
                 {t('dialog.scanQR', { name: meta?.name })}
               </p>
-              <div className="flex justify-center gap-2">
+              <div className={styles.qrActions}>
                 <Button
                   variant="outline"
-                  className={outlineButtonClasses}
+                  className={styles.outlineButton}
                   onClick={() => {
                     setQrCode(null);
                     void handleConnect();
@@ -582,38 +576,38 @@ export function ChannelConfigModal({
               </div>
             </div>
           ) : loadingConfig ? (
-            <div className="flex items-center justify-center py-10 rounded-2xl bg-[#eeece3] dark:bg-muted border border-black/10 dark:border-white/10">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-[14px] text-muted-foreground">{t('dialog.loadingConfig')}</span>
+            <div className={styles.loadingBox}>
+              <Loader2 style={{ width: 24, height: 24, color: 'var(--ant-color-text-secondary)' }} className="animate-spin" />
+              <span className={styles.loadingText}>{t('dialog.loadingConfig')}</span>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className={styles.formArea}>
               {isExistingConfig && (
-                <div className="bg-blue-500/10 text-blue-600 dark:text-blue-400 p-4 rounded-2xl text-[13.5px] flex items-center gap-2 border border-blue-500/20">
-                  <CheckCircle className="h-4 w-4 shrink-0" />
+                <div className={styles.existingHint}>
+                  <CheckCircle style={{ width: 16, height: 16, flexShrink: 0 }} />
                   <span>{t('dialog.existingHint')}</span>
                 </div>
               )}
 
-              <div className="bg-[#eeece3] dark:bg-muted p-4 rounded-2xl space-y-4 shadow-sm border border-black/10 dark:border-white/10">
-                <div className="flex items-center justify-between gap-3">
+              <div className={styles.instructionBox}>
+                <div className={styles.instructionHeader}>
                   <div>
-                    <p className={labelClasses}>{t('dialog.howToConnect')}</p>
-                    <p className="text-[13px] text-muted-foreground mt-1">
+                    <p className={styles.instructionLabel}>{t('dialog.howToConnect')}</p>
+                    <p className={styles.instructionSubtext}>
                       {meta ? t(meta.description.replace('channels:', '')) : ''}
                     </p>
                   </div>
                   <Button
                     variant="outline"
-                    className={cn(outlineButtonClasses, 'h-8 px-3 shrink-0')}
+                    className={cx(styles.outlineButton, styles.outlineButtonSm)}
                     onClick={openDocs}
                   >
-                    <BookOpen className="h-3 w-3 mr-1" />
+                    <BookOpen style={{ width: 12, height: 12, marginRight: 4 }} />
                     {t('dialog.viewDocs')}
-                    <ExternalLink className="h-3 w-3 ml-1" />
+                    <ExternalLink style={{ width: 12, height: 12, marginLeft: 4 }} />
                   </Button>
                 </div>
-                <ol className="list-decimal pl-5 text-[13px] text-muted-foreground leading-relaxed space-y-1.5">
+                <ol className={styles.instructionList}>
                   {meta?.instructions.map((instruction, index) => (
                     <li key={index}>{t(instruction)}</li>
                   ))}
@@ -621,34 +615,32 @@ export function ChannelConfigModal({
               </div>
 
               {showChannelName && (
-                <div className="space-y-2.5">
-                  <Label htmlFor="name" className={labelClasses}>{t('dialog.channelName')}</Label>
+                <div className={styles.fieldGroup}>
+                  <Label htmlFor="name" className={styles.fieldLabel}>{t('dialog.channelName')}</Label>
                   <Input
                     ref={firstInputRef}
                     id="name"
                     placeholder={t('dialog.channelNamePlaceholder', { name: meta?.name })}
                     value={channelName}
                     onChange={(event) => setChannelName(event.target.value)}
-                    className={inputClasses}
                   />
                 </div>
               )}
 
               {showAccountIdEditor && (
-                <div className="space-y-2.5">
-                  <Label htmlFor="account-id" className={labelClasses}>{t('account.customIdLabel')}</Label>
+                <div className={styles.fieldGroup}>
+                  <Label htmlFor="account-id" className={styles.fieldLabel}>{t('account.customIdLabel')}</Label>
                   <Input
                     id="account-id"
                     value={accountIdInput}
                     onChange={(event) => setAccountIdInput(event.target.value)}
                     placeholder={t('account.customIdPlaceholder')}
-                    className={inputClasses}
                   />
-                  <p className="text-[12px] text-muted-foreground">{t('account.customIdHint')}</p>
+                  <p className={styles.fieldDescription}>{t('account.customIdHint')}</p>
                 </div>
               )}
 
-              <div className="space-y-4">
+              <div className={styles.formArea}>
                 {meta?.configFields.map((field) => (
                   <ConfigField
                     key={field.key}
@@ -663,41 +655,41 @@ export function ChannelConfigModal({
 
               {validationResult && (
                 <div
-                  className={cn(
-                    'p-4 rounded-2xl text-sm border',
-                    validationResult.valid
-                      ? 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20'
-                      : 'bg-destructive/10 text-destructive border-destructive/20'
+                  className={cx(
+                    styles.validationBox,
+                    validationResult.valid ? styles.validationSuccess : styles.validationError
                   )}
                 >
-                  <div className="flex items-start gap-2">
-                    {validationResult.valid ? (
-                      <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                    )}
-                    <div className="min-w-0">
-                      <h4 className="font-medium mb-1">
+                  <div className={styles.validationInner}>
+                    <span className={styles.validationIconWrap}>
+                      {validationResult.valid ? (
+                        <CheckCircle style={{ width: 16, height: 16 }} />
+                      ) : (
+                        <AlertCircle style={{ width: 16, height: 16 }} />
+                      )}
+                    </span>
+                    <div className={styles.validationContent}>
+                      <h4 className={styles.validationTitle}>
                         {validationResult.valid ? t('dialog.credentialsVerified') : t('dialog.validationFailed')}
                       </h4>
                       {validationResult.errors.length > 0 && (
-                        <ul className="list-disc list-inside space-y-0.5">
+                        <ul className={styles.validationList}>
                           {validationResult.errors.map((err, index) => (
                             <li key={index}>{err}</li>
                           ))}
                         </ul>
                       )}
                       {validationResult.valid && validationResult.warnings.length > 0 && (
-                        <div className="mt-1 text-green-600 dark:text-green-400 space-y-0.5">
+                        <div style={{ marginTop: 4 }}>
                           {validationResult.warnings.map((info, index) => (
-                            <p key={index} className="text-xs">{info}</p>
+                            <p key={index} className={styles.validationInfoItem}>{info}</p>
                           ))}
                         </div>
                       )}
                       {!validationResult.valid && validationResult.warnings.length > 0 && (
-                        <div className="mt-2 text-yellow-600 dark:text-yellow-500">
-                          <p className="font-medium text-xs uppercase mb-1">{t('dialog.warnings')}</p>
-                          <ul className="list-disc list-inside space-y-0.5">
+                        <div className={styles.validationWarningBlock}>
+                          <p className={styles.validationWarningTitle}>{t('dialog.warnings')}</p>
+                          <ul className={styles.validationList}>
                             {validationResult.warnings.map((warn, index) => (
                               <li key={index}>{warn}</li>
                             ))}
@@ -709,25 +701,25 @@ export function ChannelConfigModal({
                 </div>
               )}
 
-              <Separator className="bg-black/10 dark:bg-white/10" />
+              <Separator />
 
-              <div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-2">
-                <div className="flex flex-col sm:flex-row gap-2">
+              <div className={styles.footerActions}>
+                <div className={styles.footerButtonGroup}>
                   {meta?.connectionType === 'token' && shouldUseCredentialValidation && (
                     <Button
                       variant="outline"
                       onClick={handleValidate}
                       disabled={validating}
-                      className={outlineButtonClasses}
+                      className={styles.outlineButton}
                     >
                       {validating ? (
                         <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          <Loader2 style={{ width: 16, height: 16, marginRight: 8 }} className="animate-spin" />
                           {t('dialog.validating')}
                         </>
                       ) : (
                         <>
-                          <ShieldCheck className="h-4 w-4 mr-2" />
+                          <ShieldCheck style={{ width: 16, height: 16, marginRight: 8 }} />
                           {t('dialog.validateConfig')}
                         </>
                       )}
@@ -738,18 +730,18 @@ export function ChannelConfigModal({
                       void handleConnect();
                     }}
                     disabled={connecting || !isFormValid() || (showAccountIdEditor && !accountIdInput.trim())}
-                    className={primaryButtonClasses}
+                    className={styles.primaryButton}
                   >
                     {connecting ? (
                       <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <Loader2 style={{ width: 16, height: 16, marginRight: 8 }} className="animate-spin" />
                         {meta?.connectionType === 'qr' ? t('dialog.generatingQR') : t('dialog.validatingAndSaving')}
                       </>
                     ) : meta?.connectionType === 'qr' ? (
                       t('dialog.generateQRCode')
                     ) : (
                       <>
-                        <Check className="h-4 w-4 mr-2" />
+                        <Check style={{ width: 16, height: 16, marginRight: 8 }} />
                         {isExistingConfig ? t('dialog.updateAndReconnect') : t('dialog.saveAndConnect')}
                       </>
                     )}
@@ -773,46 +765,47 @@ interface ConfigFieldProps {
 }
 
 function ChannelLogo({ type }: { type: ChannelType }) {
+  const { styles } = useChannelConfigModalStyles();
   switch (type) {
     case 'telegram':
-      return <img src={telegramIcon} alt="Telegram" className="w-[22px] h-[22px] dark:invert" />;
+      return <img src={telegramIcon} alt="Telegram" className={styles.channelLogoImg} />;
     case 'discord':
-      return <img src={discordIcon} alt="Discord" className="w-[22px] h-[22px] dark:invert" />;
+      return <img src={discordIcon} alt="Discord" className={styles.channelLogoImg} />;
     case 'whatsapp':
-      return <img src={whatsappIcon} alt="WhatsApp" className="w-[22px] h-[22px] dark:invert" />;
+      return <img src={whatsappIcon} alt="WhatsApp" className={styles.channelLogoImg} />;
     case 'wechat':
-      return <img src={wechatIcon} alt="WeChat" className="w-[22px] h-[22px] dark:invert" />;
+      return <img src={wechatIcon} alt="WeChat" className={styles.channelLogoImg} />;
     case 'dingtalk':
-      return <img src={dingtalkIcon} alt="DingTalk" className="w-[22px] h-[22px] dark:invert" />;
+      return <img src={dingtalkIcon} alt="DingTalk" className={styles.channelLogoImg} />;
     case 'feishu':
-      return <img src={feishuIcon} alt="Feishu" className="w-[22px] h-[22px] dark:invert" />;
+      return <img src={feishuIcon} alt="Feishu" className={styles.channelLogoImg} />;
     case 'wecom':
-      return <img src={wecomIcon} alt="WeCom" className="w-[22px] h-[22px] dark:invert" />;
+      return <img src={wecomIcon} alt="WeCom" className={styles.channelLogoImg} />;
     case 'qqbot':
-      return <img src={qqIcon} alt="QQ" className="w-[22px] h-[22px] dark:invert" />;
+      return <img src={qqIcon} alt="QQ" className={styles.channelLogoImg} />;
     default:
-      return <span className="text-[14px]">{CHANNEL_ICONS[type] || '💬'}</span>;
+      return <span style={{ fontSize: 14 }}>{CHANNEL_ICONS[type] || '💬'}</span>;
   }
 }
 
 function ConfigField({ field, value, onChange, showSecret, onToggleSecret }: ConfigFieldProps) {
   const { t } = useTranslation('channels');
+  const { styles } = useChannelConfigModalStyles();
   const isPassword = field.type === 'password';
 
   return (
-    <div className="space-y-2.5">
-      <Label htmlFor={field.key} className={labelClasses}>
+    <div className={styles.fieldGroup}>
+      <Label htmlFor={field.key} className={styles.fieldLabel}>
         {t(field.label)}
-        {field.required && <span className="text-destructive ml-1">*</span>}
+        {field.required && <span className={styles.fieldRequired}>*</span>}
       </Label>
-      <div className="flex gap-2">
+      <div className={styles.fieldInputRow}>
         <Input
           id={field.key}
           type={isPassword && !showSecret ? 'password' : 'text'}
           placeholder={field.placeholder ? t(field.placeholder) : undefined}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className={inputClasses}
         />
         {isPassword && (
           <Button
@@ -820,19 +813,19 @@ function ConfigField({ field, value, onChange, showSecret, onToggleSecret }: Con
             variant="outline"
             size="icon"
             onClick={onToggleSecret}
-            className="h-[44px] w-[44px] rounded-xl bg-[#eeece3] dark:bg-muted border-black/10 dark:border-white/10 text-muted-foreground hover:text-foreground shrink-0 shadow-sm"
+            className={styles.eyeButton}
           >
-            {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {showSecret ? <EyeOff style={{ width: 16, height: 16 }} /> : <Eye style={{ width: 16, height: 16 }} />}
           </Button>
         )}
       </div>
       {field.description && (
-        <p className="text-[13px] text-muted-foreground leading-relaxed">
+        <p className={styles.fieldDescription}>
           {t(field.description)}
         </p>
       )}
       {field.envVar && (
-        <p className="text-[12px] text-muted-foreground/70 font-mono">
+        <p className={styles.fieldEnvVar}>
           {t('dialog.envVar', { var: field.envVar })}
         </p>
       )}

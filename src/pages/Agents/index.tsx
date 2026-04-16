@@ -15,7 +15,6 @@ import { CHANNEL_ICONS, CHANNEL_NAMES, type ChannelType } from '@/types/channel'
 import type { AgentSummary } from '@/types/agent';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 import telegramIcon from '@/assets/channels/telegram.svg';
 import discordIcon from '@/assets/channels/discord.svg';
 import whatsappIcon from '@/assets/channels/whatsapp.svg';
@@ -24,6 +23,7 @@ import dingtalkIcon from '@/assets/channels/dingtalk.svg';
 import feishuIcon from '@/assets/channels/feishu.svg';
 import wecomIcon from '@/assets/channels/wecom.svg';
 import qqIcon from '@/assets/channels/qq.svg';
+import { useAgentsStyles } from './styles';
 
 interface ChannelAccountItem {
   accountId: string;
@@ -44,6 +44,7 @@ interface ChannelGroupItem {
 
 export function Agents() {
   const { t } = useTranslation('agents');
+  const { styles } = useAgentsStyles();
   const gatewayStatus = useGatewayStore((state) => state.status);
   const lastGatewayStateRef = useRef(gatewayStatus.state);
   const {
@@ -105,64 +106,82 @@ export function Agents() {
 
   if (loading) {
     return (
-      <div className="flex flex-col -m-6 dark:bg-background min-h-[calc(100vh-2.5rem)] items-center justify-center">
+      <div className={styles.pageLoadingRoot}>
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col -m-6 dark:bg-background h-[calc(100vh-2.5rem)] overflow-hidden">
-      <div className="w-full max-w-5xl mx-auto flex flex-col h-full p-10 pt-16">
-        <div className="flex flex-col md:flex-row md:items-start justify-between mb-12 shrink-0 gap-4">
+    <div className={styles.pageRoot}>
+      <div className={styles.contentWrap}>
+        <div className={styles.pageHeader}>
           <div>
             <h1
-              className="text-sm md:text-sm font-serif text-foreground mb-3 font-normal tracking-tight"
+              className={styles.pageTitle}
               style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}
             >
               {t('title')}
             </h1>
-            <p className="text-[14px] text-foreground/70 font-medium">{t('subtitle')}</p>
+            <p className={styles.pageSubtitle}>{t('subtitle')}</p>
           </div>
-          <div className="flex items-center gap-3 md:mt-2">
+          <div className={styles.headerActions}>
             <Button
               variant="outline"
               onClick={handleRefresh}
-              className="h-9 text-[13px] font-medium rounded-full px-4 border-black/10 dark:border-white/10 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 shadow-none text-foreground/80 hover:text-foreground transition-colors"
+              style={{
+                height: 36,
+                fontSize: 13,
+                fontWeight: 500,
+                borderRadius: 9999,
+                paddingLeft: 16,
+                paddingRight: 16,
+                border: '1px solid rgba(0,0,0,0.1)',
+                background: 'transparent',
+                boxShadow: 'none',
+              }}
             >
-              <RefreshCw className="h-3.5 w-3.5 mr-2" />
+              <RefreshCw style={{ height: 14, width: 14, marginRight: 8 }} />
               {t('refresh')}
             </Button>
             <Button
               onClick={() => setShowAddDialog(true)}
-              className="h-9 text-[13px] font-medium rounded-full px-4 shadow-none"
+              style={{
+                height: 36,
+                fontSize: 13,
+                fontWeight: 500,
+                borderRadius: 9999,
+                paddingLeft: 16,
+                paddingRight: 16,
+                boxShadow: 'none',
+              }}
             >
-              <Plus className="h-3.5 w-3.5 mr-2" />
+              <Plus style={{ height: 14, width: 14, marginRight: 8 }} />
               {t('addAgent')}
             </Button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto pr-2 pb-10 min-h-0 -mr-2">
+        <div className={styles.scrollArea}>
           {gatewayStatus.state !== 'running' && (
-            <div className="mb-8 p-4 rounded-xl border border-yellow-500/50 bg-yellow-500/10 flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-              <span className="text-yellow-700 dark:text-yellow-400 text-sm font-medium">
+            <div className={styles.warningBanner}>
+              <AlertCircle className={styles.warningIcon} />
+              <span className={styles.warningText}>
                 {t('gatewayWarning')}
               </span>
             </div>
           )}
 
           {error && (
-            <div className="mb-8 p-4 rounded-xl border border-destructive/50 bg-destructive/10 flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-destructive" />
-              <span className="text-destructive text-sm font-medium">
+            <div className={styles.errorBanner}>
+              <AlertCircle className={styles.errorIcon} />
+              <span className={styles.errorText}>
                 {error}
               </span>
             </div>
           )}
 
-          <div className="space-y-3">
+          <div className={styles.agentList}>
             {agents.map((agent) => (
               <AgentCard
                 key={agent.id}
@@ -234,6 +253,7 @@ function AgentCard({
   onDelete: () => void;
 }) {
   const { t } = useTranslation('agents');
+  const { styles, cx } = useAgentsStyles();
   const boundChannelAccounts = channelGroups.flatMap((group) =>
     group.accounts
       .filter((account) => account.agentId === agent.id)
@@ -251,62 +271,71 @@ function AgentCard({
     : t('none');
 
   return (
-    <div
-      className={cn(
-        'group flex items-start gap-4 p-4 rounded-2xl transition-all text-left border relative overflow-hidden bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5',
-        agent.isDefault && 'bg-black/[0.04] dark:bg-white/[0.06]'
-      )}
-    >
-      <div className="h-[46px] w-[46px] shrink-0 flex items-center justify-center text-primary bg-primary/10 rounded-full shadow-sm mb-3">
-        <Bot className="h-[22px] w-[22px]" />
+    <div className={cx('mimi-agent-card', styles.agentCard, agent.isDefault && styles.agentCardDefault)}>
+      <div className={styles.agentAvatar}>
+        <Bot style={{ height: 22, width: 22 }} />
       </div>
-      <div className="flex flex-col flex-1 min-w-0 py-0.5 mt-1">
-        <div className="flex items-center justify-between gap-3 mb-1">
-          <div className="flex items-center gap-2 min-w-0">
-            <h2 className="text-[14px] font-semibold text-foreground truncate">{agent.name}</h2>
+      <div className={styles.agentBody}>
+        <div className={styles.agentNameRow}>
+          <div className={styles.agentNameGroup}>
+            <h2 className={styles.agentName}>{agent.name}</h2>
             {agent.isDefault && (
               <Badge
                 variant="secondary"
-                className="flex items-center gap-1 font-mono text-[10px] font-medium px-2 py-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.08] border-0 shadow-none text-foreground/70"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontFamily: 'monospace',
+                  fontSize: 10,
+                  fontWeight: 500,
+                  paddingLeft: 8,
+                  paddingRight: 8,
+                  paddingTop: 2,
+                  paddingBottom: 2,
+                  borderRadius: 9999,
+                  background: 'rgba(0,0,0,0.04)',
+                  border: 'none',
+                  boxShadow: 'none',
+                }}
               >
-                <Check className="h-3 w-3" />
+                <Check style={{ height: 12, width: 12 }} />
                 {t('defaultBadge')}
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className={styles.agentActions}>
             {!agent.isDefault && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="opacity-0 group-hover:opacity-100 h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+                style={{ height: 28, width: 28 }}
+                className={styles.agentActionBtnHoverable}
                 onClick={onDelete}
                 title={t('deleteAgent')}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 style={{ height: 16, width: 16 }} />
               </Button>
             )}
             <Button
               variant="ghost"
               size="icon"
-              className={cn(
-                'h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 transition-all',
-                !agent.isDefault && 'opacity-0 group-hover:opacity-100',
-              )}
+              style={{ height: 28, width: 28 }}
+              className={agent.isDefault ? undefined : styles.agentActionBtnHoverable}
               onClick={onOpenSettings}
               title={t('settings')}
             >
-              <Settings2 className="h-4 w-4" />
+              <Settings2 style={{ height: 16, width: 16 }} />
             </Button>
           </div>
         </div>
-        <p className="text-[13.5px] text-muted-foreground line-clamp-2 leading-[1.5]">
+        <p className={styles.agentMeta}>
           {t('modelLine', {
             model: agent.modelDisplay,
             suffix: agent.inheritedModel ? ` (${t('inherited')})` : '',
           })}
         </p>
-        <p className="text-[13.5px] text-muted-foreground line-clamp-2 leading-[1.5]">
+        <p className={styles.agentMeta}>
           {t('channelsLine', { channels: channelsText })}
         </p>
       </div>
@@ -314,29 +343,40 @@ function AgentCard({
   );
 }
 
-const inputClasses = 'h-[44px] rounded-xl font-mono text-[13px] bg-[#eeece3] dark:bg-muted border-black/10 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:border-blue-500 shadow-sm transition-all text-foreground placeholder:text-foreground/40';
-const labelClasses = 'text-[14px] text-foreground/80 font-bold';
+const inputStyle: React.CSSProperties = {
+  height: 44,
+  borderRadius: 12,
+  fontFamily: 'monospace',
+  fontSize: 13,
+  background: '#eeece3',
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: 14,
+  fontWeight: 700,
+};
 
 function ChannelLogo({ type }: { type: ChannelType }) {
+  const { styles } = useAgentsStyles();
   switch (type) {
     case 'telegram':
-      return <img src={telegramIcon} alt="Telegram" className="w-[20px] h-[20px] dark:invert" />;
+      return <img src={telegramIcon} alt="Telegram" className={styles.channelLogoImg} />;
     case 'discord':
-      return <img src={discordIcon} alt="Discord" className="w-[20px] h-[20px] dark:invert" />;
+      return <img src={discordIcon} alt="Discord" className={styles.channelLogoImg} />;
     case 'whatsapp':
-      return <img src={whatsappIcon} alt="WhatsApp" className="w-[20px] h-[20px] dark:invert" />;
+      return <img src={whatsappIcon} alt="WhatsApp" className={styles.channelLogoImg} />;
     case 'wechat':
-      return <img src={wechatIcon} alt="WeChat" className="w-[20px] h-[20px] dark:invert" />;
+      return <img src={wechatIcon} alt="WeChat" className={styles.channelLogoImg} />;
     case 'dingtalk':
-      return <img src={dingtalkIcon} alt="DingTalk" className="w-[20px] h-[20px] dark:invert" />;
+      return <img src={dingtalkIcon} alt="DingTalk" className={styles.channelLogoImg} />;
     case 'feishu':
-      return <img src={feishuIcon} alt="Feishu" className="w-[20px] h-[20px] dark:invert" />;
+      return <img src={feishuIcon} alt="Feishu" className={styles.channelLogoImg} />;
     case 'wecom':
-      return <img src={wecomIcon} alt="WeCom" className="w-[20px] h-[20px] dark:invert" />;
+      return <img src={wecomIcon} alt="WeCom" className={styles.channelLogoImg} />;
     case 'qqbot':
-      return <img src={qqIcon} alt="QQ" className="w-[20px] h-[20px] dark:invert" />;
+      return <img src={qqIcon} alt="QQ" className={styles.channelLogoImg} />;
     default:
-      return <span className="text-[14px] leading-none">{CHANNEL_ICONS[type] || '💬'}</span>;
+      return <span style={{ fontSize: 14, lineHeight: 1 }}>{CHANNEL_ICONS[type] || '💬'}</span>;
   }
 }
 
@@ -348,6 +388,7 @@ function AddAgentDialog({
   onCreate: (name: string) => Promise<void>;
 }) {
   const { t } = useTranslation('agents');
+  const { styles } = useAgentsStyles();
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -365,43 +406,61 @@ function AddAgentDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md rounded-3xl border-0 shadow-2xl bg-[#f3f1e9] dark:bg-card overflow-hidden">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-serif font-normal tracking-tight">
+    <div className={styles.modalBackdrop}>
+      <Card className={styles.addDialogCard}>
+        <CardHeader style={{ paddingBottom: 8 }}>
+          <CardTitle style={{ fontSize: 14, fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif', fontWeight: 'normal', letterSpacing: '-0.025em' }}>
             {t('createDialog.title')}
           </CardTitle>
-          <CardDescription className="text-[14px] mt-1 text-foreground/70">
+          <CardDescription style={{ fontSize: 14, marginTop: 4 }}>
             {t('createDialog.description')}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6 pt-4 p-6">
-          <div className="space-y-2.5">
-            <Label htmlFor="agent-name" className={labelClasses}>{t('createDialog.nameLabel')}</Label>
+        <CardContent style={{ padding: 24, paddingTop: 16 }}>
+          <div className={styles.spaceY25} style={{ marginBottom: 24 }}>
+            <Label htmlFor="agent-name" style={labelStyle}>{t('createDialog.nameLabel')}</Label>
             <Input
               id="agent-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder={t('createDialog.namePlaceholder')}
-              className={inputClasses}
+              style={inputStyle}
             />
           </div>
-          <div className="flex justify-end gap-2">
+          <div className={styles.dialogFormRow}>
             <Button
               variant="outline"
               onClick={onClose}
-              className="h-9 text-[13px] font-medium rounded-full px-4 border-black/10 dark:border-white/10 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 shadow-none text-foreground/80 hover:text-foreground"
+              style={{
+                height: 36,
+                fontSize: 13,
+                fontWeight: 500,
+                borderRadius: 9999,
+                paddingLeft: 16,
+                paddingRight: 16,
+                border: '1px solid rgba(0,0,0,0.1)',
+                background: 'transparent',
+                boxShadow: 'none',
+              }}
             >
               {t('common:actions.cancel')}
             </Button>
             <Button
               onClick={() => void handleSubmit()}
               disabled={saving || !name.trim()}
-              className="h-9 text-[13px] font-medium rounded-full px-4 shadow-none"
+              style={{
+                height: 36,
+                fontSize: 13,
+                fontWeight: 500,
+                borderRadius: 9999,
+                paddingLeft: 16,
+                paddingRight: 16,
+                boxShadow: 'none',
+              }}
             >
               {saving ? (
                 <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  <RefreshCw style={{ height: 16, width: 16, marginRight: 8 }} className="animate-spin" />
                   {t('creating')}
                 </>
               ) : (
@@ -425,6 +484,7 @@ function AgentSettingsModal({
   onClose: () => void;
 }) {
   const { t } = useTranslation('agents');
+  const { styles } = useAgentsStyles();
   const { updateAgent } = useAgentsStore();
   const [name, setName] = useState(agent.name);
   const [savingName, setSavingName] = useState(false);
@@ -461,14 +521,14 @@ function AgentSettingsModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl border-0 shadow-2xl bg-[#f3f1e9] dark:bg-card overflow-hidden">
-        <CardHeader className="flex flex-row items-start justify-between pb-2 shrink-0">
+    <div className={styles.modalBackdrop}>
+      <Card className={styles.settingsModalCard}>
+        <CardHeader className={styles.settingsCardHeader} style={{ padding: '24px 24px 8px' }}>
           <div>
-            <CardTitle className="text-sm font-serif font-normal tracking-tight">
+            <CardTitle style={{ fontSize: 14, fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif', fontWeight: 'normal', letterSpacing: '-0.025em' }}>
               {t('settingsDialog.title', { name: agent.name })}
             </CardTitle>
-            <CardDescription className="text-[14px] mt-1 text-foreground/70">
+            <CardDescription style={{ fontSize: 14, marginTop: 4 }}>
               {t('settingsDialog.description')}
             </CardDescription>
           </div>
@@ -476,32 +536,48 @@ function AgentSettingsModal({
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="rounded-full h-8 w-8 -mr-2 -mt-2 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+            style={{
+              borderRadius: 9999,
+              height: 32,
+              width: 32,
+              marginRight: -8,
+              marginTop: -8,
+            }}
           >
-            <X className="h-4 w-4" />
+            <X style={{ height: 16, width: 16 }} />
           </Button>
         </CardHeader>
-        <CardContent className="space-y-6 pt-4 overflow-y-auto flex-1 p-6">
-          <div className="space-y-4">
-            <div className="space-y-2.5">
-              <Label htmlFor="agent-settings-name" className={labelClasses}>{t('settingsDialog.nameLabel')}</Label>
-              <div className="flex gap-2">
+        <CardContent className={styles.settingsCardContent}>
+          <div className={styles.spaceY4}>
+            <div className={styles.spaceY25}>
+              <Label htmlFor="agent-settings-name" style={labelStyle}>{t('settingsDialog.nameLabel')}</Label>
+              <div className={styles.nameInputRow}>
                 <Input
                   id="agent-settings-name"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   readOnly={agent.isDefault}
-                  className={inputClasses}
+                  style={inputStyle}
                 />
                 {!agent.isDefault && (
                   <Button
                     variant="outline"
                     onClick={() => void handleSaveName()}
                     disabled={savingName || !name.trim() || name.trim() === agent.name}
-                    className="h-[44px] text-[13px] font-medium rounded-xl px-4 border-black/10 dark:border-white/10 bg-[#eeece3] dark:bg-muted hover:bg-black/5 dark:hover:bg-white/5 shadow-none text-foreground/80 hover:text-foreground"
+                    style={{
+                      height: 44,
+                      fontSize: 13,
+                      fontWeight: 500,
+                      borderRadius: 12,
+                      paddingLeft: 16,
+                      paddingRight: 16,
+                      border: '1px solid rgba(0,0,0,0.1)',
+                      background: '#eeece3',
+                      boxShadow: 'none',
+                    }}
                   >
                     {savingName ? (
-                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      <RefreshCw style={{ height: 16, width: 16 }} className="animate-spin" />
                     ) : (
                       t('common:actions.save')
                     )}
@@ -510,18 +586,18 @@ function AgentSettingsModal({
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-1 rounded-2xl bg-black/5 dark:bg-white/5 border border-transparent p-4">
-                <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground/80 font-medium">
+            <div className={styles.infoGrid}>
+              <div className={styles.infoCell}>
+                <p className={styles.infoCellLabel}>
                   {t('settingsDialog.agentIdLabel')}
                 </p>
-                <p className="font-mono text-[13px] text-foreground">{agent.id}</p>
+                <p className={styles.infoCellValue}>{agent.id}</p>
               </div>
-              <div className="space-y-1 rounded-2xl bg-black/5 dark:bg-white/5 border border-transparent p-4">
-                <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground/80 font-medium">
+              <div className={styles.infoCell}>
+                <p className={styles.infoCellLabel}>
                   {t('settingsDialog.modelLabel')}
                 </p>
-                <p className="text-[13.5px] text-foreground">
+                <p className={styles.infoCellValueNormal}>
                   {agent.modelDisplay}
                   {agent.inheritedModel ? ` (${t('inherited')})` : ''}
                 </p>
@@ -529,43 +605,43 @@ function AgentSettingsModal({
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-start justify-between gap-4">
+          <div className={styles.channelsSection}>
+            <div className={styles.channelsSectionHeader}>
               <div>
-                <h3 className="text-sm font-serif text-foreground font-normal tracking-tight">
+                <h3 className={styles.channelsSectionTitle}>
                   {t('settingsDialog.channelsTitle')}
                 </h3>
-                <p className="text-[14px] text-foreground/70 mt-1">{t('settingsDialog.channelsDescription')}</p>
+                <p className={styles.channelsSectionDesc}>{t('settingsDialog.channelsDescription')}</p>
               </div>
             </div>
 
             {assignedChannels.length === 0 && agent.channelTypes.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 p-4 text-[13.5px] text-muted-foreground">
+              <div className={styles.noChannelsBox}>
                 {t('settingsDialog.noChannels')}
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className={styles.channelList}>
                 {assignedChannels.map((channel) => (
-                  <div key={`${channel.channelType}-${channel.accountId}`} className="flex items-center justify-between rounded-2xl bg-black/5 dark:bg-white/5 border border-transparent p-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-[40px] w-[40px] shrink-0 flex items-center justify-center text-foreground bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-full shadow-sm">
+                  <div key={`${channel.channelType}-${channel.accountId}`} className={styles.channelRow}>
+                    <div className={styles.channelRowLeft}>
+                      <div className={styles.channelIcon}>
                         <ChannelLogo type={channel.channelType} />
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-[14px] font-semibold text-foreground">{channel.name}</p>
-                        <p className="text-[13.5px] text-muted-foreground">
+                      <div className={styles.channelInfo}>
+                        <p className={styles.channelName}>{channel.name}</p>
+                        <p className={styles.channelMeta}>
                           {CHANNEL_NAMES[channel.channelType]} · {channel.accountId === 'default' ? t('settingsDialog.mainAccount') : channel.accountId}
                         </p>
                         {channel.error && (
-                          <p className="text-xs text-destructive mt-1">{channel.error}</p>
+                          <p className={styles.channelError}>{channel.error}</p>
                         )}
                       </div>
                     </div>
-                    <div className="shrink-0" />
+                    <div style={{ flexShrink: 0 }} />
                   </div>
                 ))}
                 {assignedChannels.length === 0 && agent.channelTypes.length > 0 && (
-                  <div className="rounded-2xl border border-dashed border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 p-4 text-[13.5px] text-muted-foreground">
+                  <div className={styles.noChannelsBox}>
                     {t('settingsDialog.channelsManagedInChannels')}
                   </div>
                 )}

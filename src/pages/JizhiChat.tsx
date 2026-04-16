@@ -15,6 +15,7 @@ import { ComposerBase, ComposerChip, ComposerIconButton } from '@/features/chat/
 import { Button } from '@/components/ui/button';
 import { JizhiMessageContent } from '@/features/jizhi/components/JizhiMessageContent';
 import { cn } from '@/lib/utils';
+import { useStyles } from './JizhiChat.styles';
 import {
   extractDroppedPathsFromTransfer,
   isPathDrag,
@@ -133,19 +134,19 @@ function getLatestAssistantMessage(messages: HostJizhiChatMessage[]): HostJizhiA
   return null;
 }
 
-function UserBubble({ message }: { message: HostJizhiUserMessage }) {
+function UserBubble({ message, styles }: { message: HostJizhiUserMessage; styles: Record<string, string> }) {
   return (
     <ChatItem
       avatar={{
         avatar: (
-          <span className="flex h-full w-full items-center justify-center text-sm font-semibold text-[#2667D8]">
+          <span className={styles.userAvatarText}>
             我
           </span>
         ),
         backgroundColor: 'rgba(38,103,216,0.14)',
         title: '我',
       }}
-      className="w-full"
+      style={{ width: "100%" }}
       message="用户消息"
       placement="right"
       renderMessage={() => <JizhiMessageContent message={message.content} />}
@@ -153,7 +154,7 @@ function UserBubble({ message }: { message: HostJizhiUserMessage }) {
       time={Date.parse(message.createdAt)}
       variant="bubble"
       aboveMessage={(
-        <div className="mb-2 flex justify-end px-1 text-[11px] text-[#4B6EA8]/70 dark:text-white/42">
+        <div className={styles.userAbove}>
           <span>{formatMessageTime(message.createdAt)}</span>
         </div>
       )}
@@ -171,6 +172,7 @@ function AssistantBubble({
   onSwitchVersion,
   copied,
   switchingMessageUUID,
+  styles,
 }: {
   group: HostJizhiGroupMessages;
   message: HostJizhiAssistantMessageItem;
@@ -181,6 +183,7 @@ function AssistantBubble({
   onSwitchVersion: (message: HostJizhiAssistantMessageItem) => void;
   copied: boolean;
   switchingMessageUUID: string | null;
+  styles: Record<string, string>;
 }) {
   const timeLabel = formatMessageTime(message.createdAt);
   const modelLabel = message.modelName || message.model || '极智';
@@ -188,18 +191,18 @@ function AssistantBubble({
   const copyText = getAssistantClipboardText(message);
 
   return (
-    <div className="space-y-2 w-full">
+    <div className={styles.assistantGroupWrap}>
       <ChatItem
         avatar={{
           avatar: (
-            <span className="flex h-full w-full items-center justify-center text-sm font-semibold text-foreground/75">
+            <span className={styles.assistantAvatarText}>
               智
             </span>
           ),
           backgroundColor: 'rgba(15,23,42,0.06)',
           title: modelLabel,
         }}
-        className="w-full"
+        style={{ width: "100%" }}
         message={modelLabel}
         placement="left"
         renderMessage={() => <JizhiMessageContent message={message.content} />}
@@ -207,11 +210,11 @@ function AssistantBubble({
         time={Date.parse(message.createdAt)}
         variant="bubble"
         aboveMessage={(
-          <div className="mb-2 flex flex-wrap items-center gap-2 px-1 text-[11px] text-foreground/45">
+          <div className={styles.assistantAbove}>
             <span>{modelLabel}</span>
             {timeLabel ? <span>{timeLabel}</span> : null}
             {statusLabel ? (
-              <span className="rounded-full bg-black/5 px-1.5 py-0.5 dark:bg-white/10">
+              <span className={styles.assistantStatusBadge}>
                 {statusLabel}
               </span>
             ) : null}
@@ -219,9 +222,9 @@ function AssistantBubble({
         )}
       />
 
-      <div className="ml-12 flex flex-wrap items-center gap-2 pt-1">
+      <div className={styles.assistantActions}>
         {group.messages.length > 1 ? (
-          <div className="inline-flex items-center gap-1 rounded-full bg-black/5 p-1 dark:bg-white/10">
+          <div className={styles.versionSwitcher}>
             {group.messages.map((item, index) => {
               const isActive = item.isActive;
               const isSwitching = switchingMessageUUID === item.messageUUID;
@@ -231,16 +234,14 @@ function AssistantBubble({
                   key={item.messageUUID || `${group.answerGroup}-${index + 1}`}
                   type="button"
                   className={cn(
-                    'flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-[11px] transition',
-                    isActive
-                      ? 'bg-white text-foreground shadow-sm dark:bg-black/30'
-                      : 'text-foreground/55 hover:text-foreground',
+                    styles.versionBtn,
+                    isActive ? styles.versionBtnActive : '',
                   )}
                   disabled={isActive || !canSwitchVersion}
                   onClick={() => onSwitchVersion(item)}
                   title={`切换到回答 ${index + 1}`}
                 >
-                  {isSwitching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : index + 1}
+                  {isSwitching ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> : index + 1}
                 </button>
               );
             })}
@@ -251,11 +252,11 @@ function AssistantBubble({
           type="button"
           variant="ghost"
           size="sm"
-          className="h-8 rounded-full px-3 text-xs text-foreground/55"
+          style={{ height: 32, borderRadius: 9999, padding: '0 12px', fontSize: 12 }}
           onClick={() => onCopy(message)}
           disabled={!copyText}
         >
-          {copied ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Copy className="mr-1.5 h-3.5 w-3.5" />}
+          {copied ? <Check style={{ width: 14, height: 14, marginRight: 6 }} /> : <Copy style={{ width: 14, height: 14, marginRight: 6 }} />}
           {copied ? '已复制' : '复制'}
         </Button>
 
@@ -263,11 +264,11 @@ function AssistantBubble({
           type="button"
           variant="ghost"
           size="sm"
-          className="h-8 rounded-full px-3 text-xs text-foreground/55"
+          style={{ height: 32, borderRadius: 9999, padding: '0 12px', fontSize: 12 }}
           onClick={() => onRetry(message)}
           disabled={!canRetry}
         >
-          <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+          <RotateCcw style={{ width: 14, height: 14, marginRight: 6 }} />
           重新生成
         </Button>
       </div>
@@ -284,6 +285,7 @@ function MessageRow({
   onSwitchAssistantVersion,
   copiedMessageUUID,
   switchingMessageUUID,
+  styles,
 }: {
   message: HostJizhiChatMessage;
   canRetryAssistant: (message: HostJizhiAssistantMessageItem) => boolean;
@@ -293,14 +295,15 @@ function MessageRow({
   onSwitchAssistantVersion: (message: HostJizhiAssistantMessageItem) => void;
   copiedMessageUUID: string | null;
   switchingMessageUUID: string | null;
+  styles: Record<string, string>;
 }) {
   if (message.role === 'user' && message.userMessage) {
-    return <UserBubble message={message.userMessage} />;
+    return <UserBubble message={message.userMessage} styles={styles} />;
   }
 
   if (message.role === 'assistant' && message.assistantMessage) {
     return (
-      <div className="space-y-4">
+      <div className={styles.assistantMessageGroup}>
         {message.assistantMessage.groupMessages.map((group, index) => {
           const activeMessage = getActiveAssistantMessage(group);
           if (!activeMessage) return null;
@@ -317,6 +320,7 @@ function MessageRow({
               onSwitchVersion={onSwitchAssistantVersion}
               copied={copiedMessageUUID === activeMessage.messageUUID}
               switchingMessageUUID={switchingMessageUUID}
+              styles={styles}
             />
           );
         })}
@@ -328,6 +332,7 @@ function MessageRow({
 }
 
 export function JizhiChat() {
+  const { styles } = useStyles();
   const [draft, setDraft] = useState('');
   const [droppedPaths, setDroppedPaths] = useState<UnifiedComposerPath[]>([]);
   const [dragOver, setDragOver] = useState(false);
@@ -609,13 +614,13 @@ export function JizhiChat() {
 
   if (!activeSessionId || !currentSession) {
     return (
-      <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-[radial-gradient(circle_at_top,#f4f8ff,transparent_45%),linear-gradient(180deg,#fbfcfe_0%,#f5f7fb_100%)] dark:bg-[radial-gradient(circle_at_top,#1c2638,transparent_35%),linear-gradient(180deg,#121317_0%,#18191d_100%)]">
-        <div className="max-w-md rounded-[28px] border border-black/5 bg-white/80 p-8 text-center shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur dark:border-white/10 dark:bg-white/5">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[22px] bg-[#EDF4FF] text-[#2667D8] dark:bg-white/10 dark:text-white">
-            <MessageSquare className="h-7 w-7" />
+      <div className={styles.emptyRoot}>
+        <div className={styles.emptyCard}>
+          <div className={styles.emptyIcon}>
+            <MessageSquare style={{ width: 28, height: 28 }} />
           </div>
-          <div className="text-sm font-semibold">选择一个极智会话</div>
-          <p className="mt-2 text-sm leading-6 text-foreground/55">
+          <div className={styles.emptyTitle}>选择一个极智会话</div>
+          <p className={styles.emptyDesc}>
             左侧 Session list 里的 `极智` 会话会在这里直接渲染。
           </p>
         </div>
@@ -624,31 +629,29 @@ export function JizhiChat() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col bg-[linear-gradient(180deg,#fbfcfe_0%,#f6f8fc_100%)] dark:bg-[linear-gradient(180deg,#14161a_0%,#181a1f_100%)]">
-      <div className="px-6 py-4">
-        <div className="mx-auto max-w-5xl">
-          <div className="flex items-center gap-4 rounded-[28px] border border-black/6 bg-white/72 px-4 py-4 shadow-[0_16px_44px_rgba(15,23,42,0.06)] backdrop-blur-md dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_18px_44px_rgba(0,0,0,0.24)]">
-            <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#EEF5FF_0%,#E2EEFF_100%)] text-[#2667D8] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.12)_0%,rgba(255,255,255,0.06)_100%)] dark:text-white">
-              <MessageSquare className="h-5 w-5" />
+    <div className={styles.root}>
+      <div className={styles.headerWrap}>
+        <div className={styles.headerInner}>
+          <div className={styles.headerCard}>
+            <div className={styles.headerIcon}>
+              <MessageSquare style={{ width: 20, height: 20 }} />
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="truncate text-sm font-semibold tracking-[0.01em]">{currentSession.name}</h1>
-                <span className="rounded-full bg-[#E8F2FF] px-2.5 py-1 text-[11px] font-medium text-[#2667D8] dark:bg-white/10 dark:text-white">
-                  极智
-                </span>
+            <div className={styles.headerContent}>
+              <div className={styles.headerTitleRow}>
+                <h1 className={styles.headerTitle}>{currentSession.name}</h1>
+                <span className={styles.headerBadge}>极智</span>
                 {currentSession.category ? (
-                  <span className="rounded-full border border-black/6 bg-black/[0.03] px-2.5 py-1 text-[11px] font-medium text-foreground/60 dark:border-white/10 dark:bg-white/[0.05]">
+                  <span className={styles.headerCategoryBadge}>
                     {currentSession.category}
                   </span>
                 ) : null}
               </div>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-foreground/45">
+              <div className={styles.headerMeta}>
                 <span>{loading ? '同步中...' : lastSyncedAt ? `最近同步 ${formatSyncTime(lastSyncedAt)}` : '等待首次同步'}</span>
                 {currentSession.model ? (
                   <>
-                    <span className="text-foreground/25">/</span>
-                    <span className="truncate">{currentSession.model}</span>
+                    <span className={styles.headerDivider}>/</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentSession.model}</span>
                   </>
                 ) : null}
               </div>
@@ -656,11 +659,11 @@ export function JizhiChat() {
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 rounded-full border-black/8 bg-white/70 shadow-none hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:hover:bg-white/[0.08]"
+              style={{ borderRadius: 9999, gap: 8 }}
               onClick={() => requestRefresh()}
               disabled={loading}
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              {loading ? <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> : <RefreshCw style={{ width: 16, height: 16 }} />}
               刷新
             </Button>
           </div>
@@ -668,18 +671,18 @@ export function JizhiChat() {
       </div>
 
       {syncError ? (
-        <div className="px-6 pb-2 text-sm text-[#B42318] dark:text-[#FFB4A8]">
-          <div className="mx-auto max-w-5xl">{syncError}</div>
+        <div className={styles.syncError}>
+          <div className={styles.syncErrorInner}>{syncError}</div>
         </div>
       ) : null}
 
-      <div ref={scrollRef} className={cn('min-h-0 flex-1 overflow-y-auto px-6 py-6')}>
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-4">
+      <div ref={scrollRef} className={styles.messageList}>
+        <div className={styles.messageListInner}>
           {messages.length === 0 ? (
-            <div className="flex min-h-[240px] items-center justify-center rounded-[28px] border border-dashed border-black/10 bg-white/60 text-sm text-foreground/45 dark:border-white/10 dark:bg-white/5">
+            <div className={styles.emptyMessageBox}>
               {loading ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                <div className={styles.loadingRow}>
+                  <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />
                   正在拉取消息列表...
                 </div>
               ) : (
@@ -704,14 +707,15 @@ export function JizhiChat() {
                 }}
                 copiedMessageUUID={copiedMessageUUID}
                 switchingMessageUUID={switchingMessageUUID}
+                styles={styles}
               />
             ))
           )}
         </div>
       </div>
 
-      <div className="border-t border-black/5 px-6 py-4 dark:border-white/10">
-        <div className="mx-auto flex w-full max-w-[800px] flex-col gap-3">
+      <div className={styles.composerWrap}>
+        <div className={styles.composerInner}>
           <ComposerBase
             variant="desktop"
             value={draft}
@@ -734,16 +738,16 @@ export function JizhiChat() {
             onDrop={handleComposerDrop}
             leftActions={(
               <>
-                <ComposerChip variant="desktop" icon={<Bot className="h-3.5 w-3.5" />}>
+                <ComposerChip variant="desktop" icon={<Bot style={{ width: 14, height: 14 }} />}>
                   {isLlmSession ? '模型模式' : '智能体模式'}
                 </ComposerChip>
                 {currentSession.model ? (
-                  <ComposerChip variant="desktop" icon={<Cpu className="h-3.5 w-3.5" />}>
+                  <ComposerChip variant="desktop" icon={<Cpu style={{ width: 14, height: 14 }} />}>
                     {currentSession.model}
                   </ComposerChip>
                 ) : null}
                 {isLlmSession ? (
-                  <ComposerChip variant="desktop" icon={<BrainCircuit className="h-3.5 w-3.5" />}>
+                  <ComposerChip variant="desktop" icon={<BrainCircuit style={{ width: 14, height: 14 }} />}>
                     思考模式
                   </ComposerChip>
                 ) : null}
@@ -752,7 +756,7 @@ export function JizhiChat() {
             rightActions={canRetry ? (
               <ComposerIconButton
                 variant="desktop"
-                icon={<RotateCcw className="h-4 w-4" />}
+                icon={<RotateCcw style={{ width: 16, height: 16 }} />}
                 onClick={() => { void handleRetry(); }}
                 disabled={!canRetry}
                 title="重新生成"

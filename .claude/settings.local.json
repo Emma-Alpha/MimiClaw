@@ -20,7 +20,11 @@
       "Bash(grep -r \"backdrop-filter\\\\|backdrop_filter\\\\|blur\\\\|sidebar\\\\|--sidebar\\\\|nav.*background\\\\|sidebar.*background\" /tmp/codex_extracted/webview/assets/*.css)",
       "Bash(ls /tmp/codex_extracted/webview/assets/*.js)",
       "Bash(xargs -I{} sh -c 'wc -c \"{}\" | awk \"{print \\\\$1, \\\\\"{}\\\\\"}')",
-      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('main:', d.get\\('main'\\)\\); print\\('module:', d.get\\('module'\\)\\); print\\('exports:', list\\(d.get\\('exports',{}\\).keys\\(\\)\\)[:5]\\)\")"
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('main:', d.get\\('main'\\)\\); print\\('module:', d.get\\('module'\\)\\); print\\('exports:', list\\(d.get\\('exports',{}\\).keys\\(\\)\\)[:5]\\)\")",
+      "Bash(git worktree *)",
+      "Bash(python3 *)",
+      "Bash(grep -n 'css`' /Users/liangpingbo/Desktop/4399/frontend/MimiClaw/src/features/settings/components/styles.ts)",
+      "Bash(grep -v \"^$\")"
     ]
   }
 }

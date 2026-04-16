@@ -3,7 +3,7 @@
  * TitleBar at top, then sidebar + content below.
  */
 import { Outlet, useLocation } from 'react-router-dom';
-import { cn } from '@/lib/utils';
+import { createStyles } from 'antd-style';
 import { Sidebar } from './Sidebar';
 import { TitleBar } from './TitleBar';
 import { JizhiSessionBridge } from './JizhiSessionBridge';
@@ -11,9 +11,49 @@ import { RemoteMessengerSessionBridge } from './RemoteMessengerSessionBridge';
 import { VoiceChatSessionBridge } from './VoiceChatSessionBridge';
 import { ChatToolbar } from '@/features/chat/components/ChatToolbar';
 
+const useStyles = createStyles(({ token, css }) => ({
+  root: css`
+    display: flex;
+    height: 100vh;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    background: ${token.colorBgLayout};
+  `,
+  body: css`
+    display: flex;
+    height: 100%;
+    flex: 1;
+    overflow: hidden;
+  `,
+  main: css`
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    position: relative;
+    background: ${token.colorBgContainer};
+  `,
+  mainFullBleed: css`
+    overflow: hidden;
+    padding: 0;
+  `,
+  content: css`
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+  `,
+}));
+
 const FULL_BLEED_PATHS = new Set(['/jizhi-chat']);
 
 export function MainLayout() {
+  const { styles, cx } = useStyles();
   const { pathname } = useLocation();
   const fullBleed = FULL_BLEED_PATHS.has(pathname);
   const isChatRoute = pathname === '/';
@@ -23,7 +63,7 @@ export function MainLayout() {
     || pathname.startsWith('/chat/');
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden relative">
+    <div className={styles.root}>
       <JizhiSessionBridge />
       <RemoteMessengerSessionBridge />
       <VoiceChatSessionBridge />
@@ -32,15 +72,10 @@ export function MainLayout() {
         hideManagementMenu={hideTitleBarManagementMenu}
         rightContent={isChatRoute ? <ChatToolbar /> : undefined}
       />
-      <div className="flex h-full flex-1 overflow-hidden">
+      <div className={styles.body}>
         <Sidebar />
-        <main
-          className={cn(
-            'flex min-h-0 min-w-0 flex-1 flex-col relative bg-background',
-            fullBleed ? 'overflow-hidden p-0' : 'overflow-hidden',
-          )}
-        >
-          <div className="flex-1 min-h-0 relative z-10 flex flex-col">
+        <main className={cx(styles.main, fullBleed && styles.mainFullBleed)}>
+          <div className={styles.content}>
             <Outlet />
           </div>
         </main>

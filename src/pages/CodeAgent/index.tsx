@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { cn } from '@/lib/utils';
 import { Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -33,9 +32,11 @@ import type {
   CodeAgentRuntimeConfig,
   CodeAgentStatus,
 } from '../../../shared/code-agent';
+import { useCodeAgentStyles } from './styles';
 
 export function CodeAgent() {
   const { t } = useTranslation(['settings', 'common']);
+  const { styles, cx } = useCodeAgentStyles();
   const initSettings = useSettingsStore((state) => state.init);
   const codeAgent = useSettingsStore((state) => state.codeAgent);
 
@@ -258,42 +259,50 @@ export function CodeAgent() {
     }
   };
 
+  // Determine health badge class
+  const healthBadgeClass = (() => {
+    if (codeAgentStatus?.state === 'running' && codeAgentHealth?.ok) return styles.badgeHealthOk;
+    if (codeAgentStatus?.state === 'running' && codeAgentHealth && !codeAgentHealth.ok) return styles.badgeHealthWarn;
+    if (codeAgentStatus?.state === 'error') return styles.badgeHealthError;
+    return undefined;
+  })();
+
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-auto bg-background">
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-6">
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-sm font-semibold tracking-tight text-foreground">
+    <div className={styles.pageRoot}>
+      <div className={styles.contentWrap}>
+        <div className={styles.pageHeaderBlock}>
+          <div className={styles.titleRow}>
+            <h1 className={styles.pageTitle}>
               {t('settings:developer.codeAgent')}
             </h1>
-            <Badge variant="outline" className="rounded-full px-3 py-1">
+            <Badge variant="outline" style={{ borderRadius: 9999, paddingLeft: 12, paddingRight: 12, paddingTop: 4, paddingBottom: 4 }}>
               Claude CLI
             </Badge>
           </div>
-          <p className="max-w-3xl text-sm text-muted-foreground">
+          <p className={styles.pageDesc}>
             {t('settings:developer.codeAgentDesc')}
           </p>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="space-y-6">
-            <section className="space-y-4 rounded-2xl border border-black/10 bg-card p-5 dark:border-white/10">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-foreground">{t('settings:developer.codeAgentStatus')}</p>
-                  <p className="text-xs text-muted-foreground">
+        <div className={styles.mainGrid}>
+          <div className={styles.leftCol}>
+            <section className={styles.sectionCard}>
+              <div className={styles.statusHeader}>
+                <div className={styles.statusTitleBlock}>
+                  <p className={styles.sectionTitle}>{t('settings:developer.codeAgentStatus')}</p>
+                  <p className={styles.sectionSubtitle}>
                     {t('settings:developer.codeAgentLatest')}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className={styles.statusButtonGroup}>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => void handleCodeAgentHealthCheck()}
                     disabled={codeAgentBusyAction !== null}
-                    className="rounded-xl"
+                    style={{ borderRadius: 12 }}
                   >
-                    <RefreshCw className={`mr-2 h-4 w-4${codeAgentBusyAction === 'health' ? ' animate-spin' : ''}`} />
+                    <RefreshCw style={{ marginRight: 8, height: 16, width: 16 }} className={codeAgentBusyAction === 'health' ? 'animate-spin' : ''} />
                     {t('settings:developer.codeAgentCheckHealth')}
                   </Button>
                   <Button
@@ -301,7 +310,7 @@ export function CodeAgent() {
                     variant="outline"
                     onClick={() => void handleCodeAgentLifecycleAction('start')}
                     disabled={codeAgentBusyAction !== null || codeAgentStatus?.state === 'running'}
-                    className="rounded-xl"
+                    style={{ borderRadius: 12 }}
                   >
                     {t('settings:developer.codeAgentStart')}
                   </Button>
@@ -310,7 +319,7 @@ export function CodeAgent() {
                     variant="outline"
                     onClick={() => void handleCodeAgentLifecycleAction('stop')}
                     disabled={codeAgentBusyAction !== null || codeAgentStatus?.state !== 'running'}
-                    className="rounded-xl"
+                    style={{ borderRadius: 12 }}
                   >
                     {t('settings:developer.codeAgentStop')}
                   </Button>
@@ -319,25 +328,21 @@ export function CodeAgent() {
                     variant="outline"
                     onClick={() => void handleCodeAgentLifecycleAction('restart')}
                     disabled={codeAgentBusyAction !== null}
-                    className="rounded-xl"
+                    style={{ borderRadius: 12 }}
                   >
                     {t('common:actions.restart')}
                   </Button>
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2 text-xs">
-                <Badge variant="secondary" className="rounded-full px-3 py-1">
+              <div className={styles.badgeRow}>
+                <Badge variant="secondary" style={{ borderRadius: 9999, paddingLeft: 12, paddingRight: 12, paddingTop: 4, paddingBottom: 4 }}>
                   {t('settings:developer.codeAgentStatus')}: {codeAgentStatus?.state || '-'}
                 </Badge>
                 <Badge
                   variant="outline"
-                  className={cn(
-                    'rounded-full px-3 py-1',
-                    codeAgentStatus?.state === 'running' && codeAgentHealth?.ok && 'border-green-500/30 text-green-700 dark:text-green-400 bg-green-500/10',
-                    codeAgentStatus?.state === 'running' && codeAgentHealth && !codeAgentHealth.ok && 'border-amber-500/30 text-amber-700 dark:text-amber-300 bg-amber-500/10',
-                    codeAgentStatus?.state === 'error' && 'border-red-500/30 text-red-700 dark:text-red-400 bg-red-500/10',
-                  )}
+                  className={cx(healthBadgeClass)}
+                  style={{ borderRadius: 9999, paddingLeft: 12, paddingRight: 12, paddingTop: 4, paddingBottom: 4 }}
                 >
                   {t('settings:developer.codeAgentHealth')}: {(() => {
                     const state = codeAgentStatus?.state;
@@ -349,7 +354,7 @@ export function CodeAgent() {
                     return '-';
                   })()}
                 </Badge>
-                <Badge variant="outline" className="rounded-full px-3 py-1">
+                <Badge variant="outline" style={{ borderRadius: 9999, paddingLeft: 12, paddingRight: 12, paddingTop: 4, paddingBottom: 4 }}>
                   {t('settings:developer.codeAgentConfigSource')}: {codeAgentHealth?.configSource === 'default_provider'
                     ? `${t('settings:developer.codeAgentConfigSourceDefaultProvider')}${codeAgentHealth.configSourceLabel ? ` (${codeAgentHealth.configSourceLabel})` : ''}`
                     : codeAgentHealth?.configSource === 'claude_settings'
@@ -358,13 +363,13 @@ export function CodeAgent() {
                 </Badge>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-1 text-xs text-muted-foreground">
+              <div className={styles.infoGrid2}>
+                <div className={styles.infoCol}>
                   <p>{t('settings:developer.codeAgentCliPath')}: {codeAgentHealth?.cliPath || codeAgentStatus?.cliPath || codeAgentConfigDraft.cliPath || '-'}</p>
                   <p>{t('settings:developer.codeAgentCliVersion')}: {codeAgentHealth?.cliVersion || '-'}</p>
                   <p>{t('settings:developer.codeAgentRunnable')}: {codeAgentHealth?.runnable === undefined ? '-' : (codeAgentHealth.runnable ? t('settings:developer.codeAgentRunnableYes') : t('settings:developer.codeAgentRunnableNo'))}</p>
                 </div>
-                <div className="space-y-1 text-xs text-muted-foreground">
+                <div className={styles.infoCol}>
                   <p>{t('settings:developer.codeAgentModel')}: {codeAgentHealth?.configuredModel || codeAgentConfigDraft.model || '-'}</p>
                   <p>{t('settings:developer.codeAgentBaseUrl')}: {codeAgentHealth?.configuredBaseUrl || codeAgentConfigDraft.baseUrl || '-'}</p>
                   <p>{t('settings:developer.codeAgentPermissionMode')}: {codeAgentHealth?.configuredPermissionMode || codeAgentConfigDraft.permissionMode}{codeAgentConfigDraft.permissionMode === 'default' ? ' (Claude Code default)' : ''}</p>
@@ -372,32 +377,32 @@ export function CodeAgent() {
               </div>
 
               {codeAgentHealth?.diagnostics && codeAgentHealth.diagnostics.length > 0 && (
-                <pre className="max-h-40 overflow-auto rounded-xl border border-black/10 bg-black/5 p-3 text-[11px] text-muted-foreground dark:border-white/10 dark:bg-white/5">
+                <pre className={styles.diagnosticsPre}>
                   {codeAgentHealth.diagnostics.join('\n')}
                 </pre>
               )}
             </section>
 
-            <section className="space-y-4 rounded-2xl border border-black/10 bg-card p-5 dark:border-white/10">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{t('settings:developer.codeAgentConfig')}</p>
-                  <p className="text-xs text-muted-foreground">{t('settings:developer.codeAgentConfigAutoMapHint')}</p>
+            <section className={styles.sectionCard}>
+              <div className={styles.configHeader}>
+                <div className={styles.configTitleBlock}>
+                  <p className={styles.sectionTitle}>{t('settings:developer.codeAgentConfig')}</p>
+                  <p className={styles.sectionSubtitle}>{t('settings:developer.codeAgentConfigAutoMapHint')}</p>
                 </div>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => void handleSaveCodeAgentConfig()}
                   disabled={savingCodeAgentConfig}
-                  className="rounded-xl"
+                  style={{ borderRadius: 12 }}
                 >
-                  <RefreshCw className={`mr-2 h-4 w-4${savingCodeAgentConfig ? ' animate-spin' : ''}`} />
+                  <RefreshCw style={{ marginRight: 8, height: 16, width: 16 }} className={savingCodeAgentConfig ? 'animate-spin' : ''} />
                   {savingCodeAgentConfig ? t('common:status.saving') : t('common:actions.save')}
                 </Button>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
+              <div className={styles.configGrid2}>
+                <div className={styles.formField}>
                   <Label htmlFor="code-agent-execution-mode">{t('settings:developer.codeAgentExecutionMode')}</Label>
                   <Select
                     id="code-agent-execution-mode"
@@ -406,14 +411,14 @@ export function CodeAgent() {
                       ...prev,
                       executionMode: event.target.value as CodeAgentExecutionMode,
                     }))}
-                    className="h-10 rounded-xl"
+                    style={{ height: 40, borderRadius: 12 }}
                   >
                     <option value="cli">{t('settings:developer.codeAgentExecutionModeCli')}</option>
                     <option value="snapshot">{t('settings:developer.codeAgentExecutionModeSnapshot')}</option>
                   </Select>
                 </div>
 
-                <div className="space-y-2">
+                <div className={styles.formField}>
                   <Label htmlFor="code-agent-permission-mode">{t('settings:developer.codeAgentPermissionMode')}</Label>
                   <Select
                     id="code-agent-permission-mode"
@@ -422,7 +427,7 @@ export function CodeAgent() {
                       ...prev,
                       permissionMode: event.target.value as CodeAgentPermissionMode,
                     }))}
-                    className="h-10 rounded-xl"
+                    style={{ height: 40, borderRadius: 12 }}
                   >
                     <option value="default">{t('settings:developer.codeAgentPermissionDefault')}</option>
                     <option value="acceptEdits">{t('settings:developer.codeAgentPermissionAcceptEdits')}</option>
@@ -433,136 +438,136 @@ export function CodeAgent() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
+                <div className={styles.formField}>
                   <Label htmlFor="code-agent-cli-path">{t('settings:developer.codeAgentCliPath')}</Label>
                   <Input
                     id="code-agent-cli-path"
                     value={codeAgentConfigDraft.cliPath}
                     onChange={(event) => setCodeAgentConfigDraft((prev) => ({ ...prev, cliPath: event.target.value }))}
                     placeholder="claude"
-                    className="h-10 rounded-xl font-mono text-[13px]"
+                    style={{ height: 40, borderRadius: 12, fontFamily: 'monospace', fontSize: 13 }}
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className={styles.formField}>
                   <Label htmlFor="code-agent-model">{t('settings:developer.codeAgentModel')}</Label>
                   <Input
                     id="code-agent-model"
                     value={codeAgentConfigDraft.model}
                     onChange={(event) => setCodeAgentConfigDraft((prev) => ({ ...prev, model: event.target.value }))}
                     placeholder="sonnet"
-                    className="h-10 rounded-xl text-[13px]"
+                    style={{ height: 40, borderRadius: 12, fontSize: 13 }}
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className={styles.formField}>
                   <Label htmlFor="code-agent-fallback-model">{t('settings:developer.codeAgentFallbackModel')}</Label>
                   <Input
                     id="code-agent-fallback-model"
                     value={codeAgentConfigDraft.fallbackModel}
                     onChange={(event) => setCodeAgentConfigDraft((prev) => ({ ...prev, fallbackModel: event.target.value }))}
                     placeholder="opus"
-                    className="h-10 rounded-xl text-[13px]"
+                    style={{ height: 40, borderRadius: 12, fontSize: 13 }}
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className={styles.formField}>
                   <Label htmlFor="code-agent-base-url">{t('settings:developer.codeAgentBaseUrl')}</Label>
                   <Input
                     id="code-agent-base-url"
                     value={codeAgentConfigDraft.baseUrl}
                     onChange={(event) => setCodeAgentConfigDraft((prev) => ({ ...prev, baseUrl: event.target.value }))}
                     placeholder="https://api.anthropic.com"
-                    className="h-10 rounded-xl text-[13px]"
+                    style={{ height: 40, borderRadius: 12, fontSize: 13 }}
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className={styles.formField}>
                 <Label htmlFor="code-agent-api-key">{t('settings:developer.codeAgentApiKey')}</Label>
-                <div className="relative">
+                <div className={styles.apiKeyWrap}>
                   <Input
                     id="code-agent-api-key"
                     type={showCodeAgentApiKey ? 'text' : 'password'}
                     value={codeAgentConfigDraft.apiKey}
                     onChange={(event) => setCodeAgentConfigDraft((prev) => ({ ...prev, apiKey: event.target.value }))}
                     placeholder={t('settings:developer.codeAgentApiKeyPlaceholder')}
-                    className="h-10 rounded-xl pr-10 text-[13px]"
+                    style={{ height: 40, borderRadius: 12, paddingRight: 40, fontSize: 13 }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowCodeAgentApiKey((prev) => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className={styles.apiKeyToggle}
                   >
-                    {showCodeAgentApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showCodeAgentApiKey ? <EyeOff style={{ height: 16, width: 16 }} /> : <Eye style={{ height: 16, width: 16 }} />}
                   </button>
                 </div>
-                <p className="text-xs text-muted-foreground">{t('settings:developer.codeAgentApiKeyDesc')}</p>
+                <p className={styles.apiKeyDesc}>{t('settings:developer.codeAgentApiKeyDesc')}</p>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
+              <div className={styles.configGrid2}>
+                <div className={styles.formField}>
                   <Label htmlFor="code-agent-allowed-tools">{t('settings:developer.codeAgentAllowedTools')}</Label>
                   <Textarea
                     id="code-agent-allowed-tools"
                     value={codeAgentAllowedToolsDraft}
                     onChange={(event) => setCodeAgentAllowedToolsDraft(event.target.value)}
                     placeholder={t('settings:developer.codeAgentAllowedToolsPlaceholder')}
-                    className="min-h-[92px] rounded-xl font-mono text-[13px]"
+                    style={{ minHeight: 92, borderRadius: 12, fontFamily: 'monospace', fontSize: 13 }}
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className={styles.formField}>
                   <Label htmlFor="code-agent-system-prompt">{t('settings:developer.codeAgentAppendSystemPrompt')}</Label>
                   <Textarea
                     id="code-agent-system-prompt"
                     value={codeAgentConfigDraft.appendSystemPrompt}
                     onChange={(event) => setCodeAgentConfigDraft((prev) => ({ ...prev, appendSystemPrompt: event.target.value }))}
                     placeholder={t('settings:developer.codeAgentAppendSystemPromptPlaceholder')}
-                    className="min-h-[92px] rounded-xl text-[13px]"
+                    style={{ minHeight: 92, borderRadius: 12, fontSize: 13 }}
                   />
                 </div>
               </div>
             </section>
           </div>
 
-          <div className="space-y-6">
-            <section className="space-y-4 rounded-2xl border border-black/10 bg-card p-5 dark:border-white/10">
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-foreground">{t('settings:developer.codeAgentRun')}</p>
-                <p className="text-xs text-muted-foreground">
+          <div className={styles.rightCol}>
+            <section className={styles.sectionCard}>
+              <div className={styles.statusTitleBlock}>
+                <p className={styles.sectionTitle}>{t('settings:developer.codeAgentRun')}</p>
+                <p className={styles.sectionSubtitle}>
                   {t('settings:developer.codeAgentLatest')}
                 </p>
               </div>
 
-              <div className="space-y-2">
+              <div className={styles.formField}>
                 <Label htmlFor="code-agent-workspace">{t('settings:developer.codeAgentWorkspace')}</Label>
                 <Input
                   id="code-agent-workspace"
                   value={codeAgentWorkspaceRoot}
                   onChange={(event) => setCodeAgentWorkspaceRoot(event.target.value)}
                   placeholder={t('settings:developer.codeAgentWorkspacePlaceholder')}
-                  className="h-10 rounded-xl font-mono text-[13px]"
+                  style={{ height: 40, borderRadius: 12, fontFamily: 'monospace', fontSize: 13 }}
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className={styles.formField}>
                 <Label htmlFor="code-agent-prompt">{t('settings:developer.codeAgentPrompt')}</Label>
                 <Textarea
                   id="code-agent-prompt"
                   value={codeAgentPrompt}
                   onChange={(event) => setCodeAgentPrompt(event.target.value)}
                   placeholder={t('settings:developer.codeAgentPromptPlaceholder')}
-                  className="min-h-[160px] rounded-xl text-[13px]"
+                  style={{ minHeight: 160, borderRadius: 12, fontSize: 13 }}
                 />
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className={styles.runButtonsFlex}>
                 <Button
                   type="button"
                   onClick={() => setCodeAgentPrompt('请先快速理解当前工作区的结构、技术栈和关键入口文件，然后给我一个简短概览。')}
                   variant="outline"
-                  className="rounded-xl"
+                  style={{ borderRadius: 12 }}
                 >
                   解释当前项目
                 </Button>
@@ -570,7 +575,7 @@ export function CodeAgent() {
                   type="button"
                   onClick={() => setCodeAgentPrompt('请检查当前工作区里最可能导致最近问题的代码位置，并给出排查结论。')}
                   variant="outline"
-                  className="rounded-xl"
+                  style={{ borderRadius: 12 }}
                 >
                   分析最近问题
                 </Button>
@@ -580,19 +585,19 @@ export function CodeAgent() {
                 type="button"
                 onClick={() => void handleCodeAgentRun()}
                 disabled={codeAgentBusyAction !== null}
-                className="h-11 w-full rounded-xl"
+                className={styles.runMainButton}
               >
-                <RefreshCw className={`mr-2 h-4 w-4${codeAgentBusyAction === 'run' ? ' animate-spin' : ''}`} />
+                <RefreshCw style={{ marginRight: 8, height: 16, width: 16 }} className={codeAgentBusyAction === 'run' ? 'animate-spin' : ''} />
                 {codeAgentBusyAction === 'run' ? t('common:status.running') : t('settings:developer.codeAgentRun')}
               </Button>
             </section>
 
-            <section className="space-y-4 rounded-2xl border border-black/10 bg-card p-5 dark:border-white/10">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-foreground">{t('settings:developer.codeAgentLastRun')}</p>
+            <section className={styles.sectionCard}>
+              <div className={styles.lastRunHeader}>
+                <div className={styles.lastRunTitleGroup}>
+                  <p className={styles.sectionTitle}>{t('settings:developer.codeAgentLastRun')}</p>
                   {codeAgentLastRun?.result?.status && (
-                    <Badge variant="outline" className="rounded-full px-3 py-1">
+                    <Badge variant="outline" style={{ borderRadius: 9999, paddingLeft: 12, paddingRight: 12, paddingTop: 4, paddingBottom: 4 }}>
                       {codeAgentLastRun.result.status}
                     </Badge>
                   )}
@@ -602,7 +607,7 @@ export function CodeAgent() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowCodeAgentRunDetails((prev) => !prev)}
-                  className="rounded-full"
+                  style={{ borderRadius: 9999 }}
                   disabled={!codeAgentLastRun}
                 >
                   {showCodeAgentRunDetails ? t('common:actions.hide') : t('common:actions.show')}
@@ -610,10 +615,10 @@ export function CodeAgent() {
               </div>
 
               {!codeAgentLastRun ? (
-                <p className="text-xs text-muted-foreground">{t('settings:developer.codeAgentNoRun')}</p>
+                <p className={styles.lastRunNoData}>{t('settings:developer.codeAgentNoRun')}</p>
               ) : (
                 <>
-                  <div className="space-y-1 text-xs text-muted-foreground">
+                  <div className={styles.lastRunMetaList}>
                     <p>{t('settings:developer.codeAgentRunId')}: {codeAgentLastRun.result?.runId || '-'}</p>
                     <p>{t('settings:developer.codeAgentWorkspace')}: {codeAgentLastRun.request.workspaceRoot || '-'}</p>
                     <p>{t('settings:developer.codeAgentStartedAt')}: {new Date(codeAgentLastRun.startedAt).toLocaleString()}</p>
@@ -622,28 +627,28 @@ export function CodeAgent() {
                   </div>
 
                   {codeAgentLastRun.result?.summary && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold text-foreground/80">{t('settings:developer.codeAgentSummary')}</p>
-                      <p className="text-sm whitespace-pre-wrap break-words text-muted-foreground">
+                    <div className={styles.summaryBlock}>
+                      <p className={styles.summaryLabel}>{t('settings:developer.codeAgentSummary')}</p>
+                      <p className={styles.summaryText}>
                         {codeAgentLastRun.result.summary}
                       </p>
                     </div>
                   )}
 
                   {showCodeAgentRunDetails && codeAgentLastRun.result && (
-                    <div className="space-y-3">
+                    <div className={styles.runDetails}>
                       {codeAgentLastRun.result.output && (
-                        <div className="space-y-2">
-                          <p className="text-xs font-semibold text-foreground/80">{t('settings:developer.codeAgentOutput')}</p>
-                          <pre className="max-h-72 overflow-auto rounded-xl border border-black/10 bg-black/5 p-3 text-[11px] whitespace-pre-wrap break-words dark:border-white/10 dark:bg-white/5">
+                        <div className={styles.outputBlock}>
+                          <p className={styles.outputLabel}>{t('settings:developer.codeAgentOutput')}</p>
+                          <pre className={styles.outputPre}>
                             {codeAgentLastRun.result.output}
                           </pre>
                         </div>
                       )}
                       {codeAgentLastRun.result.metadata && (
-                        <div className="space-y-2">
-                          <p className="text-xs font-semibold text-foreground/80">{t('settings:developer.codeAgentMetadata')}</p>
-                          <pre className="max-h-72 overflow-auto rounded-xl border border-black/10 bg-black/5 p-3 text-[11px] whitespace-pre-wrap break-words dark:border-white/10 dark:bg-white/5">
+                        <div className={styles.outputBlock}>
+                          <p className={styles.outputLabel}>{t('settings:developer.codeAgentMetadata')}</p>
+                          <pre className={styles.outputPre}>
                             {JSON.stringify(codeAgentLastRun.result.metadata, null, 2)}
                           </pre>
                         </div>

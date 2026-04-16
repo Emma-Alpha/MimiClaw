@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "@/stores/settings";
+import { useStyles } from "./PetCompanion.styles";
 import {
 	Code2,
 	Mic,
@@ -89,8 +90,8 @@ const COMPANION_STAT_META: Record<
 		ja: string;
 		description: { zh: string; en: string; ja: string };
 		imgSrc: string;
-		barClassName: string;
-		bgClassName: string;
+		barColor: string;
+		bgColor: string;
 		borderColor: string;
 	}
 > = {
@@ -98,31 +99,31 @@ const COMPANION_STAT_META: Record<
 		zh: "调试力", en: "DEBUGGING", ja: "デバッグ力",
 		description: { zh: "帮你找 Bug 的天赋", en: "Natural instinct for finding bugs.", ja: "バグを見つける直感。" },
 		imgSrc: IconDebugging,
-		barClassName: "bg-[#2dd4bf]", bgClassName: "bg-[#14b8a6]", borderColor: "border-[#14b8a6]",
+		barColor: "#2dd4bf", bgColor: "#14b8a6", borderColor: "#14b8a6",
 	},
 	PATIENCE: {
 		zh: "耐心", en: "PATIENCE", ja: "忍耐力",
 		description: { zh: "长对话不崩溃", en: "Stays steady through long sessions.", ja: "長い会話でも安定。" },
 		imgSrc: IconPatience,
-		barClassName: "bg-[#ef4444]", bgClassName: "bg-[#dc2626]", borderColor: "border-[#dc2626]",
+		barColor: "#ef4444", bgColor: "#dc2626", borderColor: "#dc2626",
 	},
 	CHAOS: {
 		zh: "混沌", en: "CHAOS", ja: "カオス",
 		description: { zh: "创造力和不可预测性", en: "Creative spark and unpredictability.", ja: "創造性と予測不能さ。" },
 		imgSrc: IconChaos,
-		barClassName: "bg-[#a855f7]", bgClassName: "bg-[#9333ea]", borderColor: "border-[#9333ea]",
+		barColor: "#a855f7", bgColor: "#9333ea", borderColor: "#9333ea",
 	},
 	WISDOM: {
 		zh: "智慧", en: "WISDOM", ja: "知恵",
 		description: { zh: "架构设计直觉", en: "System design intuition.", ja: "設計判断の勘。" },
 		imgSrc: IconWisdom,
-		barClassName: "bg-[#f59e0b]", bgClassName: "bg-[#d97706]", borderColor: "border-[#d97706]",
+		barColor: "#f59e0b", bgColor: "#d97706", borderColor: "#d97706",
 	},
 	SNARK: {
 		zh: "嘴炮", en: "SNARK", ja: "皮肉",
 		description: { zh: "吐槽代码的倾向", en: "Likelihood of roasting bad code.", ja: "コードにツッコミを入れる傾向。" },
 		imgSrc: IconSnark,
-		barClassName: "bg-[#ec4899]", bgClassName: "bg-[#db2777]", borderColor: "border-[#db2777]",
+		barColor: "#ec4899", bgColor: "#db2777", borderColor: "#db2777",
 	},
 };
 
@@ -217,41 +218,43 @@ function formatLastActive(
 function CompanionStats({
 	companion,
 	language,
+	styles,
 }: {
 	companion: StoredPetCompanion;
 	language: "zh" | "en" | "ja";
+	styles: Record<string, string>;
 }) {
 	return (
-		<div className="flex flex-col gap-2 w-full max-w-sm mx-auto font-sans justify-center mt-2.5">
+		<div className={styles.statsList}>
 			{PET_COMPANION_STAT_NAMES.map((statName) => {
 				const value = companion.stats[statName];
 				const meta = COMPANION_STAT_META[statName];
-				
+
 				return (
-					<div key={statName} className="relative w-full">
+					<div key={statName} className={styles.statRow}>
 						{/* Icon bubble on the left */}
-						<div className={`absolute -left-1 sm:-left-3 top-0 h-[32px] w-[32px] rounded-full border-[2.5px] border-white z-20 flex items-center justify-center text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)] ${meta.bgClassName} overflow-hidden bg-cover bg-center`}>
-							<img src={meta.imgSrc} alt={meta.zh} className="w-full h-full object-cover scale-[1.12]" />
+						<div className={styles.statIconBubble} style={{ background: meta.bgColor }}>
+							<img src={meta.imgSrc} alt={meta.zh} className={styles.statIconImg} />
 						</div>
-						
+
 						{/* Bar Container */}
-						<div className="relative ml-[18px] h-[32px] rounded-r-[16px] rounded-l-[20px] bg-slate-100 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] overflow-hidden border border-slate-200 group">
+						<div className={styles.statBarContainer}>
 							{/* Fill */}
 							<div
-								className={`absolute left-0 top-0 bottom-0 rounded-r-[16px] rounded-l-[20px] ${meta.barClassName} border-r-[2px] ${meta.borderColor} transition-all duration-1000 ease-out`}
-								style={{ width: `${Math.max(value, 20)}%` }}
+								className={styles.statBarFill}
+								style={{ width: `${Math.max(value, 20)}%`, backgroundColor: meta.barColor, borderColor: meta.borderColor }}
 							>
 								{/* Top highlight for volume */}
-								<div className="absolute top-0 left-0 right-0 h-[6px] bg-gradient-to-b from-white/40 to-transparent rounded-t-[16px]" />
-							</div>
-							
-							{/* Value text overlaid */}
-							<div className="absolute left-[20px] top-0 bottom-0 flex items-center text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] z-10 w-[200px]">
-								<span className="font-extrabold text-[12px] tracking-wide">{meta.zh}</span>
-								<span className="ml-[6px] text-[10px] text-white/95 scale-90 origin-left font-semibold truncate w-[140px] hidden sm:inline-block drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]">{meta.description[language]}</span>
+								<div className={styles.statBarHighlight} />
 							</div>
 
-							<div className="absolute right-3 top-0 bottom-0 flex items-center text-slate-500 font-extrabold italic z-0 text-[13px]">
+							{/* Value text overlaid */}
+							<div className={styles.statLabel}>
+								<span className={styles.statName}>{meta.zh}</span>
+								<span className={styles.statDesc}>{meta.description[language]}</span>
+							</div>
+
+							<div className={styles.statValue}>
 								{value}
 							</div>
 						</div>
@@ -263,6 +266,7 @@ function CompanionStats({
 }
 
 export function PetCompanion() {
+	const { styles } = useStyles();
 	const { i18n } = useTranslation("settings");
 	const initSettings = useSettingsStore((state) => state.init);
 	const petCompanion = useSettingsStore((state) => state.petCompanion);
@@ -352,186 +356,186 @@ export function PetCompanion() {
 
 	const isSpecialRarity = currentCompanion && ['rare', 'epic', 'legendary'].includes(currentCompanion.rarity);
 	
-	const globalRarityColors = {
-		legendary: { 
-			bg: "from-orange-500/25 via-rose-500/10 to-transparent", 
-			text: "text-transparent bg-clip-text bg-gradient-to-br from-yellow-200 via-amber-400 to-orange-500 drop-shadow-[0_0_12px_rgba(245,158,11,0.6)]"
-		},
-		epic: { 
-			bg: "from-fuchsia-500/20 via-purple-500/10 to-transparent", 
-			text: "text-transparent bg-clip-text bg-gradient-to-br from-fuchsia-300 via-purple-400 to-purple-600 drop-shadow-[0_0_10px_rgba(192,132,252,0.5)]"
-		},
-		rare: { 
-			bg: "from-yellow-400/20 via-amber-300/10 to-transparent", 
-			text: "text-transparent bg-clip-text bg-gradient-to-br from-yellow-100 via-yellow-400 to-amber-500 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]"
-		},
-		uncommon: { bg: "", text: "" },
-		common: { bg: "", text: "" }
-	};
 
 	return (
-		<div className="relative h-screen w-screen overflow-hidden bg-[#f4f7fb] text-slate-800 flex flex-col font-sans select-none border border-slate-200">
+		<div className={styles.root}>
 			{/* Global Premium Aura & Particles */}
 			{isSpecialRarity && currentCompanion && (
-				<div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-					<div className={`absolute inset-0 bg-gradient-to-b ${globalRarityColors[currentCompanion.rarity].bg} animate-pulse-slow`} />
-					<div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.5)_0%,transparent_50%)] animate-breath mix-blend-overlay" />
-					<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140vw] h-[140vw] flex items-center justify-center mix-blend-overlay opacity-10 blur-sm">
-						<img src={IconCrown} className="w-full h-full object-contain animate-rarity-pulse" />
+				<div className={styles.auraLayer}>
+					<div
+						className="animate-pulse-slow"
+						style={{
+							position: 'absolute', inset: 0,
+							background: `linear-gradient(to bottom, ${
+								currentCompanion.rarity === 'legendary' ? 'rgba(249,115,22,0.25), rgba(244,63,94,0.1), transparent' :
+								currentCompanion.rarity === 'epic' ? 'rgba(217,70,239,0.2), rgba(168,85,247,0.1), transparent' :
+								'rgba(251,191,36,0.2), rgba(251,146,60,0.1), transparent'
+							})`,
+						}}
+					/>
+					<div
+						className="animate-breath"
+						style={{
+							position: 'absolute', top: '-50%', left: '-50%', width: '200%', height: '200%',
+							background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.5) 0%, transparent 50%)',
+							mixBlendMode: 'overlay',
+						}}
+					/>
+					<div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '140vw', height: '140vw', display: 'flex', alignItems: 'center', justifyContent: 'center', mixBlendMode: 'overlay', opacity: 0.1, filter: 'blur(4px)' }}>
+						<img src={IconCrown} className="animate-rarity-pulse" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
 					</div>
 				</div>
 			)}
 
 			{/* Header (Draggable Region) */}
-			<div className={`relative z-20 flex shrink-0 items-center justify-center h-10 shadow-sm [-webkit-app-region:drag] transition-colors duration-1000 ${isSpecialRarity ? 'bg-white/40 backdrop-blur-md border-b border-white/50' : 'bg-white border-b border-slate-200'}`}>
-				<h1 className={`text-[14px] flex items-center gap-1.5 font-black tracking-widest transition-all duration-1000 ${isSpecialRarity && currentCompanion ? globalRarityColors[currentCompanion.rarity].text : 'text-[#1e293b] drop-shadow-sm'}`}>
+			<div
+				className={isSpecialRarity ? styles.headerBarSpecial : styles.headerBarNormal}
+				style={{ position: 'relative', zIndex: 20, display: 'flex', flexShrink: 0, alignItems: 'center', justifyContent: 'center', height: 40, boxShadow: '0 1px 2px rgba(0,0,0,0.06)', WebkitAppRegion: 'drag', transition: 'background 1s, border-color 1s' } as React.CSSProperties}
+			>
+				<h1 className={styles.headerTitle} style={isSpecialRarity && currentCompanion ? { background: 'linear-gradient(135deg, #fef08a, #fbbf24, #f97316)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' } : { color: '#1e293b' }}>
 					{copy.title}
 					{currentCompanion && (
-						<span className={`text-[10px] font-mono font-black relative top-px tracking-normal px-1 rounded transition-colors duration-1000 ${isSpecialRarity ? 'text-white/90 drop-shadow-md bg-black/5' : 'text-slate-300 bg-slate-50'}`}>
+						<span className={isSpecialRarity ? styles.seedLabelSpecial : styles.seedLabelNormal}>
 							#{String(currentCompanion.inspirationSeed).slice(0, 4)}
 						</span>
 					)}
 				</h1>
 				<button
 					type="button"
-					className={`absolute right-3 top-2 group inline-flex h-6 w-6 items-center justify-center rounded-full transition-all hover:bg-blue-500 hover:text-white [-webkit-app-region:no-drag] ${isSpecialRarity ? 'bg-black/5 text-slate-500' : 'bg-slate-100 text-slate-400'}`}
+					className={isSpecialRarity ? styles.closeBtnSpecial : styles.closeBtnNormal}
+					style={{ position: 'absolute', right: 12, top: 8, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
 					onClick={() => {
 						void invokeIpc("window:close");
 					}}
 					aria-label={copy.close}
 				>
-					<X className="h-3.5 w-3.5 transition-transform group-hover:rotate-90" />
+					<X style={{ width: 14, height: 14 }} />
 				</button>
 			</div>
 
 			{/* Content */}
-			<div className="flex-1 px-4 pb-2 pt-0 z-10 overflow-hidden flex flex-col items-center w-full max-w-sm mx-auto scrollbar-hide">
+			<div className={styles.content} style={{ overflowY: 'auto' }}>
 				{currentCompanion ? (
-					<div className="flex h-full w-full flex-col animate-in fade-in zoom-in-95 duration-500">
+					<div style={{ display: 'flex', height: '100%', width: '100%', flexDirection: 'column' }}>
 						{progress ? (
-							<div className="mt-2.5 grid grid-cols-2 gap-2.5 px-1">
-								<div className="rounded-[14px] border border-slate-200 bg-white px-2.5 py-2.5 shadow-sm relative overflow-hidden group hover:border-blue-300 transition-colors">
-									<div className="absolute -right-3 -bottom-3 w-14 h-14 opacity-10 pointer-events-none transition-transform group-hover:scale-110">
-										<img src={IconLevel} className="w-full h-full object-contain" />
+							<div className={styles.cardGrid}>
+								{/* Level Card */}
+								<div style={{ borderRadius: 14, border: '1px solid #e2e8f0', background: '#fff', padding: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden', transition: 'border-color 0.2s' }}>
+									<div style={{ position: 'absolute', right: -12, bottom: -12, width: 56, height: 56, opacity: 0.1, pointerEvents: 'none' }}>
+										<img src={IconLevel} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
 									</div>
-									<div className="flex items-center gap-1.5 text-[9.5px] font-black tracking-[0.1em] text-slate-400 relative z-10">
-										<img src={IconLevel} className="h-3.5 w-3.5 drop-shadow-sm" />
+									<div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '9.5px', fontWeight: 900, letterSpacing: '0.1em', color: '#94a3b8', position: 'relative', zIndex: 10 }}>
+										<img src={IconLevel} style={{ height: 14, width: 14 }} />
 										<span>{copy.level}</span>
 									</div>
-									<div className="mt-0.5 text-[14px] font-black text-slate-800 relative z-10 leading-none">
+									<div style={{ marginTop: 2, fontSize: 14, fontWeight: 900, color: '#1e293b', lineHeight: 1, position: 'relative', zIndex: 10 }}>
 										Lv.{progress.level}
 									</div>
-									<div className="mt-2 h-1.5 rounded-full bg-slate-100 relative z-10">
-										<div
-											className="h-full rounded-full bg-sky-500 transition-all duration-700 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)]"
-											style={{ width: `${Math.max(8, progress.levelProgress * 100)}%` }}
-										/>
+									<div style={{ marginTop: 8, height: 6, borderRadius: 9999, background: '#f1f5f9', position: 'relative', zIndex: 10 }}>
+										<div style={{ height: '100%', borderRadius: 9999, background: '#0ea5e9', transition: 'width 0.7s', width: `${Math.max(8, progress.levelProgress * 100)}%` }} />
 									</div>
-									<div className="mt-1 text-[9px] font-bold text-slate-400 relative z-10">
+									<div style={{ marginTop: 4, fontSize: 9, fontWeight: 700, color: '#94a3b8', position: 'relative', zIndex: 10 }}>
 										{progress.levelExpIntoCurrent}/{progress.levelExpRequired} EXP
 									</div>
 								</div>
-								<div 
-									className={`rounded-[14px] border bg-white px-2.5 py-2.5 relative overflow-hidden group transition-all duration-500 ${
-										currentCompanion.rarity === 'legendary' ? 'border-orange-500 ring-1 ring-orange-500 animate-rarity-pulse z-20' :
-										currentCompanion.rarity === 'epic' ? 'border-fuchsia-500 animate-rarity-pulse z-20' :
-										currentCompanion.rarity === 'rare' ? 'border-amber-400 animate-rarity-pulse z-20' :
-										currentCompanion.rarity === 'uncommon' ? 'border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.15)]' :
-										'border-slate-200 shadow-sm hover:border-slate-300'
-									}`}
+
+								{/* Tier/Rarity Card */}
+								<div
+									className={['rare', 'epic', 'legendary'].includes(currentCompanion.rarity) ? 'animate-rarity-pulse' : ''}
 									style={{
-										'--rarity-glow': 
-											currentCompanion.rarity === 'legendary' ? 'rgba(249,115,22,0.45)' :
-											currentCompanion.rarity === 'epic' ? 'rgba(217,70,239,0.4)' :
-											currentCompanion.rarity === 'rare' ? 'rgba(251,191,36,0.5)' : 
-											'transparent'
+										borderRadius: 14,
+										border: `1px solid ${currentCompanion.rarity === 'legendary' ? '#f97316' : currentCompanion.rarity === 'epic' ? '#d946ef' : currentCompanion.rarity === 'rare' ? '#fbbf24' : currentCompanion.rarity === 'uncommon' ? '#34d399' : '#e2e8f0'}`,
+										background: '#fff',
+										padding: '10px',
+										position: 'relative',
+										overflow: 'hidden',
+										transition: 'all 0.5s',
+										zIndex: ['legendary', 'epic', 'rare'].includes(currentCompanion.rarity) ? 20 : 'auto',
+										'--rarity-glow': currentCompanion.rarity === 'legendary' ? 'rgba(249,115,22,0.45)' : currentCompanion.rarity === 'epic' ? 'rgba(217,70,239,0.4)' : currentCompanion.rarity === 'rare' ? 'rgba(251,191,36,0.5)' : 'transparent',
 									} as React.CSSProperties}
 								>
-									{/* Rarity BG Tint & Sweep animation */}
 									{currentCompanion.rarity !== 'common' && (
 										<>
-											<div className={`absolute inset-0 z-0 bg-gradient-to-br opacity-20 pointer-events-none ${
-												currentCompanion.rarity === 'legendary' ? 'from-orange-400 via-rose-300 to-transparent' :
-												currentCompanion.rarity === 'epic' ? 'from-fuchsia-400 via-purple-300 to-transparent' :
-												currentCompanion.rarity === 'rare' ? 'from-amber-300 via-yellow-100 to-transparent' :
-												'from-emerald-300 via-teal-100 to-transparent'
-											}`} />
-											
-											{/* Holographic foil base for high tier */}
+											<div style={{
+												position: 'absolute', inset: 0, zIndex: 0, opacity: 0.2, pointerEvents: 'none',
+												background: `linear-gradient(135deg, ${
+													currentCompanion.rarity === 'legendary' ? '#fb923c, #fda4af, transparent' :
+													currentCompanion.rarity === 'epic' ? '#e879f9, #c084fc, transparent' :
+													currentCompanion.rarity === 'rare' ? '#fcd34d, #fef08a, transparent' :
+													'#6ee7b7, #99f6e4, transparent'
+												})`,
+											}} />
 											{['legendary', 'epic'].includes(currentCompanion.rarity) && (
-												<div className="absolute inset-0 z-0 bg-foil pointer-events-none" />
+												<div className="bg-foil" style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none' }} />
 											)}
-
 											{['rare', 'epic', 'legendary'].includes(currentCompanion.rarity) && (
-												<div className="absolute top-0 left-[-100%] w-[50%] h-[200%] bg-gradient-to-r from-transparent via-white/80 to-transparent -rotate-45 animate-sweep z-10 pointer-events-none" />
+												<div className="animate-sweep" style={{ position: 'absolute', top: 0, left: '-100%', width: '50%', height: '200%', background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.8), transparent)', transform: 'rotate(-45deg)', zIndex: 10, pointerEvents: 'none' }} />
 											)}
 										</>
 									)}
-									
-									<div className="absolute -right-3 -bottom-3 w-14 h-14 opacity-10 pointer-events-none transition-transform group-hover:scale-110 z-0">
-										<img src={IconTier} className="w-full h-full object-contain" />
+									<div style={{ position: 'absolute', right: -12, bottom: -12, width: 56, height: 56, opacity: 0.1, pointerEvents: 'none', zIndex: 0 }}>
+										<img src={IconTier} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
 									</div>
-									<div className="absolute top-2 right-2 flex items-center gap-1 z-20">
-										<img src={IconCrown} className={`w-3.5 h-3.5 object-contain ${currentCompanion.rarity === 'common' ? 'grayscale opacity-60' : 'drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)] animate-pulse'}`} />
+									<div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', alignItems: 'center', gap: 4, zIndex: 20 }}>
+										<img src={IconCrown} className={currentCompanion.rarity !== 'common' ? 'animate-pulse' : ''} style={{ width: 14, height: 14, objectFit: 'contain', opacity: currentCompanion.rarity === 'common' ? 0.6 : 1 }} />
 										{currentCompanion.rarity !== 'common' && (
-											<span className={`text-[8.5px] font-black tracking-widest uppercase transform scale-90 origin-right drop-shadow-sm ${
-												currentCompanion.rarity === 'legendary' ? 'text-orange-600' :
-												currentCompanion.rarity === 'epic' ? 'text-fuchsia-600' :
-												currentCompanion.rarity === 'rare' ? 'text-amber-500' :
-												'text-emerald-600'
-											}`}>
+											<span style={{
+												fontSize: '8.5px', fontWeight: 900, letterSpacing: '0.1em', textTransform: 'uppercase',
+												color: currentCompanion.rarity === 'legendary' ? '#ea580c' : currentCompanion.rarity === 'epic' ? '#c026d3' : currentCompanion.rarity === 'rare' ? '#f59e0b' : '#059669',
+											}}>
 												{rarityLabel}
 											</span>
 										)}
 									</div>
-									<div className="flex items-center gap-1.5 text-[9.5px] font-black tracking-[0.1em] text-slate-400 relative z-10">
-										<img src={IconTier} className="h-3.5 w-3.5 drop-shadow-sm" />
+									<div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '9.5px', fontWeight: 900, letterSpacing: '0.1em', color: '#94a3b8', position: 'relative', zIndex: 10 }}>
+										<img src={IconTier} style={{ height: 14, width: 14 }} />
 										<span>{copy.tier}</span>
 									</div>
-									<div className="mt-0.5 text-[14px] font-black text-slate-800 relative z-10 leading-none">
+									<div style={{ marginTop: 2, fontSize: 14, fontWeight: 900, color: '#1e293b', lineHeight: 1, position: 'relative', zIndex: 10 }}>
 										{tierLabel}
 									</div>
-									<div className="mt-2 flex items-center gap-1 text-[9.5px] font-bold text-amber-500 relative z-10 bg-amber-50 px-2 py-0.5 rounded-full w-fit">
-										<img src={IconTier} className="h-3 w-3 drop-shadow-sm" />
+									<div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 4, fontSize: '9.5px', fontWeight: 700, color: '#f59e0b', position: 'relative', zIndex: 10, background: '#fffbeb', padding: '2px 8px', borderRadius: 9999, width: 'fit-content' }}>
+										<img src={IconTier} style={{ height: 12, width: 12 }} />
 										<span>{copy.breakthrough} x{progress.breakthroughCount}</span>
 									</div>
 								</div>
-								<div className="rounded-[14px] border border-slate-200 bg-white px-2.5 py-2.5 shadow-sm relative overflow-hidden group hover:border-rose-300 transition-colors">
-									<div className="absolute -right-3 -bottom-3 w-14 h-14 opacity-10 pointer-events-none transition-transform group-hover:scale-110">
-										<img src={IconIntimacy} className="w-full h-full object-contain" />
+
+								{/* Intimacy Card */}
+								<div style={{ borderRadius: 14, border: '1px solid #e2e8f0', background: '#fff', padding: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden', transition: 'border-color 0.2s' }}>
+									<div style={{ position: 'absolute', right: -12, bottom: -12, width: 56, height: 56, opacity: 0.1, pointerEvents: 'none' }}>
+										<img src={IconIntimacy} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
 									</div>
-									<div className="flex items-center gap-1.5 text-[9.5px] font-black tracking-[0.1em] text-slate-400 relative z-10">
-										<img src={IconIntimacy} className="h-3.5 w-3.5 drop-shadow-sm" />
+									<div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '9.5px', fontWeight: 900, letterSpacing: '0.1em', color: '#94a3b8', position: 'relative', zIndex: 10 }}>
+										<img src={IconIntimacy} style={{ height: 14, width: 14 }} />
 										<span>{copy.intimacy}</span>
 									</div>
-									<div className="mt-0.5 text-[14px] font-black text-slate-800 relative z-10 leading-none">
+									<div style={{ marginTop: 2, fontSize: 14, fontWeight: 900, color: '#1e293b', lineHeight: 1, position: 'relative', zIndex: 10 }}>
 										{progress.intimacy}
 									</div>
-									<div className="mt-0.5 text-[9px] font-bold text-slate-400 relative z-10 truncate">
+									<div style={{ marginTop: 2, fontSize: 9, fontWeight: 700, color: '#94a3b8', position: 'relative', zIndex: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
 										{formatLastActive(progress.lastActiveAt, language)}
 									</div>
-									<div className="mt-1 text-[8.5px] font-bold text-slate-300 relative z-10 truncate transform -translate-y-0.5">
+									<div style={{ marginTop: 4, fontSize: '8.5px', fontWeight: 700, color: '#cbd5e1', position: 'relative', zIndex: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
 										{copy.decayHint}
 									</div>
 								</div>
-								<div className="rounded-[14px] border border-slate-200 bg-white px-2.5 py-2.5 shadow-sm relative overflow-hidden group hover:border-violet-300 transition-colors">
-									<div className="absolute -right-3 -bottom-3 w-14 h-14 opacity-10 pointer-events-none transition-transform group-hover:scale-110">
-										<img src={IconExp} className="w-full h-full object-contain" />
+
+								{/* EXP Card */}
+								<div style={{ borderRadius: 14, border: '1px solid #e2e8f0', background: '#fff', padding: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden', transition: 'border-color 0.2s' }}>
+									<div style={{ position: 'absolute', right: -12, bottom: -12, width: 56, height: 56, opacity: 0.1, pointerEvents: 'none' }}>
+										<img src={IconExp} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
 									</div>
-									<div className="flex items-center gap-1.5 text-[9.5px] font-black tracking-[0.1em] text-slate-400 relative z-10">
-										<img src={IconExp} className="h-3.5 w-3.5 drop-shadow-sm" />
+									<div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '9.5px', fontWeight: 900, letterSpacing: '0.1em', color: '#94a3b8', position: 'relative', zIndex: 10 }}>
+										<img src={IconExp} style={{ height: 14, width: 14 }} />
 										<span>{copy.totalExp}</span>
 									</div>
-									<div className="mt-0.5 text-[14px] font-black text-slate-800 relative z-10 leading-none">
+									<div style={{ marginTop: 2, fontSize: 14, fontWeight: 900, color: '#1e293b', lineHeight: 1, position: 'relative', zIndex: 10 }}>
 										{progress.totalExp}
 									</div>
-									<div className="mt-2 h-1.5 rounded-full bg-slate-100 relative z-10">
-										<div
-											className="h-full rounded-full bg-violet-500 transition-all duration-700 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)]"
-											style={{ width: `${Math.max(8, progress.breakthroughProgress * 100)}%` }}
-										/>
+									<div style={{ marginTop: 8, height: 6, borderRadius: 9999, background: '#f1f5f9', position: 'relative', zIndex: 10 }}>
+										<div style={{ height: '100%', borderRadius: 9999, background: '#8b5cf6', transition: 'width 0.7s', width: `${Math.max(8, progress.breakthroughProgress * 100)}%` }} />
 									</div>
-									<div className="mt-1 text-[9px] font-bold text-slate-400 relative z-10 truncate">
+									<div style={{ marginTop: 4, fontSize: 9, fontWeight: 700, color: '#94a3b8', position: 'relative', zIndex: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
 										{progress.nextBreakthroughExp === null
 											? `${copy.breakthrough} MAX`
 											: `${copy.nextBreakthrough}: ${progress.nextBreakthroughExp}`}
@@ -541,37 +545,37 @@ export function PetCompanion() {
 						) : null}
 
 						{/* Stats List */}
-						<div className="flex-1 flex flex-col justify-center mt-2 px-1 min-h-0">
-							<CompanionStats companion={currentCompanion} language={language} />
+						<div className={styles.statsWrap}>
+							<CompanionStats companion={currentCompanion} language={language} styles={styles} />
 						</div>
 
-						<div className="mt-2.5 grid shrink-0 grid-cols-3 gap-2 px-1 pb-1">
+						<div className={styles.actionGrid}>
 							{(["mini_chat", "code_assistant", "voice_chat"] as const).map((action) => {
 								const meta = ACTION_META[action];
 								const label = meta[language];
 								return (
 									<div
 										key={action}
-										className="relative overflow-hidden rounded-[14px] border border-slate-200 bg-white px-2 py-2 shadow-sm group hover:border-slate-300 transition-colors"
+										style={{ position: 'relative', overflow: 'hidden', borderRadius: 14, border: '1px solid #e2e8f0', background: '#fff', padding: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', transition: 'border-color 0.2s' }}
 									>
-										<div className="absolute -right-2 -bottom-2 w-12 h-12 opacity-10 pointer-events-none transition-transform group-hover:scale-110">
-											<img src={meta.imgSrc} className="w-full h-full object-contain" />
+										<div style={{ position: 'absolute', right: -8, bottom: -8, width: 48, height: 48, opacity: 0.1, pointerEvents: 'none' }}>
+											<img src={meta.imgSrc} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
 										</div>
-										<div className="flex items-center gap-1.5 relative z-10">
-											<div className={`flex shrink-0 h-8 w-8 items-center justify-center rounded-[8px] shadow-sm overflow-hidden bg-slate-50 border border-slate-100`}>
-												<img src={meta.imgSrc} className="w-full h-full object-cover scale-[1.12]" />
+										<div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative', zIndex: 10 }}>
+											<div style={{ display: 'flex', flexShrink: 0, height: 32, width: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', overflow: 'hidden', background: '#f8fafc', border: '1px solid #f1f5f9' }}>
+												<img src={meta.imgSrc} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scale(1.12)' }} />
 											</div>
-											<div className="min-w-0 flex-1">
-												<div className="text-[10px] font-black tracking-wide text-slate-700 truncate w-full" title={label}>
+											<div style={{ minWidth: 0, flex: 1 }}>
+												<div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.05em', color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }} title={label}>
 													{label}
 												</div>
-												<div className="text-[8.5px] font-bold text-slate-400 truncate w-full" title={`${currentCompanion.usage[action]} ${copy.actionTimes}`}>
+												<div style={{ fontSize: '8.5px', fontWeight: 700, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }} title={`${currentCompanion.usage[action]} ${copy.actionTimes}`}>
 													{currentCompanion.usage[action]} {copy.actionTimes}
 												</div>
 											</div>
 										</div>
-										<div className="mt-1.5 text-[9px] font-black text-slate-500 relative z-10 flex items-center justify-between">
-											<span className="bg-slate-50 rounded-full px-1.5 py-px border border-slate-100 whitespace-nowrap">+{currentCompanion.activityExp[action]} {copy.actionExp}</span>
+										<div style={{ marginTop: 6, fontSize: 9, fontWeight: 900, color: '#64748b', position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+											<span style={{ background: '#f8fafc', borderRadius: 9999, padding: '1px 6px', border: '1px solid #f1f5f9', whiteSpace: 'nowrap' }}>+{currentCompanion.activityExp[action]} {copy.actionExp}</span>
 										</div>
 									</div>
 								);
@@ -580,9 +584,9 @@ export function PetCompanion() {
 
 					</div>
 				) : (
-					<div className="flex h-full flex-col items-center justify-center gap-4 text-blue-400">
-						<Zap className="h-8 w-8 animate-pulse text-blue-500" />
-						<div className="text-xs font-bold tracking-widest">{copy.loading}</div>
+					<div className={styles.loadingWrap}>
+						<Zap style={{ width: 32, height: 32, color: '#3b82f6' }} className="animate-pulse" />
+						<div className={styles.loadingText}>{copy.loading}</div>
 					</div>
 				)}
 			</div>

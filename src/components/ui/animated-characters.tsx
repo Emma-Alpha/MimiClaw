@@ -59,10 +59,11 @@ export const Pupil = ({
   return (
     <div
       ref={pupilRef}
-      className="rounded-full transition-transform duration-100 ease-out"
       style={{
         width: size,
         height: size,
+        borderRadius: '9999px',
+        transition: 'transform 100ms ease-out',
         backgroundColor: pupilColor,
         transform: `translate(${pupilPosition.x}px, ${pupilPosition.y}px)`,
       }}
@@ -135,8 +136,14 @@ export const EyeBall = ({
   return (
     <div
       ref={eyeRef}
-      className="flex items-center justify-center overflow-hidden rounded-full border-2 border-black transition-transform duration-150 ease-out"
       style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        borderRadius: '9999px',
+        border: '2px solid black',
+        transition: 'transform 150ms ease-out',
         width: size,
         height: size,
         backgroundColor: eyeColor,
@@ -145,8 +152,9 @@ export const EyeBall = ({
     >
       {!isBlinking && (
         <div
-          className="rounded-full transition-transform duration-100 ease-out"
           style={{
+            borderRadius: '9999px',
+            transition: 'transform 100ms ease-out',
             width: pupilSize,
             height: pupilSize,
             backgroundColor: pupilColor,
@@ -288,12 +296,12 @@ export function AnimatedCharacters({
   const S = 1.75;
 
   return (
-    <div className="relative" style={{ width: `${Math.round(400 * S)}px`, height: `${Math.round(300 * S)}px` }}>
+    <div style={{ position: 'relative', width: `${Math.round(400 * S)}px`, height: `${Math.round(300 * S)}px` }}>
       {/* Purple tall rectangle — back layer */}
       <div
         ref={purpleRef}
-        className="absolute z-10 rounded-3xl border-4 border-black bg-[#B19CD9] transition-all duration-500 ease-out"
         style={{
+          position: 'absolute', zIndex: 10, borderRadius: '24px', border: '4px solid black', background: '#B19CD9', transition: 'all 500ms ease-out',
           width: Math.round(112 * S),
           height: Math.round(192 * S),
           left: '50%',
@@ -309,8 +317,11 @@ export function AnimatedCharacters({
         }}
       >
         <div
-          className="absolute flex gap-3 transition-all duration-500 ease-out"
           style={{
+            position: 'absolute',
+            display: 'flex',
+            gap: Math.round(12),
+            transition: 'all 500ms ease-out',
             left: passwordLength > 0 && showPassword
               ? Math.round(20 * S)
               : isLookingAtEachOther
@@ -345,8 +356,7 @@ export function AnimatedCharacters({
       {/* Black tall rectangle — middle layer */}
       <div
         ref={blackRef}
-        className="absolute z-20 rounded-3xl border-4 border-black bg-black transition-all duration-500 ease-out"
-        style={{
+        style={{ position: 'absolute', zIndex: 20, borderRadius: '24px', border: '4px solid black', background: '#000', transition: 'all 500ms ease-out',
           width: Math.round(96 * S),
           height: Math.round(160 * S),
           left: '50%',
@@ -364,8 +374,11 @@ export function AnimatedCharacters({
         }}
       >
         <div
-          className="absolute flex gap-1 transition-all duration-500 ease-out"
           style={{
+            position: 'absolute',
+            display: 'flex',
+            gap: 4,
+            transition: 'all 500ms ease-out',
             left: passwordLength > 0 && showPassword
               ? Math.round(10 * S)
               : isLookingAtEachOther
@@ -400,8 +413,7 @@ export function AnimatedCharacters({
       {/* Orange semi-circle — front left */}
       <div
         ref={orangeRef}
-        className="absolute z-30 rounded-t-full border-4 border-black bg-[#FFB347] transition-all duration-500 ease-out"
-        style={{
+        style={{ position: 'absolute', zIndex: 30, borderRadius: '9999px 9999px 0 0', border: '4px solid black', background: '#FFB347', transition: 'all 500ms ease-out',
           width: Math.round(128 * S),
           height: Math.round(96 * S),
           left: '50%',
@@ -412,8 +424,10 @@ export function AnimatedCharacters({
         }}
       >
         <div
-          className="absolute flex transition-all duration-500 ease-out"
           style={{
+            position: 'absolute',
+            display: 'flex',
+            transition: 'all 500ms ease-out',
             gap: Math.round(32 * S),
             left: passwordLength > 0 && showPassword
               ? Math.round(50 * S)
@@ -441,8 +455,7 @@ export function AnimatedCharacters({
       {/* Yellow tall rectangle — front right */}
       <div
         ref={yellowRef}
-        className="absolute z-30 rounded-3xl border-4 border-black bg-[#FFDF00] transition-all duration-500 ease-out"
-        style={{
+        style={{ position: 'absolute', zIndex: 30, borderRadius: '24px', border: '4px solid black', background: '#FFDF00', transition: 'all 500ms ease-out',
           width: Math.round(96 * S),
           height: Math.round(128 * S),
           left: '50%',
@@ -453,8 +466,10 @@ export function AnimatedCharacters({
         }}
       >
         <div
-          className="absolute flex transition-all duration-500 ease-out"
           style={{
+            position: 'absolute',
+            display: 'flex',
+            transition: 'all 500ms ease-out',
             gap: Math.round(12 * S),
             left: passwordLength > 0 && showPassword
               ? Math.round(20 * S)
@@ -478,8 +493,7 @@ export function AnimatedCharacters({
           />
         </div>
         <div
-          className="absolute rounded-full bg-black transition-all duration-500 ease-out"
-          style={{
+          style={{ position: 'absolute', borderRadius: '9999px', background: '#000', transition: 'all 500ms ease-out',
             height: Math.round(4 * S),
             width: passwordLength > 0 && showPassword ? Math.round(26 * S) : isHidingPassword ? Math.round(20 * S) : Math.round(32 * S),
             left: passwordLength > 0 && showPassword

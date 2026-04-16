@@ -68,6 +68,7 @@ import {
 } from '@/lib/code-agent';
 import { subscribeHostEvent } from '@/lib/host-events';
 import { cn } from '@/lib/utils';
+import { useSettingsStyles } from './styles';
 import { PET_IDLE_ANIMATIONS, PET_ANIMATION_LABEL_KEYS, type PetAnimation } from '@/lib/pet-floating';
 import {
   fetchVolcengineSpeechConfig,
@@ -112,8 +113,9 @@ function FormSwitch({
 
 function ThemePicker({ value, onChange }: { value?: string; onChange?: (v: string) => void }) {
   const { t } = useTranslation('settings');
+  const { styles } = useSettingsStyles();
   return (
-    <div className="inline-flex gap-1 bg-muted/50 p-1 rounded-2xl border border-black/5 dark:border-white/5 shadow-inner">
+    <div className={styles.pickerWrap}>
       {(
         [
           { value: 'light', label: t('appearance.light'), Icon: Sun },
@@ -125,14 +127,9 @@ function ThemePicker({ value, onChange }: { value?: string; onChange?: (v: strin
           key={opt.value}
           type="button"
           onClick={() => onChange?.(opt.value)}
-          className={cn(
-            'flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium rounded-xl transition-all duration-300',
-            value === opt.value
-              ? 'bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/5'
-              : 'text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5',
-          )}
+          className={cn(styles.pickerBtn, value === opt.value && styles.pickerBtnActive)}
         >
-          <opt.Icon className="h-4 w-4" />
+          <opt.Icon style={{ height: 16, width: 16 }} />
           {opt.label}
         </button>
       ))}
@@ -141,19 +138,15 @@ function ThemePicker({ value, onChange }: { value?: string; onChange?: (v: strin
 }
 
 function LanguagePicker({ value, onChange }: { value?: string; onChange?: (v: string) => void }) {
+  const { styles } = useSettingsStyles();
   return (
-    <div className="inline-flex gap-1 bg-muted/50 p-1 rounded-2xl border border-black/5 dark:border-white/5 shadow-inner">
+    <div className={styles.pickerWrap}>
       {SUPPORTED_LANGUAGES.map((lang) => (
         <button
           key={lang.code}
           type="button"
           onClick={() => onChange?.(lang.code)}
-          className={cn(
-            'flex items-center justify-center px-6 py-2 text-sm font-medium rounded-xl transition-all duration-300',
-            value === lang.code
-              ? 'bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/5'
-              : 'text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5',
-          )}
+          className={cn(styles.langPickerBtn, value === lang.code && styles.pickerBtnActive)}
         >
           {lang.label}
         </button>
@@ -203,6 +196,7 @@ type ControlUiInfo = {
 
 export function Settings() {
   const { t } = useTranslation('settings');
+  const { styles } = useSettingsStyles();
   const {
     theme,
     setTheme,
@@ -997,12 +991,12 @@ export function Settings() {
   };
 
   return (
-    <div className="flex h-full w-full overflow-hidden">
-      {/* Left sidebar nav – same background as the main sidebar */}
-      <aside className="w-[216px] shrink-0 flex flex-col overflow-y-auto bg-[#f3f3f2] dark:bg-[#1a1c20] border-r border-black/[0.06] dark:border-white/[0.08]">
+    <div className={styles.pageRoot}>
+      {/* Left sidebar nav */}
+      <aside className={styles.sidebar}>
         {/* Spacer so nav items clear the absolute-positioned TitleBar (40 px) */}
         <div style={{ height: 40, flexShrink: 0 }} />
-        <div className="px-3 py-1">
+        <div className={styles.sidebarNav}>
           {([
             { key: 'appearance', label: t('appearance.title'), icon: Palette },
             { key: 'gateway', label: t('gateway.title'), icon: Network },
@@ -1017,14 +1011,9 @@ export function Settings() {
                 key={item.key}
                 type="button"
                 onClick={() => setActiveSection(item.key as SettingsSection)}
-                className={cn(
-                  'w-full flex items-center gap-2.5 px-3 py-[7px] rounded-lg text-[13px] font-medium transition-colors text-left',
-                  isActive
-                    ? 'bg-black/[0.07] text-foreground dark:bg-white/[0.10]'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-black/[0.05] dark:hover:bg-white/[0.07]',
-                )}
+                className={cn(styles.navItem, isActive && styles.navItemActive)}
               >
-                <Icon className="h-[15px] w-[15px] shrink-0" />
+                <Icon style={{ height: 15, width: 15, flexShrink: 0 }} />
                 <span>{item.label}</span>
               </button>
             );
@@ -1033,8 +1022,8 @@ export function Settings() {
       </aside>
 
       {/* Right content area */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl px-8 pt-10 pb-16">
+      <div className={styles.contentArea}>
+        <div className={styles.contentInner}>
           <SettingHeader
             title={
               activeSection === 'appearance' ? t('appearance.title') :
@@ -1047,7 +1036,7 @@ export function Settings() {
 
           {/* Appearance */}
           {activeSection === 'appearance' && (
-            <div className="space-y-4">
+            <div className={styles.section}>
               {/* ── General + Pet settings via @lobehub/ui Form ────────────── */}
               <Form
                 collapsible={false}
@@ -1106,7 +1095,7 @@ export function Settings() {
                               value={petAnimation}
                               onChange={(event) => setPetAnimation(event.target.value as PetAnimation)}
                               disabled={!petEnabled}
-                              className="h-9 rounded-xl bg-black/5 dark:bg-white/5 border-transparent text-[13px] min-w-[180px]"
+                              style={{ height: 36, borderRadius: 12, background: 'rgba(0,0,0,0.05)', border: 'none', fontSize: 13, minWidth: 180 }}
                             >
                               {PET_IDLE_ANIMATIONS.map((animation) => (
                                 <option key={animation} value={animation}>
@@ -1158,12 +1147,14 @@ export function Settings() {
                 extra={
                   <Badge
                     variant="outline"
-                    className={cn(
-                      'rounded-full border-none px-3 py-1 text-[12px]',
-                      speechConfig?.configured
-                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                        : 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-                    )}
+                    style={{
+                      borderRadius: 9999,
+                      border: 'none',
+                      padding: '4px 12px',
+                      fontSize: 12,
+                      background: speechConfig?.configured ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
+                      color: speechConfig?.configured ? '#059669' : '#d97706',
+                    }}
                   >
                     {speechLoading
                       ? t('speech.loading')
@@ -1173,86 +1164,83 @@ export function Settings() {
                   </Badge>
                 }
               >
-                <div className="flex flex-col gap-6 px-4 pb-4">
-                  <p className="text-[13px] text-muted-foreground">{t('speech.description')}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: '0 16px 16px' }}>
+                  <p className={styles.hintText12}>{t('speech.description')}</p>
 
-                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="speech-appid" className="text-[13px] font-medium text-foreground/80">{t('speech.appId')}</Label>
+                  <div className={styles.speechGrid}>
+                    <div className={styles.formField}>
+                      <Label htmlFor="speech-appid" className={styles.fieldLabelSmall}>{t('speech.appId')}</Label>
                       <Input
                         id="speech-appid"
                         value={speechAppIdDraft}
                         onChange={(event) => setSpeechAppIdDraft(event.target.value)}
                         placeholder={t('speech.appIdPlaceholder')}
-                        className="h-10 rounded-xl bg-background border-none shadow-sm font-mono text-[13px]"
+                        className={styles.fieldInputMono}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="speech-cluster" className="text-[13px] font-medium text-foreground/80">{t('speech.cluster')}</Label>
+                    <div className={styles.formField}>
+                      <Label htmlFor="speech-cluster" className={styles.fieldLabelSmall}>{t('speech.cluster')}</Label>
                       <Input
                         id="speech-cluster"
                         value={speechClusterDraft}
                         onChange={(event) => setSpeechClusterDraft(event.target.value)}
                         placeholder={t('speech.clusterPlaceholder')}
-                        className="h-10 rounded-xl bg-background border-none shadow-sm font-mono text-[13px]"
+                        className={styles.fieldInputMono}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="speech-language" className="text-[13px] font-medium text-foreground/80">{t('speech.language')}</Label>
+                    <div className={styles.formField}>
+                      <Label htmlFor="speech-language" className={styles.fieldLabelSmall}>{t('speech.language')}</Label>
                       <Select
                         id="speech-language"
                         value={speechLanguageDraft}
                         onChange={(event) => setSpeechLanguageDraft(event.target.value as VolcengineSpeechLanguage)}
-                        className="h-10 rounded-xl bg-background border-none shadow-sm text-[13px]"
+                        className={styles.fieldSelect}
                       >
                         <option value="zh-CN">{t('speech.languages.zhCN')}</option>
                         <option value="en-US">{t('speech.languages.enUS')}</option>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="speech-endpoint" className="text-[13px] font-medium text-foreground/80">{t('speech.endpoint')}</Label>
+                    <div className={styles.formField}>
+                      <Label htmlFor="speech-endpoint" className={styles.fieldLabelSmall}>{t('speech.endpoint')}</Label>
                       <Input
                         id="speech-endpoint"
                         value={speechEndpointDraft}
                         onChange={(event) => setSpeechEndpointDraft(event.target.value)}
                         placeholder="wss://openspeech.bytedance.com/api/v2/asr"
-                        className="h-10 rounded-xl bg-background border-none shadow-sm font-mono text-[13px]"
+                        className={styles.fieldInputMono}
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="speech-token" className="text-[13px] font-medium text-foreground/80">{t('speech.token')}</Label>
-                    <div className="relative">
+                  <div className={styles.formField}>
+                    <Label htmlFor="speech-token" className={styles.fieldLabelSmall}>{t('speech.token')}</Label>
+                    <div className={styles.inputWithEye}>
                       <Input
                         id="speech-token"
                         type={showSpeechToken ? 'text' : 'password'}
                         value={speechTokenDraft}
                         onChange={(event) => setSpeechTokenDraft(event.target.value)}
                         placeholder={speechConfig?.hasToken ? (speechConfig.tokenMasked ?? t('speech.tokenConfigured')) : t('speech.tokenPlaceholder')}
-                        className="h-10 rounded-xl bg-background border-none shadow-sm pr-10 font-mono text-[13px]"
+                        className={styles.fieldInputMono}
+                        style={{ paddingRight: 40 }}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowSpeechToken((value) => !value)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showSpeechToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      <button type="button" onClick={() => setShowSpeechToken((value) => !value)} className={styles.eyeBtn}>
+                        {showSpeechToken ? <EyeOff style={{ height: 16, width: 16 }} /> : <Eye style={{ height: 16, width: 16 }} />}
                       </button>
                     </div>
-                    <p className="text-[12px] text-muted-foreground">
+                    <p className={styles.hintText12}>
                       {speechConfig?.hasToken
                         ? t('speech.tokenSaved', { token: speechConfig.tokenMasked ?? '***' })
                         : t('speech.tokenHelp')}
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3 mt-2">
+                  <div className={styles.speechBtnRow}>
                     <Button
                       type="button"
                       onClick={() => void handleSaveSpeechConfig()}
                       disabled={speechSaving}
-                      className="rounded-full px-6 shadow-sm"
+                      style={{ borderRadius: 9999, padding: '0 24px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                     >
                       {speechSaving ? t('speech.saving') : t('speech.save')}
                     </Button>
@@ -1261,11 +1249,11 @@ export function Settings() {
                       variant="outline"
                       onClick={() => { void loadSpeechConfig(); }}
                       disabled={speechLoading || speechSaving}
-                      className="rounded-full px-6 border-none shadow-sm bg-background hover:bg-background/80"
+                      style={{ borderRadius: 9999, padding: '0 24px', border: 'none', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                     >
                       {t('common:actions.refresh')}
                     </Button>
-                    <p className="text-[12px] text-muted-foreground ml-2">
+                    <p className={styles.hintText12} style={{ marginLeft: 8 }}>
                       {t('speech.tip')}
                     </p>
                   </div>
@@ -1278,12 +1266,14 @@ export function Settings() {
                 extra={
                   <Badge
                     variant="outline"
-                    className={cn(
-                      'rounded-full border px-3 py-1 text-[12px]',
-                      voiceChatConfig?.configured
-                        ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                        : 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300',
-                    )}
+                    style={{
+                      borderRadius: 9999,
+                      padding: '4px 12px',
+                      fontSize: 12,
+                      background: voiceChatConfig?.configured ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
+                      color: voiceChatConfig?.configured ? '#047857' : '#b45309',
+                      border: voiceChatConfig?.configured ? '1px solid rgba(16,185,129,0.2)' : '1px solid rgba(245,158,11,0.2)',
+                    }}
                   >
                     {voiceChatLoading
                       ? t('voiceChat.loading')
@@ -1293,57 +1283,54 @@ export function Settings() {
                   </Badge>
                 }
               >
-                <div className="flex flex-col gap-5 px-4 pb-4">
-                  <p className="text-[13px] text-muted-foreground">{t('voiceChat.description')}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '0 16px 16px' }}>
+                  <p className={styles.hintText12}>{t('voiceChat.description')}</p>
 
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="voice-chat-app-id" className="text-[13px] text-foreground/80">{t('voiceChat.appId')}</Label>
+                  <div className={styles.grid2}>
+                    <div className={styles.formField}>
+                      <Label htmlFor="voice-chat-app-id" className={styles.fieldLabelSmall}>{t('voiceChat.appId')}</Label>
                       <Input
                         id="voice-chat-app-id"
                         value={voiceChatAppIdDraft}
                         onChange={(event) => setVoiceChatAppIdDraft(event.target.value)}
                         placeholder={t('voiceChat.appIdPlaceholder')}
-                        className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent font-mono text-[13px]"
+                        className={styles.fieldInputMono}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="voice-chat-access-key" className="text-[13px] text-foreground/80">{t('voiceChat.accessKey')}</Label>
-                      <div className="relative">
+                    <div className={styles.formField}>
+                      <Label htmlFor="voice-chat-access-key" className={styles.fieldLabelSmall}>{t('voiceChat.accessKey')}</Label>
+                      <div className={styles.inputWithEye}>
                         <Input
                           id="voice-chat-access-key"
                           type={showVoiceChatAccessKey ? 'text' : 'password'}
                           value={voiceChatAccessKeyDraft}
                           onChange={(event) => setVoiceChatAccessKeyDraft(event.target.value)}
                           placeholder={voiceChatConfig?.hasAccessKey ? (voiceChatConfig.accessKeyMasked ?? t('voiceChat.accessKeyConfigured')) : t('voiceChat.accessKeyPlaceholder')}
-                          className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent pr-10 font-mono text-[13px]"
+                          className={styles.fieldInputMono}
+                          style={{ paddingRight: 40 }}
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowVoiceChatAccessKey((value) => !value)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        >
-                          {showVoiceChatAccessKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        <button type="button" onClick={() => setShowVoiceChatAccessKey((value) => !value)} className={styles.eyeBtn}>
+                          {showVoiceChatAccessKey ? <EyeOff style={{ height: 16, width: 16 }} /> : <Eye style={{ height: 16, width: 16 }} />}
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="voice-chat-endpoint" className="text-[13px] text-foreground/80">{t('voiceChat.endpoint')}</Label>
+                  <div className={styles.formField}>
+                    <Label htmlFor="voice-chat-endpoint" className={styles.fieldLabelSmall}>{t('voiceChat.endpoint')}</Label>
                     <Input
                       id="voice-chat-endpoint"
                       value={voiceChatEndpointDraft}
                       onChange={(event) => setVoiceChatEndpointDraft(event.target.value)}
                       placeholder={t('voiceChat.endpointPlaceholder')}
-                      className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent font-mono text-[13px]"
+                      className={styles.fieldInputMono}
                     />
-                    <p className="text-[12px] text-muted-foreground">
+                    <p className={styles.hintText12}>
                       {t('voiceChat.endpointHelp', { endpoint: DEFAULT_VOICE_CHAT_ENDPOINT })}
                     </p>
                   </div>
 
-                  <p className="text-[12px] text-muted-foreground">
+                  <p className={styles.hintText12}>
                     {voiceChatConfig?.hasAccessKey
                       ? voiceChatConfig.accessKeySource === 'speech-asr'
                         ? t('voiceChat.accessKeyReused', { token: voiceChatConfig.accessKeyMasked ?? '***' })
@@ -1351,12 +1338,12 @@ export function Settings() {
                       : t('voiceChat.accessKeyHelp')}
                   </p>
 
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className={styles.flexWrapRow}>
                     <Button
                       type="button"
                       onClick={() => void handleSaveVoiceChatRealtimeConfig()}
                       disabled={voiceChatSaving}
-                      className="rounded-full px-5"
+                      style={{ borderRadius: 9999, padding: '0 20px' }}
                     >
                       {voiceChatSaving ? t('voiceChat.saving') : t('voiceChat.save')}
                     </Button>
@@ -1365,13 +1352,11 @@ export function Settings() {
                       variant="outline"
                       onClick={() => { void loadVoiceChatRealtimeConfig(); }}
                       disabled={voiceChatLoading || voiceChatSaving}
-                      className="rounded-full px-5"
+                      style={{ borderRadius: 9999, padding: '0 20px' }}
                     >
                       {t('common:actions.refresh')}
                     </Button>
-                    <p className="text-[12px] text-muted-foreground">
-                      {t('voiceChat.tip')}
-                    </p>
+                    <p className={styles.hintText12}>{t('voiceChat.tip')}</p>
                   </div>
                 </div>
               </Form.Group>
@@ -1380,81 +1365,72 @@ export function Settings() {
 
           {/* Gateway */}
           {activeSection === 'gateway' && (
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className={styles.sectionGap6}>
+              <div className={styles.settingRowSmCol}>
                 <div>
-                  <Label className="text-[14px] font-medium text-foreground">{t('gateway.status')}</Label>
-                  <p className="text-[13px] text-muted-foreground mt-1">
-                    {t('gateway.port')}: {gatewayStatus.port}
-                  </p>
+                  <Label className={styles.settingLabel}>{t('gateway.status')}</Label>
+                  <p className={styles.settingDesc}>{t('gateway.port')}: {gatewayStatus.port}</p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className={styles.buttonGroup}>
                   <div className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-medium border",
-                    gatewayStatus.state === 'running' ? "bg-green-500/10 text-green-600 dark:text-green-500 border-green-500/20" :
-                      gatewayStatus.state === 'error' ? "bg-red-500/10 text-red-600 dark:text-red-500 border-red-500/20" :
-                        "bg-black/5 dark:bg-white/5 text-muted-foreground border-transparent"
+                    styles.statusBadge,
+                    gatewayStatus.state === 'running' ? styles.statusRunning :
+                      gatewayStatus.state === 'error' ? styles.statusError : styles.statusDefault
                   )}>
-                    <div className={cn("w-1.5 h-1.5 rounded-full",
-                      gatewayStatus.state === 'running' ? "bg-green-500" :
-                        gatewayStatus.state === 'error' ? "bg-red-500" : "bg-muted-foreground"
+                    <div className={cn(
+                      styles.statusDot,
+                      gatewayStatus.state === 'running' ? styles.statusDotGreen :
+                        gatewayStatus.state === 'error' ? styles.statusDotRed : styles.statusDotGray
                     )} />
                     {gatewayStatus.state}
                   </div>
-                  <Button variant="outline" size="sm" onClick={restartGateway} className="rounded-full h-8 px-4 border-black/10 dark:border-white/10 bg-transparent hover:bg-black/5 dark:hover:bg-white/5">
-                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  <Button variant="outline" size="sm" onClick={restartGateway} style={{ borderRadius: 9999, height: 32, padding: '0 16px', border: '1px solid rgba(0,0,0,0.1)', background: 'transparent' }}>
+                    <RefreshCw style={{ height: 14, width: 14, marginRight: 6 }} />
                     {t('common:actions.restart')}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleShowLogs} className="rounded-full h-8 px-4 border-black/10 dark:border-white/10 bg-transparent hover:bg-black/5 dark:hover:bg-white/5">
-                    <FileText className="h-3.5 w-3.5 mr-1.5" />
+                  <Button variant="outline" size="sm" onClick={handleShowLogs} style={{ borderRadius: 9999, height: 32, padding: '0 16px', border: '1px solid rgba(0,0,0,0.1)', background: 'transparent' }}>
+                    <FileText style={{ height: 14, width: 14, marginRight: 6 }} />
                     {t('gateway.logs')}
                   </Button>
                 </div>
               </div>
 
               {showLogs && (
-                <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="font-medium text-[14px]">{t('gateway.appLogs')}</p>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" className="h-7 text-[12px] rounded-full hover:bg-black/5 dark:hover:bg-white/10" onClick={handleOpenLogDir}>
-                        <ExternalLink className="h-3 w-3 mr-1.5" />
+                <div className={styles.logPanel}>
+                  <div className={styles.logPanelHeader}>
+                    <p className={styles.logPanelTitle}>{t('gateway.appLogs')}</p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <Button variant="ghost" size="sm" style={{ height: 28, fontSize: 12, borderRadius: 9999 }} onClick={handleOpenLogDir}>
+                        <ExternalLink style={{ height: 12, width: 12, marginRight: 6 }} />
                         {t('gateway.openFolder')}
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-7 text-[12px] rounded-full hover:bg-black/5 dark:hover:bg-white/10" onClick={() => setShowLogs(false)}>
+                      <Button variant="ghost" size="sm" style={{ height: 28, fontSize: 12, borderRadius: 9999 }} onClick={() => setShowLogs(false)}>
                         {t('common:actions.close')}
                       </Button>
                     </div>
                   </div>
-                  <pre className="text-[12px] text-muted-foreground bg-white dark:bg-card p-4 rounded-xl max-h-60 overflow-auto whitespace-pre-wrap font-mono border border-black/5 dark:border-white/5 shadow-inner">
-                    {logContent || t('chat:noLogs')}
-                  </pre>
+                  <pre className={styles.logContent}>{logContent || t('chat:noLogs')}</pre>
                 </div>
               )}
 
-              <div className="flex items-center justify-between">
+              <div className={styles.settingRow}>
                 <div>
-                  <Label className="text-[14px] font-medium text-foreground">{t('gateway.autoStart')}</Label>
-                  <p className="text-[13px] text-muted-foreground mt-1">
-                    {t('gateway.autoStartDesc')}
-                  </p>
+                  <Label className={styles.settingLabel}>{t('gateway.autoStart')}</Label>
+                  <p className={styles.settingDesc}>{t('gateway.autoStartDesc')}</p>
                 </div>
-                <Switch
-                  checked={gatewayAutoStart}
-                  onCheckedChange={setGatewayAutoStart}
-                />
+                <Switch checked={gatewayAutoStart} onCheckedChange={setGatewayAutoStart} />
               </div>
 
               {/* Remote Gateway */}
-              <div className="space-y-3 rounded-3xl bg-muted/40 p-6 border-none">
-                <div className="flex items-center gap-2 mb-1">
-                  <Globe className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-[14px] font-medium text-foreground">{t('gateway.remoteTitle')}</Label>
+              <div className={styles.infoPanel}>
+                <div className={styles.infoPanelHeader}>
+                  <Globe style={{ height: 16, width: 16, color: 'var(--ant-color-text-secondary)' }} />
+                  <Label className={styles.settingLabel}>{t('gateway.remoteTitle')}</Label>
                 </div>
-                <p className="text-[12px] text-muted-foreground">{t('gateway.remoteDesc')}</p>
+                <p className={styles.hintText12}>{t('gateway.remoteDesc')}</p>
 
-                <div className="space-y-1.5">
-                  <Label className="text-[13px] text-foreground/80">{t('gateway.remoteUrl')}</Label>
+                <div className={styles.formField}>
+                  <Label className={styles.fieldLabelSmall}>{t('gateway.remoteUrl')}</Label>
                   <Input
                     type="text"
                     placeholder="ws://your-gateway-host:18789/ws"
@@ -1465,14 +1441,14 @@ export function Settings() {
                         setRemoteGatewayUrl(remoteGatewayUrlDraft);
                       }
                     }}
-                    className="text-[13px] font-mono"
+                    style={{ fontSize: 13, fontFamily: 'monospace' }}
                   />
-                  <p className="text-[11px] text-muted-foreground">{t('gateway.remoteUrlHelp')}</p>
+                  <p className={styles.hintText}>{t('gateway.remoteUrlHelp')}</p>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-[13px] text-foreground/80">{t('gateway.remoteToken')}</Label>
-                  <div className="relative">
+                <div className={styles.formField}>
+                  <Label className={styles.fieldLabelSmall}>{t('gateway.remoteToken')}</Label>
+                  <div className={styles.inputWithEye}>
                     <Input
                       type={showRemoteGatewayToken ? 'text' : 'password'}
                       placeholder={t('gateway.remoteTokenPlaceholder')}
@@ -1483,125 +1459,82 @@ export function Settings() {
                           setRemoteGatewayToken(remoteGatewayTokenDraft);
                         }
                       }}
-                      className="text-[13px] font-mono pr-10"
+                      style={{ fontSize: 13, fontFamily: 'monospace', paddingRight: 40 }}
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowRemoteGatewayToken((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showRemoteGatewayToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    <button type="button" onClick={() => setShowRemoteGatewayToken((v) => !v)} className={styles.eyeBtn}>
+                      {showRemoteGatewayToken ? <EyeOff style={{ height: 16, width: 16 }} /> : <Eye style={{ height: 16, width: 16 }} />}
                     </button>
                   </div>
                 </div>
 
                 {remoteGatewayUrl && (
-                  <p className="text-[12px] text-amber-600 dark:text-amber-400">
-                    {t('gateway.remoteActive')}
-                  </p>
+                  <p className={styles.amberText}>{t('gateway.remoteActive')}</p>
                 )}
               </div>
 
               {/* Cloud Workspace */}
               {cloudGateway?.cloudMode && (
-                <div className="space-y-3 rounded-3xl bg-muted/40 p-6 border-none">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Globe className="h-4 w-4 text-muted-foreground" />
-                    <Label className="text-[14px] font-medium text-foreground">{t('gateway.cloudTitle')}</Label>
+                <div className={styles.infoPanel}>
+                  <div className={styles.infoPanelHeader}>
+                    <Globe style={{ height: 16, width: 16, color: 'var(--ant-color-text-secondary)' }} />
+                    <Label className={styles.settingLabel}>{t('gateway.cloudTitle')}</Label>
                   </div>
-                  <p className="text-[12px] text-muted-foreground">{t('gateway.cloudDesc')}</p>
+                  <p className={styles.hintText12}>{t('gateway.cloudDesc')}</p>
 
-                  <div className="flex items-center gap-3">
-                    <span className="text-[13px] text-muted-foreground">{t('gateway.cloudGatewayState')}：</span>
-                    <span className={cn(
-                      'text-[13px] font-medium',
-                      cloudGateway.gatewayState === 'running' && 'text-green-600 dark:text-green-400',
-                      cloudGateway.gatewayState === 'starting' && 'text-yellow-600 dark:text-yellow-400',
-                      cloudGateway.gatewayState === 'error' && 'text-red-600 dark:text-red-400',
-                      cloudGateway.gatewayState === 'stopped' && 'text-muted-foreground',
-                    )}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span className={styles.hintText12}>{t('gateway.cloudGatewayState')}：</span>
+                    <span className={
+                      cloudGateway.gatewayState === 'running' ? styles.cloudStateRunning :
+                        cloudGateway.gatewayState === 'starting' ? styles.cloudStateStarting :
+                          cloudGateway.gatewayState === 'error' ? styles.cloudStateError :
+                            styles.cloudStateStopped
+                    }>
                       {t(`gateway.cloudGatewayState${(cloudGateway.gatewayState ?? 'Stopped').charAt(0).toUpperCase()}${(cloudGateway.gatewayState ?? 'stopped').slice(1)}`)}
                     </span>
                   </div>
 
                   {cloudGateway.gatewayWsUrl && (
-                    <p className="text-[11px] font-mono text-muted-foreground break-all">{cloudGateway.gatewayWsUrl}</p>
+                    <p className={styles.monoText}>{cloudGateway.gatewayWsUrl}</p>
                   )}
 
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={cloudGatewayLoading || cloudGateway.gatewayState === 'running'}
-                      onClick={() => void handleCloudGatewayAction('start')}
-                      className="text-[12px] h-7 rounded-full"
-                    >
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Button size="sm" variant="outline" disabled={cloudGatewayLoading || cloudGateway.gatewayState === 'running'} onClick={() => void handleCloudGatewayAction('start')} style={{ fontSize: 12, height: 28, borderRadius: 9999 }}>
                       {t('gateway.cloudGatewayStart')}
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={cloudGatewayLoading || cloudGateway.gatewayState !== 'running'}
-                      onClick={() => void handleCloudGatewayAction('stop')}
-                      className="text-[12px] h-7 rounded-full"
-                    >
+                    <Button size="sm" variant="outline" disabled={cloudGatewayLoading || cloudGateway.gatewayState !== 'running'} onClick={() => void handleCloudGatewayAction('stop')} style={{ fontSize: 12, height: 28, borderRadius: 9999 }}>
                       {t('gateway.cloudGatewayStop')}
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={cloudGatewayLoading}
-                      onClick={() => void handleCloudGatewayAction('restart')}
-                      className="text-[12px] h-7 rounded-full"
-                    >
+                    <Button size="sm" variant="outline" disabled={cloudGatewayLoading} onClick={() => void handleCloudGatewayAction('restart')} style={{ fontSize: 12, height: 28, borderRadius: 9999 }}>
                       {t('gateway.cloudGatewayRestart')}
                     </Button>
                   </div>
                 </div>
               )}
 
-              <div className="flex items-center justify-between">
+              <div className={styles.settingRow}>
                 <div>
-                  <Label className="text-[14px] font-medium text-foreground">{t('advanced.devMode')}</Label>
-                  <p className="text-[13px] text-muted-foreground mt-1">
-                    {t('advanced.devModeDesc')}
-                  </p>
+                  <Label className={styles.settingLabel}>{t('advanced.devMode')}</Label>
+                  <p className={styles.settingDesc}>{t('advanced.devModeDesc')}</p>
                 </div>
-                <Switch
-                  checked={devModeUnlocked}
-                  onCheckedChange={setDevModeUnlocked}
-                />
+                <Switch checked={devModeUnlocked} onCheckedChange={setDevModeUnlocked} />
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className={styles.settingRow}>
                 <div>
-                  <Label className="text-[14px] font-medium text-foreground">{t('advanced.telemetry')}</Label>
-                  <p className="text-[13px] text-muted-foreground mt-1">
-                    {t('advanced.telemetryDesc')}
-                  </p>
+                  <Label className={styles.settingLabel}>{t('advanced.telemetry')}</Label>
+                  <p className={styles.settingDesc}>{t('advanced.telemetryDesc')}</p>
                 </div>
-                <Switch
-                  checked={telemetryEnabled}
-                  onCheckedChange={setTelemetryEnabled}
-                />
+                <Switch checked={telemetryEnabled} onCheckedChange={setTelemetryEnabled} />
               </div>
 
               {/* Reset all data */}
-              <div className="pt-2 border-t border-border/50">
-                <div className="flex items-center justify-between">
+              <div className={styles.resetSection}>
+                <div className={styles.settingRow}>
                   <div>
-                    <Label className="text-[14px] font-medium text-destructive">{t('advanced.resetData')}</Label>
-                    <p className="text-[13px] text-muted-foreground mt-1">
-                      {t('advanced.resetDataDesc')}
-                    </p>
+                    <Label className={styles.destructiveLabel}>{t('advanced.resetData')}</Label>
+                    <p className={styles.settingDesc}>{t('advanced.resetDataDesc')}</p>
                   </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="rounded-full shrink-0"
-                    onClick={() => setShowResetConfirm(true)}
-                    disabled={resetting}
-                  >
+                  <Button variant="destructive" size="sm" style={{ borderRadius: 9999, flexShrink: 0 }} onClick={() => setShowResetConfirm(true)} disabled={resetting}>
                     {t('advanced.resetDataBtn')}
                   </Button>
                 </div>
@@ -1624,338 +1557,193 @@ export function Settings() {
 
           {/* Developer */}
           {activeSection === 'developer' && devModeUnlocked && (
-            <div className="space-y-8">
+            <div className={styles.sectionGap8}>
               {/* Gateway Proxy */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
+              <div className={styles.sectionGap6} style={{ gap: 16 }}>
+                <div className={styles.settingRow}>
                   <div>
-                    <Label className="text-[14px] font-medium text-foreground/80">Gateway Proxy</Label>
-                    <p className="text-[13px] text-muted-foreground">
-                      {t('gateway.proxyDesc')}
-                    </p>
+                    <Label className={styles.settingLabelMuted}>Gateway Proxy</Label>
+                    <p className={styles.settingDesc}>{t('gateway.proxyDesc')}</p>
                   </div>
-                  <Switch
-                    checked={proxyEnabledDraft}
-                    onCheckedChange={setProxyEnabledDraft}
-                  />
+                  <Switch checked={proxyEnabledDraft} onCheckedChange={setProxyEnabledDraft} />
                 </div>
 
                     {proxyEnabledDraft && (
-                      <div className="space-y-4 pt-2">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="proxy-server" className="text-[13px] text-foreground/80">{t('gateway.proxyServer')}</Label>
-                            <Input
-                              id="proxy-server"
-                              value={proxyServerDraft}
-                              onChange={(event) => setProxyServerDraft(event.target.value)}
-                              placeholder="http://127.0.0.1:7890"
-                              className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent font-mono text-[13px]"
-                            />
-                            <p className="text-[11px] text-muted-foreground">
-                              {t('gateway.proxyServerHelp')}
-                            </p>
+                      <div className={styles.proxySection}>
+                        <div className={styles.proxyGrid}>
+                          <div className={styles.formField}>
+                            <Label htmlFor="proxy-server" className={styles.fieldLabelSmall}>{t('gateway.proxyServer')}</Label>
+                            <Input id="proxy-server" value={proxyServerDraft} onChange={(event) => setProxyServerDraft(event.target.value)} placeholder="http://127.0.0.1:7890" className={styles.fieldInputMono} />
+                            <p className={styles.hintText}>{t('gateway.proxyServerHelp')}</p>
                           </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="proxy-http-server" className="text-[13px] text-foreground/80">{t('gateway.proxyHttpServer')}</Label>
-                            <Input
-                              id="proxy-http-server"
-                              value={proxyHttpServerDraft}
-                              onChange={(event) => setProxyHttpServerDraft(event.target.value)}
-                              placeholder={proxyServerDraft || 'http://127.0.0.1:7890'}
-                              className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent font-mono text-[13px]"
-                            />
-                            <p className="text-[11px] text-muted-foreground">
-                              {t('gateway.proxyHttpServerHelp')}
-                            </p>
+                          <div className={styles.formField}>
+                            <Label htmlFor="proxy-http-server" className={styles.fieldLabelSmall}>{t('gateway.proxyHttpServer')}</Label>
+                            <Input id="proxy-http-server" value={proxyHttpServerDraft} onChange={(event) => setProxyHttpServerDraft(event.target.value)} placeholder={proxyServerDraft || 'http://127.0.0.1:7890'} className={styles.fieldInputMono} />
+                            <p className={styles.hintText}>{t('gateway.proxyHttpServerHelp')}</p>
                           </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="proxy-https-server" className="text-[13px] text-foreground/80">{t('gateway.proxyHttpsServer')}</Label>
-                            <Input
-                              id="proxy-https-server"
-                              value={proxyHttpsServerDraft}
-                              onChange={(event) => setProxyHttpsServerDraft(event.target.value)}
-                              placeholder={proxyServerDraft || 'http://127.0.0.1:7890'}
-                              className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent font-mono text-[13px]"
-                            />
-                            <p className="text-[11px] text-muted-foreground">
-                              {t('gateway.proxyHttpsServerHelp')}
-                            </p>
+                          <div className={styles.formField}>
+                            <Label htmlFor="proxy-https-server" className={styles.fieldLabelSmall}>{t('gateway.proxyHttpsServer')}</Label>
+                            <Input id="proxy-https-server" value={proxyHttpsServerDraft} onChange={(event) => setProxyHttpsServerDraft(event.target.value)} placeholder={proxyServerDraft || 'http://127.0.0.1:7890'} className={styles.fieldInputMono} />
+                            <p className={styles.hintText}>{t('gateway.proxyHttpsServerHelp')}</p>
                           </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="proxy-all-server" className="text-[13px] text-foreground/80">{t('gateway.proxyAllServer')}</Label>
-                            <Input
-                              id="proxy-all-server"
-                              value={proxyAllServerDraft}
-                              onChange={(event) => setProxyAllServerDraft(event.target.value)}
-                              placeholder={proxyServerDraft || 'socks5://127.0.0.1:7891'}
-                              className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent font-mono text-[13px]"
-                            />
-                            <p className="text-[11px] text-muted-foreground">
-                              {t('gateway.proxyAllServerHelp')}
-                            </p>
+                          <div className={styles.formField}>
+                            <Label htmlFor="proxy-all-server" className={styles.fieldLabelSmall}>{t('gateway.proxyAllServer')}</Label>
+                            <Input id="proxy-all-server" value={proxyAllServerDraft} onChange={(event) => setProxyAllServerDraft(event.target.value)} placeholder={proxyServerDraft || 'socks5://127.0.0.1:7891'} className={styles.fieldInputMono} />
+                            <p className={styles.hintText}>{t('gateway.proxyAllServerHelp')}</p>
                           </div>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="proxy-bypass" className="text-[13px] text-foreground/80">{t('gateway.proxyBypass')}</Label>
-                          <Input
-                            id="proxy-bypass"
-                            value={proxyBypassRulesDraft}
-                            onChange={(event) => setProxyBypassRulesDraft(event.target.value)}
-                            placeholder="<local>;localhost;127.0.0.1;::1"
-                            className="h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent font-mono text-[13px]"
-                          />
-                          <p className="text-[11px] text-muted-foreground">
-                            {t('gateway.proxyBypassHelp')}
-                          </p>
+                        <div className={styles.formField}>
+                          <Label htmlFor="proxy-bypass" className={styles.fieldLabelSmall}>{t('gateway.proxyBypass')}</Label>
+                          <Input id="proxy-bypass" value={proxyBypassRulesDraft} onChange={(event) => setProxyBypassRulesDraft(event.target.value)} placeholder="<local>;localhost;127.0.0.1;::1" className={styles.fieldInputMono} />
+                          <p className={styles.hintText}>{t('gateway.proxyBypassHelp')}</p>
                         </div>
 
-                        <div className="flex items-center gap-4 pt-2">
-                          <Button
-                            variant="outline"
-                            onClick={handleSaveProxySettings}
-                            disabled={savingProxy}
-                            className="rounded-xl h-10 px-5 bg-transparent border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5"
-                          >
-                            <RefreshCw className={`h-4 w-4 mr-2${savingProxy ? ' animate-spin' : ''}`} />
+                        <div className={styles.flexRow} style={{ paddingTop: 8 }}>
+                          <Button variant="outline" onClick={handleSaveProxySettings} disabled={savingProxy} style={{ borderRadius: 12, height: 40, padding: '0 20px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                            <RefreshCw style={{ height: 16, width: 16, marginRight: 8, animation: savingProxy ? 'spin 1s linear infinite' : undefined }} />
                             {savingProxy ? t('common:status.saving') : t('common:actions.save')}
                           </Button>
-                          <p className="text-[12px] text-muted-foreground">
-                            {t('gateway.proxyRestartNote')}
-                          </p>
+                          <p className={styles.hintText12}>{t('gateway.proxyRestartNote')}</p>
                         </div>
                       </div>
                     )}
                   </div>
-                  <div className="space-y-4 pt-4">
-                    <Label className="text-[14px] font-medium text-foreground/80">{t('developer.gatewayToken')}</Label>
-                    <p className="text-[13px] text-muted-foreground">
-                      {t('developer.gatewayTokenDesc')}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <Input
-                        readOnly
-                        value={controlUiInfo?.token || ''}
-                        placeholder={t('developer.tokenUnavailable')}
-                        className="font-mono text-[13px] h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent flex-1 min-w-[200px]"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={refreshControlUiInfo}
-                        disabled={!devModeUnlocked}
-                        className="rounded-xl h-10 px-4 bg-transparent border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5"
-                      >
-                        <RefreshCw className="h-4 w-4 mr-2" />
+                  <div className={styles.sectionGap6} style={{ gap: 16, paddingTop: 16 }}>
+                    <Label className={styles.settingLabelMuted}>{t('developer.gatewayToken')}</Label>
+                    <p className={styles.settingDesc}>{t('developer.gatewayTokenDesc')}</p>
+                    <div className={styles.flexWrapRow}>
+                      <Input readOnly value={controlUiInfo?.token || ''} placeholder={t('developer.tokenUnavailable')} className={styles.monoInputFull} />
+                      <Button type="button" variant="outline" onClick={refreshControlUiInfo} disabled={!devModeUnlocked} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <RefreshCw style={{ height: 16, width: 16, marginRight: 8 }} />
                         {t('common:actions.load')}
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleCopyGatewayToken}
-                        disabled={!controlUiInfo?.token}
-                        className="rounded-xl h-10 px-4 bg-transparent border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5"
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
+                      <Button type="button" variant="outline" onClick={handleCopyGatewayToken} disabled={!controlUiInfo?.token} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <Copy style={{ height: 16, width: 16, marginRight: 8 }} />
                         {t('common:actions.copy')}
                       </Button>
                     </div>
                   </div>
 
                   {showCliTools && (
-                    <div className="space-y-3">
-                      <Label className="text-[14px] font-medium text-foreground">{t('developer.cli')}</Label>
-                      <p className="text-[13px] text-muted-foreground">
-                        {t('developer.cliDesc')}
-                      </p>
-                      {isWindows && (
-                        <p className="text-[12px] text-muted-foreground">
-                          {t('developer.cliPowershell')}
-                        </p>
-                      )}
-                      <div className="flex flex-wrap gap-2">
-                        <Input
-                          readOnly
-                          value={openclawCliCommand}
-                          placeholder={openclawCliError || t('developer.cmdUnavailable')}
-                          className="font-mono text-[13px] h-10 rounded-xl bg-black/5 dark:bg-white/5 border-transparent flex-1 min-w-[200px]"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleCopyCliCommand}
-                          disabled={!openclawCliCommand}
-                          className="rounded-xl h-10 px-4 bg-transparent border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5"
-                        >
-                          <Copy className="h-4 w-4 mr-2" />
+                    <div className={styles.sectionGap6} style={{ gap: 12 }}>
+                      <Label className={styles.settingLabel}>{t('developer.cli')}</Label>
+                      <p className={styles.settingDesc}>{t('developer.cliDesc')}</p>
+                      {isWindows && <p className={styles.hintText12}>{t('developer.cliPowershell')}</p>}
+                      <div className={styles.flexWrapRow}>
+                        <Input readOnly value={openclawCliCommand} placeholder={openclawCliError || t('developer.cmdUnavailable')} className={styles.monoInputFull} />
+                        <Button type="button" variant="outline" onClick={handleCopyCliCommand} disabled={!openclawCliCommand} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                          <Copy style={{ height: 16, width: 16, marginRight: 8 }} />
                           {t('common:actions.copy')}
                         </Button>
                       </div>
                     </div>
                   )}
 
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between gap-3">
+                  <div className={styles.sectionGap6} style={{ gap: 16 }}>
+                    <div className={styles.settingRow}>
                       <div>
-                        <Label className="text-[14px] font-medium text-foreground">{t('developer.doctor')}</Label>
-                        <p className="text-[13px] text-muted-foreground mt-1">
-                          {t('developer.doctorDesc')}
-                        </p>
+                        <Label className={styles.settingLabel}>{t('developer.doctor')}</Label>
+                        <p className={styles.settingDesc}>{t('developer.doctorDesc')}</p>
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => void handleRunOpenClawDoctor('diagnose')}
-                          disabled={doctorRunningMode !== null}
-                          className="rounded-xl h-10 px-4 bg-transparent border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5"
-                        >
-                          <RefreshCw className={`h-4 w-4 mr-2${doctorRunningMode === 'diagnose' ? ' animate-spin' : ''}`} />
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <Button type="button" variant="outline" onClick={() => void handleRunOpenClawDoctor('diagnose')} disabled={doctorRunningMode !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                          <RefreshCw style={{ height: 16, width: 16, marginRight: 8, animation: doctorRunningMode === 'diagnose' ? 'spin 1s linear infinite' : undefined }} />
                           {doctorRunningMode === 'diagnose' ? t('common:status.running') : t('developer.runDoctor')}
                         </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => void handleRunOpenClawDoctor('fix')}
-                          disabled={doctorRunningMode !== null}
-                          className="rounded-xl h-10 px-4 bg-transparent border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5"
-                        >
-                          <RefreshCw className={`h-4 w-4 mr-2${doctorRunningMode === 'fix' ? ' animate-spin' : ''}`} />
+                        <Button type="button" variant="outline" onClick={() => void handleRunOpenClawDoctor('fix')} disabled={doctorRunningMode !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                          <RefreshCw style={{ height: 16, width: 16, marginRight: 8, animation: doctorRunningMode === 'fix' ? 'spin 1s linear infinite' : undefined }} />
                           {doctorRunningMode === 'fix' ? t('common:status.running') : t('developer.runDoctorFix')}
                         </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleCopyDoctorOutput}
-                          disabled={!doctorResult}
-                          className="rounded-xl h-10 px-4 bg-transparent border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5"
-                        >
-                          <Copy className="h-4 w-4 mr-2" />
+                        <Button type="button" variant="outline" onClick={handleCopyDoctorOutput} disabled={!doctorResult} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                          <Copy style={{ height: 16, width: 16, marginRight: 8 }} />
                           {t('common:actions.copy')}
                         </Button>
                       </div>
                     </div>
 
                     {doctorResult && (
-                      <div className="space-y-3 rounded-2xl border border-black/10 dark:border-white/10 p-5 bg-black/5 dark:bg-white/5">
-                        <div className="flex flex-wrap gap-2 text-[12px]">
-                          <Badge variant={doctorResult.success ? 'secondary' : 'destructive'} className="rounded-full px-3 py-1">
+                      <div className={styles.outputPanel}>
+                        <div className={styles.badgeRow}>
+                          <Badge variant={doctorResult.success ? 'secondary' : 'destructive'} style={{ borderRadius: 9999, padding: '4px 12px' }}>
                             {doctorResult.mode === 'fix'
                               ? (doctorResult.success ? t('developer.doctorFixOk') : t('developer.doctorFixIssue'))
                               : (doctorResult.success ? t('developer.doctorOk') : t('developer.doctorIssue'))}
                           </Badge>
-                          <Badge variant="outline" className="rounded-full px-3 py-1">
+                          <Badge variant="outline" style={{ borderRadius: 9999, padding: '4px 12px' }}>
                             {t('developer.doctorExitCode')}: {doctorResult.exitCode ?? 'null'}
                           </Badge>
-                          <Badge variant="outline" className="rounded-full px-3 py-1">
+                          <Badge variant="outline" style={{ borderRadius: 9999, padding: '4px 12px' }}>
                             {t('developer.doctorDuration')}: {Math.round(doctorResult.durationMs)}ms
                           </Badge>
                         </div>
-                        <div className="space-y-1 text-[12px] text-muted-foreground font-mono break-all">
+                        <div className={styles.metaText}>
                           <p>{t('developer.doctorCommand')}: {doctorResult.command}</p>
                           <p>{t('developer.doctorWorkingDir')}: {doctorResult.cwd || '-'}</p>
                           {doctorResult.error && <p>{t('developer.doctorError')}: {doctorResult.error}</p>}
                         </div>
-                        <div className="grid gap-3 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <p className="text-[12px] font-semibold text-foreground/80">{t('developer.doctorStdout')}</p>
-                            <pre className="max-h-72 overflow-auto rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-card p-3 text-[11px] font-mono whitespace-pre-wrap break-words">
-                              {doctorResult.stdout.trim() || t('developer.doctorOutputEmpty')}
-                            </pre>
+                        <div className={styles.outputGrid2}>
+                          <div className={styles.formField}>
+                            <p className={styles.outputLabel}>{t('developer.doctorStdout')}</p>
+                            <pre className={styles.outputPre}>{doctorResult.stdout.trim() || t('developer.doctorOutputEmpty')}</pre>
                           </div>
-                          <div className="space-y-2">
-                            <p className="text-[12px] font-semibold text-foreground/80">{t('developer.doctorStderr')}</p>
-                            <pre className="max-h-72 overflow-auto rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-card p-3 text-[11px] font-mono whitespace-pre-wrap break-words">
-                              {doctorResult.stderr.trim() || t('developer.doctorOutputEmpty')}
-                            </pre>
+                          <div className={styles.formField}>
+                            <p className={styles.outputLabel}>{t('developer.doctorStderr')}</p>
+                            <pre className={styles.outputPre}>{doctorResult.stderr.trim() || t('developer.doctorOutputEmpty')}</pre>
                           </div>
                         </div>
                       </div>
                     )}
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between gap-3">
+                  <div className={styles.sectionGap6} style={{ gap: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                       <div>
-                        <Label className="text-[14px] font-medium text-foreground">{t('developer.codeAgent')}</Label>
-                        <p className="text-[13px] text-muted-foreground mt-1">
-                          {t('developer.codeAgentDesc')}
-                        </p>
+                        <Label className={styles.settingLabel}>{t('developer.codeAgent')}</Label>
+                        <p className={styles.settingDesc}>{t('developer.codeAgentDesc')}</p>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => void handleCodeAgentHealthCheck()}
-                          disabled={codeAgentBusyAction !== null}
-                          className="rounded-xl h-10 px-4 bg-transparent border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5"
-                        >
-                          <RefreshCw className={`h-4 w-4 mr-2${codeAgentBusyAction === 'health' ? ' animate-spin' : ''}`} />
+                      <div className={styles.flexWrapRow}>
+                        <Button type="button" variant="outline" onClick={() => void handleCodeAgentHealthCheck()} disabled={codeAgentBusyAction !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                          <RefreshCw style={{ height: 16, width: 16, marginRight: 8, animation: codeAgentBusyAction === 'health' ? 'spin 1s linear infinite' : undefined }} />
                           {t('developer.codeAgentCheckHealth')}
                         </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => void handleCodeAgentLifecycleAction('start')}
-                          disabled={codeAgentBusyAction !== null || codeAgentStatus?.state === 'running'}
-                          className="rounded-xl h-10 px-4 bg-transparent border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5"
-                        >
+                        <Button type="button" variant="outline" onClick={() => void handleCodeAgentLifecycleAction('start')} disabled={codeAgentBusyAction !== null || codeAgentStatus?.state === 'running'} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
                           {t('developer.codeAgentStart')}
                         </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => void handleCodeAgentLifecycleAction('stop')}
-                          disabled={codeAgentBusyAction !== null || codeAgentStatus?.state !== 'running'}
-                          className="rounded-xl h-10 px-4 bg-transparent border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5"
-                        >
+                        <Button type="button" variant="outline" onClick={() => void handleCodeAgentLifecycleAction('stop')} disabled={codeAgentBusyAction !== null || codeAgentStatus?.state !== 'running'} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
                           {t('developer.codeAgentStop')}
                         </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => void handleCodeAgentLifecycleAction('restart')}
-                          disabled={codeAgentBusyAction !== null}
-                          className="rounded-xl h-10 px-4 bg-transparent border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5"
-                        >
+                        <Button type="button" variant="outline" onClick={() => void handleCodeAgentLifecycleAction('restart')} disabled={codeAgentBusyAction !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
                           {t('common:actions.restart')}
                         </Button>
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-black/10 dark:border-white/10 p-5 bg-black/5 dark:bg-white/5 space-y-4">
-                      <div className="flex flex-wrap gap-2 text-[12px]">
-                        <Badge variant="outline" className="rounded-full px-3 py-1 bg-white dark:bg-card border-black/5 dark:border-white/5">
+                    <div className={styles.codeAgentCard}>
+                      <div className={styles.badgeRow}>
+                        <Badge variant="outline" style={{ borderRadius: 9999, padding: '4px 12px' }}>
                           {t('developer.codeAgentExecutionMode')}: {codeAgentHealth?.executionMode || codeAgentStatus?.executionMode || codeAgentConfigDraft.executionMode}
                         </Badge>
                         <Badge
                           variant="outline"
-                          className={cn(
-                            'rounded-full px-3 py-1',
-                            codeAgentStatus?.state === 'running' && 'border-green-500/30 text-green-700 dark:text-green-400 bg-green-500/10',
-                            codeAgentStatus?.state === 'error' && 'border-red-500/30 text-red-700 dark:text-red-400 bg-red-500/10',
-                            codeAgentStatus?.state !== 'running' && codeAgentStatus?.state !== 'error' && 'bg-white dark:bg-card border-black/5 dark:border-white/5',
-                          )}
+                          style={{
+                            borderRadius: 9999,
+                            padding: '4px 12px',
+                            ...(codeAgentStatus?.state === 'running' ? { borderColor: 'rgba(34,197,94,0.3)', color: '#15803d', background: 'rgba(34,197,94,0.1)' } : {}),
+                            ...(codeAgentStatus?.state === 'error' ? { borderColor: 'rgba(239,68,68,0.3)', color: '#dc2626', background: 'rgba(239,68,68,0.1)' } : {}),
+                          }}
                         >
                           {t('developer.codeAgentStatus')}: {codeAgentStatus?.state || '-'}
                         </Badge>
                         <Badge
                           variant="outline"
-                          className={cn(
-                            'rounded-full px-3 py-1',
-                            // Green: sidecar running and healthy
-                            codeAgentStatus?.state === 'running' && codeAgentHealth?.ok && 'border-green-500/30 text-green-700 dark:text-green-400 bg-green-500/10',
-                            // Amber: sidecar running but health check failed (real problem)
-                            codeAgentStatus?.state === 'running' && codeAgentHealth && !codeAgentHealth.ok && 'border-amber-500/30 text-amber-700 dark:text-amber-300 bg-amber-500/10',
-                            // Red: sidecar process itself crashed
-                            codeAgentStatus?.state === 'error' && 'border-red-500/30 text-red-700 dark:text-red-400 bg-red-500/10',
-                            // Neutral: stopped or starting — not an error, just not running
-                            (codeAgentStatus?.state !== 'running' && codeAgentStatus?.state !== 'error') && 'bg-white dark:bg-card border-black/5 dark:border-white/5',
-                          )}
+                          style={{
+                            borderRadius: 9999,
+                            padding: '4px 12px',
+                            ...(codeAgentStatus?.state === 'running' && codeAgentHealth?.ok ? { borderColor: 'rgba(34,197,94,0.3)', color: '#15803d', background: 'rgba(34,197,94,0.1)' } : {}),
+                            ...(codeAgentStatus?.state === 'running' && codeAgentHealth && !codeAgentHealth.ok ? { borderColor: 'rgba(245,158,11,0.3)', color: '#b45309', background: 'rgba(245,158,11,0.1)' } : {}),
+                            ...(codeAgentStatus?.state === 'error' ? { borderColor: 'rgba(239,68,68,0.3)', color: '#dc2626', background: 'rgba(239,68,68,0.1)' } : {}),
+                          }}
                         >
                           {t('developer.codeAgentHealth')}: {(() => {
                             const state = codeAgentStatus?.state;
@@ -1967,26 +1755,26 @@ export function Settings() {
                             return '-';
                           })()}
                         </Badge>
-                        <Badge variant="outline" className="rounded-full px-3 py-1 bg-white dark:bg-card border-black/5 dark:border-white/5">
+                        <Badge variant="outline" style={{ borderRadius: 9999, padding: '4px 12px' }}>
                           {t('developer.codeAgentRuntime')}: {codeAgentStatus?.runtime || codeAgentHealth?.runtime || '-'}
                         </Badge>
-                        <Badge variant="outline" className="rounded-full px-3 py-1 bg-white dark:bg-card border-black/5 dark:border-white/5">
+                        <Badge variant="outline" style={{ borderRadius: 9999, padding: '4px 12px' }}>
                           {t('developer.codeAgentVendor')}: {(codeAgentStatus?.vendorPresent ?? codeAgentHealth?.vendorPresent) ? t('developer.codeAgentYes') : t('developer.codeAgentNo')}
                         </Badge>
                         {typeof codeAgentHealth?.protocolVersion === 'number' && (
-                          <Badge variant="outline" className="rounded-full px-3 py-1 bg-white dark:bg-card border-black/5 dark:border-white/5">
+                          <Badge variant="outline" style={{ borderRadius: 9999, padding: '4px 12px' }}>
                             {t('developer.codeAgentProtocol')}: v{codeAgentHealth.protocolVersion}
                           </Badge>
                         )}
                         {codeAgentHealth?.cliVersion && (
-                          <Badge variant="outline" className="rounded-full px-3 py-1 bg-white dark:bg-card border-black/5 dark:border-white/5">
+                          <Badge variant="outline" style={{ borderRadius: 9999, padding: '4px 12px' }}>
                             {t('developer.codeAgentCliVersion')}: {codeAgentHealth.cliVersion}
                           </Badge>
                         )}
                       </div>
 
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <div className="space-y-1 text-[12px] text-muted-foreground font-mono break-all">
+                      <div className={styles.outputGrid2}>
+                        <div className={styles.metaText}>
                           <p>{t('developer.codeAgentAdapter')}: {codeAgentStatus?.adapter || codeAgentHealth?.adapter || '-'}</p>
                           <p>{t('developer.codeAgentSidecarPath')}: {codeAgentStatus?.sidecarPath || codeAgentHealth?.sidecarPath || '-'}</p>
                           <p>{t('developer.codeAgentVendorPath')}: {codeAgentStatus?.vendorPath || codeAgentHealth?.vendorPath || '-'}</p>
@@ -2000,7 +1788,7 @@ export function Settings() {
                               ? t('developer.codeAgentConfigSourceClaudeSettings')
                               : t('developer.codeAgentConfigSourceSettings')}</p>
                         </div>
-                        <div className="space-y-1 text-[12px] text-muted-foreground font-mono break-all">
+                        <div className={styles.metaText}>
                           <p>{t('developer.codeAgentPid')}: {codeAgentStatus?.pid ?? '-'}</p>
                           <p>{t('developer.codeAgentStartedAt')}: {codeAgentStatus?.startedAt ? new Date(codeAgentStatus.startedAt).toLocaleString() : '-'}</p>
                           <p>{t('developer.codeAgentBun')}: {(codeAgentStatus?.bunAvailable ?? codeAgentHealth?.bunAvailable) ? t('developer.codeAgentYes') : t('developer.codeAgentNo')}</p>
@@ -2013,36 +1801,36 @@ export function Settings() {
                       </div>
 
                       {codeAgentHealth?.diagnostics && codeAgentHealth.diagnostics.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-[12px] font-semibold text-foreground/80">{t('developer.codeAgentDiagnostics')}</p>
-                          <pre className="max-h-40 overflow-auto rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-card p-3 text-[11px] font-mono whitespace-pre-wrap break-words">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <p className={styles.outputLabel}>{t('developer.codeAgentDiagnostics')}</p>
+                          <pre className={styles.outputPreSmall}>
                             {codeAgentHealth.diagnostics.join('\n')}
                           </pre>
                         </div>
                       )}
 
-                      <div className="space-y-4 rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-card p-4">
-                        <div className="flex items-center justify-between gap-3">
+                      <div className={styles.codeAgentInnerCard}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                           <div>
-                            <p className="text-[13px] font-semibold text-foreground">{t('developer.codeAgentConfig')}</p>
-                            <p className="text-[12px] text-muted-foreground">{t('developer.codeAgentConfigDesc')}</p>
-                            <p className="text-[11px] text-muted-foreground mt-1">{t('developer.codeAgentConfigAutoMapHint')}</p>
+                            <p style={{ fontSize: 13, fontWeight: 600 }}>{t('developer.codeAgentConfig')}</p>
+                            <p className={styles.settingDescSmall}>{t('developer.codeAgentConfigDesc')}</p>
+                            <p className={styles.hintText}>{t('developer.codeAgentConfigAutoMapHint')}</p>
                           </div>
                           <Button
                             type="button"
                             variant="outline"
                             onClick={() => void handleSaveCodeAgentConfig()}
                             disabled={savingCodeAgentConfig}
-                            className="rounded-xl h-9 px-4 bg-transparent border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5"
+                            style={{ borderRadius: 12, height: 36, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}
                           >
-                            <RefreshCw className={`h-4 w-4 mr-2${savingCodeAgentConfig ? ' animate-spin' : ''}`} />
+                            <RefreshCw style={{ height: 16, width: 16, marginRight: 8, animation: savingCodeAgentConfig ? 'spin 1s linear infinite' : undefined }} />
                             {savingCodeAgentConfig ? t('common:status.saving') : t('common:actions.save')}
                           </Button>
                         </div>
 
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label htmlFor="code-agent-execution-mode" className="text-[13px] text-foreground/80">
+                        <div className={styles.grid2}>
+                          <div className={styles.formField}>
+                            <Label htmlFor="code-agent-execution-mode" className={styles.fieldLabelSmall}>
                               {t('developer.codeAgentExecutionMode')}
                             </Label>
                             <Select
@@ -2052,15 +1840,15 @@ export function Settings() {
                                 ...prev,
                                 executionMode: event.target.value as CodeAgentExecutionMode,
                               }))}
-                              className="h-10 rounded-xl border-black/10 bg-white text-[13px] dark:border-white/10 dark:bg-white/5"
+                              className={styles.fieldSelect}
                             >
                               <option value="cli">{t('developer.codeAgentExecutionModeCli')}</option>
                               <option value="snapshot">{t('developer.codeAgentExecutionModeSnapshot')}</option>
                             </Select>
                           </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="code-agent-permission-mode" className="text-[13px] text-foreground/80">
+                          <div className={styles.formField}>
+                            <Label htmlFor="code-agent-permission-mode" className={styles.fieldLabelSmall}>
                               {t('developer.codeAgentPermissionMode')}
                             </Label>
                             <Select
@@ -2070,7 +1858,7 @@ export function Settings() {
                                 ...prev,
                                 permissionMode: event.target.value as CodeAgentPermissionMode,
                               }))}
-                              className="h-10 rounded-xl border-black/10 bg-white text-[13px] dark:border-white/10 dark:bg-white/5"
+                              className={styles.fieldSelect}
                             >
                               <option value="default">{t('developer.codeAgentPermissionDefault')}</option>
                               <option value="acceptEdits">{t('developer.codeAgentPermissionAcceptEdits')}</option>
@@ -2081,8 +1869,8 @@ export function Settings() {
                             </Select>
                           </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="code-agent-cli-path" className="text-[13px] text-foreground/80">
+                          <div className={styles.formField}>
+                            <Label htmlFor="code-agent-cli-path" className={styles.fieldLabelSmall}>
                               {t('developer.codeAgentCliPath')}
                             </Label>
                             <Input
@@ -2090,12 +1878,12 @@ export function Settings() {
                               value={codeAgentConfigDraft.cliPath}
                               onChange={(event) => setCodeAgentConfigDraft((prev) => ({ ...prev, cliPath: event.target.value }))}
                               placeholder="claude"
-                              className="h-10 rounded-xl bg-white dark:bg-card border-black/10 dark:border-white/10 font-mono text-[13px]"
+                              className={styles.fieldInputMono}
                             />
                           </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="code-agent-model" className="text-[13px] text-foreground/80">
+                          <div className={styles.formField}>
+                            <Label htmlFor="code-agent-model" className={styles.fieldLabelSmall}>
                               {t('developer.codeAgentModel')}
                             </Label>
                             <Input
@@ -2103,12 +1891,12 @@ export function Settings() {
                               value={codeAgentConfigDraft.model}
                               onChange={(event) => setCodeAgentConfigDraft((prev) => ({ ...prev, model: event.target.value }))}
                               placeholder="sonnet"
-                              className="h-10 rounded-xl bg-white dark:bg-card border-black/10 dark:border-white/10 text-[13px]"
+                              className={styles.fieldInput}
                             />
                           </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="code-agent-fallback-model" className="text-[13px] text-foreground/80">
+                          <div className={styles.formField}>
+                            <Label htmlFor="code-agent-fallback-model" className={styles.fieldLabelSmall}>
                               {t('developer.codeAgentFallbackModel')}
                             </Label>
                             <Input
@@ -2116,12 +1904,12 @@ export function Settings() {
                               value={codeAgentConfigDraft.fallbackModel}
                               onChange={(event) => setCodeAgentConfigDraft((prev) => ({ ...prev, fallbackModel: event.target.value }))}
                               placeholder="opus"
-                              className="h-10 rounded-xl bg-white dark:bg-card border-black/10 dark:border-white/10 text-[13px]"
+                              className={styles.fieldInput}
                             />
                           </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="code-agent-base-url" className="text-[13px] text-foreground/80">
+                          <div className={styles.formField}>
+                            <Label htmlFor="code-agent-base-url" className={styles.fieldLabelSmall}>
                               {t('developer.codeAgentBaseUrl')}
                             </Label>
                             <Input
@@ -2129,38 +1917,38 @@ export function Settings() {
                               value={codeAgentConfigDraft.baseUrl}
                               onChange={(event) => setCodeAgentConfigDraft((prev) => ({ ...prev, baseUrl: event.target.value }))}
                               placeholder="https://api.anthropic.com"
-                              className="h-10 rounded-xl bg-white dark:bg-card border-black/10 dark:border-white/10 text-[13px]"
+                              className={styles.fieldInput}
                             />
                           </div>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="code-agent-api-key" className="text-[13px] text-foreground/80">
+                        <div className={styles.formField}>
+                          <Label htmlFor="code-agent-api-key" className={styles.fieldLabelSmall}>
                             {t('developer.codeAgentApiKey')}
                           </Label>
-                          <div className="relative">
+                          <div className={styles.inputWithEye}>
                             <Input
                               id="code-agent-api-key"
                               type={showCodeAgentApiKey ? 'text' : 'password'}
                               value={codeAgentConfigDraft.apiKey}
                               onChange={(event) => setCodeAgentConfigDraft((prev) => ({ ...prev, apiKey: event.target.value }))}
                               placeholder={t('developer.codeAgentApiKeyPlaceholder')}
-                              className="h-10 rounded-xl bg-white dark:bg-card border-black/10 dark:border-white/10 text-[13px] pr-10"
+                              className={styles.fieldInput}
                             />
                             <button
                               type="button"
                               onClick={() => setShowCodeAgentApiKey((prev) => !prev)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              className={styles.eyeBtn}
                             >
-                              {showCodeAgentApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              {showCodeAgentApiKey ? <EyeOff style={{ height: 16, width: 16 }} /> : <Eye style={{ height: 16, width: 16 }} />}
                             </button>
                           </div>
-                          <p className="text-[11px] text-muted-foreground">{t('developer.codeAgentApiKeyDesc')}</p>
+                          <p className={styles.hintText}>{t('developer.codeAgentApiKeyDesc')}</p>
                         </div>
 
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label htmlFor="code-agent-allowed-tools" className="text-[13px] text-foreground/80">
+                        <div className={styles.grid2}>
+                          <div className={styles.formField}>
+                            <Label htmlFor="code-agent-allowed-tools" className={styles.fieldLabelSmall}>
                               {t('developer.codeAgentAllowedTools')}
                             </Label>
                             <Textarea
@@ -2168,12 +1956,12 @@ export function Settings() {
                               value={codeAgentAllowedToolsDraft}
                               onChange={(event) => setCodeAgentAllowedToolsDraft(event.target.value)}
                               placeholder={t('developer.codeAgentAllowedToolsPlaceholder')}
-                              className="min-h-[92px] rounded-xl bg-white dark:bg-card border-black/10 dark:border-white/10 text-[13px] font-mono"
+                              className={styles.fieldTextareaMono}
                             />
                           </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="code-agent-system-prompt" className="text-[13px] text-foreground/80">
+                          <div className={styles.formField}>
+                            <Label htmlFor="code-agent-system-prompt" className={styles.fieldLabelSmall}>
                               {t('developer.codeAgentAppendSystemPrompt')}
                             </Label>
                             <Textarea
@@ -2181,15 +1969,15 @@ export function Settings() {
                               value={codeAgentConfigDraft.appendSystemPrompt}
                               onChange={(event) => setCodeAgentConfigDraft((prev) => ({ ...prev, appendSystemPrompt: event.target.value }))}
                               placeholder={t('developer.codeAgentAppendSystemPromptPlaceholder')}
-                              className="min-h-[92px] rounded-xl bg-white dark:bg-card border-black/10 dark:border-white/10 text-[13px]"
+                              className={styles.fieldTextarea}
                             />
                           </div>
                         </div>
                       </div>
 
-                      <div className="grid gap-4 md:grid-cols-[1.2fr_1.8fr]">
-                        <div className="space-y-2">
-                          <Label htmlFor="code-agent-workspace" className="text-[13px] text-foreground/80">
+                      <div className={styles.grid12}>
+                        <div className={styles.formField}>
+                          <Label htmlFor="code-agent-workspace" className={styles.fieldLabelSmall}>
                             {t('developer.codeAgentWorkspace')}
                           </Label>
                           <Input
@@ -2197,11 +1985,11 @@ export function Settings() {
                             value={codeAgentWorkspaceRoot}
                             onChange={(event) => setCodeAgentWorkspaceRoot(event.target.value)}
                             placeholder={t('developer.codeAgentWorkspacePlaceholder')}
-                            className="h-10 rounded-xl bg-white dark:bg-card border-black/10 dark:border-white/10 font-mono text-[13px]"
+                            className={styles.fieldInputMono}
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="code-agent-prompt" className="text-[13px] text-foreground/80">
+                        <div className={styles.formField}>
+                          <Label htmlFor="code-agent-prompt" className={styles.fieldLabelSmall}>
                             {t('developer.codeAgentPrompt')}
                           </Label>
                           <Textarea
@@ -2209,13 +1997,13 @@ export function Settings() {
                             value={codeAgentPrompt}
                             onChange={(event) => setCodeAgentPrompt(event.target.value)}
                             placeholder={t('developer.codeAgentPromptPlaceholder')}
-                            className="min-h-[92px] rounded-xl bg-white dark:bg-card border-black/10 dark:border-white/10 text-[13px]"
+                            className={styles.fieldTextarea}
                           />
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-[12px] text-muted-foreground">
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                        <p className={styles.hintText12}>
                           {t('developer.codeAgentLatest')}
                         </p>
                         <Button
@@ -2223,26 +2011,26 @@ export function Settings() {
                           variant="outline"
                           onClick={() => void handleCodeAgentRun()}
                           disabled={codeAgentBusyAction !== null}
-                          className="rounded-xl h-10 px-5 bg-transparent border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5"
+                          style={{ borderRadius: 12, height: 40, padding: '0 20px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}
                         >
-                          <RefreshCw className={`h-4 w-4 mr-2${codeAgentBusyAction === 'run' ? ' animate-spin' : ''}`} />
+                          <RefreshCw style={{ height: 16, width: 16, marginRight: 8, animation: codeAgentBusyAction === 'run' ? 'spin 1s linear infinite' : undefined }} />
                           {codeAgentBusyAction === 'run' ? t('common:status.running') : t('developer.codeAgentRun')}
                         </Button>
                       </div>
 
-                      <div className="space-y-3 rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-card p-4">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex flex-wrap gap-2 text-[12px]">
-                            <Badge variant="secondary" className="rounded-full px-3 py-1">
+                      <div className={styles.codeAgentInnerCard}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <div className={styles.badgeRow}>
+                            <Badge variant="secondary" style={{ borderRadius: 9999, padding: '4px 12px' }}>
                               {t('developer.codeAgentLastRun')}
                             </Badge>
                             {codeAgentLastRun?.result?.status && (
-                              <Badge variant="outline" className="rounded-full px-3 py-1">
+                              <Badge variant="outline" style={{ borderRadius: 9999, padding: '4px 12px' }}>
                                 {codeAgentLastRun.result.status}
                               </Badge>
                             )}
                             {codeAgentLastRun?.error && (
-                              <Badge variant="destructive" className="rounded-full px-3 py-1">
+                              <Badge variant="destructive" style={{ borderRadius: 9999, padding: '4px 12px' }}>
                                 {t('common:status.error')}
                               </Badge>
                             )}
@@ -2252,7 +2040,7 @@ export function Settings() {
                             variant="ghost"
                             size="sm"
                             onClick={() => setShowCodeAgentRunDetails((prev) => !prev)}
-                            className="rounded-full h-8 px-4 hover:bg-black/5 dark:hover:bg-white/10"
+                            style={{ borderRadius: 9999, height: 32, padding: '0 16px' }}
                             disabled={!codeAgentLastRun}
                           >
                             {showCodeAgentRunDetails ? t('common:actions.hide') : t('common:actions.show')}
@@ -2260,9 +2048,9 @@ export function Settings() {
                         </div>
 
                         {!codeAgentLastRun ? (
-                          <p className="text-[12px] text-muted-foreground">{t('developer.codeAgentNoRun')}</p>
+                          <p className={styles.hintText12}>{t('developer.codeAgentNoRun')}</p>
                         ) : (
-                          <div className="space-y-2 text-[12px] text-muted-foreground font-mono break-all">
+                          <div className={styles.metaText}>
                             <p>{t('developer.codeAgentRunId')}: {codeAgentLastRun.result?.runId || '-'}</p>
                             <p>{t('developer.codeAgentWorkspace')}: {codeAgentLastRun.request.workspaceRoot || '-'}</p>
                             <p>{t('developer.codeAgentStartedAt')}: {new Date(codeAgentLastRun.startedAt).toLocaleString()}</p>
@@ -2275,34 +2063,34 @@ export function Settings() {
                         )}
 
                         {codeAgentLastRun?.result?.summary && (
-                          <div className="space-y-2">
-                            <p className="text-[12px] font-semibold text-foreground/80">{t('developer.codeAgentSummary')}</p>
-                            <p className="text-[12px] text-muted-foreground whitespace-pre-wrap break-words">
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <p className={styles.outputLabel}>{t('developer.codeAgentSummary')}</p>
+                            <p className={styles.hintText12} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                               {codeAgentLastRun.result.summary}
                             </p>
                           </div>
                         )}
 
                         {showCodeAgentRunDetails && codeAgentLastRun?.result && (
-                          <div className="space-y-3">
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             {codeAgentLastRun.result.diagnostics && codeAgentLastRun.result.diagnostics.length > 0 && (
-                              <div className="space-y-2">
-                                <p className="text-[12px] font-semibold text-foreground/80">{t('developer.codeAgentDiagnostics')}</p>
-                                <pre className="max-h-40 overflow-auto rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 p-3 text-[11px] font-mono whitespace-pre-wrap break-words">
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <p className={styles.outputLabel}>{t('developer.codeAgentDiagnostics')}</p>
+                                <pre className={styles.outputPreSmall}>
                                   {codeAgentLastRun.result.diagnostics.join('\n')}
                                 </pre>
                               </div>
                             )}
-                            <div className="space-y-2">
-                              <p className="text-[12px] font-semibold text-foreground/80">{t('developer.codeAgentOutput')}</p>
-                              <pre className="max-h-72 overflow-auto rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 p-3 text-[11px] font-mono whitespace-pre-wrap break-words">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              <p className={styles.outputLabel}>{t('developer.codeAgentOutput')}</p>
+                              <pre className={styles.outputPreDark}>
                                 {codeAgentLastRun.result.output || t('developer.doctorOutputEmpty')}
                               </pre>
                             </div>
                             {codeAgentLastRun.result.metadata && (
-                              <div className="space-y-2">
-                                <p className="text-[12px] font-semibold text-foreground/80">{t('developer.codeAgentMetadata')}</p>
-                                <pre className="max-h-72 overflow-auto rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 p-3 text-[11px] font-mono whitespace-pre-wrap break-words">
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <p className={styles.outputLabel}>{t('developer.codeAgentMetadata')}</p>
+                                <pre className={styles.outputPreDark}>
                                   {JSON.stringify(codeAgentLastRun.result.metadata, null, 2)}
                                 </pre>
                               </div>
@@ -2313,11 +2101,11 @@ export function Settings() {
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between rounded-2xl border border-black/10 dark:border-white/10 p-5 bg-transparent">
+                  <div className={styles.section}>
+                    <div className={styles.borderedPanel}>
                       <div>
-                        <Label className="text-[14px] font-medium text-foreground">{t('developer.wsDiagnostic')}</Label>
-                        <p className="text-[13px] text-muted-foreground mt-1">
+                        <Label className={styles.settingLabel}>{t('developer.wsDiagnostic')}</Label>
+                        <p className={styles.settingDesc}>
                           {t('developer.wsDiagnosticDesc')}
                         </p>
                       </div>
@@ -2327,10 +2115,10 @@ export function Settings() {
                       />
                     </div>
 
-                    <div className="flex items-center justify-between">
+                    <div className={styles.settingRow}>
                       <div>
-                        <Label className="text-[14px] font-medium text-foreground">{t('developer.telemetryViewer')}</Label>
-                        <p className="text-[13px] text-muted-foreground mt-1">
+                        <Label className={styles.settingLabel}>{t('developer.telemetryViewer')}</Label>
+                        <p className={styles.settingDesc}>
                           {t('developer.telemetryViewerDesc')}
                         </p>
                       </div>
@@ -2339,7 +2127,7 @@ export function Settings() {
                         variant="outline"
                         size="sm"
                         onClick={() => setShowTelemetryViewer((prev) => !prev)}
-                        className="rounded-full px-5 h-9 bg-transparent border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5"
+                        style={{ borderRadius: 9999, padding: '0 20px', height: 36, background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}
                       >
                         {showTelemetryViewer
                           ? t('common:actions.hide')
@@ -2348,64 +2136,64 @@ export function Settings() {
                     </div>
 
                     {showTelemetryViewer && (
-                      <div className="space-y-4 rounded-2xl border border-black/10 dark:border-white/10 p-5 bg-black/5 dark:bg-white/5">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="secondary" className="rounded-full px-3 py-1 bg-white dark:bg-card border border-black/5 dark:border-white/5">{t('developer.telemetryTotal')}: {telemetryStats.total}</Badge>
-                          <Badge variant={telemetryStats.errorCount > 0 ? 'destructive' : 'secondary'} className={cn("rounded-full px-3 py-1", telemetryStats.errorCount === 0 && "bg-white dark:bg-card border border-black/5 dark:border-white/5")}>
+                      <div className={styles.telemetryPanel}>
+                        <div className={styles.flexWrapRow}>
+                          <Badge variant="secondary" style={{ borderRadius: 9999, padding: '4px 12px' }}>{t('developer.telemetryTotal')}: {telemetryStats.total}</Badge>
+                          <Badge variant={telemetryStats.errorCount > 0 ? 'destructive' : 'secondary'} style={{ borderRadius: 9999, padding: '4px 12px' }}>
                             {t('developer.telemetryErrors')}: {telemetryStats.errorCount}
                           </Badge>
-                          <Badge variant={telemetryStats.slowCount > 0 ? 'secondary' : 'outline'} className={cn("rounded-full px-3 py-1", telemetryStats.slowCount === 0 && "bg-white dark:bg-card border border-black/5 dark:border-white/5")}>
+                          <Badge variant={telemetryStats.slowCount > 0 ? 'secondary' : 'outline'} style={{ borderRadius: 9999, padding: '4px 12px' }}>
                             {t('developer.telemetrySlow')}: {telemetryStats.slowCount}
                           </Badge>
-                          <div className="ml-auto flex gap-2">
-                            <Button type="button" variant="outline" size="sm" onClick={handleCopyTelemetry} className="rounded-full h-8 px-4 bg-white dark:bg-card border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/10">
-                              <Copy className="h-3.5 w-3.5 mr-1.5" />
+                          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                            <Button type="button" variant="outline" size="sm" onClick={handleCopyTelemetry} style={{ borderRadius: 9999, height: 32, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.08)' }}>
+                              <Copy style={{ height: 14, width: 14, marginRight: 6 }} />
                               {t('common:actions.copy')}
                             </Button>
-                            <Button type="button" variant="outline" size="sm" onClick={handleClearTelemetry} className="rounded-full h-8 px-4 bg-white dark:bg-card border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/10">
+                            <Button type="button" variant="outline" size="sm" onClick={handleClearTelemetry} style={{ borderRadius: 9999, height: 32, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.08)' }}>
                               {t('common:actions.clear')}
                             </Button>
                           </div>
                         </div>
 
-                        <div className="max-h-80 overflow-auto rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-card shadow-inner">
+                        <div className={styles.telemetryTableWrap}>
                           {telemetryByEvent.length > 0 && (
-                            <div className="border-b border-black/5 dark:border-white/5 bg-black/5 dark:bg-white/5 p-3">
-                              <p className="mb-3 text-[12px] font-semibold text-muted-foreground">
+                            <div className={styles.telemetryAggHeader}>
+                              <p className={styles.telemetryAggTitle}>
                                 {t('developer.telemetryAggregated')}
                               </p>
-                              <div className="space-y-1.5 text-[12px]">
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
                                 {telemetryByEvent.map((item) => (
                                   <div
                                     key={item.event}
-                                    className="grid grid-cols-[minmax(0,1.6fr)_0.7fr_0.9fr_0.8fr_1fr] gap-2 rounded-lg border border-black/5 dark:border-white/5 bg-white dark:bg-card px-3 py-2"
+                                    className={styles.telemetryRow}
                                   >
-                                    <span className="truncate font-medium" title={item.event}>{item.event}</span>
-                                    <span className="text-muted-foreground">n={item.count}</span>
-                                    <span className="text-muted-foreground">
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }} title={item.event}>{item.event}</span>
+                                    <span className={styles.telemetryTs}>n={item.count}</span>
+                                    <span className={styles.telemetryTs}>
                                       avg={item.timedCount > 0 ? Math.round(item.totalDuration / item.timedCount) : 0}ms
                                     </span>
-                                    <span className="text-muted-foreground">slow={item.slowCount}</span>
-                                    <span className="text-muted-foreground">err={item.errorCount}</span>
+                                    <span className={styles.telemetryTs}>slow={item.slowCount}</span>
+                                    <span className={styles.telemetryTs}>err={item.errorCount}</span>
                                   </div>
                                 ))}
                               </div>
                             </div>
                           )}
-                          <div className="space-y-2 p-3 font-mono text-[12px]">
+                          <div className={styles.telemetryEntries}>
                             {telemetryEntries.length === 0 ? (
-                              <div className="text-muted-foreground text-center py-4">{t('developer.telemetryEmpty')}</div>
+                              <div className={styles.telemetryTs} style={{ textAlign: 'center', padding: '16px 0' }}>{t('developer.telemetryEmpty')}</div>
                             ) : (
                               telemetryEntries
                                 .slice()
                                 .reverse()
                                 .map((entry) => (
-                                  <div key={entry.id} className="rounded-lg border border-black/5 dark:border-white/5 bg-black/5 dark:bg-white/5 p-3">
-                                    <div className="flex items-center justify-between gap-3 mb-2">
-                                      <span className="font-semibold text-foreground">{entry.event}</span>
-                                      <span className="text-muted-foreground text-[11px]">{entry.ts}</span>
+                                  <div key={entry.id} className={styles.telemetryEntry}>
+                                    <div className={styles.telemetryEntryHeader}>
+                                      <span className={styles.telemetryEventName}>{entry.event}</span>
+                                      <span className={styles.telemetryTs}>{entry.ts}</span>
                                     </div>
-                                    <pre className="whitespace-pre-wrap text-[11px] text-muted-foreground overflow-x-auto">
+                                    <pre style={{ whiteSpace: 'pre-wrap', fontSize: 11, overflowX: 'auto' }} className={styles.telemetryTs}>
                                       {JSON.stringify({ count: entry.count, ...entry.payload }, null, 2)}
                                     </pre>
                                   </div>
@@ -2421,13 +2209,13 @@ export function Settings() {
 
           {/* Updates */}
           {activeSection === 'updates' && (
-            <div className="space-y-6">
+            <div className={styles.sectionGap6}>
               <UpdateSettings />
 
-              <div className="flex items-center justify-between">
+              <div className={styles.settingRow}>
                 <div>
-                  <Label className="text-[14px] font-medium text-foreground">{t('updates.autoCheck')}</Label>
-                  <p className="text-[13px] text-muted-foreground mt-1">
+                  <Label className={styles.settingLabel}>{t('updates.autoCheck')}</Label>
+                  <p className={styles.settingDesc}>
                     {t('updates.autoCheckDesc')}
                   </p>
                 </div>
@@ -2437,10 +2225,10 @@ export function Settings() {
                 />
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className={styles.settingRow}>
                 <div>
-                  <Label className="text-[14px] font-medium text-foreground">{t('updates.autoDownload')}</Label>
-                  <p className="text-[13px] text-muted-foreground mt-1">
+                  <Label className={styles.settingLabel}>{t('updates.autoDownload')}</Label>
+                  <p className={styles.settingDesc}>
                     {t('updates.autoDownloadDesc')}
                   </p>
                 </div>
@@ -2457,30 +2245,30 @@ export function Settings() {
 
           {/* About */}
           {activeSection === 'about' && (
-            <div className="space-y-3 text-[14px] text-muted-foreground">
+            <div className={styles.aboutText}>
               <p>
-                <strong className="text-foreground font-semibold">{t('about.appName')}</strong> - {t('about.tagline')}
+                <strong style={{ fontWeight: 600 }}>{t('about.appName')}</strong> - {t('about.tagline')}
               </p>
               <p>{t('about.basedOn')}</p>
               <p>{t('about.version', { version: currentVersion })}</p>
-              <div className="flex gap-4 pt-3">
+              <div className={styles.aboutLinks}>
                 <Button
                   variant="link"
-                  className="h-auto p-0 text-[14px] text-blue-500 hover:text-blue-600 font-medium"
+                  style={{ height: 'auto', padding: 0, fontSize: 14, color: '#3b82f6', fontWeight: 500 }}
                   onClick={() => window.electron.openExternal('https://jizhi.gz4399.com')}
                 >
                   {t('about.docs')}
                 </Button>
                 <Button
                   variant="link"
-                  className="h-auto p-0 text-[14px] text-blue-500 hover:text-blue-600 font-medium"
+                  style={{ height: 'auto', padding: 0, fontSize: 14, color: '#3b82f6', fontWeight: 500 }}
                   onClick={() => window.electron.openExternal('https://jizhi.gz4399.com')}
                 >
                   {t('about.github')}
                 </Button>
                 <Button
                   variant="link"
-                  className="h-auto p-0 text-[14px] text-blue-500 hover:text-blue-600 font-medium"
+                  style={{ height: 'auto', padding: 0, fontSize: 14, color: '#3b82f6', fontWeight: 500 }}
                   onClick={() => window.electron.openExternal('https://icnnp7d0dymg.feishu.cn/wiki/UyfOwQ2cAiJIP6kqUW8cte5Bnlc')}
                 >
                   {t('about.faq')}
