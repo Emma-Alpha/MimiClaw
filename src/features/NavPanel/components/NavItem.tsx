@@ -7,6 +7,8 @@ import { memo } from 'react';
 import NeuralNetworkLoading from './NeuralNetworkLoading';
 
 const ACTION_CLASS_NAME = 'nav-item-actions';
+const ICON_DEFAULT_CLASS = 'nav-item-icon-default';
+const ICON_HOVER_CLASS = 'nav-item-icon-hover';
 
 const styles = createStaticStyles(({ css }) => ({
   container: css`
@@ -26,12 +28,37 @@ const styles = createStaticStyles(({ css }) => ({
       }
     }
 
+    .${ICON_HOVER_CLASS} {
+      opacity: 0;
+      position: absolute;
+      transition: opacity 0.15s ${cssVar.motionEaseOut};
+    }
+
+    .${ICON_DEFAULT_CLASS} {
+      opacity: 1;
+      transition: opacity 0.15s ${cssVar.motionEaseOut};
+    }
+
     &:hover {
       .${ACTION_CLASS_NAME} {
         width: unset;
         opacity: 1;
       }
+
+      .${ICON_DEFAULT_CLASS} {
+        opacity: 0;
+      }
+
+      .${ICON_HOVER_CLASS} {
+        opacity: 1;
+      }
     }
+  `,
+  iconWrap: css`
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   `,
 }));
 
@@ -51,6 +78,10 @@ export interface NavItemProps extends Omit<BlockProps, 'children' | 'title'> {
    */
   href?: string;
   icon?: IconProps['icon'];
+  /**
+   * 鼠标悬浮时替换左侧 icon 显示的图标，不传则不切换
+   */
+  iconHover?: IconProps['icon'];
   iconSize?: number;
   loading?: boolean;
   slots?: NavItemSlots;
@@ -65,6 +96,7 @@ const NavItem = memo<NavItemProps>(
     active,
     href,
     icon,
+    iconHover,
     iconSize = 18,
     title,
     onClick,
@@ -109,9 +141,18 @@ const NavItem = memo<NavItemProps>(
         {...rest}
       >
         {icon && (
-          <Center flex={'none'} height={28} width={28}>
+          <Center flex={'none'} height={28} width={28} className={iconHover ? styles.iconWrap : undefined}>
             {loading ? (
               <NeuralNetworkLoading size={iconSize} />
+            ) : iconHover ? (
+              <>
+                <span className={ICON_DEFAULT_CLASS}>
+                  <Icon color={iconColor} icon={icon} size={iconSize} />
+                </span>
+                <span className={ICON_HOVER_CLASS}>
+                  <Icon color={iconColor} icon={iconHover} size={iconSize} />
+                </span>
+              </>
             ) : (
               <Icon color={iconColor} icon={icon} size={iconSize} />
             )}

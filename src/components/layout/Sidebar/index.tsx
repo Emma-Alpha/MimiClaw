@@ -677,12 +677,7 @@ export function Sidebar() {
 
   // ── render helpers ────────────────────────────────────────────────────────
 
-  /** 折叠图标 */
-  const FolderChevron = ({ expanded }: { expanded: boolean }) => (
-    expanded
-      ? <ChevronDown size={14} style={{ color: cssVar.colorTextTertiary, flexShrink: 0 }} />
-      : <ChevronRight size={14} style={{ color: cssVar.colorTextTertiary, flexShrink: 0 }} />
-  );
+
 
   /** 悬浮时才出现的时间标签 */
   const TimeLabel = ({ text }: { text: string }) => (
@@ -752,9 +747,9 @@ export function Sidebar() {
       {/* ── Thread 工作区 ────────────────────────────────────────────── */}
       <NavItem
         icon={FolderOpen}
+        iconHover={isFolderExpanded('thread') ? ChevronDown : ChevronRight}
         title={t('sidebar.folder.thread', { defaultValue: '线程' })}
         active={false}
-        extra={<FolderChevron expanded={isFolderExpanded('thread')} />}
         actions={
           <ActionIcon
             icon={Plus}
@@ -811,6 +806,7 @@ export function Sidebar() {
                 <NavItem
                   className={styles.subItem}
                   icon={FolderOpen}
+                  iconHover={expanded ? ChevronDown : ChevronRight}
                   title={
                     <Flexbox horizontal align="center" gap={4} style={{ overflow: 'hidden' }}>
                       <Text ellipsis style={{ flex: 1 }}>{workspace.name}</Text>
@@ -824,7 +820,6 @@ export function Sidebar() {
                       )}
                     </Flexbox>
                   }
-                  slots={{ iconPostfix: <FolderChevron expanded={expanded} /> }}
                   actions={
                     <Flexbox horizontal gap={2}>
                       <ActionIcon
@@ -905,10 +900,10 @@ export function Sidebar() {
       {/* ── OpenClaw ───────────────────────────────────────────────────── */}
       <NavItem
         icon={MessageSquare}
+        iconHover={isFolderExpanded('openclaw') ? ChevronDown : ChevronRight}
         title={t('sidebar.folder.openClaw', { defaultValue: 'OpenClaw' })}
         active={pathname.startsWith('/chat/openclaw') && !hasActiveOpenClawSession}
         style={{ marginTop: 6 }}
-        extra={<FolderChevron expanded={isFolderExpanded('openclaw')} />}
         actions={
           <ActionIcon
             icon={Plus}
@@ -974,15 +969,11 @@ export function Sidebar() {
         <>
           <NavItem
             icon={MessageCircle}
+            iconHover={isFolderExpanded('xiaojiu') ? ChevronDown : ChevronRight}
             title={t('sidebar.folder.xiaojiu', { defaultValue: '小九' })}
             active={pathname.startsWith('/chat/xiaojiu')}
             style={{ marginTop: 6 }}
-            extra={
-              <>
-                {xiaojiuCount > 0 && <Text style={{ fontSize: 11 }}>{xiaojiuCount}</Text>}
-                <FolderChevron expanded={isFolderExpanded('xiaojiu')} />
-              </>
-            }
+            extra={xiaojiuCount > 0 ? <Text style={{ fontSize: 11 }}>{xiaojiuCount}</Text> : undefined}
             onClick={() => {
               toggleFolder('xiaojiu');
               const first = xiaojiuSessionItems[0];
@@ -1030,10 +1021,10 @@ export function Sidebar() {
       {/* ── 实时语音 ────────────────────────────────────────────────────── */}
       <NavItem
         icon={Mic}
+        iconHover={isFolderExpanded('realtimeVoice') ? ChevronDown : ChevronRight}
         title={t('sidebar.folder.realtimeVoice', { defaultValue: '实时语音' })}
         active={pathname.startsWith('/chat/voice')}
         style={{ marginTop: 6 }}
-        extra={<FolderChevron expanded={isFolderExpanded('realtimeVoice')} />}
         actions={
           <ActionIcon
             icon={Plus}
