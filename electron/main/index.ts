@@ -387,9 +387,9 @@ function createWindow(): BrowserWindow {
     trafficLightPosition: isMac ? { x: 16, y: 16 } : undefined,
     frame: isMac || !useCustomTitleBar,
     show: false,
-    // macOS: native sidebar vibrancy (blurs the desktop behind the window)
+    // macOS: native window material, aligned with Codex-style frosted chrome.
     ...(isMac ? {
-      vibrancy: 'sidebar' as const,
+      vibrancy: 'menu' as const,
       visualEffectState: 'active' as const,
       backgroundColor: '#00000000',
     } : {}),

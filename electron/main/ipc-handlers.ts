@@ -111,6 +111,7 @@ import {
 	openMiniChatWithMessage,
 	openMiniChatWithPayload,
 	consumePendingInitialMessage,
+	openMiniChatDevTools,
 } from "./mini-chat-window";
 import { openPetCompanionWindow } from "./pet-companion-window";
 import { getPetWindow } from "./pet-window";
@@ -556,6 +557,7 @@ function registerPetHandlers(): void {
 			if (!win) return { success: false };
 
 			const language = resolvePetMenuLanguage(payload?.language);
+			const isDevPetMenu = Boolean(process.env.VITE_DEV_SERVER_URL);
 
 			const openMiniChatLabels = {
 				zh: "迷你对话",
@@ -587,6 +589,11 @@ function registerPetHandlers(): void {
 				en: "Attributes",
 				ja: "属性パネル",
 			} as const;
+			const openMiniChatDevToolsLabels = {
+				zh: "打开调试 MiniChat（代码助手）窗口",
+				en: "Open MiniChat (Code Assistant) DevTools",
+				ja: "MiniChat（コードアシスタント）の DevTools を開く",
+			} as const;
 
 			const menu = Menu.buildFromTemplate([
 				{
@@ -611,6 +618,18 @@ function registerPetHandlers(): void {
 						});
 					},
 				},
+				...(isDevPetMenu
+					? [
+							{
+								label: openMiniChatDevToolsLabels[language],
+								click: () => {
+									runPetMenuAction("open-mini-chat-devtools", async () => {
+										await openMiniChatDevTools();
+									});
+								},
+							},
+						]
+					: []),
 				{
 					label: openFullWindowLabels[language],
 					click: () => {

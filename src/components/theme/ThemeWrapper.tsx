@@ -80,7 +80,7 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
   const popupContainerRef = useRef<HTMLDivElement>(null);
   const [appElement, setAppElement] = useState<HTMLDivElement | null>(null);
 
-  const resolvedAppearance = resolveAppearance(theme);
+  const resolvedAppearance: ResolvedAppearance = resolveAppearance(theme);
 
   // Sync data-theme attribute for antd CSS variable mode
   // and the .dark class for Tailwind CSS variables (darkMode: ['class'])

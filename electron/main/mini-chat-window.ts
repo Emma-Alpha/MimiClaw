@@ -153,7 +153,7 @@ async function createMiniChatWindow(): Promise<BrowserWindow> {
 		skipTaskbar: true,
 		alwaysOnTop: true,
 		hasShadow: true,
-		backgroundColor: "#0B1118",
+		backgroundColor: "#000000",
 		show: false,
 		webPreferences: {
 			preload: join(__dirname, "../preload/index.js"),

@@ -11,7 +11,7 @@ export const useMiniChatStyles = createStyles(
 			display: flex;
 		flex-direction: column;
 		overflow: hidden;
-		background: transparent;
+		background: ${token.colorBgBase};
 	`,
 	rootEmbedded: css`
 		--mini-chat-side-gap: 16px;

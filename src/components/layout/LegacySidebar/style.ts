@@ -9,20 +9,43 @@ const darkMode = (rules: string) => `
 
 export const useLegacySidebarStyles = createStyles(({ css }) => ({
   aside: css`
+    --mimi-sidebar-surface: color-mix(in srgb, var(--ant-color-bg-layout) 90%, transparent);
+    --mimi-sidebar-surface-solid: var(--ant-color-bg-layout, #f3f3f2);
+    --mimi-sidebar-border: color-mix(in srgb, var(--ant-color-border) 72%, transparent);
+    --mimi-sidebar-footer-surface: color-mix(in srgb, var(--ant-color-bg-layout) 96%, transparent);
+    --mimi-sidebar-hover-bg: color-mix(in srgb, var(--ant-color-text) 5%, transparent);
+    --mimi-sidebar-hover-strong-bg: color-mix(in srgb, var(--ant-color-text) 8%, transparent);
+    --mimi-sidebar-active-bg: color-mix(in srgb, var(--ant-color-text) 6%, transparent);
+    --mimi-sidebar-active-strong-bg: color-mix(in srgb, var(--ant-color-text) 7%, transparent);
+    --mimi-sidebar-muted-icon: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.46));
+    --mimi-sidebar-card-bg: color-mix(in srgb, var(--ant-color-text) 4%, transparent);
+    --mimi-sidebar-chip-bg: color-mix(in srgb, var(--ant-color-text) 8%, transparent);
+    --mimi-sidebar-chip-hover-bg: color-mix(in srgb, var(--ant-color-text) 12%, transparent);
+
     display: flex;
     width: 268px;
     flex-shrink: 0;
     flex-direction: column;
-    border-right: 1px solid rgba(0, 0, 0, 0.06);
-    /* Semi-transparent background: on macOS with native vibrancy the desktop
-       blurs through; on other platforms this gives a clean frosted look */
-    background: rgba(243, 243, 242, 0.82);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    backdrop-filter: saturate(180%) blur(20px);
+    border-right: 1px solid var(--mimi-sidebar-border);
+    /* Codex-like sidebar material:
+       1. native macOS vibrancy from the BrowserWindow
+       2. renderer tint mixed with transparency for softer depth */
+    background: var(--mimi-sidebar-surface-solid);
+    background: var(--mimi-sidebar-surface);
+    -webkit-backdrop-filter: saturate(160%) blur(18px);
+    backdrop-filter: saturate(160%) blur(18px);
 
     ${darkMode(`
-      border-right-color: rgba(255, 255, 255, 0.06);
-      background: rgba(26, 28, 32, 0.80);
+      --mimi-sidebar-surface: color-mix(in srgb, var(--ant-color-bg-layout) 78%, transparent);
+      --mimi-sidebar-surface-solid: var(--ant-color-bg-layout, #1a1c20);
+      --mimi-sidebar-footer-surface: color-mix(in srgb, var(--ant-color-bg-layout) 88%, transparent);
+      --mimi-sidebar-hover-bg: color-mix(in srgb, var(--ant-color-text) 8%, transparent);
+      --mimi-sidebar-hover-strong-bg: color-mix(in srgb, var(--ant-color-text) 10%, transparent);
+      --mimi-sidebar-active-bg: color-mix(in srgb, var(--ant-color-text) 10%, transparent);
+      --mimi-sidebar-active-strong-bg: color-mix(in srgb, var(--ant-color-text) 12%, transparent);
+      --mimi-sidebar-card-bg: color-mix(in srgb, var(--ant-color-text) 6%, transparent);
+      --mimi-sidebar-chip-bg: color-mix(in srgb, var(--ant-color-text) 12%, transparent);
+      --mimi-sidebar-chip-hover-bg: color-mix(in srgb, var(--ant-color-text) 16%, transparent);
     `)}
   `,
   topSpacer: css`
@@ -52,16 +75,12 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     transition: background-color 0.2s ease, color 0.2s ease;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.05);
+      background: var(--mimi-sidebar-hover-bg);
       color: hsl(var(--foreground));
     }
 
     ${darkMode(`
       color: hsl(var(--foreground) / 0.9);
-
-      &:hover {
-        background: rgba(255, 255, 255, 0.08);
-      }
     `)}
   `,
   primaryActionIcon: css`
@@ -77,15 +96,9 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
   `,
   searchInput: css`
     &:focus-within {
-      background: rgba(0, 0, 0, 0.05);
+      background: var(--mimi-sidebar-hover-bg);
       color: hsl(var(--foreground));
     }
-
-    ${darkMode(`
-      &:focus-within {
-        background: rgba(255, 255, 255, 0.08);
-      }
-    `)}
   `,
   searchInputIcon: css`
     height: 15px;
@@ -120,27 +133,19 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     transition: background-color 0.2s ease, color 0.2s ease;
   `,
   navActionActive: css`
-    background: rgba(0, 0, 0, 0.07);
+    background: var(--mimi-sidebar-active-strong-bg);
     color: hsl(var(--foreground));
-
-    ${darkMode(`
-      background: rgba(255, 255, 255, 0.14);
-    `)}
   `,
   navActionIdle: css`
     color: hsl(var(--foreground) / 0.8);
 
     &:hover {
-      background: rgba(0, 0, 0, 0.05);
+      background: var(--mimi-sidebar-hover-bg);
       color: hsl(var(--foreground));
     }
 
     ${darkMode(`
       color: hsl(var(--foreground) / 0.9);
-
-      &:hover {
-        background: rgba(255, 255, 255, 0.08);
-      }
     `)}
   `,
   threadsArea: css`
@@ -179,15 +184,8 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
 
     &:hover,
     &:focus-within {
-      background: rgba(0, 0, 0, 0.05);
+      background: var(--mimi-sidebar-hover-bg);
     }
-
-    ${darkMode(`
-      &:hover,
-      &:focus-within {
-        background: rgba(255, 255, 255, 0.08);
-      }
-    `)}
   `,
   threadFolderSection: css`
     margin-bottom: 0.125rem;
@@ -198,22 +196,11 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
 
     &:hover,
     &:focus-within {
-      background: rgba(0, 0, 0, 0.05);
+      background: var(--mimi-sidebar-hover-bg);
     }
-
-    ${darkMode(`
-      &:hover,
-      &:focus-within {
-        background: rgba(255, 255, 255, 0.08);
-      }
-    `)}
   `,
   threadFolderHeaderActive: css`
-    background: rgba(0, 0, 0, 0.06);
-
-    ${darkMode(`
-      background: rgba(255, 255, 255, 0.1);
-    `)}
+    background: var(--mimi-sidebar-active-bg);
   `,
   threadFolderInlineToggleButton: css`
     display: none;
@@ -239,11 +226,7 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     pointer-events: auto;
   `,
   folderHeaderActive: css`
-    background: rgba(0, 0, 0, 0.07);
-
-    ${darkMode(`
-      background: rgba(255, 255, 255, 0.13);
-    `)}
+    background: var(--mimi-sidebar-active-strong-bg);
   `,
   folderActivateButton: css`
     display: flex;
@@ -311,7 +294,7 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     transition: background-color 0.2s ease, color 0.2s ease;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.08);
+      background: var(--mimi-sidebar-hover-strong-bg);
       color: hsl(var(--foreground));
     }
 
@@ -319,12 +302,6 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
       opacity: 0.45;
       cursor: not-allowed;
     }
-
-    ${darkMode(`
-      &:hover {
-        background: rgba(255, 255, 255, 0.1);
-      }
-    `)}
   `,
   folderInlineToggleButton: css`
     position: relative;
@@ -381,15 +358,9 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     transition: background-color 0.2s ease, color 0.2s ease;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.05);
+      background: var(--mimi-sidebar-hover-bg);
       color: hsl(var(--foreground) / 0.8);
     }
-
-    ${darkMode(`
-      &:hover {
-        background: rgba(255, 255, 255, 0.08);
-      }
-    `)}
   `,
   warningText: css`
     border-radius: 0.375rem;
@@ -422,15 +393,11 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     display: flex;
     align-items: center;
     justify-content: center;
-    color: rgba(0, 0, 0, 0.46);
+    color: var(--mimi-sidebar-muted-icon);
     opacity: 0;
     pointer-events: none;
     transform: translate(-2px, -50%);
     transition: opacity 0.16s ease, transform 0.16s ease, color 0.2s ease;
-
-    ${darkMode(`
-      color: rgba(255, 255, 255, 0.5);
-    `)}
   `,
   subItemPinIcon: css`
     height: 11px;
@@ -451,25 +418,15 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     }
   `,
   sessionButtonActive: css`
-    background: rgba(0, 0, 0, 0.07);
+    background: var(--mimi-sidebar-active-strong-bg);
     color: hsl(var(--foreground));
-
-    ${darkMode(`
-      background: rgba(255, 255, 255, 0.12);
-    `)}
   `,
   sessionButtonIdle: css`
     color: hsl(var(--foreground) / 0.8);
 
     &:hover {
-      background: rgba(0, 0, 0, 0.06);
+      background: var(--mimi-sidebar-active-bg);
     }
-
-    ${darkMode(`
-      &:hover {
-        background: rgba(255, 255, 255, 0.1);
-      }
-    `)}
   `,
   sessionMainRow: css`
     display: flex;
@@ -550,25 +507,15 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     gap: 0.5rem;
   `,
   listButtonActive: css`
-    background: rgba(0, 0, 0, 0.07);
+    background: var(--mimi-sidebar-active-strong-bg);
     color: hsl(var(--foreground));
-
-    ${darkMode(`
-      background: rgba(255, 255, 255, 0.12);
-    `)}
   `,
   listButtonIdle: css`
     color: hsl(var(--foreground) / 0.8);
 
     &:hover {
-      background: rgba(0, 0, 0, 0.06);
+      background: var(--mimi-sidebar-active-bg);
     }
-
-    ${darkMode(`
-      &:hover {
-        background: rgba(255, 255, 255, 0.1);
-      }
-    `)}
   `,
   listButtonLabel: css`
     display: block;
@@ -614,15 +561,11 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     display: flex;
     align-items: center;
     justify-content: center;
-    color: rgba(0, 0, 0, 0.46);
+    color: var(--mimi-sidebar-muted-icon);
     opacity: 0;
     pointer-events: none;
     transform: translate(-2px, -50%);
     transition: opacity 0.16s ease, transform 0.16s ease, color 0.2s ease;
-
-    ${darkMode(`
-      color: rgba(255, 255, 255, 0.5);
-    `)}
   `,
   threadLikeSessionLeadVisible: css`
     opacity: 1;
@@ -675,22 +618,14 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     }
   `,
   threadWorkspaceRowActive: css`
-    background: rgba(0, 0, 0, 0.06);
-
-    ${darkMode(`
-      background: rgba(255, 255, 255, 0.1);
-    `)}
+    background: var(--mimi-sidebar-active-bg);
   `,
   threadWorkspaceButton: css`
     color: hsl(var(--foreground) / 0.82);
   `,
   threadWorkspaceButtonActive: css`
-    background: rgba(0, 0, 0, 0.06);
+    background: var(--mimi-sidebar-active-bg);
     color: hsl(var(--foreground));
-
-    ${darkMode(`
-      background: rgba(255, 255, 255, 0.1);
-    `)}
   `,
   threadWorkspaceButtonIdle: css`
     color: hsl(var(--foreground) / 0.82);
@@ -772,7 +707,7 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     transition: background-color 0.2s ease, color 0.2s ease;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.08);
+      background: var(--mimi-sidebar-hover-strong-bg);
       color: hsl(var(--foreground));
     }
 
@@ -780,12 +715,6 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
       opacity: 0.4;
       cursor: not-allowed;
     }
-
-    ${darkMode(`
-      &:hover {
-        background: rgba(255, 255, 255, 0.1);
-      }
-    `)}
   `,
   threadWorkspaceActionButton: css`
     border-radius: 0.375rem;
@@ -829,12 +758,8 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     flex-direction: column;
     gap: 0.375rem;
     border-radius: 0.375rem;
-    background: rgba(0, 0, 0, 0.04);
+    background: var(--mimi-sidebar-card-bg);
     padding: 0.5rem;
-
-    ${darkMode(`
-      background: rgba(255, 255, 255, 0.06);
-    `)}
   `,
   cliWorkspaceText: css`
     font-size: 12px;
@@ -844,7 +769,7 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
   cliWorkspaceButton: css`
     width: fit-content;
     border-radius: 0.375rem;
-    background: rgba(0, 0, 0, 0.08);
+    background: var(--mimi-sidebar-chip-bg);
     padding: 0.25rem 0.5rem;
     font-size: 11px;
     font-weight: 500;
@@ -852,16 +777,8 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     transition: background-color 0.2s ease;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.12);
+      background: var(--mimi-sidebar-chip-hover-bg);
     }
-
-    ${darkMode(`
-      background: rgba(255, 255, 255, 0.12);
-
-      &:hover {
-        background: rgba(255, 255, 255, 0.16);
-      }
-    `)}
   `,
   footer: css`
     margin-top: auto;
@@ -869,7 +786,7 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     padding: 0.625rem;
     position: relative;
     z-index: 10;
-    background: #f3f3f2;
+    background: var(--mimi-sidebar-footer-surface);
 
     &::before {
       content: "";
@@ -878,20 +795,13 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
       left: 0;
       right: 0;
       height: 32px;
-      background: linear-gradient(to top, #f3f3f2 0%, transparent 100%);
+      background: linear-gradient(to top, var(--mimi-sidebar-footer-surface) 0%, transparent 100%);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       mask-image: linear-gradient(to top, black 0%, transparent 100%);
       -webkit-mask-image: linear-gradient(to top, black 0%, transparent 100%);
       pointer-events: none;
     }
-
-    ${darkMode(`
-      background: #1a1c20;
-      &::before {
-        background: linear-gradient(to top, #1a1c20 0%, transparent 100%);
-      }
-    `)}
   `,
   settingsLink: css`
     display: flex;
@@ -904,22 +814,12 @@ export const useLegacySidebarStyles = createStyles(({ css }) => ({
     transition: background-color 0.2s ease, color 0.2s ease;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.05);
+      background: var(--mimi-sidebar-hover-bg);
     }
-
-    ${darkMode(`
-      &:hover {
-        background: rgba(255, 255, 255, 0.08);
-      }
-    `)}
   `,
   settingsLinkActive: css`
-    background: rgba(0, 0, 0, 0.07);
+    background: var(--mimi-sidebar-active-strong-bg);
     color: hsl(var(--foreground));
-
-    ${darkMode(`
-      background: rgba(255, 255, 255, 0.12);
-    `)}
   `,
   settingsIcon: css`
     height: 18px;
