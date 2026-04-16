@@ -502,6 +502,8 @@ export function Chat() {
               right: 0,
               bottom: 0,
               height: 'auto',
+              paddingTop: 20,
+              paddingBottom: 24,
             }}
             onScroll={handleScroll}
           >

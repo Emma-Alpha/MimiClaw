@@ -89,7 +89,8 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     padding: 10px 14px;
     border-radius: 18px;
     border-bottom-right-radius: 5px;
-    background: ${token.colorFillSecondary};
+    background: ${token.colorBgContainer};
+    border: 1px solid ${token.colorBorderSecondary};
     color: ${token.colorText};
     font-size: 14px;
     line-height: 1.55;
