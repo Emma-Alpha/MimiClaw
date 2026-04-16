@@ -33,6 +33,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		box-shadow: 0 0 0 0.5px var(--mini-chat-ring-color);
 		position: relative;
 		min-height: 40px;
+			box-sizing: border-box;
 		width: 100%;
 
 		&:focus-within {

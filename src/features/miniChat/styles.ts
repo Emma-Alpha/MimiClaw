@@ -3,8 +3,8 @@ import { createStyles } from "antd-style";
 export const useMiniChatStyles = createStyles(
 	({ token, css }, props: { isCollapsed?: boolean } = {}) => ({
 		root: css`
-			--mini-chat-side-gap: 14px;
-			--mini-chat-content-width: 800px;
+			--mini-chat-side-gap: 16px;
+			--mini-chat-content-width: min(800px, calc(100% - (var(--mini-chat-side-gap) * 2)));
 			--mini-chat-dock-inline-padding: 12px;
 			height: 100vh;
 			width: 100vw;
@@ -16,7 +16,7 @@ export const useMiniChatStyles = createStyles(
 	rootEmbedded: css`
 		--mini-chat-side-gap: 16px;
 		--mini-chat-content-width: min(800px, calc(100% - (var(--mini-chat-side-gap) * 2)));
-		--mini-chat-dock-inline-padding: var(--mini-chat-side-gap);
+		--mini-chat-dock-inline-padding: 12px;
 		height: 100%;
 		width: 100%;
 		box-sizing: border-box;
@@ -1084,14 +1084,14 @@ export const useMiniChatStyles = createStyles(
 		scrollAreaInner: css`
 			width: 100%;
 			height: 100%;
-			max-width: var(--mini-chat-content-width);
+			max-width: calc(var(--mini-chat-content-width) + (var(--mini-chat-side-gap) * 2));
 			margin: 0 auto;
 			display: flex;
 			flex-direction: column;
 		`,
 		timelineVirtualItem: css`
 			width: 100%;
-			max-width: var(--mini-chat-content-width);
+			max-width: calc(var(--mini-chat-content-width) + (var(--mini-chat-side-gap) * 2));
 			margin: 0 auto;
 			padding-inline: var(--mini-chat-side-gap);
 			padding-bottom: 8px;
@@ -1101,7 +1101,7 @@ export const useMiniChatStyles = createStyles(
 			position: absolute;
 			inset: 0;
 			width: calc(100% - (var(--mini-chat-dock-inline-padding, 12px) * 2));
-			max-width: var(--mini-chat-content-width);
+			max-width: calc(var(--mini-chat-content-width) + (var(--mini-chat-side-gap) * 2));
 			margin: 0 auto;
 			overflow: visible;
 			pointer-events: none;
@@ -1235,7 +1235,7 @@ export const useMiniChatStyles = createStyles(
 		color: ${token.colorText};
 	`,
 	inputDock: css`
-		padding: 10px 12px 12px;
+		padding: 10px var(--mini-chat-side-gap) 12px;
 		display: flex;
 		flex-direction: column;
 		gap: 6px;

@@ -28,8 +28,8 @@ import { BackBottomButton } from '@/components/common/BackBottomButton';
 
 const useStyles = createStyles(({ token, css }) => ({
   chatPage: css`
-    --chat-window-side-gap: 24px;
-    --chat-window-content-width: min(860px, calc(100% - (var(--chat-window-side-gap) * 2)));
+    --chat-window-side-gap: 16px;
+    --chat-window-content-width: min(800px, calc(100% - (var(--chat-window-side-gap) * 2)));
     --chat-dock-inline-padding: 12px;
     position: relative;
     display: flex;
@@ -76,14 +76,14 @@ const useStyles = createStyles(({ token, css }) => ({
     padding: 12px 0 24px;
   `,
   scrollableInner: css`
-    max-width: calc(860px + (var(--chat-window-side-gap) * 2));
+    max-width: calc(var(--chat-window-content-width) + (var(--chat-window-side-gap) * 2));
     width: 100%;
     margin: 0 auto;
     padding-inline: var(--chat-window-side-gap);
     box-sizing: border-box;
   `,
   timelineVirtualItem: css`
-    max-width: calc(860px + (var(--chat-window-side-gap) * 2));
+    max-width: calc(var(--chat-window-content-width) + (var(--chat-window-side-gap) * 2));
     width: 100%;
     margin: 0 auto;
     padding: 0 var(--chat-window-side-gap) 20px;
