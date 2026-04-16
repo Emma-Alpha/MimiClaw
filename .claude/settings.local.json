@@ -33,7 +33,10 @@
       "Bash(grep -h \"\\\\.module\\\\.css\\\\|\\\\.css\\\\|createStyles\\\\|createStaticStyles\" /Users/liangpingbo/Desktop/4399/frontend/MimiClaw/src/features/chat/*.tsx)",
       "Bash(find *)",
       "Bash(grep *)",
-      "Bash(ls src/*.css src/**/*.css)"
+      "Bash(ls src/*.css src/**/*.css)",
+      "Bash(mv \"/Users/liangpingbo/Desktop/个人/MimiClaw/src/features/chat\" \"/Users/liangpingbo/Desktop/个人/MimiClaw/src/features/mainChat\")",
+      "Bash(mv \"/Users/liangpingbo/Desktop/个人/MimiClaw/src/features/miniChat\" \"/Users/liangpingbo/Desktop/个人/MimiClaw/src/features/quickChat\")",
+      "Bash(git:*)"
     ]
   }
 }

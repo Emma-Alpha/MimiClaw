@@ -26,13 +26,13 @@ function getMiniChatWindowUrl():
 	if (process.env.VITE_DEV_SERVER_URL) {
 		return {
 			type: "url",
-			value: `${process.env.VITE_DEV_SERVER_URL}#/mini-chat`,
+			value: `${process.env.VITE_DEV_SERVER_URL}#/quick-chat`,
 		};
 	}
 	return {
 		type: "file",
 		value: join(__dirname, "../../dist/index.html"),
-		hash: "/mini-chat",
+		hash: "/quick-chat",
 	};
 }
 
@@ -126,7 +126,7 @@ function flushPendingDroppedPaths(win: BrowserWindow): void {
 	)
 		.then((payload) => {
 			if (win.isDestroyed() || payload.length === 0) return;
-			win.webContents.send("mini-chat:paths-dropped", payload);
+			win.webContents.send("quick-chat:paths-dropped", payload);
 		})
 		.catch(() => {
 			pendingDroppedPaths = queuedPaths.concat(pendingDroppedPaths);
@@ -219,11 +219,11 @@ async function createMiniChatWindow(): Promise<BrowserWindow> {
 						isDirectory: info?.isDirectory() ?? false,
 					},
 				];
-				console.log("[drop-debug main] sending mini-chat:paths-dropped", payload);
+				console.log("[drop-debug main] sending quick-chat:paths-dropped", payload);
 
 				setTimeout(() => {
 					if (!win.isDestroyed()) {
-						win.webContents.send("mini-chat:paths-dropped", payload);
+						win.webContents.send("quick-chat:paths-dropped", payload);
 					}
 				}, 100);
 			});
@@ -275,7 +275,7 @@ export async function openMiniChatWithPayload(seed: string | PetMiniChatSeed): P
   const payload = normalizeMiniChatSeed(seed);
 
   if (miniChatWindow && !miniChatWindow.isDestroyed()) {
-    miniChatWindow.webContents.send('mini-chat:initial-message', payload);
+    miniChatWindow.webContents.send('quick-chat:initial-message', payload);
     miniChatWindow.focus();
     return;
   }

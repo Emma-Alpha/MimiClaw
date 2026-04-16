@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { ChatInput } from '@/pages/Chat/ChatInput';
+import { ChatInput } from '@/features/mainChat/components/ChatInput';
 
 const { agentsState, chatState, gatewayState } = vi.hoisted(() => ({
   agentsState: {
@@ -31,7 +31,49 @@ vi.mock('@/lib/host-api', () => ({
 }));
 
 vi.mock('@/lib/api-client', () => ({
-  invokeIpc: vi.fn(),
+  invokeIpc: vi.fn(() => Promise.resolve(undefined)),
+}));
+
+vi.mock('@/features/mainChat/components/composer', () => ({
+  ComposerBase: ({
+    value,
+    onInput,
+    onSend,
+    sendDisabled,
+    leftActions,
+  }: {
+    value: string;
+    onInput: (value: string) => void;
+    onSend: () => void;
+    sendDisabled?: boolean;
+    leftActions?: React.ReactNode;
+  }) => (
+    <div>
+      <div>{leftActions}</div>
+      <input
+        aria-label="chat-input"
+        value={value}
+        onChange={(event) => onInput(event.target.value)}
+      />
+      <button type="button" title="Send" onClick={onSend} disabled={sendDisabled}>
+        Send
+      </button>
+    </div>
+  ),
+  ComposerChip: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+  ComposerIconButton: ({
+    title,
+    onClick,
+    disabled,
+  }: {
+    title?: string;
+    onClick?: () => void;
+    disabled?: boolean;
+  }) => (
+    <button type="button" title={title} onClick={onClick} disabled={disabled}>
+      icon
+    </button>
+  ),
 }));
 
 function translate(key: string, vars?: Record<string, unknown>): string {
@@ -64,6 +106,10 @@ function translate(key: string, vars?: Record<string, unknown>): string {
 }
 
 vi.mock('react-i18next', () => ({
+  initReactI18next: {
+    type: '3rdParty',
+    init: () => {},
+  },
   useTranslation: () => ({
     t: translate,
   }),

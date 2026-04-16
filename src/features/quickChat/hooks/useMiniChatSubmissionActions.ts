@@ -6,7 +6,7 @@ import {
 	useMemo,
 } from "react";
 import type { Descendant } from "slate";
-import type { FileAttachment } from "@/features/chat/lib/composer-helpers";
+import type { FileAttachment } from "@/features/mainChat/lib/composer-helpers";
 import {
 	fetchCodeAgentStatus,
 	runCodeAgentTask,

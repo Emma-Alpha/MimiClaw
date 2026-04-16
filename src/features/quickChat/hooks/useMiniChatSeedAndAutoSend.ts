@@ -5,7 +5,7 @@ import {
 	useCallback,
 	useEffect,
 } from "react";
-import type { FileAttachment } from "@/features/chat/lib/composer-helpers";
+import type { FileAttachment } from "@/features/mainChat/lib/composer-helpers";
 import { invokeIpc } from "@/lib/api-client";
 import type {
 	PetMiniChatSeed,
@@ -85,7 +85,7 @@ export function useMiniChatSeedAndAutoSend({
 	]);
 
 	useEffect(() => {
-		void invokeIpc<string | PetMiniChatSeed | null>("pet:consumeInitialMessage")
+		void invokeIpc<string | PetMiniChatSeed | null>("pet:consumeQuickChatInitialMessage")
 			.then((payload) => {
 				const seed = normalizeMiniChatSeed(payload);
 				if (!seed) return;
@@ -98,7 +98,7 @@ export function useMiniChatSeedAndAutoSend({
 
 	useEffect(() => {
 		const unsubscribe = window.electron.ipcRenderer.on(
-			"mini-chat:initial-message",
+			"quick-chat:initial-message",
 			(payload) => {
 				const seed = normalizeMiniChatSeed(payload as string | PetMiniChatSeed);
 				if (!seed) return;

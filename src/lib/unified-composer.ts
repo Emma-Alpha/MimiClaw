@@ -1,4 +1,4 @@
-import type { FileAttachment } from "@/features/chat/lib/composer-helpers";
+import type { FileAttachment } from "@/features/mainChat/lib/composer-helpers";
 
 export type UnifiedComposerPath = {
 	absolutePath: string;

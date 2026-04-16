@@ -191,7 +191,7 @@ function isAuxiliaryWindowUrl(url: string): boolean {
 	return (
 		url.includes("#/pet-companion") ||
 		url.includes("#/pet") ||
-		url.includes("#/mini-chat") ||
+		url.includes("#/quick-chat") ||
 		url.includes("#/voice-dialog")
 	);
 }
@@ -717,19 +717,19 @@ function registerPetHandlers(): void {
 		return { success: true };
 	});
 
-	ipcMain.handle("pet:toggleMiniChat", async () => {
+	ipcMain.handle("pet:toggleQuickChat", async () => {
 		await recordPetCompanionUsage("mini_chat");
 		await toggleMiniChatWindow();
 		return { success: true };
 	});
 
-	ipcMain.handle("pet:closeMiniChat", () => {
+	ipcMain.handle("pet:closeQuickChat", () => {
 		closeMiniChatWindow();
 		return { success: true };
 	});
 
 	ipcMain.handle(
-		"pet:openMiniChatWithMessage",
+		"pet:openQuickChatWithMessage",
 		async (_event, text: string) => {
 			await recordPetCompanionUsage("mini_chat");
 			await openMiniChatWithMessage(text);
@@ -738,7 +738,7 @@ function registerPetHandlers(): void {
 	);
 
 	ipcMain.handle(
-		"pet:openMiniChatWithPayload",
+		"pet:openQuickChatWithPayload",
 		async (_event, payload: PetMiniChatSeed) => {
 			await recordPetCompanionUsage("mini_chat");
 			await openMiniChatWithPayload(payload);
@@ -746,7 +746,7 @@ function registerPetHandlers(): void {
 		},
 	);
 
-	ipcMain.handle("pet:consumeInitialMessage", () => {
+	ipcMain.handle("pet:consumeQuickChatInitialMessage", () => {
 		return consumePendingInitialMessage();
 	});
 
@@ -782,7 +782,7 @@ function registerPetHandlers(): void {
 			if (mainWin.isMinimized()) mainWin.restore();
 			mainWin.show();
 			mainWin.focus();
-			mainWin.webContents.send("navigate", "/code-agent/chat");
+			mainWin.webContents.send("navigate", "/code-agent/quick-chat");
 		}
 		return { success: true };
 	});

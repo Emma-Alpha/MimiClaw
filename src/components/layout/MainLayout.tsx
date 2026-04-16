@@ -55,7 +55,7 @@ export function MainLayout() {
   const { styles, cx } = useStyles();
   const { pathname } = useLocation();
   const fullBleed = FULL_BLEED_PATHS.has(pathname);
-  const hideTitleBarManagementMenu = pathname === '/code-agent/chat'
+  const hideTitleBarManagementMenu = pathname === '/code-agent/quick-chat'
     || pathname === '/'
     || pathname === '/chat'
     || pathname.startsWith('/chat/');

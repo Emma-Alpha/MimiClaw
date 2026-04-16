@@ -318,7 +318,7 @@ export function Sidebar() {
   const routeWorkspaceRoot = routeSearchParams.get('workspaceRoot')?.trim() || '';
   const routeSessionId = routeSearchParams.get('sessionId')?.trim() || '';
   const activeThreadWorkspaceIdFromRoute =
-    (pathname.startsWith('/code-agent/chat') && routeWorkspaceRoot
+    (pathname.startsWith('/code-agent/quick-chat') && routeWorkspaceRoot
       ? workspaceIdByNormalizedRoot[normalizeWorkspacePath(routeWorkspaceRoot)]
       : undefined) ?? null;
 
@@ -472,7 +472,7 @@ export function Sidebar() {
       setSidebarActiveContext({ kind: 'realtimeVoice', workspaceId: null });
       return;
     }
-    if (pathname.startsWith('/code-agent/chat') && activeThreadWorkspaceIdFromRoute) {
+    if (pathname.startsWith('/code-agent/quick-chat') && activeThreadWorkspaceIdFromRoute) {
       setSidebarActiveContext({ kind: 'thread', workspaceId: activeThreadWorkspaceIdFromRoute });
     }
   }, [activeThreadWorkspaceIdFromRoute, pathname, setSidebarActiveContext]);
@@ -557,7 +557,7 @@ export function Sidebar() {
       const params = new URLSearchParams();
       params.set('workspaceRoot', workspace.rootPath);
       params.set('newThread', String(Date.now()));
-      navigate(`/code-agent/chat?${params.toString()}`);
+      navigate(`/code-agent/quick-chat?${params.toString()}`);
     },
     [navigate, setSidebarActiveContext, setSidebarThreadWorkspaceExpanded,
       touchSidebarThreadWorkspace, workspaceAvailabilityById],
@@ -637,7 +637,7 @@ export function Sidebar() {
       const params = new URLSearchParams();
       params.set('workspaceRoot', workspace.rootPath);
       params.set('sessionId', sessionId);
-      navigate(`/code-agent/chat?${params.toString()}`);
+      navigate(`/code-agent/quick-chat?${params.toString()}`);
     },
     [navigate, setSidebarActiveContext, setSidebarThreadWorkspaceExpanded, touchSidebarThreadWorkspace],
   );
@@ -863,7 +863,7 @@ export function Sidebar() {
                     )}
                     {visibleSessions.map((session) => {
                       const isActive =
-                        pathname.startsWith('/code-agent/chat') &&
+                        pathname.startsWith('/code-agent/quick-chat') &&
                         activeThreadWorkspaceIdFromRoute === workspace.id &&
                         routeSessionId === session.sessionId;
                       return (

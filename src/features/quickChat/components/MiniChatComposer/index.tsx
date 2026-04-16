@@ -26,14 +26,14 @@ import {
 	ChevronDown,
 } from "lucide-react";
 import { Button, type MenuProps } from "antd";
-import { ComposerAttachmentPreview, ImageLightbox } from "@/features/chat/components/composer";
+import { ComposerAttachmentPreview, ImageLightbox } from "@/features/mainChat/components/composer";
 import { StyledDropdown } from "@/components/common/StyledDropdown";
 import { Tooltip } from "@/components/ui/tooltip";
 import { invokeIpc } from "@/lib/api-client";
 import {
 	type UnifiedComposerInputValue,
 	UnifiedComposerInput,
-} from "@/features/chat/components/unified-composer-input";
+} from "@/features/mainChat/components/unified-composer-input";
 import { useVolcengineAsr } from "@/hooks/useVolcengineAsr";
 import {
 	extractDroppedPathsFromTransfer as extractUnifiedDroppedPathsFromTransfer,
@@ -292,7 +292,7 @@ export function MiniChatComposer({
 			}
 			// If no paths were extracted here, do not prevent default:
 			// main process `will-navigate` fallback can still intercept file:// drop
-			// and forward absolute paths via `mini-chat:paths-dropped`.
+			// and forward absolute paths via `quick-chat:paths-dropped`.
 		};
 		const onDragEnd = () => {
 			enterCount = 0;

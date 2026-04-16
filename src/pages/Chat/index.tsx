@@ -1,2 +1,2 @@
-export { Chat } from "@/features/chat";
-export { Chat as default } from "@/features/chat";
+export { Chat } from "@/features/mainChat";
+export { Chat as default } from "@/features/mainChat";

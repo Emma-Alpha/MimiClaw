@@ -2,13 +2,13 @@ import { useMemo } from "react";
 import { useLocation } from "react-router-dom";
 
 /**
- * Mini chat popup route (`/mini-chat`) should use the compact UI.
+ * Quick chat popup route (`/quick-chat`) should use the compact UI.
  * Any embedded/full-window route should use the full composer controls.
  */
 export function useMiniChatMode() {
 	const location = useLocation();
 
 	return useMemo(() => {
-		return location.pathname.startsWith("/mini-chat");
+		return location.pathname.startsWith("/quick-chat");
 	}, [location.pathname]);
 }

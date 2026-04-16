@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildMiniChatHeaderViewModel } from '@/pages/MiniChat/components/MiniChatHeader.view-model';
+import { buildMiniChatHeaderViewModel } from '@/features/quickChat/components/MiniChatHeader.view-model';
 import type { CodeAgentStatus } from '../../shared/code-agent';
 
 function makeStatus(overrides: Partial<CodeAgentStatus> = {}): CodeAgentStatus {

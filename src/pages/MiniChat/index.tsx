@@ -1,1 +1,1 @@
-export { MiniChat } from "@/features/miniChat";
+export { MiniChat } from "@/features/quickChat";

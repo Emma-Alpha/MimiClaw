@@ -6,7 +6,7 @@ import {
 import {
 	readFileAsBase64,
 	type FileAttachment,
-} from "@/features/chat/lib/composer-helpers";
+} from "@/features/mainChat/lib/composer-helpers";
 import { invokeIpc } from "@/lib/api-client";
 import { hostApiFetch } from "@/lib/host-api";
 import {

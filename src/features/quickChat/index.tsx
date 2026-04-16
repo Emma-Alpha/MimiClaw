@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import {
 	type FileAttachment,
-} from "@/features/chat/lib/composer-helpers";
+} from "@/features/mainChat/lib/composer-helpers";
 import { ContextUsageTooltip } from "@/components/ui/context-usage-tooltip";
 import { StyledDropdown } from "@/components/ui/styled-dropdown";
 import {
@@ -39,7 +39,7 @@ import { useCodeAgentStore, type StreamingToolUse } from "@/stores/code-agent";
 import {
 	type UnifiedComposerPath,
 } from "@/lib/unified-composer";
-import type { UnifiedComposerInputHandle } from "@/features/chat/components/unified-composer-input";
+import type { UnifiedComposerInputHandle } from "@/features/mainChat/components/unified-composer-input";
 import i18n from "@/i18n";
 import { useChatStore, type RawMessage } from "@/stores/chat";
 import { useGatewayStore } from "@/stores/gateway";
@@ -604,7 +604,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 	// Receive file/folder paths dropped into the window (will-navigate fallback from main process).
 	useEffect(() => {
 		const unsubscribe = window.electron.ipcRenderer.on(
-			"mini-chat:paths-dropped",
+			"quick-chat:paths-dropped",
 			(payload) => {
 				const dropped = payload as UnifiedComposerPath[];
 				applyDroppedPaths(dropped);
@@ -737,7 +737,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 	]);
 
 	const handleClose = useCallback(() => {
-		void invokeIpc("pet:closeMiniChat");
+		void invokeIpc("pet:closeQuickChat");
 	}, []);
 
 	const handlePermissionDecision = useCallback(
@@ -1128,7 +1128,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 		void invokeIpc(
 			draftTarget === "code" ? "pet:openCodeAssistant" : "pet:openMainWindow",
 		);
-		void invokeIpc("pet:closeMiniChat");
+		void invokeIpc("pet:closeQuickChat");
 	}, [draftTarget, embeddedCodeAssistant]);
 
 	const timelineItems = useMemo<TimelineItem[]>(() => {

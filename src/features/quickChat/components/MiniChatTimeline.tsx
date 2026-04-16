@@ -13,7 +13,7 @@ import { StatusIndicator } from "./code-agent/StatusIndicator";
 import { TypingIndicator } from "./TypingIndicator";
 import { useFileReferenceMarkdownProps } from "./file-reference-markdown";
 import { BackBottomButton } from "@/components/common/BackBottomButton";
-import { UserMessage } from "@/features/chat/components/messages/UserMessage";
+import { UserMessage } from "@/features/mainChat/components/messages/UserMessage";
 import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/code-agent";
 
 type MiniChatTimelineProps = {

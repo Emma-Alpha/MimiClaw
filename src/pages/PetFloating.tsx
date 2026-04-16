@@ -407,7 +407,7 @@ export function PetFloating() {
 				throw new Error("Speech transcription returned empty text");
 			}
 
-			await invokeIpc("pet:openMiniChatWithPayload", {
+			await invokeIpc("pet:openQuickChatWithPayload", {
 				text: transcriptText,
 				autoSend: true,
 			});
@@ -760,7 +760,7 @@ export function PetFloating() {
 				const now = Date.now();
 				if (now - lastToggleAt.current >= TOGGLE_DEBOUNCE_MS) {
 					lastToggleAt.current = now;
-					void invokeIpc("pet:toggleMiniChat");
+					void invokeIpc("pet:toggleQuickChat");
 				}
 			}
 			isDragging.current = false;
@@ -813,7 +813,7 @@ export function PetFloating() {
 				onKeyDown={(event) => {
 					if (event.key === "Enter" || event.key === " ") {
 						event.preventDefault();
-						void invokeIpc("pet:toggleMiniChat");
+						void invokeIpc("pet:toggleQuickChat");
 					}
 				}}
 			>

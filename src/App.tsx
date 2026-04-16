@@ -123,7 +123,7 @@ function App() {
 	const isPetBubbleRoute = location.pathname.startsWith("/pet-bubble");
 	const isPetRoute =
 		location.pathname === "/pet" || location.pathname.startsWith("/pet/");
-	const isMiniChatRoute = location.pathname.startsWith("/mini-chat");
+	const isMiniChatRoute = location.pathname.startsWith("/quick-chat");
 	const isPetCompanionRoute = location.pathname.startsWith("/pet-companion");
 	const isVoiceDialogRoute = location.pathname.startsWith("/voice-dialog");
 	const isTrayRuntimeRoute = location.pathname.startsWith("/tray-runtime");
@@ -321,8 +321,8 @@ function App() {
 						<Route path="/pet" element={<PetFloating />} />
 						<Route path="/pet-bubble" element={<PetBubble />} />
 
-						{/* Mini chat popup (opened by clicking the floating pet) */}
-						<Route path="/mini-chat" element={<MiniChat />} />
+						{/* Quick chat popup (opened by clicking the floating pet) */}
+						<Route path="/quick-chat" element={<MiniChat />} />
 						<Route path="/pet-companion" element={<PetCompanion />} />
 						<Route path="/voice-dialog" element={<VoiceDialog />} />
 						<Route path="/tray-runtime" element={<TrayRuntime />} />
@@ -339,7 +339,7 @@ function App() {
 							<Route path="/skills" element={<Skills />} />
 							<Route path="/cron" element={<Cron />} />
 							<Route
-								path="/code-agent/chat"
+								path="/code-agent/quick-chat"
 								element={<MiniChat embeddedCodeAssistant />}
 							/>
 							<Route path="/code-agent" element={<CodeAgent />} />

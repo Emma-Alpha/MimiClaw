@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { __INTERNAL__ } from "@/pages/MiniChat/components/file-reference-markdown";
+import { __INTERNAL__ } from "@/features/quickChat/components/file-reference-markdown";
 
 describe("file-reference-markdown", () => {
 	it("linkifies file:line references in plain text", () => {

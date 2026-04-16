@@ -11,7 +11,7 @@ import {
   RefreshCw,
   RotateCcw,
 } from 'lucide-react';
-import { ComposerBase, ComposerChip, ComposerIconButton } from '@/features/chat/components/composer';
+import { ComposerBase, ComposerChip, ComposerIconButton } from '@/features/mainChat/components/composer';
 import { Button } from '@/components/ui/button';
 import { JizhiMessageContent } from '@/features/jizhi/components/JizhiMessageContent';
 import { cn } from '@/lib/utils';

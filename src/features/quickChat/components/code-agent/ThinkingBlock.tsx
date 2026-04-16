@@ -1,5 +1,5 @@
 import { createStyles } from "antd-style";
-import { ThinkingPanel } from "@/features/chat/components/ThinkingPanel";
+import { ThinkingPanel } from "@/features/mainChat/components/ThinkingPanel";
 
 interface Props {
 	text: string;
