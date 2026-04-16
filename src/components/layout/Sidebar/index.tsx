@@ -464,11 +464,11 @@ export function Sidebar() {
   }, [refreshWorkspaceSessions, workspaceById, workspaceIdByNormalizedRoot]);
 
   useEffect(() => {
-    if (pathname === '/') {
+    if (pathname === '/' || pathname.startsWith('/chat/openclaw')) {
       setSidebarActiveContext({ kind: 'openclaw', workspaceId: null });
       return;
     }
-    if (pathname.startsWith('/voice-chat')) {
+    if (pathname.startsWith('/chat/voice')) {
       setSidebarActiveContext({ kind: 'realtimeVoice', workspaceId: null });
       return;
     }
@@ -537,7 +537,7 @@ export function Sidebar() {
     setSidebarActiveContext({ kind: 'openclaw', workspaceId: null });
     setFolderExpanded('openclaw', true);
     newSession();
-    navigate('/');
+    navigate('/chat/openclaw');
   }, [navigate, newSession, setFolderExpanded, setSidebarActiveContext]);
 
   const handleRealtimeVoiceNewThread = useCallback(() => {
@@ -614,18 +614,18 @@ export function Sidebar() {
   const handleOpenClawSession = useCallback((sessionKey: string) => {
     setSidebarActiveContext({ kind: 'openclaw', workspaceId: null });
     switchSession(sessionKey);
-    navigate('/');
+    navigate('/chat/openclaw');
   }, [navigate, setSidebarActiveContext, switchSession]);
 
   const handleRealtimeVoiceSession = useCallback((sessionId: string) => {
     setSidebarActiveContext({ kind: 'realtimeVoice', workspaceId: null });
     setVoiceActiveSessionId(sessionId);
-    navigate('/voice-chat');
+    navigate('/chat/voice');
   }, [navigate, setSidebarActiveContext, setVoiceActiveSessionId]);
 
   const handleXiaojiuSession = useCallback((sessionId: string) => {
     setRemoteActiveSessionId(sessionId);
-    navigate('/xiaojiu-chat');
+    navigate('/chat/xiaojiu');
   }, [navigate, setRemoteActiveSessionId]);
 
   const handleThreadSession = useCallback(
@@ -648,7 +648,7 @@ export function Sidebar() {
   const xiaojiuCount = filteredXiaojiuSessions.length;
   const realtimeVoiceCount = filteredRealtimeVoiceSessions.length;
   const hasActiveOpenClawSession =
-    pathname === '/' && openClawSessions.some((s) => s.key === currentSessionKey);
+    pathname.startsWith('/chat/openclaw') && openClawSessions.some((s) => s.key === currentSessionKey);
 
   const canToggleOpenClawSessions = openClawCount > COLLAPSIBLE_SESSION_LIMIT;
   const visibleOpenClawSessions =
@@ -906,7 +906,7 @@ export function Sidebar() {
       <NavItem
         icon={MessageSquare}
         title={t('sidebar.folder.openClaw', { defaultValue: 'OpenClaw' })}
-        active={pathname === '/' && !hasActiveOpenClawSession}
+        active={pathname.startsWith('/chat/openclaw') && !hasActiveOpenClawSession}
         style={{ marginTop: 6 }}
         extra={<FolderChevron expanded={isFolderExpanded('openclaw')} />}
         actions={
@@ -929,7 +929,7 @@ export function Sidebar() {
             <div className={styles.emptyHint}>{t('sidebar.empty.openClaw', { defaultValue: '无对话' })}</div>
           )}
           {visibleOpenClawSessions.map((session) => {
-            const isActive = pathname === '/' && currentSessionKey === session.key;
+            const isActive = pathname.startsWith('/chat/openclaw') && currentSessionKey === session.key;
             const isRunning = isActive && chatSending;
             return (
               <NavItem
@@ -975,7 +975,7 @@ export function Sidebar() {
           <NavItem
             icon={MessageCircle}
             title={t('sidebar.folder.xiaojiu', { defaultValue: '小九' })}
-            active={pathname.startsWith('/xiaojiu-chat')}
+            active={pathname.startsWith('/chat/xiaojiu')}
             style={{ marginTop: 6 }}
             extra={
               <>
@@ -987,7 +987,7 @@ export function Sidebar() {
               toggleFolder('xiaojiu');
               const first = xiaojiuSessionItems[0];
               if (first) setRemoteActiveSessionId(first.id);
-              navigate('/xiaojiu-chat');
+              navigate('/chat/xiaojiu');
             }}
           />
           {isFolderExpanded('xiaojiu') && (
@@ -999,7 +999,7 @@ export function Sidebar() {
                 <div className={styles.emptyHint}>{t('sidebar.noConversations', { defaultValue: '暂无会话' })}</div>
               )}
               {visibleXiaojiuSessions.map((session) => {
-                const isActive = pathname.startsWith('/xiaojiu-chat') && remoteActiveSessionId === session.id;
+                const isActive = pathname.startsWith('/chat/xiaojiu') && remoteActiveSessionId === session.id;
                 return (
                   <NavItem
                     key={session.id}
@@ -1031,7 +1031,7 @@ export function Sidebar() {
       <NavItem
         icon={Mic}
         title={t('sidebar.folder.realtimeVoice', { defaultValue: '实时语音' })}
-        active={pathname.startsWith('/voice-chat')}
+        active={pathname.startsWith('/chat/voice')}
         style={{ marginTop: 6 }}
         extra={<FolderChevron expanded={isFolderExpanded('realtimeVoice')} />}
         actions={
@@ -1057,7 +1057,7 @@ export function Sidebar() {
             <div className={styles.emptyHint}>{t('sidebar.empty.realtimeVoice', { defaultValue: '无语音会话' })}</div>
           )}
           {visibleRealtimeVoiceSessions.map((session) => {
-            const isActive = pathname.startsWith('/voice-chat') && voiceActiveSessionId === session.id;
+            const isActive = pathname.startsWith('/chat/voice') && voiceActiveSessionId === session.id;
             return (
               <NavItem
                 key={session.id}

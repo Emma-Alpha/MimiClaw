@@ -49,7 +49,7 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
 }));
 
-const FULL_BLEED_PATHS = new Set(['/jizhi-chat']);
+const FULL_BLEED_PATHS = new Set(['/chat/jizhi']);
 
 export function MainLayout() {
   const { styles, cx } = useStyles();

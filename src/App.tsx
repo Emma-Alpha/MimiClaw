@@ -2,7 +2,7 @@
  * Root Application Component
  * Handles routing and global providers
  */
-import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { Component, useEffect } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { Toaster } from "sonner";
@@ -10,9 +10,7 @@ import i18n from "./i18n";
 import { MainLayout } from "./components/layout/MainLayout";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Models } from "./pages/Models";
-import { Chat } from "./pages/Chat";
-import { JizhiChat } from "./pages/JizhiChat";
-import { XiaojiuChat } from "./pages/XiaojiuChat";
+import { UnifiedChatPage } from "./features/chat/pages/UnifiedChatPage";
 import { Agents } from "./pages/Agents";
 import { Channels } from "./pages/Channels";
 import { Skills } from "./pages/Skills";
@@ -25,7 +23,6 @@ import { PetCompanion } from "./pages/PetCompanion";
 import { MiniChat } from "./pages/MiniChat";
 import { VoiceDialog } from "./pages/VoiceDialog";
 import { TrayRuntime } from "./pages/TrayRuntime";
-import { VoiceChatHistory } from "./pages/VoiceChatHistory";
 import { Setup } from "./pages/Setup";
 import { Login } from "./pages/Login";
 import { useSettingsStore } from "./stores/settings";
@@ -127,7 +124,8 @@ function App() {
 	const isPetCompanionRoute = location.pathname.startsWith("/pet-companion");
 	const isVoiceDialogRoute = location.pathname.startsWith("/voice-dialog");
 	const isTrayRuntimeRoute = location.pathname.startsWith("/tray-runtime");
-	const isMainChatRoute = location.pathname === "/";
+	const isMainChatRoute =
+		location.pathname === "/" || location.pathname.startsWith("/chat");
 
 	useEffect(() => {
 		// Restore cloud session from localStorage before any redirect checks.
@@ -329,10 +327,12 @@ function App() {
 
 						{/* Main application routes */}
 						<Route element={<MainLayout />}>
-							<Route path="/" element={<Chat />} />
-							<Route path="/xiaojiu-chat" element={<XiaojiuChat />} />
-							<Route path="/jizhi-chat" element={<JizhiChat />} />
-							<Route path="/voice-chat" element={<VoiceChatHistory />} />
+							<Route path="/" element={<Navigate to="/chat/openclaw" replace />} />
+							<Route path="/chat" element={<Navigate to="/chat/openclaw" replace />} />
+							<Route path="/chat/:kind" element={<UnifiedChatPage />} />
+							<Route path="/xiaojiu-chat" element={<Navigate to="/chat/xiaojiu" replace />} />
+							<Route path="/jizhi-chat" element={<Navigate to="/chat/jizhi" replace />} />
+							<Route path="/voice-chat" element={<Navigate to="/chat/voice" replace />} />
 							<Route path="/models" element={<Models />} />
 							<Route path="/agents" element={<Agents />} />
 							<Route path="/channels" element={<Channels />} />
