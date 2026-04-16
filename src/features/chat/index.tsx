@@ -38,13 +38,31 @@ const useStyles = createStyles(({ token, css }) => ({
     background: ${token.colorBgContainer};
   `,
   toolbar: css`
+    height: 40px;
     display: flex;
     align-items: center;
-    height: 44px;
     flex-shrink: 0;
-    padding: 0 var(--chat-window-side-gap);
-    border-bottom: 1px solid ${token.colorBorderSecondary};
+    padding: 10px 12px 8px;
     background: ${token.colorBgContainer};
+    position: relative;
+    overflow: visible;
+    z-index: 10;
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      height: 32px;
+      background: linear-gradient(to bottom, ${token.colorBgContainer} 0%, transparent 100%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 10;
+    }
   `,
   messagesArea: css`
     position: relative;
@@ -54,7 +72,7 @@ const useStyles = createStyles(({ token, css }) => ({
   scrollableContent: css`
     height: 100%;
     overflow-y: auto;
-    padding: 0 var(--chat-window-side-gap) 24px;
+    padding: 12px var(--chat-window-side-gap) 24px;
   `,
   scrollableInner: css`
     max-width: var(--chat-window-content-width);
@@ -473,7 +491,7 @@ export function Chat() {
           <VList<TimelineRenderRow>
             ref={vListRef}
             data={timelineRows}
-            style={{ height: '100%' }}
+            style={{ height: '100%', paddingTop: 12 }}
             onScroll={handleScroll}
           >
             {(row) => (

@@ -2,7 +2,8 @@
  * Settings Page
  * Application configuration
  */
-import { type ElementType, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Sun,
   Moon,
@@ -14,10 +15,6 @@ import {
   Eye,
   EyeOff,
   Globe,
-  Palette,
-  Network,
-  Cpu,
-  Info,
 } from 'lucide-react';
 import { Form, type FormGroupItemType } from '@lobehub/ui';
 import { SettingHeader } from './components/SettingHeader';
@@ -311,7 +308,8 @@ export function Settings() {
   const [showCodeAgentApiKey, setShowCodeAgentApiKey] = useState(false);
 
   type SettingsSection = 'appearance' | 'gateway' | 'updates' | 'developer' | 'about';
-  const [activeSection, setActiveSection] = useState<SettingsSection>('appearance');
+  const [searchParams] = useSearchParams();
+  const activeSection = (searchParams.get('section') as SettingsSection) ?? 'appearance';
 
   const refreshCloudGateway = useCallback(async () => {
     try {
@@ -991,38 +989,7 @@ export function Settings() {
   };
 
   return (
-    <div className={styles.pageRoot}>
-      {/* Left sidebar nav */}
-      <aside className={styles.sidebar}>
-        {/* Spacer so nav items clear the absolute-positioned TitleBar (40 px) */}
-        <div style={{ height: 40, flexShrink: 0 }} />
-        <div className={styles.sidebarNav}>
-          {([
-            { key: 'appearance', label: t('appearance.title'), icon: Palette },
-            { key: 'gateway', label: t('gateway.title'), icon: Network },
-            { key: 'updates', label: t('updates.title'), icon: RefreshCw },
-            ...(devModeUnlocked ? [{ key: 'developer', label: t('developer.title'), icon: Cpu }] : []),
-            { key: 'about', label: t('about.title'), icon: Info },
-          ] as Array<{ key: string; label: string; icon: ElementType }>).map((item) => {
-            const Icon = item.icon;
-            const isActive = activeSection === item.key;
-            return (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => setActiveSection(item.key as SettingsSection)}
-                className={cn(styles.navItem, isActive && styles.navItemActive)}
-              >
-                <Icon style={{ height: 15, width: 15, flexShrink: 0 }} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </aside>
-
-      {/* Right content area */}
-      <div className={styles.contentArea}>
+    <div className={styles.contentArea}>
         <div className={styles.contentInner}>
           <SettingHeader
             title={
@@ -2269,7 +2236,6 @@ export function Settings() {
           )}
 
         </div>
-      </div>
     </div>
   );
 }

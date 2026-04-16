@@ -4,12 +4,11 @@
  */
 import { Outlet, useLocation } from 'react-router-dom';
 import { createStyles } from 'antd-style';
-import { Sidebar } from './Sidebar';
+import { Sidebar } from './Sidebar/index';
 import { TitleBar } from './TitleBar';
 import { JizhiSessionBridge } from './JizhiSessionBridge';
 import { RemoteMessengerSessionBridge } from './RemoteMessengerSessionBridge';
 import { VoiceChatSessionBridge } from './VoiceChatSessionBridge';
-import { ChatToolbar } from '@/features/chat/components/ChatToolbar';
 
 const useStyles = createStyles(({ token, css }) => ({
   root: css`
@@ -56,7 +55,6 @@ export function MainLayout() {
   const { styles, cx } = useStyles();
   const { pathname } = useLocation();
   const fullBleed = FULL_BLEED_PATHS.has(pathname);
-  const isChatRoute = pathname === '/';
   const hideTitleBarManagementMenu = pathname === '/code-agent/chat'
     || pathname === '/'
     || pathname === '/chat'
@@ -70,7 +68,6 @@ export function MainLayout() {
       {/* Global Title Bar for dragging */}
       <TitleBar
         hideManagementMenu={hideTitleBarManagementMenu}
-        rightContent={isChatRoute ? <ChatToolbar /> : undefined}
       />
       <div className={styles.body}>
         <Sidebar />
