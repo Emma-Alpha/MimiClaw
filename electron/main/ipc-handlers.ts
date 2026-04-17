@@ -145,6 +145,17 @@ import {
 	openVoiceChatWindow,
 	setVoiceDialogState,
 } from "./voice-chat-window";
+import {
+	closeThreadTerminal,
+	detachThreadTerminalSubscriber,
+	resizeThreadTerminal,
+	startOrReuseThreadTerminalSession,
+	writeThreadTerminalInput,
+	type ThreadTerminalClosePayload,
+	type ThreadTerminalInputPayload,
+	type ThreadTerminalResizePayload,
+	type ThreadTerminalStartPayload,
+} from "./thread-terminal";
 
 type AppRequest = {
 	id?: string;
@@ -932,6 +943,31 @@ function registerPetHandlers(): void {
 	);
 }
 
+function registerThreadTerminalHandlers(): void {
+	ipcMain.handle("thread-terminal:start", (event, payload?: ThreadTerminalStartPayload) => {
+		const webContentsId = event.sender.id;
+		const started = startOrReuseThreadTerminalSession(webContentsId, payload || {});
+
+		event.sender.once("destroyed", () => {
+			detachThreadTerminalSubscriber(webContentsId);
+		});
+
+		return started;
+	});
+
+	ipcMain.handle("thread-terminal:input", (_event, payload?: ThreadTerminalInputPayload) => {
+		return writeThreadTerminalInput(payload || {});
+	});
+
+	ipcMain.handle("thread-terminal:resize", (_event, payload?: ThreadTerminalResizePayload) => {
+		return resizeThreadTerminal(payload || {});
+	});
+
+	ipcMain.handle("thread-terminal:close", (_event, payload?: ThreadTerminalClosePayload) => {
+		return closeThreadTerminal(payload || {});
+	});
+}
+
 /**
  * Register all IPC handlers
  */
@@ -971,6 +1007,9 @@ export function registerIpcHandlers(
 
 	// Floating pet handlers
 	registerPetHandlers();
+
+	// Thread terminal handlers
+	registerThreadTerminalHandlers();
 
 	// UV handlers
 	registerUvHandlers();

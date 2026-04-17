@@ -26,6 +26,8 @@ const HOST_EVENT_TO_IPC_CHANNEL: Record<string, string> = {
   'code-agent:tool-result': 'code-agent:tool-result',
   'code-agent:sdk-message': 'code-agent:sdk-message',
   'code-agent:permission-request': 'code-agent:permission-request',
+  'thread-terminal:data': 'thread-terminal:data',
+  'thread-terminal:exit': 'thread-terminal:exit',
   'channel:whatsapp-qr': 'channel:whatsapp-qr',
   'channel:whatsapp-success': 'channel:whatsapp-success',
   'channel:whatsapp-error': 'channel:whatsapp-error',

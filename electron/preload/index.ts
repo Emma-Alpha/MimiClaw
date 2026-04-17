@@ -168,6 +168,10 @@ const electronAPI = {
         'openclaw:getCliCommand',
         'code-agent:respond-permission',
         'code-agent:respond-elicitation',
+        'thread-terminal:start',
+        'thread-terminal:input',
+        'thread-terminal:resize',
+        'thread-terminal:close',
       ];
 
       if (validChannels.includes(channel)) {
@@ -234,6 +238,8 @@ const electronAPI = {
         'tray-runtime:state',
         'screenshot:capture',
         'skills:runtime-progress',
+        'thread-terminal:data',
+        'thread-terminal:exit',
       ];
 
       if (validChannels.includes(channel)) {
@@ -302,6 +308,8 @@ const electronAPI = {
         'tray-runtime:state',
         'screenshot:capture',
         'skills:runtime-progress',
+        'thread-terminal:data',
+        'thread-terminal:exit',
       ];
 
       if (validChannels.includes(channel)) {

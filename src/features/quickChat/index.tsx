@@ -4,7 +4,7 @@ import {
 	useMemo,
 	useRef,
 	useState,
-	type KeyboardEvent,
+	type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useLocation } from "react-router-dom";
 import type { MenuProps } from "antd";
@@ -55,6 +55,7 @@ import type {
 import { MiniChatComposer } from "./components/MiniChatComposer";
 import { MiniChatHeader } from "./components/MiniChatHeader";
 import { MiniChatTimeline } from "./components/MiniChatTimeline";
+import { ThreadTerminalPanel } from "./components/ThreadTerminalPanel";
 import { ElicitationForm } from "./components/code-agent/ElicitationForm";
 import { PermissionDispatcher } from "./components/code-agent/permissions/PermissionDispatcher";
 import { TodoListCard } from "./components/code-agent/TodoListCard";
@@ -120,6 +121,16 @@ function isTodoWriteToolName(name: string): boolean {
 	return name.trim().toLowerCase() === "todowrite";
 }
 
+function isEditableTarget(target: EventTarget | null): boolean {
+	if (!(target instanceof HTMLElement)) return false;
+	if (target.isContentEditable) return true;
+	const tagName = target.tagName;
+	if (tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT") {
+		return true;
+	}
+	return target.getAttribute("role") === "textbox";
+}
+
 function hasValidTodoItems(rawInput: Record<string, unknown>): boolean {
 	const todos = rawInput?.todos;
 	if (!Array.isArray(todos)) return false;
@@ -139,6 +150,7 @@ type MiniChatProps = {
 export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 	const { styles, cx } = useMiniChatStyles();
 	const location = useLocation();
+	const platform = window.electron?.platform;
 	const isMiniChatMode = useMiniChatMode();
 	const initSettings = useSettingsStore((state) => state.init);
 	const language = useSettingsStore((state) => state.language);
@@ -222,6 +234,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 	const [embeddedBranchNames, setEmbeddedBranchNames] = useState<string[]>(() => ["main"]);
 	const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
 	const [branchSearchValue, setBranchSearchValue] = useState("");
+	const [showThreadTerminal, setShowThreadTerminal] = useState(false);
 	const branchSearchInputRef = useRef<HTMLInputElement>(null);
 	const [claudeCodeSkills, setClaudeCodeSkills] = useState<{
 		global: ClaudeCodeSkillEntry[];
@@ -655,6 +668,30 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 		? "code"
 		: selectedMode || persistentMode || draftIntent.target;
 	const isClaudeCodeCliMode = draftTarget === "code";
+	const terminalShortcutLabel = platform === "darwin" ? "⌘J" : "Ctrl+J";
+
+	useEffect(() => {
+		if (!embeddedCodeAssistant || draftTarget !== "code") return;
+
+		const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+			if (event.defaultPrevented || event.repeat) return;
+			if (event.altKey || event.shiftKey) return;
+			if (event.key.toLowerCase() !== "j") return;
+
+			const hasShortcutModifier = platform === "darwin"
+				? event.metaKey
+				: event.ctrlKey;
+			if (!hasShortcutModifier) return;
+			if (isEditableTarget(event.target)) return;
+
+			event.preventDefault();
+			setShowThreadTerminal((previous) => !previous);
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [draftTarget, embeddedCodeAssistant, platform]);
+
 	const {
 		handleNewConversation,
 		handleSwitchSession,
@@ -821,7 +858,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 	);
 
 	const handleKeyDown = useCallback(
-		(event: KeyboardEvent<HTMLElement>) => {
+		(event: ReactKeyboardEvent<HTMLElement>) => {
 			if (isComposing) return;
 
 			if (showSlashPicker && event.key === "ArrowDown") {
@@ -915,7 +952,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 	);
 
 	const handlePressEnter = useCallback(
-		(event: KeyboardEvent<HTMLElement>) => {
+		(event: ReactKeyboardEvent<HTMLElement>) => {
 			if (showSlashPicker) {
 				event.preventDefault();
 				applySlashOption(
@@ -1243,6 +1280,12 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 					onNewConversation={handleNewConversation}
 					onSwitchSession={handleSwitchSession}
 					showWindowActions={!embeddedCodeAssistant}
+					showTerminalToggle={embeddedCodeAssistant && draftTarget === "code"}
+					isTerminalVisible={showThreadTerminal}
+					terminalShortcutLabel={terminalShortcutLabel}
+					onToggleTerminal={() => {
+						setShowThreadTerminal((previous) => !previous);
+					}}
 				/>
 
 			<MiniChatTimeline
@@ -1263,7 +1306,8 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 				bottomReservedHeight={timelineBottomReservedHeight}
 			/>
 
-			<div className={cx(styles.inputDock, embeddedCodeAssistant && styles.inputDockEmbedded)}>
+			<div className={styles.bottomDock}>
+				<div className={cx(styles.inputDock, embeddedCodeAssistant && styles.inputDockEmbedded)}>
 				{/* New SDK-driven permission dispatcher (tool-specific UI) */}
 				{codeAgentPendingPermission && (
 					<PermissionDispatcher
@@ -1557,6 +1601,16 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 					</div>
 				) : null}
 			</div>
+				{embeddedCodeAssistant && draftTarget === "code" && showThreadTerminal ? (
+					<ThreadTerminalPanel
+						branchLabel={embeddedBranchLabel}
+						workspaceRoot={codeWorkspaceRoot}
+						onClose={() => {
+							setShowThreadTerminal(false);
+						}}
+					/>
+				) : null}
+		</div>
 		</div>
 	);
 }
