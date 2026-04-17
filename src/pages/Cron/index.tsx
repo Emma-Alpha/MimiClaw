@@ -2,43 +2,43 @@
  * Cron Page
  * Manage scheduled tasks
  */
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { MouseEvent } from 'react';
 import {
-  Plus,
-  Clock,
-  Play,
-  Trash2,
-  RefreshCw,
-  X,
-  Calendar,
   AlertCircle,
+  Calendar,
   CheckCircle2,
-  XCircle,
-  MessageSquare,
-  Loader2,
-  Timer,
+  Clock,
   History,
+  Loader2,
+  MessageSquare,
   Pause,
+  Play,
+  Plus,
+  RefreshCw,
+  Timer,
+  Trash2,
+  X,
+  XCircle,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { useCronStore } from '@/stores/cron';
-import { useGatewayStore } from '@/stores/gateway';
-import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { formatRelativeTime } from '@/lib/utils';
 import { toast } from 'sonner';
-import type { CronJob, CronJobCreateInput, ScheduleType } from '@/types/cron';
-import { CHANNEL_ICONS, type ChannelType } from '@/types/channel';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { formatRelativeTime } from '@/lib/utils';
+import { useCronStore } from '@/stores/cron';
+import { useGatewayStore } from '@/stores/gateway';
+import { CHANNEL_ICONS, type ChannelType } from '@/types/channel';
+import type { CronJob, CronJobCreateInput, ScheduleType } from '@/types/cron';
 import { useCronStyles } from './styles';
 
-// Common cron schedule presets
 const schedulePresets: { key: string; value: string; type: ScheduleType }[] = [
   { key: 'everyMinute', value: '* * * * *', type: 'interval' },
   { key: 'every5Min', value: '*/5 * * * *', type: 'interval' },
@@ -50,36 +50,32 @@ const schedulePresets: { key: string; value: string; type: ScheduleType }[] = [
   { key: 'monthly1st', value: '0 9 1 * *', type: 'monthly' },
 ];
 
-// Parse cron schedule to human-readable format
-// Handles both plain cron strings and Gateway CronSchedule objects:
-//   { kind: "cron", expr: "...", tz?: "..." }
-//   { kind: "every", everyMs: number }
-//   { kind: "at", at: "..." }
 function parseCronSchedule(schedule: unknown, t: TFunction<'cron'>): string {
-  // Handle Gateway CronSchedule object format
   if (schedule && typeof schedule === 'object') {
-    const s = schedule as { kind?: string; expr?: string; tz?: string; everyMs?: number; at?: string };
-    if (s.kind === 'cron' && typeof s.expr === 'string') {
-      return parseCronExpr(s.expr, t);
+    const value = schedule as { kind?: string; expr?: string; everyMs?: number; at?: string };
+
+    if (value.kind === 'cron' && typeof value.expr === 'string') {
+      return parseCronExpr(value.expr, t);
     }
-    if (s.kind === 'every' && typeof s.everyMs === 'number') {
-      const ms = s.everyMs;
-      if (ms < 60_000) return t('schedule.everySeconds', { count: Math.round(ms / 1000) });
-      if (ms < 3_600_000) return t('schedule.everyMinutes', { count: Math.round(ms / 60_000) });
-      if (ms < 86_400_000) return t('schedule.everyHours', { count: Math.round(ms / 3_600_000) });
-      return t('schedule.everyDays', { count: Math.round(ms / 86_400_000) });
+
+    if (value.kind === 'every' && typeof value.everyMs === 'number') {
+      if (value.everyMs < 60_000) return t('schedule.everySeconds', { count: Math.round(value.everyMs / 1000) });
+      if (value.everyMs < 3_600_000) return t('schedule.everyMinutes', { count: Math.round(value.everyMs / 60_000) });
+      if (value.everyMs < 86_400_000) return t('schedule.everyHours', { count: Math.round(value.everyMs / 3_600_000) });
+      return t('schedule.everyDays', { count: Math.round(value.everyMs / 86_400_000) });
     }
-    if (s.kind === 'at' && typeof s.at === 'string') {
+
+    if (value.kind === 'at' && typeof value.at === 'string') {
       try {
-        return t('schedule.onceAt', { time: new Date(s.at).toLocaleString() });
+        return t('schedule.onceAt', { time: new Date(value.at).toLocaleString() });
       } catch {
-        return t('schedule.onceAt', { time: s.at });
+        return t('schedule.onceAt', { time: value.at });
       }
     }
+
     return String(schedule);
   }
 
-  // Handle plain cron string
   if (typeof schedule === 'string') {
     return parseCronExpr(schedule, t);
   }
@@ -87,9 +83,8 @@ function parseCronSchedule(schedule: unknown, t: TFunction<'cron'>): string {
   return String(schedule ?? t('schedule.unknown'));
 }
 
-// Parse a plain cron expression string to human-readable text
 function parseCronExpr(cron: string, t: TFunction<'cron'>): string {
-  const preset = schedulePresets.find((p) => p.value === cron);
+  const preset = schedulePresets.find((item) => item.value === cron);
   if (preset) return t(`presets.${preset.key}` as const);
 
   const parts = cron.split(' ');
@@ -171,7 +166,6 @@ function estimateNextRun(scheduleExpr: string): string | null {
   return null;
 }
 
-// Create/Edit Task Dialog
 interface TaskDialogProps {
   job?: CronJob;
   onClose: () => void;
@@ -185,14 +179,15 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
 
   const [name, setName] = useState(job?.name || '');
   const [message, setMessage] = useState(job?.message || '');
-  // Extract cron expression string from CronSchedule object or use as-is if string
   const initialSchedule = (() => {
-    const s = job?.schedule;
-    if (!s) return '0 9 * * *';
-    if (typeof s === 'string') return s;
-    if (typeof s === 'object' && 'expr' in s && typeof (s as { expr: string }).expr === 'string') {
-      return (s as { expr: string }).expr;
+    const schedule = job?.schedule;
+
+    if (!schedule) return '0 9 * * *';
+    if (typeof schedule === 'string') return schedule;
+    if (typeof schedule === 'object' && 'expr' in schedule && typeof schedule.expr === 'string') {
+      return schedule.expr;
     }
+
     return '0 9 * * *';
   })();
   const [schedule, setSchedule] = useState(initialSchedule);
@@ -206,6 +201,7 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
       toast.error(t('toast.nameRequired'));
       return;
     }
+
     if (!message.trim()) {
       toast.error(t('toast.messageRequired'));
       return;
@@ -218,6 +214,7 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
     }
 
     setSaving(true);
+
     try {
       await onSave({
         name: name.trim(),
@@ -225,10 +222,11 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
         schedule: finalSchedule,
         enabled,
       });
+
       onClose();
       toast.success(job ? t('toast.updated') : t('toast.created'));
-    } catch (err) {
-      toast.error(String(err));
+    } catch (error) {
+      toast.error(String(error));
     } finally {
       setSaving(false);
     }
@@ -236,43 +234,47 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
 
   return (
     <div className={styles.dialogOverlay} onClick={onClose}>
-      <Card className={styles.dialogCard} onClick={(e) => e.stopPropagation()}>
+      <Card className={styles.dialogCard} onClick={(event) => event.stopPropagation()}>
         <CardHeader className={styles.dialogHeader}>
-          <div>
+          <div className={styles.dialogTitleBlock}>
+            <div className={styles.dialogEyebrow}>{t('title')}</div>
             <CardTitle className={styles.dialogTitle}>{job ? t('dialog.editTitle') : t('dialog.createTitle')}</CardTitle>
             <CardDescription className={styles.dialogDesc}>{t('dialog.description')}</CardDescription>
           </div>
-          <Button type="text" onClick={onClose} className={styles.dialogCloseBtn} style={{ padding: 0, width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Button
+            type="text"
+            onClick={onClose}
+            className={styles.dialogCloseBtn}
+            style={{ padding: 0, width: 36, height: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+          >
             <X style={{ width: 16, height: 16 }} />
           </Button>
         </CardHeader>
+
         <CardContent className={styles.dialogBody}>
-          {/* Name */}
           <div className={styles.dialogField}>
             <Label htmlFor="name" className={styles.dialogLabel}>{t('dialog.taskName')}</Label>
             <Input
               id="name"
               placeholder={t('dialog.taskNamePlaceholder')}
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(event) => setName(event.target.value)}
               className={styles.dialogInput}
             />
           </div>
 
-          {/* Message */}
           <div className={styles.dialogField}>
             <Label htmlFor="message" className={styles.dialogLabel}>{t('dialog.message')}</Label>
             <Textarea
               id="message"
               placeholder={t('dialog.messagePlaceholder')}
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              rows={3}
+              onChange={(event) => setMessage(event.target.value)}
+              rows={4}
               className={styles.dialogTextarea}
             />
           </div>
 
-          {/* Schedule */}
           <div className={styles.dialogField}>
             <Label className={styles.dialogLabel}>{t('dialog.schedule')}</Label>
             {!useCustom ? (
@@ -284,11 +286,11 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
                     size="small"
                     onClick={() => setSchedule(preset.value)}
                     className={cx(
-                      styles.presetBtnBase,
-                      schedule === preset.value ? styles.presetBtnActive : styles.presetBtnInactive
+                      styles.presetBtn,
+                      schedule === preset.value ? styles.presetBtnActive : styles.presetBtnInactive,
                     )}
                   >
-                    <Timer style={{ width: 16, height: 16, marginRight: 8, opacity: 0.7 }} />
+                    <Timer style={{ width: 15, height: 15, marginRight: 8 }} />
                     {t(`presets.${preset.key}` as const)}
                   </Button>
                 ))}
@@ -297,10 +299,11 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
               <Input
                 placeholder={t('dialog.cronPlaceholder')}
                 value={customSchedule}
-                onChange={(e) => setCustomSchedule(e.target.value)}
+                onChange={(event) => setCustomSchedule(event.target.value)}
                 className={styles.dialogInput}
               />
             )}
+
             <div className={styles.scheduleFooter}>
               <p className={styles.schedulePreview}>
                 {schedulePreview ? `${t('card.next')}: ${schedulePreview}` : t('dialog.cronPlaceholder')}
@@ -316,7 +319,6 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
             </div>
           </div>
 
-          {/* Enabled */}
           <div className={styles.enableRow}>
             <div>
               <Label className={styles.enableLabel}>{t('dialog.enableImmediately')}</Label>
@@ -325,7 +327,6 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
             <Switch checked={enabled} onChange={setEnabled} />
           </div>
 
-          {/* Actions */}
           <div className={styles.dialogFooter}>
             <Button onClick={onClose} className={styles.dialogCancelBtn}>
               {t('common:actions.cancel', 'Cancel')}
@@ -350,7 +351,6 @@ function TaskDialog({ job, onClose, onSave }: TaskDialogProps) {
   );
 }
 
-// Job Card Component
 interface CronJobCardProps {
   job: CronJob;
   onToggle: (enabled: boolean) => void;
@@ -364,9 +364,13 @@ function CronJobCard({ job, onToggle, onEdit, onDelete, onTrigger }: CronJobCard
   const { styles, cx } = useCronStyles();
   const [triggering, setTriggering] = useState(false);
 
-  const handleTrigger = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const hasFailure = !!job.lastRun && !job.lastRun.success;
+  const statusLabel = hasFailure ? t('stats.failed') : job.enabled ? t('stats.active') : t('stats.paused');
+
+  const handleTrigger = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
     setTriggering(true);
+
     try {
       await onTrigger();
       toast.success(t('toast.triggered'));
@@ -378,100 +382,99 @@ function CronJobCard({ job, onToggle, onEdit, onDelete, onTrigger }: CronJobCard
     }
   };
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDelete = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
     onDelete();
   };
 
   return (
-    <div
-      className={cx(styles.jobCard, 'job-card')}
+    <Card
+      className={cx(
+        styles.jobCard,
+        hasFailure && styles.jobCardFailed,
+        !job.enabled && styles.jobCardPaused,
+      )}
       onClick={onEdit}
     >
-      <div className={styles.jobCardTop}>
-        <div className={styles.jobCardLeft}>
-          <div className={styles.jobCardIconCircle}>
-            <Clock style={{ width: 20, height: 20, color: job.enabled ? 'inherit' : 'var(--ant-color-text-secondary)' }} />
-          </div>
-          <div className={styles.jobCardNameCol}>
-            <div className={styles.jobCardNameRow}>
-              <h3 className={styles.jobCardName}>{job.name}</h3>
-              <div
-                className={cx(
-                  styles.jobCardStatusDot,
-                  job.enabled ? styles.jobCardStatusDotActive : styles.jobCardStatusDotPaused
-                )}
-                title={job.enabled ? t('stats.active') : t('stats.paused')}
-              />
+      <div className={styles.jobCardShell}>
+        <div className={styles.jobCardHeader}>
+          <div className={styles.jobCardIdentity}>
+            <div
+              className={cx(
+                styles.jobCardIcon,
+                hasFailure ? styles.jobCardIconFailed : job.enabled ? styles.jobCardIconActive : styles.jobCardIconPaused,
+              )}
+            >
+              <Clock style={{ width: 18, height: 18 }} />
             </div>
-            <p className={styles.jobCardScheduleRow}>
-              <Timer style={{ width: 14, height: 14 }} />
-              {parseCronSchedule(job.schedule, t)}
-            </p>
+
+            <div className={styles.jobCardTitleBlock}>
+              <div className={styles.jobCardNameRow}>
+                <h3 className={styles.jobCardName}>{job.name}</h3>
+                <span
+                  className={cx(
+                    styles.jobCardStatus,
+                    hasFailure ? styles.jobCardStatusFailed : job.enabled ? styles.jobCardStatusActive : styles.jobCardStatusPaused,
+                  )}
+                >
+                  {statusLabel}
+                </span>
+              </div>
+
+              <p className={styles.jobCardSchedule}>
+                <Timer style={{ width: 14, height: 14 }} />
+                {parseCronSchedule(job.schedule, t)}
+              </p>
+            </div>
+          </div>
+
+          <div className={styles.jobCardSwitchWrap} onClick={(event) => event.stopPropagation()}>
+            <Switch checked={job.enabled} onChange={onToggle} />
           </div>
         </div>
 
-        <div className={styles.jobCardRight} onClick={e => e.stopPropagation()}>
-          <Switch
-            checked={job.enabled}
-            onChange={onToggle}
-          />
-        </div>
-      </div>
-
-      <div className={styles.jobCardBody}>
-        <div className={styles.jobCardMessageRow}>
-          <MessageSquare style={{ width: 14, height: 14, marginTop: 2, color: 'var(--ant-color-text-secondary)', flexShrink: 0 }} />
+        <div className={styles.jobCardMessageBlock}>
+          <MessageSquare style={{ width: 15, height: 15, marginTop: 2, flexShrink: 0 }} />
           <p className={styles.jobCardMessage}>{job.message}</p>
         </div>
 
-        {/* Metadata */}
-        <div className={styles.jobCardMeta}>
+        <div className={styles.jobMetaRow}>
           {job.target && (
-            <span className={styles.jobCardMetaItem}>
+            <span className={styles.jobMetaPill}>
               {CHANNEL_ICONS[job.target.channelType as ChannelType]}
               {job.target.channelName}
             </span>
           )}
 
           {job.lastRun && (
-            <span className={styles.jobCardMetaItem}>
+            <span className={styles.jobMetaPill}>
               <History style={{ width: 14, height: 14 }} />
               {t('card.last')}: {formatRelativeTime(job.lastRun.time)}
-              {job.lastRun.success ? (
-                <CheckCircle2 style={{ width: 14, height: 14, color: '#22c55e' }} />
-              ) : (
-                <XCircle style={{ width: 14, height: 14, color: '#ef4444' }} />
-              )}
             </span>
           )}
 
           {job.nextRun && job.enabled && (
-            <span className={styles.jobCardMetaItem}>
+            <span className={styles.jobMetaPill}>
               <Calendar style={{ width: 14, height: 14 }} />
               {t('card.next')}: {new Date(job.nextRun).toLocaleString()}
             </span>
           )}
         </div>
 
-        {/* Last Run Error */}
         {job.lastRun && !job.lastRun.success && job.lastRun.error && (
-          <div className={styles.jobCardErrorBox}>
+          <div className={styles.jobErrorBox}>
             <AlertCircle style={{ width: 16, height: 16, marginTop: 2, flexShrink: 0 }} />
-            <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-              {job.lastRun.error}
-            </span>
+            <span className={styles.jobErrorText}>{job.lastRun.error}</span>
           </div>
         )}
 
-        {/* Actions */}
-        <div className={styles.jobCardActions}>
+        <div className={styles.jobActionRow}>
           <Button
-            type="text"
+            type="default"
             size="small"
             onClick={handleTrigger}
             disabled={triggering}
-            className={styles.jobCardTriggerBtn}
+            className={styles.jobRunButton}
           >
             {triggering ? (
               <Loader2 style={{ width: 14, height: 14, marginRight: 6 }} className="animate-spin" />
@@ -480,24 +483,25 @@ function CronJobCard({ job, onToggle, onEdit, onDelete, onTrigger }: CronJobCard
             )}
             {t('card.runNow')}
           </Button>
+
           <Button
             type="text"
             size="small"
             onClick={handleDelete}
-            className={styles.jobCardDeleteBtn}
+            className={styles.jobDeleteButton}
           >
             <Trash2 style={{ width: 14, height: 14, marginRight: 6 }} />
             {t('common:actions.delete', 'Delete')}
           </Button>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
 export function Cron() {
   const { t } = useTranslation('cron');
-  const { styles } = useCronStyles();
+  const { styles, cx } = useCronStyles();
   const { jobs, loading, error, fetchJobs, createJob, updateJob, toggleJob, deleteJob, triggerJob } = useCronStore();
   const gatewayStatus = useGatewayStore((state) => state.status);
   const [showDialog, setShowDialog] = useState(false);
@@ -506,26 +510,49 @@ export function Cron() {
 
   const isGatewayRunning = gatewayStatus.state === 'running';
 
-  // Fetch jobs on mount
   useEffect(() => {
     if (isGatewayRunning) {
       fetchJobs();
     }
   }, [fetchJobs, isGatewayRunning]);
 
-  // Statistics
   const safeJobs = Array.isArray(jobs) ? jobs : [];
-  const activeJobs = safeJobs.filter((j) => j.enabled);
-  const pausedJobs = safeJobs.filter((j) => !j.enabled);
-  const failedJobs = safeJobs.filter((j) => j.lastRun && !j.lastRun.success);
+  const activeJobs = safeJobs.filter((job) => job.enabled);
+  const pausedJobs = safeJobs.filter((job) => !job.enabled);
+  const failedJobs = safeJobs.filter((job) => job.lastRun && !job.lastRun.success);
+  const nextUpcomingJob = [...activeJobs]
+    .filter((job) => !!job.nextRun)
+    .sort((a, b) => new Date(a.nextRun!).getTime() - new Date(b.nextRun!).getTime())[0];
+  const latestRunJob = [...safeJobs]
+    .filter((job) => !!job.lastRun)
+    .sort((a, b) => new Date(b.lastRun!.time).getTime() - new Date(a.lastRun!.time).getTime())[0];
+  const sortedJobs = [...safeJobs].sort((left, right) => {
+    const leftFailure = left.lastRun && !left.lastRun.success ? 1 : 0;
+    const rightFailure = right.lastRun && !right.lastRun.success ? 1 : 0;
+
+    if (leftFailure !== rightFailure) return rightFailure - leftFailure;
+    if (left.enabled !== right.enabled) return Number(right.enabled) - Number(left.enabled);
+
+    const leftNext = left.nextRun ? new Date(left.nextRun).getTime() : Number.MAX_SAFE_INTEGER;
+    const rightNext = right.nextRun ? new Date(right.nextRun).getTime() : Number.MAX_SAFE_INTEGER;
+
+    return leftNext - rightNext;
+  });
+
+  const heroStatusLabel = !isGatewayRunning
+    ? t('hero.statusOffline')
+    : failedJobs.length > 0
+      ? t('hero.statusIssue')
+      : t('hero.statusReady');
 
   const handleSave = useCallback(async (input: CronJobCreateInput) => {
     if (editingJob) {
       await updateJob(editingJob.id, input);
-    } else {
-      await createJob(input);
+      return;
     }
-  }, [editingJob, createJob, updateJob]);
+
+    await createJob(input);
+  }, [createJob, editingJob, updateJob]);
 
   const handleToggle = useCallback(async (id: string, enabled: boolean) => {
     try {
@@ -534,7 +561,7 @@ export function Cron() {
     } catch {
       toast.error(t('toast.failedUpdate'));
     }
-  }, [toggleJob, t]);
+  }, [t, toggleJob]);
 
   if (loading) {
     return (
@@ -547,23 +574,174 @@ export function Cron() {
   return (
     <div className={styles.pageRoot}>
       <div className={styles.pageInner}>
-        {/* Header */}
-        <div className={styles.header}>
-          <div>
-            <h1 className={styles.headerTitle} style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
-              {t('title')}
-            </h1>
-            <p className={styles.headerSubtitle}>{t('subtitle')}</p>
+        <Card className={styles.heroCard}>
+          <div className={styles.heroGrid}>
+            <div className={styles.heroContent}>
+              <div className={styles.heroCopyBlock}>
+                <div className={styles.heroEyebrowRow}>
+                  <span className={styles.heroEyebrow}>{t('hero.eyebrow')}</span>
+                  <span
+                    className={cx(
+                      styles.heroStatusBadge,
+                      !isGatewayRunning
+                        ? styles.heroStatusOffline
+                        : failedJobs.length > 0
+                          ? styles.heroStatusIssue
+                          : styles.heroStatusReady,
+                    )}
+                  >
+                    {!isGatewayRunning ? (
+                      <AlertCircle style={{ width: 14, height: 14 }} />
+                    ) : failedJobs.length > 0 ? (
+                      <XCircle style={{ width: 14, height: 14 }} />
+                    ) : (
+                      <CheckCircle2 style={{ width: 14, height: 14 }} />
+                    )}
+                    {heroStatusLabel}
+                  </span>
+                </div>
+
+                <div className={styles.heroHeadingBlock}>
+                  <h1 className={styles.heroTitle}>{t('title')}</h1>
+                  <p className={styles.heroSubtitle}>{t('subtitle')}</p>
+                </div>
+
+                <div className={styles.heroActionRow}>
+                  <Button
+                    onClick={fetchJobs}
+                    disabled={!isGatewayRunning}
+                    className={styles.secondaryActionButton}
+                  >
+                    <RefreshCw style={{ width: 14, height: 14, marginRight: 8 }} />
+                    {t('refresh')}
+                  </Button>
+
+                  <Button
+                    type="primary"
+                    onClick={() => {
+                      setEditingJob(undefined);
+                      setShowDialog(true);
+                    }}
+                    disabled={!isGatewayRunning}
+                    className={styles.primaryActionButton}
+                  >
+                    <Plus style={{ width: 14, height: 14, marginRight: 8 }} />
+                    {t('newTask')}
+                  </Button>
+                </div>
+              </div>
+
+              <div className={styles.statsGrid}>
+                <div className={styles.statCard}>
+                  <div className={cx(styles.statIconWrap, styles.statIconPrimary)}>
+                    <Clock style={{ width: 18, height: 18 }} />
+                  </div>
+                  <div className={styles.statContent}>
+                    <div className={styles.statValue}>{safeJobs.length}</div>
+                    <div className={styles.statLabel}>{t('stats.total')}</div>
+                  </div>
+                </div>
+
+                <div className={styles.statCard}>
+                  <div className={cx(styles.statIconWrap, styles.statIconSuccess)}>
+                    <Play style={{ width: 18, height: 18 }} />
+                  </div>
+                  <div className={styles.statContent}>
+                    <div className={styles.statValue}>{activeJobs.length}</div>
+                    <div className={styles.statLabel}>{t('stats.active')}</div>
+                  </div>
+                </div>
+
+                <div className={styles.statCard}>
+                  <div className={cx(styles.statIconWrap, styles.statIconWarning)}>
+                    <Pause style={{ width: 18, height: 18 }} />
+                  </div>
+                  <div className={styles.statContent}>
+                    <div className={styles.statValue}>{pausedJobs.length}</div>
+                    <div className={styles.statLabel}>{t('stats.paused')}</div>
+                  </div>
+                </div>
+
+                <div className={styles.statCard}>
+                  <div className={cx(styles.statIconWrap, styles.statIconDanger)}>
+                    <XCircle style={{ width: 18, height: 18 }} />
+                  </div>
+                  <div className={styles.statContent}>
+                    <div className={styles.statValue}>{failedJobs.length}</div>
+                    <div className={styles.statLabel}>{t('stats.failed')}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.heroAside}>
+              <div className={styles.spotlightCard}>
+                <div className={styles.spotlightLabel}>{t('card.next')}</div>
+                {nextUpcomingJob ? (
+                  <>
+                    <div className={styles.spotlightTitle}>{nextUpcomingJob.name}</div>
+                    <div className={styles.spotlightValue}>{new Date(nextUpcomingJob.nextRun!).toLocaleString()}</div>
+                    <div className={styles.spotlightMeta}>{parseCronSchedule(nextUpcomingJob.schedule, t)}</div>
+                  </>
+                ) : (
+                  <div className={styles.spotlightEmpty}>{t('hero.spotlightNextEmpty')}</div>
+                )}
+              </div>
+
+              <div className={styles.spotlightCard}>
+                <div className={styles.spotlightLabel}>{t('card.last')}</div>
+                {latestRunJob?.lastRun ? (
+                  <>
+                    <div className={styles.spotlightRow}>
+                      <div
+                        className={cx(
+                          styles.spotlightStateDot,
+                          latestRunJob.lastRun.success ? styles.spotlightStateSuccess : styles.spotlightStateError,
+                        )}
+                      />
+                      <div className={styles.spotlightTitle}>{latestRunJob.name}</div>
+                    </div>
+                    <div className={styles.spotlightValue}>{formatRelativeTime(latestRunJob.lastRun.time)}</div>
+                    <div className={styles.spotlightMeta}>
+                      {latestRunJob.lastRun.success ? t('hero.statusReady') : latestRunJob.lastRun.error || t('stats.failed')}
+                    </div>
+                  </>
+                ) : (
+                  <div className={styles.spotlightEmpty}>{t('hero.spotlightLastEmpty')}</div>
+                )}
+              </div>
+            </div>
           </div>
-          <div className={styles.headerActions}>
-            <Button
-              onClick={fetchJobs}
-              disabled={!isGatewayRunning}
-              className={styles.headerRefreshBtn}
-            >
-              <RefreshCw style={{ width: 14, height: 14, marginRight: 8 }} />
-              {t('refresh')}
-            </Button>
+        </Card>
+
+        {!isGatewayRunning && (
+          <div className={cx(styles.noticeCard, styles.noticeWarning)}>
+            <AlertCircle className={styles.noticeIcon} />
+            <span className={styles.noticeText}>{t('gatewayWarning')}</span>
+          </div>
+        )}
+
+        {error && (
+          <div className={cx(styles.noticeCard, styles.noticeError)}>
+            <AlertCircle className={styles.noticeIcon} />
+            <span className={styles.noticeText}>{error}</span>
+          </div>
+        )}
+
+        <div className={styles.sectionHeader}>
+          <div>
+            <h2 className={styles.sectionTitle}>{t('title')}</h2>
+            <p className={styles.sectionDesc}>{t('hero.collectionHint')}</p>
+          </div>
+        </div>
+
+        {sortedJobs.length === 0 ? (
+          <Card className={styles.emptyStateCard}>
+            <div className={styles.emptyIconWrap}>
+              <Clock style={{ width: 28, height: 28 }} />
+            </div>
+            <h3 className={styles.emptyTitle}>{t('empty.title')}</h3>
+            <p className={styles.emptyDesc}>{t('empty.description')}</p>
             <Button
               type="primary"
               onClick={() => {
@@ -571,124 +749,31 @@ export function Cron() {
                 setShowDialog(true);
               }}
               disabled={!isGatewayRunning}
-              className={styles.headerNewTaskBtn}
+              className={styles.emptyCreateBtn}
             >
-              <Plus style={{ width: 14, height: 14, marginRight: 8 }} />
-              {t('newTask')}
+              <Plus style={{ width: 16, height: 16, marginRight: 8 }} />
+              {t('empty.create')}
             </Button>
-          </div>
-        </div>
-
-        {/* Content Area */}
-        <div className={styles.contentArea}>
-          {/* Gateway Warning */}
-          {!isGatewayRunning && (
-            <div className={styles.gatewayWarning}>
-              <AlertCircle className={styles.gatewayWarningIcon} />
-              <span className={styles.gatewayWarningText}>{t('gatewayWarning')}</span>
-            </div>
-          )}
-
-          {/* Error Display */}
-          {error && (
-            <div className={styles.errorBanner}>
-              <AlertCircle style={{ width: 20, height: 20 }} />
-              <span className={styles.errorText}>{error}</span>
-            </div>
-          )}
-
-          {/* Statistics */}
-          <div className={styles.statsGrid}>
-            <div className={styles.statCard}>
-              <div className={styles.statIconRow}>
-                <div className={styles.statIconCircle} style={{ background: 'rgba(var(--ant-color-primary-rgb, 22,119,255), 0.1)' }}>
-                  <Clock style={{ width: 20, height: 20, color: 'var(--ant-color-primary)' }} />
-                </div>
-              </div>
-              <div className={styles.statBottom}>
-                <p className={styles.statValue}>{safeJobs.length}</p>
-                <p className={styles.statLabel}>{t('stats.total')}</p>
-              </div>
-            </div>
-
-            <div className={styles.statCard}>
-              <div className={styles.statIconRow}>
-                <div className={styles.statIconCircle} style={{ background: 'rgba(34,197,94,0.1)' }}>
-                  <Play style={{ width: 20, height: 20, color: '#16a34a', marginLeft: 2 }} />
-                </div>
-              </div>
-              <div className={styles.statBottom}>
-                <p className={styles.statValue}>{activeJobs.length}</p>
-                <p className={styles.statLabel}>{t('stats.active')}</p>
-              </div>
-            </div>
-
-            <div className={styles.statCard}>
-              <div className={styles.statIconRow}>
-                <div className={styles.statIconCircle} style={{ background: 'rgba(234,179,8,0.1)' }}>
-                  <Pause style={{ width: 20, height: 20, color: '#ca8a04' }} />
-                </div>
-              </div>
-              <div className={styles.statBottom}>
-                <p className={styles.statValue}>{pausedJobs.length}</p>
-                <p className={styles.statLabel}>{t('stats.paused')}</p>
-              </div>
-            </div>
-
-            <div className={styles.statCard}>
-              <div className={styles.statIconRow}>
-                <div className={styles.statIconCircle} style={{ background: 'rgba(255,77,79,0.1)' }}>
-                  <XCircle style={{ width: 20, height: 20, color: 'var(--ant-color-error)' }} />
-                </div>
-              </div>
-              <div className={styles.statBottom}>
-                <p className={styles.statValue}>{failedJobs.length}</p>
-                <p className={styles.statLabel}>{t('stats.failed')}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Jobs List */}
-          {safeJobs.length === 0 ? (
-            <div className={styles.emptyState}>
-              <Clock className={styles.emptyIcon} style={{ width: 40, height: 40 }} />
-              <h3 className={styles.emptyTitle}>{t('empty.title')}</h3>
-              <p className={styles.emptyDesc}>{t('empty.description')}</p>
-              <Button
-                type="primary"
-                onClick={() => {
-                  setEditingJob(undefined);
+          </Card>
+        ) : (
+          <div className={styles.jobGrid}>
+            {sortedJobs.map((job) => (
+              <CronJobCard
+                key={job.id}
+                job={job}
+                onToggle={(enabled) => handleToggle(job.id, enabled)}
+                onEdit={() => {
+                  setEditingJob(job);
                   setShowDialog(true);
                 }}
-                disabled={!isGatewayRunning}
-                className={styles.emptyCreateBtn}
-              >
-                <Plus style={{ width: 16, height: 16, marginRight: 8 }} />
-                {t('empty.create')}
-              </Button>
-            </div>
-          ) : (
-            <div className={styles.jobGrid}>
-              {safeJobs.map((job) => (
-                <CronJobCard
-                  key={job.id}
-                  job={job}
-                  onToggle={(enabled) => handleToggle(job.id, enabled)}
-                  onEdit={() => {
-                    setEditingJob(job);
-                    setShowDialog(true);
-                  }}
-                  onDelete={() => setJobToDelete({ id: job.id })}
-                  onTrigger={() => triggerJob(job.id)}
-                />
-              ))}
-            </div>
-          )}
-
-        </div>
+                onDelete={() => setJobToDelete({ id: job.id })}
+                onTrigger={() => triggerJob(job.id)}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Create/Edit Dialog */}
       {showDialog && (
         <TaskDialog
           job={editingJob}
@@ -708,10 +793,15 @@ export function Cron() {
         cancelLabel={t('common:actions.cancel', 'Cancel')}
         variant="destructive"
         onConfirm={async () => {
-          if (jobToDelete) {
+          if (!jobToDelete) return;
+
+          try {
             await deleteJob(jobToDelete.id);
-            setJobToDelete(null);
             toast.success(t('toast.deleted'));
+          } catch {
+            toast.error(t('toast.failedDelete'));
+          } finally {
+            setJobToDelete(null);
           }
         }}
         onCancel={() => setJobToDelete(null)}

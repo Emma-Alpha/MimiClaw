@@ -42,6 +42,15 @@
         "enableImmediatelyDesc": "Start running this task after creation",
         "saveChanges": "Save Changes"
     },
+    "hero": {
+        "eyebrow": "Automation Center",
+        "statusReady": "Gateway ready",
+        "statusIssue": "Needs attention",
+        "statusOffline": "Gateway offline",
+        "spotlightNextEmpty": "Enable a task to reveal the next planned execution.",
+        "spotlightLastEmpty": "Run a task once to populate recent execution history.",
+        "collectionHint": "Click a card to edit details, trigger instantly, or pause the schedule."
+    },
     "presets": {
         "everyMinute": "Every minute",
         "every5Min": "Every 5 minutes",

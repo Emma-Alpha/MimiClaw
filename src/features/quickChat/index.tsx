@@ -1603,6 +1603,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 			</div>
 				{embeddedCodeAssistant && draftTarget === "code" && showThreadTerminal ? (
 					<ThreadTerminalPanel
+						key={codeWorkspaceRoot || "thread-terminal"}
 						branchLabel={embeddedBranchLabel}
 						workspaceRoot={codeWorkspaceRoot}
 						onClose={() => {

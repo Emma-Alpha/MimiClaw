@@ -168,6 +168,7 @@ const electronAPI = {
         'openclaw:getCliCommand',
         'code-agent:respond-permission',
         'code-agent:respond-elicitation',
+        'thread-terminal:list-shells',
         'thread-terminal:start',
         'thread-terminal:input',
         'thread-terminal:resize',

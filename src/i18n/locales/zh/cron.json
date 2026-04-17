@@ -42,6 +42,15 @@
         "enableImmediatelyDesc": "创建后立即开始运行此任务",
         "saveChanges": "保存更改"
     },
+    "hero": {
+        "eyebrow": "自动化控制台",
+        "statusReady": "网关已就绪",
+        "statusIssue": "需要关注",
+        "statusOffline": "网关离线",
+        "spotlightNextEmpty": "启用任务后，这里会显示下一次计划执行时间。",
+        "spotlightLastEmpty": "先运行一次任务，这里会展示最近一次执行状态。",
+        "collectionHint": "点击卡片可编辑详情、立即触发，或暂停当前调度。"
+    },
     "presets": {
         "everyMinute": "每分钟",
         "every5Min": "每 5 分钟",

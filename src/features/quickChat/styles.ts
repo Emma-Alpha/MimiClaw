@@ -1152,40 +1152,149 @@ export const useMiniChatStyles = createStyles(
 		flex-shrink: 0;
 		box-sizing: border-box;
 	`,
+	threadTerminalResizeHandle: css`
+		height: 12px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: ns-resize;
+		user-select: none;
+	`,
+	threadTerminalResizeGrip: css`
+		width: 40px;
+		height: 4px;
+		border-radius: 999px;
+		background: ${token.colorBorder};
+		transition: background 0.16s ease;
+	`,
 	threadTerminalCard: css`
 		border-top: 1px solid ${token.colorBorderSecondary};
 		border-bottom: 1px solid ${token.colorBorderSecondary};
 		background: ${token.colorBgContainer};
 		overflow: hidden;
+		display: flex;
+		flex-direction: column;
 		box-shadow:
 			0 -8px 20px rgba(15, 23, 42, 0.04),
 			0 1px 2px rgba(15, 23, 42, 0.06);
 	`,
 	threadTerminalHeader: css`
-		height: 30px;
+		height: 36px;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+		gap: 12px;
 		padding: 0 10px;
 		border-bottom: 1px solid ${token.colorBorderSecondary};
 		background: ${token.colorFillQuaternary};
 	`,
-	threadTerminalHeaderRight: css`
+	threadTerminalTabs: css`
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		overflow-x: auto;
+		padding: 4px 0;
+
+		&::-webkit-scrollbar {
+			height: 0;
+		}
+	`,
+	threadTerminalTab: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		max-width: 180px;
+		padding: 0 6px;
+		height: 26px;
+		border: 1px solid ${token.colorBorderSecondary};
+		border-radius: 9px;
+		background: ${token.colorBgContainer};
+		color: ${token.colorTextSecondary};
+		flex-shrink: 0;
+	`,
+	threadTerminalTabActive: css`
+		border-color: ${token.colorPrimaryBorder};
+		background: ${token.colorBgElevated};
+		color: ${token.colorText};
+		box-shadow: inset 0 0 0 1px ${token.colorPrimaryBorder};
+	`,
+	threadTerminalTabVisible: css`
+		background: ${token.colorBgElevated};
+	`,
+	threadTerminalTabButton: css`
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
+		min-width: 0;
+		flex: 1;
+		height: 100%;
+		border: none;
+		background: transparent;
+		padding: 0;
+		color: inherit;
+		cursor: pointer;
+	`,
+	threadTerminalTabLabel: css`
+		font-size: 11px;
+		font-weight: 500;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	`,
+	threadTerminalTabClose: css`
+		width: 18px;
+		height: 18px;
+		border: none;
+		border-radius: 6px;
+		background: transparent;
+		color: ${token.colorTextTertiary};
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		flex-shrink: 0;
+
+		&:hover {
+			background: ${token.colorFillSecondary};
+			color: ${token.colorText};
+		}
+	`,
+	threadTerminalTabNew: css`
+		width: 26px;
+		height: 26px;
+		border: 1px dashed ${token.colorBorder};
+		border-radius: 9px;
+		background: transparent;
+		color: ${token.colorTextTertiary};
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+		cursor: pointer;
+
+		&:hover {
+			border-color: ${token.colorPrimaryBorder};
+			color: ${token.colorText};
+		}
+	`,
+	threadTerminalHeaderRight: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
 		min-width: 0;
 	`,
 	threadTerminalHeaderClose: css`
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 20px;
-		height: 20px;
+		width: 24px;
+		height: 24px;
 		border: none;
 		background: transparent;
 		color: ${token.colorTextTertiary};
-		border-radius: 5px;
+		border-radius: 6px;
 		cursor: pointer;
 		transition: background 0.16s ease, color 0.16s ease;
 
@@ -1193,6 +1302,63 @@ export const useMiniChatStyles = createStyles(
 			background: ${token.colorFillSecondary};
 			color: ${token.colorText};
 		}
+	`,
+	threadTerminalActionButton: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 26px;
+		height: 26px;
+		border: 1px solid ${token.colorBorderSecondary};
+		border-radius: 9px;
+		background: ${token.colorBgContainer};
+		color: ${token.colorTextTertiary};
+		cursor: pointer;
+		flex-shrink: 0;
+
+		&:hover {
+			color: ${token.colorText};
+			border-color: ${token.colorPrimaryBorder};
+		}
+	`,
+	threadTerminalActionButtonActive: css`
+		color: ${token.colorText};
+		border-color: ${token.colorPrimaryBorder};
+		box-shadow: inset 0 0 0 1px ${token.colorPrimaryBorder};
+	`,
+	threadTerminalShellPicker: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 0 8px;
+		height: 26px;
+		border-radius: 9px;
+		background: ${token.colorBgContainer};
+		border: 1px solid ${token.colorBorderSecondary};
+	`,
+	threadTerminalShellPickerLabel: css`
+		font-size: 10px;
+		font-weight: 600;
+		color: ${token.colorTextTertiary};
+	`,
+	threadTerminalShellSelect: css`
+		border: none;
+		background: transparent;
+		color: ${token.colorTextSecondary};
+		font-size: 11px;
+		font-weight: 500;
+		outline: none;
+		cursor: pointer;
+	`,
+	threadTerminalSubHeader: css`
+		height: 32px;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		padding: 0 10px;
+		border-bottom: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorBgContainer};
 	`,
 	threadTerminalTitle: css`
 		display: inline-flex;
@@ -1203,7 +1369,7 @@ export const useMiniChatStyles = createStyles(
 		letter-spacing: 0.02em;
 		color: ${token.colorTextSecondary};
 	`,
-		threadTerminalShellBadge: css`
+	threadTerminalShellBadge: css`
 		display: inline-flex;
 		align-items: center;
 		height: 18px;
@@ -1242,119 +1408,105 @@ export const useMiniChatStyles = createStyles(
 		letter-spacing: 0;
 	`,
 	threadTerminalBody: css`
-		height: 250px;
 		position: relative;
-		overflow-y: auto;
+		flex: 1;
+		min-height: 0;
+		display: flex;
+		overflow: hidden;
 		padding: 8px 10px 10px;
 		background: linear-gradient(
 			180deg,
 			${token.colorBgContainer} 0%,
 			${token.colorBgElevated} 100%
 		);
+	`,
+	threadTerminalViewportStack: css`
+		position: relative;
+		flex: 1;
+		min-width: 0;
+		min-height: 0;
+	`,
+	threadTerminalView: css`
+		position: absolute;
+		inset: 0;
+		min-width: 0;
+		min-height: 0;
+	`,
+	threadTerminalViewActive: css`
+		opacity: 1;
+		pointer-events: auto;
+		visibility: visible;
+	`,
+	threadTerminalViewHidden: css`
+		opacity: 0;
+		pointer-events: none;
+		visibility: hidden;
+	`,
+	threadTerminalViewFocused: css`
+		outline: 1px solid ${token.colorPrimaryBorder};
+		outline-offset: -1px;
+		border-radius: 10px;
+	`,
+	threadTerminalViewport: css`
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
+		font-family: ${token.fontFamilyCode};
+		font-size: 12px;
+		line-height: 1.4;
 
-		&::-webkit-scrollbar {
+		.xterm {
+			height: 100%;
+		}
+
+		.xterm-screen,
+		.xterm-viewport {
+			width: 100% !important;
+		}
+
+		.xterm-viewport {
+			overflow-y: auto !important;
+			background: transparent !important;
+			scrollbar-width: thin;
+			scrollbar-color: ${token.colorBorder} transparent;
+		}
+
+		.xterm-viewport::-webkit-scrollbar {
 			width: 8px;
 		}
 
-		&::-webkit-scrollbar-thumb {
+		.xterm-viewport::-webkit-scrollbar-thumb {
 			border-radius: 999px;
 			background: ${token.colorBorder};
 		}
 
-		&::-webkit-scrollbar-track {
+		.xterm-viewport::-webkit-scrollbar-track {
 			background: transparent;
 		}
-	`,
-	threadTerminalOutput: css`
-		margin: 0;
-		font-size: 12px;
-		line-height: 1.45;
-		color: ${token.colorText};
-		font-family: ${token.fontFamilyCode};
-		white-space: pre-wrap;
-		word-break: break-word;
-	`,
-	threadTerminalLine: css`
-		font-size: 12px;
-		line-height: 1.45;
-		color: ${token.colorText};
-		font-family: ${token.fontFamilyCode};
-		white-space: pre-wrap;
-		word-break: break-word;
 
-		& + & {
-			margin-top: 4px;
+		.xterm-helper-textarea {
+			opacity: 0;
 		}
 	`,
-		threadTerminalLineMuted: css`
-		color: ${token.colorTextTertiary};
-	`,
-		threadTerminalLineError: css`
-		color: ${token.colorErrorText};
-	`,
-		threadTerminalPromptMeta: css`
-		margin-top: 10px;
-		font-size: 11px;
-		color: ${token.colorTextQuaternary};
-		font-family: ${token.fontFamilyCode};
-		white-space: pre-wrap;
-		word-break: break-word;
-	`,
-		threadTerminalPromptRow: css`
+	threadTerminalSplitHandle: css`
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		width: 12px;
+		margin-left: -6px;
 		display: flex;
 		align-items: center;
-		gap: 8px;
-		min-height: 20px;
-		font-size: 12px;
-		line-height: 1.45;
-		font-family: ${token.fontFamilyCode};
-		color: ${token.colorText};
-		white-space: pre-wrap;
-		word-break: break-word;
-
-		& + & {
-			margin-top: 4px;
-		}
+		justify-content: center;
+		cursor: col-resize;
+		z-index: 2;
 	`,
-		threadTerminalPromptGlyph: css`
-		flex-shrink: 0;
-		color: #22c55e;
-		font-weight: 700;
+	threadTerminalSplitGrip: css`
+		width: 4px;
+		height: 54px;
+		border-radius: 999px;
+		background: ${token.colorBorder};
 	`,
-		threadTerminalPromptCommand: css`
-		flex: 1;
-		min-width: 0;
-	`,
-	threadTerminalCursor: css`
-		display: inline-block;
-		width: 7px;
-		height: 14px;
-		border-radius: 2px;
-		background: ${token.colorText};
-		opacity: 0.72;
-		animation: miniTerminalCursorBlink 1s step-end infinite;
-
-		@keyframes miniTerminalCursorBlink {
-			50% {
-				opacity: 0;
-			}
-		}
-	`,
-	threadTerminalHiddenInput: css`
-		position: absolute;
-		opacity: 0;
-		pointer-events: none;
-		width: 1px;
-		height: 1px;
-		left: 0;
-		top: 0;
-		resize: none;
-		border: 0;
-		padding: 0;
-		background: transparent;
-		color: transparent;
-	`,
-		messageMetaRow: css`
+	messageMetaRow: css`
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;

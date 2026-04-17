@@ -42,6 +42,15 @@
         "enableImmediatelyDesc": "作成後すぐにこのタスクを実行開始",
         "saveChanges": "変更を保存"
     },
+    "hero": {
+        "eyebrow": "オートメーションセンター",
+        "statusReady": "ゲートウェイ準備完了",
+        "statusIssue": "要確認",
+        "statusOffline": "ゲートウェイ停止中",
+        "spotlightNextEmpty": "タスクを有効にすると、次回の実行予定がここに表示されます。",
+        "spotlightLastEmpty": "一度タスクを実行すると、最新の実行履歴がここに表示されます。",
+        "collectionHint": "カードをクリックすると詳細編集、即時実行、スケジュール停止ができます。"
+    },
     "presets": {
         "everyMinute": "毎分",
         "every5Min": "5分ごと",

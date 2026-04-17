@@ -148,6 +148,7 @@ import {
 import {
 	closeThreadTerminal,
 	detachThreadTerminalSubscriber,
+	listAvailableThreadTerminalShells,
 	resizeThreadTerminal,
 	startOrReuseThreadTerminalSession,
 	writeThreadTerminalInput,
@@ -944,6 +945,10 @@ function registerPetHandlers(): void {
 }
 
 function registerThreadTerminalHandlers(): void {
+	ipcMain.handle("thread-terminal:list-shells", () => {
+		return listAvailableThreadTerminalShells();
+	});
+
 	ipcMain.handle("thread-terminal:start", (event, payload?: ThreadTerminalStartPayload) => {
 		const webContentsId = event.sender.id;
 		const started = startOrReuseThreadTerminalSession(webContentsId, payload || {});
