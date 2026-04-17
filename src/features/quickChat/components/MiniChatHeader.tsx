@@ -10,6 +10,7 @@ import {
 	Wrench,
 	Cpu,
 	ShieldAlert,
+	SquareTerminal,
 } from "lucide-react";
 import { useSettingsStore } from "@/stores/settings";
 import type { CodeAgentStatus } from "../../../../shared/code-agent";
@@ -50,6 +51,10 @@ type MiniChatHeaderProps = {
 	onNewConversation: () => void;
 	onSwitchSession: (key: string) => void;
 	showWindowActions?: boolean;
+	showTerminalToggle?: boolean;
+	isTerminalVisible?: boolean;
+	terminalShortcutLabel?: string;
+	onToggleTerminal?: () => void;
 };
 const HEADER_SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
 
@@ -111,6 +116,10 @@ function MiniChatHeaderImpl({
 	onNewConversation,
 	onSwitchSession,
 	showWindowActions = true,
+	showTerminalToggle = false,
+	isTerminalVisible = false,
+	terminalShortcutLabel = "",
+	onToggleTerminal,
 }: MiniChatHeaderProps) {
 	const sidebarCollapsed = useSettingsStore((state) => state.sidebarCollapsed);
 	const { styles, cx } = useMiniChatStyles({ isCollapsed: sidebarCollapsed });
@@ -190,6 +199,9 @@ function MiniChatHeaderImpl({
 	const embeddedHeaderTitle = viewModel.headerTitle || "新线程";
 	const embeddedHeaderTitleDisplay = truncateHeaderText(embeddedHeaderTitle, 20) || "新线程";
 	const embeddedStatusLabel = viewModel.status.label;
+	const terminalToggleTitle = terminalShortcutLabel
+		? `切换终端 ${terminalShortcutLabel}`
+		: "切换终端";
 	const EmbeddedStatusIcon =
 		viewModel.status.kind === "generating"
 			? Clock
@@ -302,35 +314,59 @@ function MiniChatHeaderImpl({
 				<>
 					<div className={styles.embeddedTopLeft}>
 						<div className={styles.embeddedThreadWrap}>
-								<div className={styles.embeddedThreadBtn}>
-										<span className={styles.embeddedThreadIcon}>
-											{isCodeMode ? <ClaudeCode.Color size={12} /> : <OpenClaw.Color size={12} />}
-										</span>
-										<span className={styles.embeddedThreadLabel} title={embeddedHeaderTitle}>
-											{embeddedHeaderTitleDisplay}
-										</span>
-									</div>
+							<div className={styles.embeddedThreadBtn}>
+								<span className={styles.embeddedThreadIcon}>
+									{isCodeMode ? <ClaudeCode.Color size={12} /> : <OpenClaw.Color size={12} />}
+								</span>
+								<span className={styles.embeddedThreadLabel} title={embeddedHeaderTitle}>
+									{embeddedHeaderTitleDisplay}
+								</span>
 							</div>
 						</div>
-					{!isCodeMode ? (
-							<div className={cx("no-drag", styles.embeddedTopRight)}>
-								<Tooltip placement="bottom" title={embeddedStatusLabel}>
-									<span
-										className={cx(
-											styles.embeddedHeaderStatus,
-											viewModel.status.kind === "generating"
-												? styles.embeddedHeaderStatusRunning
-												: viewModel.status.kind === "error"
-													? styles.embeddedHeaderStatusError
-													: styles.embeddedHeaderStatusIdle,
-										)}
-										aria-label={embeddedStatusLabel}
-									>
+					</div>
+					<div className={cx("no-drag", styles.embeddedTopRight)}>
+						{showTerminalToggle ? (
+							<button
+								type="button"
+								className={cx(
+									styles.embeddedToolbarButton,
+									isTerminalVisible && styles.embeddedToolbarButtonActive,
+								)}
+								onClick={(event) => {
+									event.stopPropagation();
+									onToggleTerminal?.();
+								}}
+								title={terminalToggleTitle}
+								aria-label={terminalToggleTitle}
+								aria-pressed={isTerminalVisible}
+							>
+								<SquareTerminal size={12} />
+								<span className={styles.embeddedToolbarButtonLabel}>切换终端</span>
+								{terminalShortcutLabel ? (
+									<span className={styles.embeddedToolbarButtonShortcut}>
+										{terminalShortcutLabel}
+									</span>
+								) : null}
+							</button>
+						) : null}
+						{!isCodeMode ? (
+							<Tooltip placement="bottom" title={embeddedStatusLabel}>
+								<span
+									className={cx(
+										styles.embeddedHeaderStatus,
+										viewModel.status.kind === "generating"
+											? styles.embeddedHeaderStatusRunning
+											: viewModel.status.kind === "error"
+												? styles.embeddedHeaderStatusError
+												: styles.embeddedHeaderStatusIdle,
+									)}
+									aria-label={embeddedStatusLabel}
+								>
 									<EmbeddedStatusIcon size={13} />
 								</span>
 							</Tooltip>
-						</div>
-					) : null}
+						) : null}
+					</div>
 				</>
 			) : (
 				<div className={cx(styles.headerCenter, embedded && styles.headerCenterEmbedded)}>

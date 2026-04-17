@@ -98,6 +98,7 @@ const useStyles = createStyles(({ token, css }) => ({
 		top: 0;
 		left: 0;
 		z-index: 100;
+		pointer-events: none;
 	`,
 	macSidebarToggleArea: css`
 		position: absolute;
@@ -154,12 +155,14 @@ const useStyles = createStyles(({ token, css }) => ({
 		top: 0;
 		left: 0;
 		z-index: 100;
+		pointer-events: none;
 	`,
 	winLeft: css`
 		display: flex;
 		height: 100%;
 		align-items: center;
 		padding-left: 8px;
+		pointer-events: auto;
 	`,
 	winRight: css`
 		display: flex;

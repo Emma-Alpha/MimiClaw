@@ -122,8 +122,44 @@ export const useMiniChatStyles = createStyles(
 		display: flex;
 		align-items: center;
 		justify-content: flex-end;
-		gap: 4px;
+		gap: 8px;
 		min-width: 0;
+	`,
+		embeddedToolbarButton: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		height: 22px;
+		padding: 0 8px;
+		border: 1px solid ${token.colorBorderSecondary};
+		border-radius: 999px;
+		background: ${token.colorBgElevated};
+		color: ${token.colorTextSecondary};
+		cursor: pointer;
+		font-size: 11px;
+		line-height: 1;
+		transition: all 0.18s ease;
+		box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+
+		&:hover {
+			color: ${token.colorText};
+			border-color: ${token.colorBorder};
+			background: ${token.colorBgContainer};
+		}
+	`,
+		embeddedToolbarButtonActive: css`
+		color: ${token.colorPrimary};
+		border-color: ${token.colorPrimaryBorder};
+		background: ${token.colorPrimaryBg};
+	`,
+		embeddedToolbarButtonLabel: css`
+		white-space: nowrap;
+	`,
+		embeddedToolbarButtonShortcut: css`
+		font-family: ${token.fontFamilyCode};
+		font-size: 10px;
+		line-height: 1;
+		color: ${token.colorTextQuaternary};
 	`,
 		embeddedHeaderStatus: css`
 		display: flex;
@@ -1111,6 +1147,80 @@ export const useMiniChatStyles = createStyles(
 		backBottomButton: css`
 			inset-block-end: 24px;
 		`,
+		threadTerminalPanel: css`
+		max-width: calc(var(--mini-chat-content-width) + (var(--mini-chat-side-gap) * 2));
+		margin: 0 auto 8px;
+		width: 100%;
+		padding-inline: var(--mini-chat-side-gap);
+		box-sizing: border-box;
+	`,
+		threadTerminalCard: css`
+		border-radius: 12px;
+		border: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorBgContainer};
+		overflow: hidden;
+		box-shadow:
+			0 10px 24px rgba(15, 23, 42, 0.08),
+			0 1px 3px rgba(15, 23, 42, 0.08);
+	`,
+		threadTerminalHeader: css`
+		height: 30px;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0 10px;
+		border-bottom: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorFillQuaternary};
+	`,
+		threadTerminalTitle: css`
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.02em;
+		color: ${token.colorTextSecondary};
+	`,
+		threadTerminalMeta: css`
+		font-size: 10px;
+		color: ${token.colorTextTertiary};
+		font-family: ${token.fontFamilyCode};
+	`,
+		threadTerminalBody: css`
+		height: 220px;
+		overflow-y: auto;
+		padding: 8px 10px 10px;
+		background: linear-gradient(
+			180deg,
+			${token.colorBgContainer} 0%,
+			${token.colorBgElevated} 100%
+		);
+
+		&::-webkit-scrollbar {
+			width: 8px;
+		}
+
+		&::-webkit-scrollbar-thumb {
+			border-radius: 999px;
+			background: ${token.colorBorder};
+		}
+
+		&::-webkit-scrollbar-track {
+			background: transparent;
+		}
+	`,
+		threadTerminalLine: css`
+		font-size: 12px;
+		line-height: 1.45;
+		color: ${token.colorText};
+		font-family: ${token.fontFamilyCode};
+		white-space: pre-wrap;
+		word-break: break-word;
+
+		& + & {
+			margin-top: 4px;
+		}
+	`,
+		threadTerminalLineMuted: css`
+		color: ${token.colorTextTertiary};
+	`,
 		messageMetaRow: css`
 		display: inline-flex;
 		align-items: center;
