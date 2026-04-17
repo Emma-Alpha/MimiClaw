@@ -173,41 +173,6 @@ export function Setup() {
     setCurrentStep((i) => i + 1);
   };
 
-  const handleApplyFallbackBundle = async () => {
-    const password = fallbackAutoApplyPassword.trim();
-    if (!password) {
-      toast.error('请输入兜底配置包口令');
-      return;
-    }
-
-    setApplyingFallbackBundle(true);
-    try {
-      const result = await autoApplyFallbackConfigBundle(password);
-      if (result.success && result.applied) {
-        toast.success('已从兜底配置包自动预填');
-        window.location.reload();
-        return;
-      }
-
-      if (result.success && result.reason === 'already-configured') {
-        toast.success('检测到已有配置，已跳过兜底导入');
-        setShowFallbackAutoApplyPanel(false);
-        return;
-      }
-
-      if (!result.success && result.error) {
-        toast.error(result.error);
-        return;
-      }
-
-      toast.error('兜底配置包导入失败');
-    } catch (error) {
-      toast.error(String(error));
-    } finally {
-      setApplyingFallbackBundle(false);
-    }
-  };
-
   const handleBack = () => {
     setCurrentStep((i) => Math.max(i - 1, 0));
   };
@@ -270,7 +235,6 @@ export function Setup() {
                     applyingFallbackBundle={applyingFallbackBundle}
                     onFallbackAutoApplyPasswordChange={setFallbackAutoApplyPassword}
                     onToggleFallbackAutoApplyPassword={() => setShowFallbackAutoApplyPassword((value) => !value)}
-                    onApplyFallbackBundle={() => { void handleApplyFallbackBundle(); }}
                     onSkipFallbackAutoApply={() => setShowFallbackAutoApplyPanel(false)}
                   />
                 )}
@@ -334,29 +298,7 @@ export function Setup() {
 
 // ==================== Step Content Components ====================
 
-interface WelcomeContentProps {
-  showFallbackAutoApplyPanel: boolean;
-  fallbackBundleSource: 'local' | 'bundled' | null;
-  fallbackAutoApplyPassword: string;
-  showFallbackAutoApplyPassword: boolean;
-  applyingFallbackBundle: boolean;
-  onFallbackAutoApplyPasswordChange: (value: string) => void;
-  onToggleFallbackAutoApplyPassword: () => void;
-  onApplyFallbackBundle: () => void;
-  onSkipFallbackAutoApply: () => void;
-}
-
-function WelcomeContent({
-  showFallbackAutoApplyPanel,
-  fallbackBundleSource,
-  fallbackAutoApplyPassword,
-  showFallbackAutoApplyPassword,
-  applyingFallbackBundle,
-  onFallbackAutoApplyPasswordChange,
-  onToggleFallbackAutoApplyPassword,
-  onApplyFallbackBundle,
-  onSkipFallbackAutoApply,
-}: WelcomeContentProps) {
+function WelcomeContent() {
   const { t } = useTranslation('setup');
   const { styles } = useSetupStyles();
   const { language, setLanguage } = useSettingsStore();
@@ -390,63 +332,6 @@ function WelcomeContent({
           ))}
         </div>
       </div>
-
-      {showFallbackAutoApplyPanel && (
-        <div
-          style={{
-            marginTop: 20,
-            padding: 16,
-            borderRadius: 16,
-            border: '1px solid rgba(99,102,241,0.22)',
-            background: 'rgba(99,102,241,0.08)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 10,
-          }}
-        >
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
-            检测到{fallbackBundleSource === 'bundled' ? '内置' : '本地'}兜底配置包，输入口令可自动预填初始化配置。
-          </p>
-          <div style={{ position: 'relative' }}>
-            <Input
-              type={showFallbackAutoApplyPassword ? 'text' : 'password'}
-              value={fallbackAutoApplyPassword}
-              onChange={(event) => onFallbackAutoApplyPasswordChange(event.target.value)}
-              placeholder="请输入兜底配置包口令"
-              className={styles.inputXl}
-              style={{ paddingRight: 40 }}
-            />
-            <button
-              type="button"
-              onClick={onToggleFallbackAutoApplyPassword}
-              style={{
-                position: 'absolute',
-                right: 10,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                color: 'var(--color-text-secondary)',
-                padding: 0,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {showFallbackAutoApplyPassword ? <EyeOff style={{ width: 16, height: 16 }} /> : <Eye style={{ width: 16, height: 16 }} />}
-            </button>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <Button type="text" onClick={onSkipFallbackAutoApply} disabled={applyingFallbackBundle}>
-              稍后再说
-            </Button>
-            <Button type="primary" onClick={onApplyFallbackBundle} disabled={applyingFallbackBundle}>
-              {applyingFallbackBundle ? '导入中...' : '自动预填'}
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

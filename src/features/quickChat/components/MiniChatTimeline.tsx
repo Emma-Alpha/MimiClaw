@@ -357,6 +357,8 @@ function MiniChatTimelineImpl({
 		timelineBottomReserve,
 	]);
 
+	console.log("timelineRows", timelineRows);
+
 	return (
 		<div
 			className={cx(

@@ -2,7 +2,7 @@
  * Full-screen update prompt (optional blocking). Driven by useUpdateStore.forcedUpdateModal.
  */
 import { useCallback, useMemo } from "react";
-import { Loader2, ArrowUpCircle, X } from "lucide-react";
+import { Loader2, ArrowUpCircle, X, AlertCircle } from "lucide-react";
 import { createStyles } from "antd-style";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -180,6 +180,22 @@ const useStyles = createStyles(({ css, token }) => ({
     border-radius: 16px;
     font-weight: 500;
   `,
+  errorBox: css`
+    width: 100%;
+    margin-top: 20px;
+    border-radius: 12px;
+    background: ${token.colorErrorBg};
+    border: 1px solid ${token.colorErrorBorder};
+    color: ${token.colorErrorText};
+    padding: 12px 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: left;
+    word-break: break-word;
+  `,
 }));
 
 export function ForceUpdateModal() {
@@ -189,14 +205,17 @@ export function ForceUpdateModal() {
   const status = useUpdateStore((s) => s.status);
   const updateInfo = useUpdateStore((s) => s.updateInfo);
   const progress = useUpdateStore((s) => s.progress);
+  const error = useUpdateStore((s) => s.error);
   const dismissForcedUpdateModal = useUpdateStore((s) => s.dismissForcedUpdateModal);
   const checkForUpdates = useUpdateStore((s) => s.checkForUpdates);
   const downloadUpdate = useUpdateStore((s) => s.downloadUpdate);
   const installUpdate = useUpdateStore((s) => s.installUpdate);
 
   const primaryAction = useCallback(() => {
-    if (status === "downloaded") { installUpdate(); return; }
+    if (status === "downloaded") { void installUpdate(); return; }
     if (status === "available") { void downloadUpdate(); return; }
+    // After an error we retry by re-checking, which will re-emit
+    // 'available' and let the user download/install again.
     void checkForUpdates();
   }, [status, checkForUpdates, downloadUpdate, installUpdate]);
 
@@ -206,6 +225,7 @@ export function ForceUpdateModal() {
     if (status === "checking" || status === "downloading") {
       return status === "checking" ? t("updates.action.checking") : t("updates.action.downloading");
     }
+    if (status === "error") return t("updates.forceModal.check");
     return t("updates.forceModal.check");
   }, [status, t]);
 
@@ -276,6 +296,13 @@ export function ForceUpdateModal() {
                   <span className={styles.progressPercent}>{Math.round(progress.percent)}%</span>
                 </div>
                 <Progress value={progress.percent} />
+              </div>
+            )}
+
+            {status === "error" && error && (
+              <div className={styles.errorBox} role="alert">
+                <AlertCircle style={{ width: 16, height: 16, flexShrink: 0, marginTop: 2 }} />
+                <span>{error}</span>
               </div>
             )}
 

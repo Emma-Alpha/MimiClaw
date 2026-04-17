@@ -284,9 +284,9 @@ function MiniChatHeaderImpl({
 			)}
 		>
 			<div className={cx(styles.brand, embedded && styles.brandEmbedded)}>
-				<div className={styles.brandLogo}>
+				{draftTarget !== "code" && <div className={styles.brandLogo}>
 					<OpenClaw.Color size={14} />
-				</div>
+				</div>}
 					{!embedded && draftTarget !== "code" ? (
 						<div className={styles.brandText}>
 							<span className={styles.brandTitle}>极智</span>
@@ -355,17 +355,6 @@ function MiniChatHeaderImpl({
 										isGeneratingNow && styles.dynamicIslandGenerating,
 									)}
 								>
-								{contextIndicator ? (
-									<div className={styles.dynamicIslandContextMeter} aria-hidden="true">
-										<div
-											className={styles.dynamicIslandContextMeterFill}
-											style={{
-												width: `${islandProgressPercent}%`,
-												background: islandProgressTone,
-											}}
-										/>
-									</div>
-									) : null}
 									<div className={styles.islandLead}>
 										<Dropdown
 											trigger={["click"]}
@@ -388,7 +377,7 @@ function MiniChatHeaderImpl({
 											</button>
 											</Dropdown>
 										</div>
-									<div className={styles.islandTextWrapper} style={{ maxWidth: islandTextMaxWidth }}>
+									<div className={styles.islandTextWrapper} >
 										<span
 											className={styles.islandTextLabel}
 											title={isCodeMode && islandModelLabel

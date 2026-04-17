@@ -74,7 +74,7 @@ interface UpdateState {
   dismissForcedUpdateModal: () => void;
   checkForUpdates: () => Promise<void>;
   downloadUpdate: () => Promise<void>;
-  installUpdate: () => void;
+  installUpdate: () => Promise<void>;
   cancelAutoInstall: () => Promise<void>;
   setChannel: (channel: 'stable' | 'beta' | 'dev') => Promise<void>;
   setAutoDownload: (enable: boolean) => Promise<void>;
@@ -381,8 +381,15 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
     }
   },
 
-  installUpdate: () => {
-    void invokeIpc('update:install');
+  installUpdate: async () => {
+    try {
+      const result = await invokeIpc<{ success?: boolean; error?: string }>('update:install');
+      if (result && result.success === false) {
+        set({ status: 'error', error: result.error || 'Failed to install update' });
+      }
+    } catch (error) {
+      set({ status: 'error', error: String(error) });
+    }
   },
 
   cancelAutoInstall: async () => {

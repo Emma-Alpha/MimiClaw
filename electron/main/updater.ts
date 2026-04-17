@@ -331,13 +331,105 @@ export class AppUpdater extends EventEmitter {
   private toUpdateInfo(update: MacAsarUpdate): UpdateInfo {
     return {
       version: update.version,
-      releaseDate: update.releaseDate,
-      releaseNotes: update.releaseNotes,
-    };
+      releaseDate: update.releaseDate ?? '',
+      releaseNotes: update.releaseNotes ?? null,
+    } as UpdateInfo;
   }
 
   private getMacAsarUpdateDir(): string {
     return path.join(app.getPath('userData'), 'updates', 'mac-asar');
+  }
+
+  private getDownloadedMacAsarPath(version: string): string {
+    return path.join(
+      this.getMacAsarUpdateDir(),
+      `${app.getName()}-${version}-${process.arch}.app.asar`,
+    );
+  }
+
+  private async recoverDownloadedMacAsarUpdate(): Promise<MacAsarUpdate | null> {
+    const statusInfo = this.status.info;
+    const hintedVersion =
+      (typeof statusInfo?.version === 'string' && statusInfo.version)
+      || this.pendingMacAsarUpdate?.version
+      || null;
+
+    const candidates = new Set<string>();
+    if (hintedVersion) {
+      candidates.add(this.getDownloadedMacAsarPath(hintedVersion));
+    }
+
+    // Fallback: scan the updates dir so that a packaged build whose main
+    // process restarted (losing `pendingMacAsarUpdate` + status info) can
+    // still resume install instead of throwing "No downloaded macOS update
+    // is ready to install.".
+    try {
+      const dir = this.getMacAsarUpdateDir();
+      const entries = await fs.promises.readdir(dir).catch(() => [] as string[]);
+      const appName = app.getName();
+      const suffix = `-${process.arch}.app.asar`;
+      const prefix = `${appName}-`;
+      const versioned = entries
+        .filter((name) => name.startsWith(prefix) && name.endsWith(suffix))
+        .map((name) => ({
+          version: name.slice(prefix.length, name.length - suffix.length),
+          fullPath: path.join(dir, name),
+        }))
+        .filter((entry) => parseComparableVersion(entry.version) != null)
+        .sort((a, b) => {
+          const av = parseComparableVersion(a.version);
+          const bv = parseComparableVersion(b.version);
+          if (!av || !bv) return 0;
+          return semver.compare(bv, av);
+        });
+      for (const entry of versioned) {
+        candidates.add(entry.fullPath);
+      }
+    } catch (error) {
+      logger.warn('[Updater] Failed to scan staged mac-asar dir:', error);
+    }
+
+    for (const downloadedFilePath of candidates) {
+      try {
+        await fs.promises.access(downloadedFilePath, fs.constants.R_OK);
+      } catch {
+        continue;
+      }
+
+      const fileName = path.basename(downloadedFilePath);
+      const appName = app.getName();
+      const suffix = `-${process.arch}.app.asar`;
+      const prefix = `${appName}-`;
+      let detectedVersion = hintedVersion ?? '';
+      if (!detectedVersion && fileName.startsWith(prefix) && fileName.endsWith(suffix)) {
+        detectedVersion = fileName.slice(prefix.length, fileName.length - suffix.length);
+      }
+      if (!detectedVersion) {
+        continue;
+      }
+
+      const fallback = this.pendingMacAsarUpdate;
+      const statusReleaseNotes =
+        typeof statusInfo?.releaseNotes === 'string' ? statusInfo.releaseNotes : null;
+      const recovered: MacAsarUpdate = {
+        version: detectedVersion,
+        releaseDate: fallback?.releaseDate ?? statusInfo?.releaseDate,
+        releaseNotes: fallback?.releaseNotes ?? statusReleaseNotes,
+        releaseUrl: fallback?.releaseUrl ?? '',
+        assetName: fallback?.assetName ?? fileName,
+        assetUrl: fallback?.assetUrl ?? '',
+        assetSize: fallback?.assetSize ?? 0,
+        sha256AssetName: fallback?.sha256AssetName ?? '',
+        sha256AssetUrl: fallback?.sha256AssetUrl ?? '',
+        downloadedFilePath,
+      };
+
+      this.pendingMacAsarUpdate = recovered;
+      logger.info(`[Updater] Recovered downloaded mac-asar update version=${detectedVersion} path=${downloadedFilePath}`);
+      return recovered;
+    }
+
+    return null;
   }
 
   private async verifyMacAsarChecksum(update: MacAsarUpdate, digest: string): Promise<void> {
@@ -361,10 +453,7 @@ export class AppUpdater extends EventEmitter {
   private async downloadMacAsarUpdateAsset(update: MacAsarUpdate): Promise<string> {
     await fs.promises.mkdir(this.getMacAsarUpdateDir(), { recursive: true });
 
-    const finalPath = path.join(
-      this.getMacAsarUpdateDir(),
-      `${app.getName()}-${update.version}-${process.arch}.app.asar`,
-    );
+    const finalPath = this.getDownloadedMacAsarPath(update.version);
     const tempPath = `${finalPath}.download`;
 
     const response = await fetch(update.assetUrl, { redirect: 'follow' });
@@ -497,13 +586,35 @@ cleanup
   }
 
   private async stageMacAsarInstall(): Promise<void> {
+    logger.info('[Updater] stageMacAsarInstall: begin');
+
     if (!app.isPackaged) {
       throw new Error('Asar updates require a packaged app build.');
     }
 
-    const update = this.pendingMacAsarUpdate;
+    let update = this.pendingMacAsarUpdate;
+    if (!update?.downloadedFilePath) {
+      update = await this.recoverDownloadedMacAsarUpdate();
+    }
     if (!update?.downloadedFilePath) {
       throw new Error('No downloaded macOS update is ready to install.');
+    }
+
+    // Double-check the staged asar is still on disk before we start tearing
+    // the app down. If it vanished (prior install, manual cleanup), surface a
+    // clear error instead of quitting into a no-op shell script.
+    try {
+      await fs.promises.access(update.downloadedFilePath, fs.constants.R_OK);
+    } catch {
+      this.pendingMacAsarUpdate = null;
+      this.updateStatus({
+        status: 'available',
+        info: this.toUpdateInfo(update),
+        progress: undefined,
+      });
+      throw new Error(
+        `Staged update asset is missing on disk (${update.downloadedFilePath}). Please download the update again.`,
+      );
     }
 
     const stagedAsarPath = update.downloadedFilePath;
@@ -511,6 +622,10 @@ cleanup
     const appBundlePath = this.getMacAppBundlePath();
     const scriptDir = this.getMacAsarUpdateDir();
     const scriptPath = path.join(scriptDir, `apply-update-${Date.now()}.sh`);
+
+    logger.info(
+      `[Updater] stageMacAsarInstall: preparing installer script staged=${stagedAsarPath} target=${targetAsarPath} bundle=${appBundlePath}`,
+    );
 
     await fs.promises.mkdir(scriptDir, { recursive: true });
     await fs.promises.writeFile(
@@ -525,17 +640,38 @@ cleanup
       { mode: 0o700 },
     );
 
-    spawn('/bin/sh', [scriptPath], {
-      detached: true,
-      stdio: 'ignore',
-    }).unref();
-
+    // Mark install state BEFORE spawning so that even if spawn throws, the
+    // before-quit handler in index.ts still treats any subsequent quit as an
+    // install-quit (no cleanup loop), and so stray quits skip the dismiss
+    // guard.
     setInstallingUpdate();
     setQuitting();
+
+    try {
+      spawn('/bin/sh', [scriptPath], {
+        detached: true,
+        stdio: 'ignore',
+      }).unref();
+    } catch (error) {
+      logger.error('[Updater] Failed to spawn mac-asar installer script:', error);
+      throw error;
+    }
+
+    logger.info('[Updater] stageMacAsarInstall: installer script spawned, calling app.quit()');
     app.quit();
   }
 
   private async checkForMacAsarUpdates(): Promise<UpdateInfo | null> {
+    if (this.status.status === 'downloading' || this.status.status === 'downloaded') {
+      if (!this.pendingMacAsarUpdate && this.status.status === 'downloaded') {
+        await this.recoverDownloadedMacAsarUpdate();
+      }
+      if (this.pendingMacAsarUpdate) {
+        return this.toUpdateInfo(this.pendingMacAsarUpdate);
+      }
+      return this.status.info ?? null;
+    }
+
     this.pendingMacAsarUpdate = null;
     this.updateStatus({ status: 'checking', error: undefined, progress: undefined });
 
@@ -652,20 +788,24 @@ cleanup
    * app bundles cannot use Squirrel.Mac's code-signature based installation.
    * Windows/Linux still rely on electron-updater's native install behavior.
    */
-  quitAndInstall(): void {
-    logger.info('[Updater] quitAndInstall called');
+  async installUpdate(): Promise<void> {
+    logger.info('[Updater] installUpdate called');
 
     if (this.isMacAsarFlow()) {
-      void this.stageMacAsarInstall().catch((error) => {
-        logger.error('[Updater] Failed to stage macOS .asar install:', error);
-        this.updateStatus({ status: 'error', error: (error as Error).message || String(error) });
-      });
+      await this.stageMacAsarInstall();
       return;
     }
 
     setInstallingUpdate();
     setQuitting();
     autoUpdater.quitAndInstall();
+  }
+
+  quitAndInstall(): void {
+    void this.installUpdate().catch((error) => {
+      logger.error('[Updater] Failed to install update:', error);
+      this.updateStatus({ status: 'error', error: (error as Error).message || String(error) });
+    });
   }
 
   /**
@@ -762,9 +902,13 @@ export function registerUpdateHandlers(
     }
   });
 
-  ipcMain.handle('update:install', () => {
-    updater.quitAndInstall();
-    return { success: true };
+  ipcMain.handle('update:install', async () => {
+    try {
+      await updater.installUpdate();
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
   });
 
   ipcMain.handle('update:setChannel', (_, channel: 'stable' | 'beta' | 'dev') => {

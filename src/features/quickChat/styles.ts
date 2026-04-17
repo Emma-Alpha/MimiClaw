@@ -4,6 +4,7 @@ export const useMiniChatStyles = createStyles(
 	({ token, css }, props: { isCollapsed?: boolean } = {}) => ({
 		root: css`
 			--mini-chat-side-gap: 16px;
+			--mini-chat-input-width: min(800px, 100%);
 			--mini-chat-content-width: min(800px, calc(100% - (var(--mini-chat-side-gap) * 2)));
 			--mini-chat-dock-inline-padding: 12px;
 			height: 100vh;
@@ -12,6 +13,7 @@ export const useMiniChatStyles = createStyles(
 		flex-direction: column;
 		overflow: hidden;
 		background: ${token.colorBgBase};
+}
 	`,
 	rootEmbedded: css`
 		--mini-chat-side-gap: 16px;
@@ -306,6 +308,7 @@ export const useMiniChatStyles = createStyles(
 			padding 0.4s cubic-bezier(0.32, 0.72, 0, 1);
 		flex: 1;
 		overflow: hidden;
+		justify-content: space-between;
 
 		&:hover {
 			background: rgba(23, 23, 25, 0.88);
@@ -1008,8 +1011,6 @@ export const useMiniChatStyles = createStyles(
 		background: ${token.colorBgElevated};
 	`,
 		userMessageText: css`
-		font-size: var(--mimi-font-size-base);
-		line-height: var(--mimi-line-height-base);
 		color: ${token.colorText};
 		white-space: pre-wrap;
 		word-break: break-word;
@@ -1152,45 +1153,41 @@ export const useMiniChatStyles = createStyles(
 		background: ${token.colorPrimaryBg};
 	`,
 		chatItem: css`
-		width: 100%;
-		animation: chatSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-		transform-origin: bottom center;
-		transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+			width: 100%;
+			animation: chatSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+			transform-origin: bottom center;
+			transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
 
-		@keyframes chatSlideIn {
-			0% {
-				opacity: 0;
-				transform: translateY(12px) scale(0.98);
-			}
-			100% {
-				opacity: 1;
-				transform: translateY(0) scale(1);
-			}
-		}
+			@keyframes chatSlideIn {
+				0% {
+					opacity: 0;
+					transform: translateY(12px) scale(0.98);
+				}
+					100% {
+						opacity: 1;
+						transform: translateY(0) scale(1);
+					}
+				}
 
-		:global {
-			.lobe-chat-item {
-				width: 100%;
-				gap: 4px !important;
-				padding: 8px 0 4px !important;
-			}
-			.lobe-chat-item-message {
-				margin-left: 0 !important;
-				margin-right: 0 !important;
-				align-items: flex-start !important;
-				gap: 2px !important;
-			}
-			.lobe-chat-item-message-item {
+			& [data-layout] > .lobe-flex > .lobe-flex {
 				padding: 8px 12px !important;
 				max-width: 100% !important;
 			}
-		}
-	`,
+		`,
 		chatItemUser: css`
-		width: 100%;
-		animation: chatSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-		transform-origin: bottom right;
-		transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+			animation: chatSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+			transform-origin: bottom right;
+			transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+			width: 100%;
+
+			@media (max-width: 575.98px) {
+				/* Use stable structure selectors instead of runtime acss-* hash classes */
+				& > .lobe-flex > .lobe-flex > .lobe-flex > .lobe-flex {
+					--lobe-flex-width: auto !important;
+					width: auto !important;
+					max-width: 100% !important;
+				}
+			}
 	`,
 		markdownBubble: css`
 		font-size: var(--mimi-font-size-base);
