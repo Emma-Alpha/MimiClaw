@@ -6,6 +6,7 @@ import { isCloudMode, patchCloudSkillConfig } from '../../utils/cloud-config-bri
 import { openSkillPath, openSkillReadme } from '../../gateway/skill-path-utils';
 import { ensureNode, probeNodeRuntime } from '../../gateway/node-runtime';
 import type { OutdatedEntry } from '../../gateway/skills-cli';
+import { getSkillDetail } from '../../gateway/skill-detail-utils';
 
 let outdatedCache: { at: number; results: OutdatedEntry[] } | null = null;
 const OUTDATED_TTL_MS = 6 * 60 * 60 * 1000;
@@ -138,6 +139,17 @@ export async function handleSkillRoutes(
       const body = await parseJsonBody<{ slug?: string; skillKey?: string; baseDir?: string }>(req);
       await openSkillPath(body.skillKey || body.slug || '', body.slug, body.baseDir);
       sendJson(res, 200, { success: true });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
+  if (url.pathname === '/api/skills/detail' && req.method === 'POST') {
+    try {
+      const body = await parseJsonBody<{ slug?: string; skillKey?: string; baseDir?: string }>(req);
+      const detail = getSkillDetail(body.skillKey || body.slug || '', body.slug, body.baseDir);
+      sendJson(res, 200, { success: true, detail });
     } catch (error) {
       sendJson(res, 500, { success: false, error: String(error) });
     }

@@ -6,6 +6,7 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-
 import { Component, useEffect } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { Toaster } from "sonner";
+import { ModalHost } from "@lobehub/ui";
 import i18n from "./i18n";
 import { MainLayout } from "./components/layout/MainLayout";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -356,6 +357,7 @@ function App() {
 						closeButton
 						style={{ zIndex: 99999 }}
 					/>
+					<ModalHost />
 				</TooltipProvider>
 			</ThemeWrapper>
 		</ErrorBoundary>

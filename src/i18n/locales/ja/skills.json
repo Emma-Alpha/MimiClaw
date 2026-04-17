@@ -1,5 +1,5 @@
 {
-    "title": "スキル",
+    "title": "スキル管理",
     "subtitle": "AI機能の閲覧と管理",
     "refresh": "更新",
     "openFolder": "スキルフォルダを開く",
@@ -14,6 +14,22 @@
         "marketplace": "マーケットプレイス ({{count}})"
     },
     "search": "スキルを検索...",
+    "store": {
+        "open": "スキルストア"
+    },
+    "list": {
+        "modalTitle": "スキル詳細",
+        "status": {
+            "installed": "インストール済み",
+            "disabled": "無効"
+        },
+        "menu": {
+            "more": "その他の操作",
+            "details": "詳細を表示",
+            "enable": "有効化",
+            "disable": "無効化"
+        }
+    },
     "searchMarketplace": "マーケットプレイスを検索...",
     "searchButton": "検索",
     "actions": {
@@ -55,7 +71,16 @@
         "configurable": "設定可能",
         "uninstall": "アンインストール",
         "enable": "有効化",
-        "disable": "無効化"
+        "disable": "無効化",
+        "tabs": {
+            "overview": "概要",
+            "schema": "スキル機能",
+            "agents": "このスキルを使うアシスタント"
+        },
+        "developedBy": "開発者",
+        "trustWarning": "信頼できる開発者のスキルのみを利用し、動作と権限を必ず確認してください。",
+        "noOverview": "概要はありません。",
+        "noAgents": "このスキルを使用するアシスタント情報はまだありません。"
     },
     "source": {
         "badge": {

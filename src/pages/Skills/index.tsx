@@ -6,7 +6,6 @@ import { Button, Icon } from '@lobehub/ui';
 import { AlertCircle, Store } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSkillsStore } from '@/stores/skills';
-import { useGatewayStore } from '@/stores/gateway';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { invokeIpc } from '@/lib/api-client';
 import { hostApiFetch } from '@/lib/host-api';
@@ -16,10 +15,9 @@ import { useTranslation } from 'react-i18next';
 import { SettingHeader } from '@/pages/Settings/components/SettingHeader';
 import { useSkillsStyles } from './styles';
 import { SkillList } from './features/SkillList';
-import { SkillDetailSheet } from './features/SkillDetailSheet';
 import { categorizeSkill } from './lib/source-taxonomy';
-import { resolvePermissions } from './lib/skill-permissions';
 import type { NodeRuntimeUiState } from '@/stores/skills';
+import { createSkillDetailModal } from '@/features/SkillStore/SkillDetail';
 
 export function Skills() {
   const {
@@ -37,27 +35,13 @@ export function Skills() {
   const { t } = useTranslation('skills');
   const { styles } = useSkillsStyles();
   const navigate = useNavigate();
-  const gatewayStatus = useGatewayStore((state) => state.status);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
-  const [showGatewayWarning, setShowGatewayWarning] = useState(false);
   const [skillsDirPath, setSkillsDirPath] = useState('~/.openclaw/skills');
-
-  const isGatewayRunning = gatewayStatus.state === 'running';
 
   useEffect(() => {
     invokeIpc<string>('openclaw:getSkillsDir')
       .then((dir) => setSkillsDirPath(dir as string))
       .catch(console.error);
   }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(
-      () => setShowGatewayWarning(!isGatewayRunning),
-      isGatewayRunning ? 0 : 1500,
-    );
-    return () => clearTimeout(timer);
-  }, [isGatewayRunning]);
 
   useEffect(() => {
     void fetchSkills();
@@ -131,13 +115,25 @@ export function Skills() {
       try {
         await uninstallSkill(slug);
         toast.success(t('toast.uninstalled'));
-        setSelectedSkill(null);
       } catch (err) {
         toast.error(String(err));
       }
     },
     [skills, uninstallSkill, t],
   );
+
+  const openSkillDetail = useCallback(
+    (skill: Skill) => {
+      createSkillDetailModal({
+        skill,
+      });
+    },
+    [],
+  );
+
+  const handleOpenStore = useCallback(() => {
+    navigate('/skills/store');
+  }, [navigate]);
 
   if (loading) {
     return (
@@ -147,32 +143,17 @@ export function Skills() {
     );
   }
 
-  const defaultPerms = {
-    canToggle: false,
-    canUninstall: false,
-    canConfigure: false,
-    canUpdate: false,
-    canOpenFolder: false,
-  };
-
   return (
     <div className={styles.skillsPageRoot}>
       <div className={styles.skillsPageInner}>
         <SettingHeader
           title={t('title')}
           extra={
-            <Button icon={<Icon icon={Store} />} size="large" onClick={() => navigate('/skills/store')}>
+            <Button icon={<Icon icon={Store} />} size="large" onClick={handleOpenStore}>
               {t('store.open', { defaultValue: 'Skill store' })}
             </Button>
           }
         />
-
-        {showGatewayWarning && (
-          <div className={styles.gatewayWarning}>
-            <AlertCircle className={styles.gatewayWarningIcon} style={{ width: 20, height: 20 }} />
-            <span className={styles.gatewayWarningText}>{t('gatewayWarning')}</span>
-          </div>
-        )}
 
         {error && (
           <div className={styles.errorBanner}>
@@ -187,34 +168,17 @@ export function Skills() {
 
         <SkillList
           skills={skills}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onSelectSkill={setSelectedSkill}
+          onSelectSkill={openSkillDetail}
           onToggle={handleToggle}
-          onRefresh={fetchSkills}
-          loading={loading}
-          isGatewayRunning={isGatewayRunning}
+          onUninstall={handleUninstall}
+          onOpenFolder={handleOpenSkillFolder}
           outdated={outdated}
         />
       </div>
-
-      <SkillDetailSheet
-        skill={selectedSkill}
-        isOpen={!!selectedSkill}
-        onClose={() => setSelectedSkill(null)}
-        onToggle={(enabled) => {
-          if (!selectedSkill) return;
-          void handleToggle(selectedSkill.id, enabled);
-          setSelectedSkill({ ...selectedSkill, enabled });
-        }}
-        onUninstall={handleUninstall}
-        onOpenFolder={handleOpenSkillFolder}
-        permissions={
-          selectedSkill ? resolvePermissions(selectedSkill, categorizeSkill(selectedSkill)) : defaultPerms
-        }
-      />
     </div>
   );
 }
+
+Skills.displayName = 'SkillsSetting';
 
 export default Skills;

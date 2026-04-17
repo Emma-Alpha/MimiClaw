@@ -27,10 +27,10 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
   `,
   skillsPageInner: css`
     width: 100%;
-    max-width: 768px;
+    max-width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
     padding: 0 32px 40px;
     overflow-y: auto;
   `,
@@ -95,7 +95,7 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
 
   /* Gateway Warning */
   gatewayWarning: css`
-    margin-bottom: 24px;
+    margin-bottom: 12px;
     padding: 16px;
     border-radius: ${token.borderRadiusLG}px;
     border: 1px solid rgba(234, 179, 8, 0.5);
@@ -235,6 +235,18 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
     display: flex;
     flex-direction: column;
   `,
+  lobeListContainer: css`
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding-top: 18px;
+  `,
+  lobeListToolbar: css`
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-bottom: 4px;
+  `,
   emptyState: css`
     display: flex;
     flex-direction: column;
@@ -248,12 +260,12 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
     flex-direction: row;
     align-items: center;
     gap: 16px;
-    padding: 12px 0;
+    padding: 14px 0;
     border-radius: ${token.borderRadius}px;
     transition: background 0.15s;
     cursor: pointer;
     &:hover {
-      background: ${token.colorFillTertiary};
+      background: transparent;
     }
   `,
   skillIcon: css`
@@ -286,8 +298,8 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
   skillNameRow: css`
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-bottom: 2px;
+    gap: 8px;
+    margin-bottom: 4px;
   `,
   skillName: css`
     font-size: 15px;
@@ -345,6 +357,41 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
     gap: 12px;
     flex-shrink: 0;
   `,
+  skillStateText: css`
+    font-size: 14px;
+    color: ${token.colorTextTertiary};
+    white-space: nowrap;
+    min-width: 60px;
+    text-align: right;
+  `,
+  skillStateInstalled: css`
+    color: ${token.colorSuccess};
+    font-weight: 500;
+  `,
+  skillActionMenuBtn: css`
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: transparent;
+    color: ${token.colorTextSecondary};
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    &:hover {
+      background: ${token.colorFillTertiary};
+      color: ${token.colorText};
+      border-color: rgba(0, 0, 0, 0.16);
+    }
+    [data-theme='dark'] & {
+      border-color: rgba(255, 255, 255, 0.12);
+      &:hover {
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+    }
+  `,
   skillVersion: css`
     font-size: 13px;
     font-family: monospace;
@@ -370,6 +417,26 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
       opacity: 0.4;
       cursor: not-allowed;
     }
+  `,
+  skillSourceTag: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #22a055;
+    background: #e9f7ee;
+  `,
+  skillSourceDot: css`
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1.5px solid #22a055;
+    display: inline-block;
+    box-sizing: border-box;
   `,
 
   /* Install Sheet */
@@ -470,7 +537,7 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
   detailScrollArea: css`
     flex: 1;
     overflow-y: auto;
-    padding: 40px 32px;
+    padding: 28px 32px;
   `,
   detailIconWrapper: css`
     display: flex;
@@ -634,7 +701,7 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
     padding-top: 32px;
   `,
   detailFooter: css`
-    padding: 32px 8px 16px;
+    padding: 28px 8px 16px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -645,6 +712,47 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
   `,
 
   /* Sheet panel overrides */
+  skillDetailModal: css`
+    & .ant-modal-content {
+      padding: 0;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #f3f1e9;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+    }
+    & .ant-modal-header {
+      margin: 0;
+      padding: 14px 56px 14px 56px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      background: transparent;
+      text-align: center;
+    }
+    & .ant-modal-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: ${token.colorText};
+      line-height: 1.2;
+      letter-spacing: 0.02em;
+    }
+    & .ant-modal-body {
+      padding: 0;
+    }
+    & .ant-modal-close {
+      top: 10px;
+      right: 10px;
+    }
+    [data-theme='dark'] & .ant-modal-content {
+      background: ${token.colorBgContainer};
+    }
+    [data-theme='dark'] & .ant-modal-header {
+      border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+  `,
+  skillDetailModalBody: css`
+    display: flex;
+    flex-direction: column;
+    max-height: min(76vh, 820px);
+  `,
   sheetSkillDetail: css`
     width: 100%;
     max-width: 450px;

@@ -1,5 +1,5 @@
 {
-    "title": "技能",
+    "title": "技能管理",
     "subtitle": "浏览和管理 AI 能力",
     "refresh": "刷新",
     "openFolder": "打开技能文件夹",
@@ -14,6 +14,22 @@
         "marketplace": "市场 ({{count}})"
     },
     "search": "搜索技能...",
+    "store": {
+        "open": "技能商店"
+    },
+    "list": {
+        "modalTitle": "技能详情",
+        "status": {
+            "installed": "已安装",
+            "disabled": "未启用"
+        },
+        "menu": {
+            "more": "更多操作",
+            "details": "查看详情",
+            "enable": "启用",
+            "disable": "禁用"
+        }
+    },
     "searchMarketplace": "搜索市场...",
     "searchButton": "搜索",
     "actions": {
@@ -55,7 +71,16 @@
         "configurable": "可配置",
         "uninstall": "卸载",
         "enable": "启用",
-        "disable": "禁用"
+        "disable": "禁用",
+        "tabs": {
+            "overview": "概览",
+            "schema": "技能功能",
+            "agents": "使用该技能的助理"
+        },
+        "developedBy": "开发者",
+        "trustWarning": "请仅使用你信任的开发者提供的技能，并自行确认其行为与权限。",
+        "noOverview": "暂无介绍。",
+        "noAgents": "暂无使用该技能的助理信息。"
     },
     "source": {
         "badge": {

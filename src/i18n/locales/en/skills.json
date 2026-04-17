@@ -1,5 +1,5 @@
 {
-    "title": "Skills",
+    "title": "Skill Management",
     "subtitle": "Browse and manage AI capabilities",
     "refresh": "Refresh",
     "openFolder": "Open Skills Folder",
@@ -14,6 +14,22 @@
         "marketplace": "Marketplace ({{count}})"
     },
     "search": "Search skills...",
+    "store": {
+        "open": "Skill store"
+    },
+    "list": {
+        "modalTitle": "Skill details",
+        "status": {
+            "installed": "Installed",
+            "disabled": "Disabled"
+        },
+        "menu": {
+            "more": "More actions",
+            "details": "View details",
+            "enable": "Enable",
+            "disable": "Disable"
+        }
+    },
     "searchMarketplace": "Search marketplace...",
     "searchButton": "Search",
     "actions": {
@@ -55,7 +71,16 @@
         "configurable": "Configurable",
         "uninstall": "Uninstall",
         "enable": "Enable",
-        "disable": "Disable"
+        "disable": "Disable",
+        "tabs": {
+            "overview": "Overview",
+            "schema": "Skill Capabilities",
+            "agents": "Agents Using This Skill"
+        },
+        "developedBy": "Developer",
+        "trustWarning": "Use only skills from developers you trust, and verify behavior and permissions yourself.",
+        "noOverview": "No overview available.",
+        "noAgents": "No agent usage information for this skill yet."
     },
     "source": {
         "badge": {

@@ -1,39 +1,19 @@
-import type { ReactNode } from 'react';
-import { Puzzle, Lock, RefreshCw, FolderOpen } from 'lucide-react';
-import { Divider, Tag } from 'antd';
-import { Switch } from '@/components/ui/switch';
-import { SearchInput } from '@/components/common/SearchInput';
+import { Puzzle, Lock, FolderOpen, Ellipsis, Eye, Power, Trash2 } from 'lucide-react';
+import { Dropdown, type MenuProps } from 'antd';
 import type { Skill } from '@/types/skill';
 import { useTranslation } from 'react-i18next';
 import { useSkillsStyles } from '../styles';
-import { invokeIpc } from '@/lib/api-client';
-import { categorizeSkill, type SkillCategory } from '../lib/source-taxonomy';
+import { categorizeSkill } from '../lib/source-taxonomy';
 import { resolvePermissions } from '../lib/skill-permissions';
 import { UpdateBadge } from './UpdateBadge';
 
 interface SkillListProps {
   skills: Skill[];
-  searchQuery: string;
-  onSearchChange: (q: string) => void;
   onSelectSkill: (s: Skill) => void;
   onToggle: (id: string, enabled: boolean) => void;
-  onRefresh: () => void;
-  loading: boolean;
-  isGatewayRunning: boolean;
+  onUninstall?: (slug: string) => void;
+  onOpenFolder?: (skill: Skill) => void;
   outdated: Record<string, { current: string; latest: string }>;
-}
-
-function filterSkills(skills: Skill[], q: string): Skill[] {
-  const t = q.toLowerCase().trim();
-  if (!t) return skills;
-  return skills.filter(
-    (skill) =>
-      skill.name.toLowerCase().includes(t) ||
-      skill.description.toLowerCase().includes(t) ||
-      skill.id.toLowerCase().includes(t) ||
-      (skill.slug || '').toLowerCase().includes(t) ||
-      (skill.author || '').toLowerCase().includes(t),
-  );
 }
 
 function sortSkills(list: Skill[]): Skill[] {
@@ -46,33 +26,19 @@ function sortSkills(list: Skill[]): Skill[] {
   });
 }
 
-const CATEGORY_TAG_COLOR: Record<SkillCategory, string> = {
-  bundled: 'blue',
-  local: 'default',
-  remote: 'purple',
-};
-
 export function SkillList({
   skills,
-  searchQuery,
-  onSearchChange,
   onSelectSkill,
   onToggle,
-  onRefresh,
-  loading,
-  isGatewayRunning: _isGatewayRunning,
+  onUninstall,
+  onOpenFolder,
   outdated,
 }: SkillListProps) {
   const { t } = useTranslation('skills');
   const { styles } = useSkillsStyles();
 
   const safe = Array.isArray(skills) ? skills : [];
-  const filtered = sortSkills(filterSkills(safe, searchQuery));
-
-  const byCat = (cat: SkillCategory) => filtered.filter((s) => categorizeSkill(s) === cat);
-  const bundled = byCat('bundled');
-  const local = byCat('local');
-  const remote = byCat('remote');
+  const rows = sortSkills(safe);
 
   function renderRow(skill: Skill) {
     const cat = categorizeSkill(skill);
@@ -80,8 +46,75 @@ export function SkillList({
     const hasUpdate = !!(outdated[skill.id] || (skill.slug && outdated[skill.slug]));
     const dim = !skill.enabled;
 
+    const sourceLabel =
+      cat === 'bundled'
+        ? t('category.bundled.badge', { defaultValue: 'Bundled' })
+        : cat === 'remote'
+          ? t('category.remote.badge', { defaultValue: 'Remote' })
+          : t('category.local.badge', { defaultValue: 'Local' });
+    const hideDescription =
+      (skill.description || '').trim().toLowerCase() === 'recently installed, initializing...';
+
+    const menuItems: MenuProps['items'] = [
+      {
+        key: 'detail',
+        icon: <Eye style={{ width: 14, height: 14 }} />,
+        label: t('list.menu.details', { defaultValue: 'View details' }),
+      },
+      ...(perms.canToggle
+        ? [
+            {
+              key: 'toggle',
+              icon: <Power style={{ width: 14, height: 14 }} />,
+              label: skill.enabled
+                ? t('list.menu.disable', { defaultValue: 'Disable' })
+                : t('list.menu.enable', { defaultValue: 'Enable' }),
+            },
+          ]
+        : []),
+      ...(perms.canOpenFolder && onOpenFolder
+        ? [
+            {
+              key: 'open-folder',
+              icon: <FolderOpen style={{ width: 14, height: 14 }} />,
+              label: t('detail.openActualFolder', { defaultValue: 'Open actual folder' }),
+            },
+          ]
+        : []),
+      ...(!skill.isCore && perms.canUninstall && onUninstall
+        ? [
+            {
+              key: 'uninstall',
+              icon: <Trash2 style={{ width: 14, height: 14 }} />,
+              danger: true,
+              label: t('detail.uninstall', { defaultValue: 'Uninstall' }),
+            },
+          ]
+        : []),
+    ];
+
+    const handleMenuClick: MenuProps['onClick'] = ({ key, domEvent }) => {
+      domEvent.stopPropagation();
+
+      if (key === 'detail') {
+        onSelectSkill(skill);
+        return;
+      }
+      if (key === 'toggle') {
+        onToggle(skill.id, !skill.enabled);
+        return;
+      }
+      if (key === 'open-folder' && onOpenFolder) {
+        onOpenFolder(skill);
+        return;
+      }
+      if (key === 'uninstall' && onUninstall) {
+        onUninstall(skill.slug || skill.id);
+      }
+    };
+
     return (
-      // biome-ignore lint/a11y/useSemanticElements: row has nested interactive children (Switch) that cannot live inside <button>
+      // biome-ignore lint/a11y/useSemanticElements: row has nested interactive children (menu trigger) that cannot live inside <button>
       <div
         key={skill.id}
         className={styles.skillRow}
@@ -108,8 +141,12 @@ export function SkillList({
               <Puzzle style={{ width: 11, height: 11, color: 'rgba(59,130,246,0.65)', flexShrink: 0 }} />
             )}
             {hasUpdate && <UpdateBadge />}
+            <span className={styles.skillSourceTag}>
+              <span className={styles.skillSourceDot} />
+              {sourceLabel}
+            </span>
           </div>
-          {skill.description && (
+          {skill.description && !hideDescription && (
             <p className={styles.skillDescription} style={{ opacity: dim ? 0.45 : 1 }}>
               {skill.description}
             </p>
@@ -118,132 +155,38 @@ export function SkillList({
 
         {/* Controls — stop click from propagating to the row */}
         <div className={styles.skillControls}>
-          <Tag color={CATEGORY_TAG_COLOR[cat]} style={{ marginRight: 0, fontSize: 11 }}>
-            {cat === 'bundled'
-              ? t('category.bundled.badge', { defaultValue: 'Bundled' })
-              : cat === 'remote'
-                ? t('category.remote.badge', { defaultValue: 'Remote' })
-                : t('category.local.badge', { defaultValue: 'Local' })}
-          </Tag>
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: stops row activation from propagating */}
-          <span
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-          >
-            <Switch
-              checked={skill.enabled}
-              onChange={(checked) => perms.canToggle && onToggle(skill.id, checked)}
-              disabled={skill.isCore || !perms.canToggle}
-            />
+          <span className={`${styles.skillStateText} ${styles.skillStateInstalled}`}>
+            {t('list.status.installed', { defaultValue: 'Installed' })}
           </span>
+          {menuItems.length > 0 && (
+            <Dropdown menu={{ items: menuItems, onClick: handleMenuClick }} trigger={['click']} placement="bottomRight">
+              <button
+                type="button"
+                className={styles.skillActionMenuBtn}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+                aria-label={t('list.menu.more', { defaultValue: 'More actions' })}
+              >
+                <Ellipsis style={{ width: 16, height: 16 }} />
+              </button>
+            </Dropdown>
+          )}
         </div>
       </div>
     );
-  }
-
-  function section(
-    title: string,
-    count: number,
-    extra: ReactNode,
-    rows: Skill[],
-    emptyHint: string,
-  ) {
-    return (
-      <section style={{ marginBottom: 8 }}>
-        <div className={styles.sectionHeader}>
-          <span className={styles.sectionTitle}>
-            {title}
-            <span className={styles.sectionCount}>{count}</span>
-          </span>
-          {extra && <div className={styles.sectionActions}>{extra}</div>}
-        </div>
-        {rows.length === 0 ? (
-          <div className={styles.emptyState} style={{ padding: '20px 0' }}>
-            <p style={{ fontSize: 13, opacity: 0.55 }}>{emptyHint}</p>
-          </div>
-        ) : (
-          <div className={styles.skillList}>{rows.map(renderRow)}</div>
-        )}
-      </section>
-    );
-  }
-
-  async function openAgentsSkills() {
-    const h = await invokeIpc<string>('app:getPath', 'home');
-    await invokeIpc('shell:openPath', `${h}/.agents/skills`);
-  }
-
-  async function openManaged() {
-    const dir = await invokeIpc<string>('openclaw:getSkillsDir');
-    await invokeIpc('shell:openPath', dir);
   }
 
   return (
-    <>
-      {/* Toolbar */}
-      <div className={styles.subNav}>
-        <SearchInput
-          placeholder={t('search')}
-          value={searchQuery}
-          onValueChange={onSearchChange}
-          clearable
-          className={styles.searchWrapper}
-          inputClassName={styles.searchInputEl}
-        />
-        <div className={styles.actionButtons}>
-          <button
-            type="button"
-            onClick={onRefresh}
-            disabled={loading}
-            className={styles.iconBtn}
-            title={t('refresh')}
-          >
-            <RefreshCw style={{ width: 15, height: 15 }} className={loading ? 'animate-spin' : ''} />
-          </button>
+    <div className={styles.lobeListContainer}>
+      {rows.length === 0 ? (
+        <div className={styles.emptyState} style={{ padding: '20px 0' }}>
+          <p style={{ fontSize: 13, opacity: 0.55 }}>{t('noSkillsAvailable')}</p>
         </div>
-      </div>
-
-      {/* Bundled (only shown when non-empty) */}
-      {bundled.length > 0 && (
-        <>
-          {section(
-            t('category.bundled.title', { defaultValue: 'Client bundled' }),
-            bundled.length,
-            null,
-            bundled,
-            t('category.bundled.empty', { defaultValue: 'No bundled skills.' }),
-          )}
-          <Divider style={{ margin: 0 }} />
-        </>
+      ) : (
+        <div className={styles.skillList}>
+          {rows.map((skill) => renderRow(skill))}
+        </div>
       )}
-
-      {/* Local */}
-      {section(
-        t('category.local.title', { defaultValue: 'Local' }),
-        local.length,
-        <button type="button" onClick={openAgentsSkills} className={styles.folderButton}>
-          <FolderOpen style={{ width: 13, height: 13, marginRight: 5 }} />
-          {t('category.local.openFolder', { defaultValue: 'Open ~/.agents/skills' })}
-        </button>,
-        local,
-        t('category.local.empty', { defaultValue: 'No local skills in this workspace.' }),
-      )}
-
-      <Divider style={{ margin: 0 }} />
-
-      {/* Remote / managed */}
-      {section(
-        t('category.remote.title', { defaultValue: 'Remote / managed' }),
-        remote.length,
-        <button type="button" onClick={openManaged} className={styles.folderButton}>
-          <FolderOpen style={{ width: 13, height: 13, marginRight: 5 }} />
-          {t('category.remote.openFolder', { defaultValue: 'Open skills dir' })}
-        </button>,
-        remote,
-        t('category.remote.empty', {
-          defaultValue: 'No remote-managed skills yet. Use the skill store to add some.',
-        }),
-      )}
-    </>
+    </div>
   );
 }
