@@ -4,7 +4,7 @@
  */
 import { create } from 'zustand';
 import { hostApiFetch } from '@/lib/host-api';
-import { AppError, normalizeAppError } from '@/lib/error-model';
+import { type AppError, normalizeAppError } from '@/lib/error-model';
 import { useGatewayStore } from './gateway';
 import type { Skill, MarketplaceSkill } from '../types/skill';
 
@@ -29,11 +29,17 @@ type GatewaySkillsStatusResult = {
   skills?: GatewaySkillStatus[];
 };
 
-type ClawHubListResult = {
+type DiskListResult = {
   slug: string;
   version?: string;
   source?: string;
   baseDir?: string;
+};
+
+export type NodeRuntimeUiState = {
+  state: 'idle' | 'detecting' | 'downloading' | 'ready' | 'error';
+  progress?: number;
+  error?: string;
 };
 
 function mapErrorCodeToSkillErrorKey(
@@ -60,54 +66,74 @@ function mapErrorCodeToSkillErrorKey(
 interface SkillsState {
   skills: Skill[];
   searchResults: MarketplaceSkill[];
+  trending: MarketplaceSkill[] | null;
   loading: boolean;
   searching: boolean;
   searchError: string | null;
-  installing: Record<string, boolean>; // slug -> boolean
+  installing: Record<string, boolean>;
   error: string | null;
+  outdated: Record<string, { current: string; latest: string }>;
+  outdatedCheckedAt: number | null;
+  nodeRuntime: NodeRuntimeUiState;
 
-  // Actions
   fetchSkills: () => Promise<void>;
-  searchSkills: (query: string) => Promise<void>;
+  fetchTrending: () => Promise<void>;
+  searchSkills: (query: string, opts?: { trending?: boolean }) => Promise<void>;
   installSkill: (slug: string, version?: string) => Promise<void>;
   uninstallSkill: (slug: string) => Promise<void>;
+  updateRemoteSkill: (slug: string) => Promise<void>;
+  checkOutdated: (force?: boolean) => Promise<void>;
+  ensureNodeRuntime: () => Promise<void>;
   enableSkill: (skillId: string) => Promise<void>;
   disableSkill: (skillId: string) => Promise<void>;
   setSkills: (skills: Skill[]) => void;
   updateSkill: (skillId: string, updates: Partial<Skill>) => void;
+  setNodeRuntime: (s: NodeRuntimeUiState) => void;
 }
+
+const OUTDATED_CACHE_MS = 6 * 60 * 60 * 1000;
 
 export const useSkillsStore = create<SkillsState>((set, get) => ({
   skills: [],
   searchResults: [],
+  trending: null,
   loading: false,
   searching: false,
   searchError: null,
   installing: {},
   error: null,
+  outdated: {},
+  outdatedCheckedAt: null,
+  nodeRuntime: { state: 'idle' },
+
+  setNodeRuntime: (nodeRuntime) => set({ nodeRuntime }),
 
   fetchSkills: async () => {
-    // Only show loading state if we have no skills yet (initial load)
     if (get().skills.length === 0) {
       set({ loading: true, error: null });
     }
     try {
-      // 1. Fetch from Gateway (running skills)
-      const gatewayData = await useGatewayStore.getState().rpc<GatewaySkillsStatusResult>('skills.status');
+      // Gateway RPC may fail when gateway is not running; degrade gracefully
+      let gatewayData: GatewaySkillsStatusResult = { skills: [] };
+      try {
+        gatewayData = await useGatewayStore.getState().rpc<GatewaySkillsStatusResult>('skills.status');
+      } catch {
+        // Gateway offline — continue with disk-only skill list
+      }
 
-      // 2. Fetch from ClawHub (installed on disk)
-      const clawhubResult = await hostApiFetch<{ success: boolean; results?: ClawHubListResult[]; error?: string }>('/api/clawhub/list');
+      const listResult = await hostApiFetch<{ success: boolean; results?: DiskListResult[]; error?: string }>(
+        '/api/skills/list',
+      );
 
-      // 3. Fetch configurations directly from Electron (since Gateway doesn't return them)
-      const configResult = await hostApiFetch<Record<string, { apiKey?: string; env?: Record<string, string> }>>('/api/skills/configs');
+      const configResult = await hostApiFetch<Record<string, { apiKey?: string; env?: Record<string, string> }>>(
+        '/api/skills/configs',
+      );
 
       let combinedSkills: Skill[] = [];
       const currentSkills = get().skills;
 
-      // Map gateway skills info
       if (gatewayData.skills) {
         combinedSkills = gatewayData.skills.map((s: GatewaySkillStatus) => {
-          // Merge with direct config if available
           const directConfig = configResult[s.skillKey] || {};
 
           return {
@@ -131,14 +157,12 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
           };
         });
       } else if (currentSkills.length > 0) {
-        // ... if gateway down ...
         combinedSkills = [...currentSkills];
       }
 
-      // Merge with ClawHub results
-      if (clawhubResult.success && clawhubResult.results) {
-        clawhubResult.results.forEach((cs: ClawHubListResult) => {
-          const existing = combinedSkills.find(s => s.id === cs.slug);
+      if (listResult.success && listResult.results) {
+        listResult.results.forEach((cs: DiskListResult) => {
+          const existing = combinedSkills.find((s) => s.id === cs.slug);
           if (existing) {
             if (!existing.baseDir && cs.baseDir) {
               existing.baseDir = cs.baseDir;
@@ -161,7 +185,7 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
             config: directConfig,
             isCore: false,
             isBundled: false,
-            source: cs.source || 'openclaw-managed',
+            source: cs.source || 'agents-skills-personal',
             baseDir: cs.baseDir,
           });
         });
@@ -175,13 +199,35 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
     }
   },
 
-  searchSkills: async (query: string) => {
+  fetchTrending: async () => {
+    try {
+      const result = await hostApiFetch<{ success: boolean; results?: MarketplaceSkill[] }>('/api/skills/find', {
+        method: 'POST',
+        body: JSON.stringify({ trending: true, limit: 30 }),
+      });
+      if (result.success) {
+        set({ trending: result.results || [] });
+      }
+    } catch (e) {
+      console.warn('fetchTrending failed:', e);
+    }
+  },
+
+  searchSkills: async (query: string, opts?: { trending?: boolean }) => {
     set({ searching: true, searchError: null });
     try {
-      const result = await hostApiFetch<{ success: boolean; results?: MarketplaceSkill[]; error?: string }>('/api/clawhub/search', {
-        method: 'POST',
-        body: JSON.stringify({ query }),
-      });
+      const trimmed = query.trim();
+      const result = await hostApiFetch<{ success: boolean; results?: MarketplaceSkill[]; error?: string }>(
+        '/api/skills/find',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            query: trimmed || undefined,
+            trending: opts?.trending ?? !trimmed,
+            limit: 40,
+          }),
+        },
+      );
       if (result.success) {
         set({ searchResults: result.results || [] });
       } else {
@@ -201,7 +247,7 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
   installSkill: async (slug: string, version?: string) => {
     set((state) => ({ installing: { ...state.installing, [slug]: true } }));
     try {
-      const result = await hostApiFetch<{ success: boolean; error?: string }>('/api/clawhub/install', {
+      const result = await hostApiFetch<{ success: boolean; error?: string }>('/api/skills/install', {
         method: 'POST',
         body: JSON.stringify({ slug, version }),
       });
@@ -212,16 +258,15 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
         });
         throw new Error(mapErrorCodeToSkillErrorKey(appError.code, 'install'));
       }
-      // Refresh skills after install
       await get().fetchSkills();
     } catch (error) {
       console.error('Install error:', error);
       throw error;
     } finally {
       set((state) => {
-        const newInstalling = { ...state.installing };
-        delete newInstalling[slug];
-        return { installing: newInstalling };
+        const next = { ...state.installing };
+        delete next[slug];
+        return { installing: next };
       });
     }
   },
@@ -229,24 +274,66 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
   uninstallSkill: async (slug: string) => {
     set((state) => ({ installing: { ...state.installing, [slug]: true } }));
     try {
-      const result = await hostApiFetch<{ success: boolean; error?: string }>('/api/clawhub/uninstall', {
+      const result = await hostApiFetch<{ success: boolean; error?: string }>('/api/skills/uninstall', {
         method: 'POST',
         body: JSON.stringify({ slug }),
       });
       if (!result.success) {
         throw new Error(result.error || 'Uninstall failed');
       }
-      // Refresh skills after uninstall
       await get().fetchSkills();
     } catch (error) {
       console.error('Uninstall error:', error);
       throw error;
     } finally {
       set((state) => {
-        const newInstalling = { ...state.installing };
-        delete newInstalling[slug];
-        return { installing: newInstalling };
+        const next = { ...state.installing };
+        delete next[slug];
+        return { installing: next };
       });
+    }
+  },
+
+  updateRemoteSkill: async (slug: string) => {
+    const result = await hostApiFetch<{ success: boolean; error?: string }>('/api/skills/update', {
+      method: 'POST',
+      body: JSON.stringify({ slug }),
+    });
+    if (!result.success) {
+      throw new Error(result.error || 'Update failed');
+    }
+    await get().fetchSkills();
+  },
+
+  checkOutdated: async (force?: boolean) => {
+    const { outdatedCheckedAt } = get();
+    const now = Date.now();
+    if (!force && outdatedCheckedAt && now - outdatedCheckedAt < OUTDATED_CACHE_MS) {
+      return;
+    }
+    try {
+      const res = await hostApiFetch<{ success: boolean; results?: Array<{ slug: string; current: string; latest: string }> }>(
+        '/api/skills/outdated',
+      );
+      if (!res.success || !res.results?.length) {
+        set({ outdated: {}, outdatedCheckedAt: now });
+        return;
+      }
+      const map: Record<string, { current: string; latest: string }> = {};
+      for (const r of res.results) {
+        map[r.slug] = { current: r.current, latest: r.latest };
+      }
+      set({ outdated: map, outdatedCheckedAt: now });
+    } catch {
+      set({ outdatedCheckedAt: now });
+    }
+  },
+
+  ensureNodeRuntime: async () => {
+    try {
+      await hostApiFetch('/api/skills/ensure-node', { method: 'POST' });
+    } catch (e) {
+      console.warn('ensureNodeRuntime:', e);
     }
   },
 
@@ -283,9 +370,7 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
 
   updateSkill: (skillId, updates) => {
     set((state) => ({
-      skills: state.skills.map((skill) =>
-        skill.id === skillId ? { ...skill, ...updates } : skill
-      ),
+      skills: state.skills.map((skill) => (skill.id === skillId ? { ...skill, ...updates } : skill)),
     }));
   },
 }));

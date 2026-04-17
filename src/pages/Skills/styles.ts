@@ -19,6 +19,21 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
     padding: 40px 40px 40px 40px;
     padding-top: 64px;
   `,
+  skillsPageRoot: css`
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  `,
+  skillsPageInner: css`
+    width: 100%;
+    max-width: 768px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 0 32px 40px;
+    overflow-y: auto;
+  `,
   loadingWrapper: css`
     display: flex;
     flex-direction: column;
@@ -31,39 +46,24 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
   /* Header */
   header: css`
     display: flex;
-    flex-direction: column;
+    align-items: center;
     justify-content: space-between;
-    margin-bottom: 24px;
-    flex-shrink: 0;
-    gap: 16px;
-    @media (min-width: 768px) {
-      flex-direction: row;
-      align-items: flex-start;
-    }
+    margin-bottom: 12px;
   `,
   headerTitle: css`
-    font-size: 14px;
-    font-family: Georgia, Cambria, 'Times New Roman', Times, serif;
+    font-size: 24px;
+    line-height: 1.2;
     color: ${token.colorText};
-    margin-bottom: 12px;
-    font-weight: 400;
-    letter-spacing: -0.025em;
+    font-weight: 700;
+    margin: 0;
   `,
   headerSubtitle: css`
-    font-size: 14px;
-    color: rgba(0, 0, 0, 0.7);
-    font-weight: 500;
-    [data-theme='dark'] & {
-      color: rgba(255, 255, 255, 0.7);
-    }
+    display: none;
   `,
   headerActions: css`
     display: flex;
     align-items: center;
-    gap: 12px;
-    @media (min-width: 768px) {
-      margin-top: 8px;
-    }
+    gap: 8px;
   `,
   folderButton: css`
     cursor: pointer;
@@ -122,20 +122,10 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
   /* Sub Navigation */
   subNav: css`
     display: flex;
-    flex-direction: column;
+    align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    padding-bottom: 16px;
-    margin-bottom: 16px;
-    flex-shrink: 0;
-    gap: 16px;
-    @media (min-width: 768px) {
-      flex-direction: row;
-      align-items: center;
-    }
-    [data-theme='dark'] & {
-      border-color: rgba(255, 255, 255, 0.1);
-    }
+    margin-bottom: 8px;
+    gap: 12px;
   `,
   filterGroup: css`
     display: flex;
@@ -199,11 +189,51 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
     gap: 8px;
   `,
 
+  /* Section headers (lobe-chat style) */
+  sectionHeader: css`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+  `,
+  sectionTitle: css`
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: ${token.colorTextTertiary};
+  `,
+  sectionCount: css`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 600;
+    background: ${token.colorFillSecondary};
+    color: ${token.colorTextSecondary};
+    letter-spacing: 0;
+    text-transform: none;
+  `,
+  sectionActions: css`
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  `,
+  sectionDivider: css`
+    display: none;
+  `,
+
   /* Skill List */
   skillList: css`
     display: flex;
     flex-direction: column;
-    gap: 4px;
   `,
   emptyState: css`
     display: flex;
@@ -217,41 +247,26 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
     display: flex;
     flex-direction: row;
     align-items: center;
-    justify-content: space-between;
-    padding: 14px 12px;
-    border-radius: ${token.borderRadiusLG}px;
-    transition: background 0.2s;
+    gap: 16px;
+    padding: 12px 0;
+    border-radius: ${token.borderRadius}px;
+    transition: background 0.15s;
     cursor: pointer;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    &:last-child {
-      border-bottom: none;
-    }
     &:hover {
-      background: rgba(0, 0, 0, 0.05);
-    }
-    [data-theme='dark'] & {
-      border-color: rgba(255, 255, 255, 0.05);
-      &:hover {
-        background: rgba(255, 255, 255, 0.05);
-      }
+      background: ${token.colorFillTertiary};
     }
   `,
   skillIcon: css`
-    height: 40px;
-    width: 40px;
     flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: ${token.colorFillTertiary};
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
-    background: rgba(0, 0, 0, 0.05);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    border-radius: ${token.borderRadiusLG}px;
-    overflow: hidden;
-    [data-theme='dark'] & {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 255, 255, 0.1);
-    }
+    font-size: 24px;
+    transition: opacity 0.2s;
   `,
   skillInfo: css`
     display: flex;
@@ -264,21 +279,28 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
   skillMeta: css`
     display: flex;
     flex-direction: column;
+    flex: 1;
     overflow: hidden;
+    min-width: 0;
   `,
   skillNameRow: css`
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 4px;
+    gap: 6px;
+    margin-bottom: 2px;
   `,
   skillName: css`
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 500;
     color: ${token.colorText};
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.15s;
+    &:hover {
+      color: ${token.colorPrimary};
+    }
   `,
   skillSlug: css`
     font-size: 11px;
@@ -292,14 +314,13 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
     }
   `,
   skillDescription: css`
-    font-size: 13.5px;
+    font-size: 13px;
     color: ${token.colorTextSecondary};
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
-    padding-right: 24px;
-    line-height: 1.6;
+    line-height: 1.5;
   `,
   skillTagRow: css`
     margin-top: 4px;
@@ -321,13 +342,34 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
   skillControls: css`
     display: flex;
     align-items: center;
-    gap: 24px;
+    gap: 12px;
     flex-shrink: 0;
   `,
   skillVersion: css`
     font-size: 13px;
     font-family: monospace;
     color: ${token.colorTextSecondary};
+  `,
+  iconBtn: css`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: ${token.borderRadius}px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: ${token.colorTextSecondary};
+    transition: background 0.15s, color 0.15s;
+    &:hover {
+      background: ${token.colorFillSecondary};
+      color: ${token.colorText};
+    }
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
   `,
 
   /* Install Sheet */

@@ -80,7 +80,7 @@
 ### 3. 执行能力：本地、技能、渠道、定时一体化
 
 - 本地执行中心：目录报告、批量重命名预览、下载目录整理、命令执行
-- Skills 系统：内置 `pdf` / `xlsx` / `docx` / `pptx` 等常用能力
+- Skills 系统：内置 `pdf` / `xlsx` / `docx` / `pptx` 等常用能力；技能商店通过 `npx skills`（[skills.sh](https://skills.sh)）搜索安装，首次使用可在需要时自动准备 Node 运行时（`~/.mimiclaw/runtime/node`）
 - 多渠道管理：支持多账号、账号与 Agent 绑定、默认账号切换
 - 定时任务：通过 Cron 自动化执行重复工作
 - 兜底配置包：可在设置页直接输入口令并导出语音对话、ASR、Gateway 关键配置为本地加密文件；也支持在打包时将 `default-fallback-profile.json` 放入 `resources/fallback/` 进行内置，首次初始化输入口令即可自动预填

@@ -14,6 +14,7 @@ import { UnifiedChatPage } from "./features/chat/pages/UnifiedChatPage";
 import { Agents } from "./pages/Agents";
 import { Channels } from "./pages/Channels";
 import { Skills } from "./pages/Skills";
+import { SkillsStorePage } from "./pages/Skills/store";
 import { Cron } from "./pages/Cron";
 import { Settings } from "./pages/Settings";
 import { CodeAgent } from "./pages/CodeAgent";
@@ -337,6 +338,7 @@ function App() {
 							<Route path="/agents" element={<Agents />} />
 							<Route path="/channels" element={<Channels />} />
 							<Route path="/skills" element={<Skills />} />
+							<Route path="/skills/store" element={<SkillsStorePage />} />
 							<Route path="/cron" element={<Cron />} />
 							<Route
 								path="/code-agent/quick-chat"

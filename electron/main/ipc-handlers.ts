@@ -16,12 +16,6 @@ import { homedir } from "node:os";
 import { join, extname, basename } from "node:path";
 import crypto from "node:crypto";
 import { GatewayManager } from "../gateway/manager";
-import {
-	ClawHubService,
-	ClawHubSearchParams,
-	ClawHubInstallParams,
-	ClawHubUninstallParams,
-} from "../gateway/clawhub";
 import { type ProviderConfig } from "../utils/secure-storage";
 import {
 	getOpenClawStatus,
@@ -943,7 +937,6 @@ function registerPetHandlers(): void {
  */
 export function registerIpcHandlers(
 	gatewayManager: GatewayManager,
-	clawHubService: ClawHubService,
 	mainWindow: BrowserWindow,
 ): void {
 	// Unified request protocol (non-breaking: legacy channels remain available)
@@ -954,9 +947,6 @@ export function registerIpcHandlers(
 
 	// Gateway handlers
 	registerGatewayHandlers(gatewayManager, mainWindow);
-
-	// ClawHub handlers
-	registerClawHubHandlers(clawHubService);
 
 	// OpenClaw handlers
 	registerOpenClawHandlers(gatewayManager);
@@ -3350,64 +3340,6 @@ function registerShellHandlers(): void {
 function registerScreenshotHandlers(): void {
 	ipcMain.handle("screenshot:captureSnipaste", async () => {
 		return await captureWithSnipaste();
-	});
-}
-
-/**
- * ClawHub-related IPC handlers
- */
-function registerClawHubHandlers(clawHubService: ClawHubService): void {
-	// Search skills
-	ipcMain.handle("clawhub:search", async (_, params: ClawHubSearchParams) => {
-		try {
-			const results = await clawHubService.search(params);
-			return { success: true, results };
-		} catch (error) {
-			return { success: false, error: String(error) };
-		}
-	});
-
-	// Install skill
-	ipcMain.handle("clawhub:install", async (_, params: ClawHubInstallParams) => {
-		try {
-			await clawHubService.install(params);
-			return { success: true };
-		} catch (error) {
-			return { success: false, error: String(error) };
-		}
-	});
-
-	// Uninstall skill
-	ipcMain.handle(
-		"clawhub:uninstall",
-		async (_, params: ClawHubUninstallParams) => {
-			try {
-				await clawHubService.uninstall(params);
-				return { success: true };
-			} catch (error) {
-				return { success: false, error: String(error) };
-			}
-		},
-	);
-
-	// List installed skills
-	ipcMain.handle("clawhub:list", async () => {
-		try {
-			const results = await clawHubService.listInstalled();
-			return { success: true, results };
-		} catch (error) {
-			return { success: false, error: String(error) };
-		}
-	});
-
-	// Open skill readme
-	ipcMain.handle("clawhub:openSkillReadme", async (_, slug: string) => {
-		try {
-			await clawHubService.openSkillReadme(slug);
-			return { success: true };
-		} catch (error) {
-			return { success: false, error: String(error) };
-		}
 	});
 }
 

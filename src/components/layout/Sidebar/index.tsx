@@ -719,7 +719,7 @@ export function Sidebar() {
       <NavItem
         icon={Hexagon}
         title={t('sidebar.skills', { defaultValue: '技能' })}
-        active={pathname === '/skills'}
+        active={pathname === '/skills' || pathname.startsWith('/skills/')}
         onClick={() => navigate('/skills')}
       />
 

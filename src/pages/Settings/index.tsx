@@ -146,7 +146,7 @@ function LanguagePicker({ value, onChange }: { value?: string; onChange?: (v: st
           key={lang.code}
           type="button"
           onClick={() => onChange?.(lang.code)}
-          className={cn(styles.langPickerBtn, value === lang.code && styles.pickerBtnActive)}
+          className={cn(styles.pickerBtn, value === lang.code && styles.pickerBtnActive)}
         >
           {lang.label}
         </button>
@@ -1391,55 +1391,57 @@ export function Settings() {
               </div>
 
               {/* Remote Gateway */}
-              <div className={styles.infoPanel}>
-                <div className={styles.infoPanelHeader}>
-                  <Globe style={{ height: 16, width: 16, color: 'var(--ant-color-text-secondary)' }} />
-                  <Label className={styles.settingLabel}>{t('gateway.remoteTitle')}</Label>
-                </div>
-                <p className={styles.hintText12}>{t('gateway.remoteDesc')}</p>
+              <Form.Group
+                title={t('gateway.remoteTitle')}
+                variant="filled"
+                extra={<Globe style={{ height: 16, width: 16, color: 'var(--ant-color-text-secondary)' }} />}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 16px 16px' }}>
+                  <p className={styles.hintText12}>{t('gateway.remoteDesc')}</p>
 
-                <div className={styles.formField}>
-                  <Label className={styles.fieldLabelSmall}>{t('gateway.remoteUrl')}</Label>
-                  <Input
-                    type="text"
-                    placeholder="ws://your-gateway-host:18789/ws"
-                    value={remoteGatewayUrlDraft}
-                    onChange={(e) => setRemoteGatewayUrlDraft(e.target.value)}
-                    onBlur={() => {
-                      if (remoteGatewayUrlDraft !== remoteGatewayUrl) {
-                        setRemoteGatewayUrl(remoteGatewayUrlDraft);
-                      }
-                    }}
-                    style={{ fontSize: 13, fontFamily: 'monospace' }}
-                  />
-                  <p className={styles.hintText}>{t('gateway.remoteUrlHelp')}</p>
-                </div>
-
-                <div className={styles.formField}>
-                  <Label className={styles.fieldLabelSmall}>{t('gateway.remoteToken')}</Label>
-                  <div className={styles.inputWithEye}>
+                  <div className={styles.formField}>
+                    <Label className={styles.fieldLabelSmall}>{t('gateway.remoteUrl')}</Label>
                     <Input
-                      type={showRemoteGatewayToken ? 'text' : 'password'}
-                      placeholder={t('gateway.remoteTokenPlaceholder')}
-                      value={remoteGatewayTokenDraft}
-                      onChange={(e) => setRemoteGatewayTokenDraft(e.target.value)}
+                      type="text"
+                      placeholder="ws://your-gateway-host:18789/ws"
+                      value={remoteGatewayUrlDraft}
+                      onChange={(e) => setRemoteGatewayUrlDraft(e.target.value)}
                       onBlur={() => {
-                        if (remoteGatewayTokenDraft !== remoteGatewayToken) {
-                          setRemoteGatewayToken(remoteGatewayTokenDraft);
+                        if (remoteGatewayUrlDraft !== remoteGatewayUrl) {
+                          setRemoteGatewayUrl(remoteGatewayUrlDraft);
                         }
                       }}
-                      style={{ fontSize: 13, fontFamily: 'monospace', paddingRight: 40 }}
+                      style={{ fontSize: 13, fontFamily: 'monospace' }}
                     />
-                    <button type="button" onClick={() => setShowRemoteGatewayToken((v) => !v)} className={styles.eyeBtn}>
-                      {showRemoteGatewayToken ? <EyeOff style={{ height: 16, width: 16 }} /> : <Eye style={{ height: 16, width: 16 }} />}
-                    </button>
+                    <p className={styles.hintText}>{t('gateway.remoteUrlHelp')}</p>
                   </div>
-                </div>
 
-                {remoteGatewayUrl && (
-                  <p className={styles.amberText}>{t('gateway.remoteActive')}</p>
-                )}
-              </div>
+                  <div className={styles.formField}>
+                    <Label className={styles.fieldLabelSmall}>{t('gateway.remoteToken')}</Label>
+                    <div className={styles.inputWithEye}>
+                      <Input
+                        type={showRemoteGatewayToken ? 'text' : 'password'}
+                        placeholder={t('gateway.remoteTokenPlaceholder')}
+                        value={remoteGatewayTokenDraft}
+                        onChange={(e) => setRemoteGatewayTokenDraft(e.target.value)}
+                        onBlur={() => {
+                          if (remoteGatewayTokenDraft !== remoteGatewayToken) {
+                            setRemoteGatewayToken(remoteGatewayTokenDraft);
+                          }
+                        }}
+                        style={{ fontSize: 13, fontFamily: 'monospace', paddingRight: 40 }}
+                      />
+                      <button type="button" onClick={() => setShowRemoteGatewayToken((v) => !v)} className={styles.eyeBtn}>
+                        {showRemoteGatewayToken ? <EyeOff style={{ height: 16, width: 16 }} /> : <Eye style={{ height: 16, width: 16 }} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {remoteGatewayUrl && (
+                    <p className={styles.amberText}>{t('gateway.remoteActive')}</p>
+                  )}
+                </div>
+              </Form.Group>
 
               {/* Cloud Workspace */}
               {cloudGateway?.cloudMode && (

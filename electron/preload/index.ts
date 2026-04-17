@@ -139,12 +139,6 @@ const electronAPI = {
         // WhatsApp
         'channel:requestWhatsAppQr',
         'channel:cancelWhatsAppQr',
-        // ClawHub
-        'clawhub:search',
-        'clawhub:install',
-        'clawhub:uninstall',
-        'clawhub:list',
-        'clawhub:openSkillReadme',
         // UV
         'uv:check',
         'uv:install-all',
@@ -239,6 +233,7 @@ const electronAPI = {
         'quick-chat:paths-dropped',
         'tray-runtime:state',
         'screenshot:capture',
+        'skills:runtime-progress',
       ];
 
       if (validChannels.includes(channel)) {
@@ -306,6 +301,7 @@ const electronAPI = {
         'pet:asr-event',
         'tray-runtime:state',
         'screenshot:capture',
+        'skills:runtime-progress',
       ];
 
       if (validChannels.includes(channel)) {

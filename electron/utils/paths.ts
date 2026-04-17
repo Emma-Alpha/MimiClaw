@@ -124,21 +124,6 @@ export function getOpenClawEntryPath(): string {
 }
 
 /**
- * Get ClawHub CLI entry script path (clawdhub.js)
- */
-export function getClawHubCliEntryPath(): string {
-  return join(app.getAppPath(), 'node_modules', 'clawhub', 'bin', 'clawdhub.js');
-}
-
-/**
- * Get ClawHub CLI binary path (node_modules/.bin)
- */
-export function getClawHubCliBinPath(): string {
-  const binName = process.platform === 'win32' ? 'clawhub.cmd' : 'clawhub';
-  return join(app.getAppPath(), 'node_modules', '.bin', binName);
-}
-
-/**
  * Check if OpenClaw package exists
  */
 export function isOpenClawPresent(): boolean {

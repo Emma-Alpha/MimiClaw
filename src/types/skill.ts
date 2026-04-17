@@ -51,6 +51,8 @@ export interface MarketplaceSkill {
   author?: string;
   downloads?: number;
   stars?: number;
+  /** skills.sh or source page */
+  url?: string;
 }
 
 /**

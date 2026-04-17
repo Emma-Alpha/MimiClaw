@@ -29,7 +29,7 @@ import { logger } from '../utils/logger';
 import { warmupNetworkOptimization } from '../utils/uv-env';
 import { initTelemetry } from '../utils/telemetry';
 
-import { ClawHubService } from '../gateway/clawhub';
+import { SkillsCliRunner } from '../gateway/skills-cli';
 import { ensureMimiClawContext, repairMimiClawOnlyBootstrapFiles } from '../utils/openclaw-workspace';
 import { autoInstallCliIfNeeded, generateCompletionCache, installCompletionToProfile } from '../utils/openclaw-cli';
 import { isInstallingUpdate, isQuitting, setInstallingUpdate, setQuitting } from './app-state';
@@ -174,7 +174,7 @@ const gotTheLock = gotElectronLock && gotFileLock;
 let mainWindow: BrowserWindow | null = null;
 let gatewayManager!: GatewayManager;
 let codeAgentManager!: CodeAgentManager;
-let clawHubService!: ClawHubService;
+let skillsCliRunner!: SkillsCliRunner;
 let hostEventBus!: HostEventBus;
 let hostApiServer: Server | null = null;
 let pendingDeepLinkUrl: string | null = null;
@@ -733,12 +733,12 @@ async function initialize(): Promise<void> {
   );
 
   // Register IPC handlers
-  registerIpcHandlers(gatewayManager, clawHubService, window);
+  registerIpcHandlers(gatewayManager, window);
 
   hostApiServer = await startHostApiServer({
     gatewayManager,
     codeAgentManager,
-    clawHubService,
+    skillsCliRunner,
     eventBus: hostEventBus,
     mainWindow: window,
   });
@@ -1085,7 +1085,7 @@ if (gotTheLock) {
 
   gatewayManager = new GatewayManager();
   codeAgentManager = new CodeAgentManager();
-  clawHubService = new ClawHubService();
+  skillsCliRunner = new SkillsCliRunner();
   hostEventBus = new HostEventBus();
   pendingDeepLinkUrl = extractProtocolUrl(process.argv);
 
