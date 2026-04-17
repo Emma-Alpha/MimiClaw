@@ -1,5 +1,18 @@
 import { ClaudeCode, OpenClaw } from '@lobehub/icons';
-import { Package, Lock, FolderOpen, Ellipsis, Eye, Power, Trash2, Cloud, Wrench } from 'lucide-react';
+import { Icon, Tag } from '@lobehub/ui';
+import {
+  BadgeCheck,
+  Check,
+  Cloud,
+  Ellipsis,
+  Eye,
+  FolderOpen,
+  Lock,
+  Package,
+  Power,
+  Trash2,
+  Wrench,
+} from 'lucide-react';
 import { Dropdown, type MenuProps } from 'antd';
 import type { Skill } from '@/types/skill';
 import { useTranslation } from 'react-i18next';
@@ -90,6 +103,7 @@ export function SkillList({
       : skill.enabled
         ? t('list.status.enabled', { defaultValue: 'Enabled' })
         : t('list.status.disabled', { defaultValue: 'Disabled' });
+    const showStatusCheck = isLocal || skill.enabled;
 
     const sourceLabel =
       cat === 'bundled'
@@ -97,6 +111,8 @@ export function SkillList({
         : cat === 'remote'
           ? t('category.remote.badge', { defaultValue: 'Remote' })
           : t('category.local.badge', { defaultValue: 'Local' });
+    const sourceColor = cat === 'bundled' ? 'processing' : cat === 'remote' ? 'warning' : 'success';
+    const sourceIcon = cat === 'bundled' ? Package : cat === 'remote' ? Cloud : BadgeCheck;
     const hideDescription =
       (skill.description || '').trim().toLowerCase() === 'recently installed, initializing...';
 
@@ -184,10 +200,14 @@ export function SkillList({
               <Package style={{ width: 11, height: 11, color: 'rgba(59,130,246,0.65)', flexShrink: 0 }} />
             )}
             {hasUpdate && <UpdateBadge />}
-            <span className={styles.skillSourceTag}>
-              <span className={styles.skillSourceDot} />
+            <Tag
+              className={styles.skillSourceTag}
+              color={sourceColor}
+              icon={<Icon icon={sourceIcon} size={12} />}
+              size={'small'}
+            >
               {sourceLabel}
-            </span>
+            </Tag>
           </div>
           {skill.description && !hideDescription && (
             <p className={styles.skillDescription} style={{ opacity: dim ? 0.45 : 1 }}>
@@ -203,6 +223,7 @@ export function SkillList({
               isLocal || skill.enabled ? styles.skillStateInstalled : styles.skillStateDisabled
             }`}
           >
+            {showStatusCheck && <Check style={{ width: 13, height: 13, strokeWidth: 2.5 }} />}
             {statusText}
           </span>
           {menuItems.length > 0 && (

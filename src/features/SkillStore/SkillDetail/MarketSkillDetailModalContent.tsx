@@ -3,17 +3,9 @@ import { memo, useEffect, useMemo, useState } from 'react';
 import { hostApiFetch } from '@/lib/host-api';
 import type { MarketplaceSkill, Skill } from '@/types/skill';
 import { DetailContext } from './DetailContext';
+import { extractFrontmatterField, resolveSkillIcon } from './frontmatter';
 import SkillDetailInner from './SkillDetailInner';
 import type { SkillDetailApiResponse, SkillResourceTreeNode } from './types';
-
-function extractFrontmatterField(markdown: string, key: string): string | undefined {
-  const frontmatterMatch = markdown.match(/^---\s*\n([\s\S]*?)\n---/);
-  if (!frontmatterMatch) return undefined;
-  const body = frontmatterMatch[1];
-  const matcher = new RegExp(`^\\s*${key}\\s*:\\s*["']?([^"'\\n]+)["']?\\s*$`, 'm');
-  const matched = body.match(matcher);
-  return matched?.[1]?.trim();
-}
 
 type SkillPreviewDetailApiResponse = {
   success: boolean;
@@ -94,6 +86,7 @@ const MarketSkillDetailModalContent = memo<MarketSkillDetailModalContentProps>(
 
     const label = extractFrontmatterField(skillContent, 'name') || marketSkill.name;
     const readmeDescription = extractFrontmatterField(skillContent, 'description');
+    const frontmatterIcon = resolveSkillIcon(extractFrontmatterField(skillContent, 'icon'), baseDir);
     const author = extractFrontmatterField(skillContent, 'author') || marketSkill.author || 'Unknown';
     const localizedDescription = readmeDescription || marketSkill.description || '';
 
@@ -106,11 +99,11 @@ const MarketSkillDetailModalContent = memo<MarketSkillDetailModalContentProps>(
         enabled: false,
         version: marketSkill.version,
         author: marketSkill.author,
-        icon: '🧩',
+        icon: frontmatterIcon || '🧩',
         source: 'openclaw-managed',
         baseDir,
       }),
-      [baseDir, marketSkill, resolvedSlug],
+      [baseDir, frontmatterIcon, marketSkill, resolvedSlug],
     );
 
     const value = useMemo(
@@ -161,4 +154,3 @@ const MarketSkillDetailModalContent = memo<MarketSkillDetailModalContentProps>(
 MarketSkillDetailModalContent.displayName = 'MarketSkillDetailModalContent';
 
 export default MarketSkillDetailModalContent;
-

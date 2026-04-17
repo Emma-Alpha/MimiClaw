@@ -3,17 +3,9 @@ import { memo, useEffect, useMemo, useState } from 'react';
 import type { Skill } from '@/types/skill';
 import { hostApiFetch } from '@/lib/host-api';
 import { DetailContext } from './DetailContext';
+import { extractFrontmatterField, resolveSkillIcon } from './frontmatter';
 import SkillDetailInner from './SkillDetailInner';
 import type { SkillDetailApiResponse, SkillResourceTreeNode } from './types';
-
-function extractFrontmatterField(markdown: string, key: string): string | undefined {
-  const frontmatterMatch = markdown.match(/^---\s*\n([\s\S]*?)\n---/);
-  if (!frontmatterMatch) return undefined;
-  const body = frontmatterMatch[1];
-  const matcher = new RegExp(`^\\s*${key}\\s*:\\s*["']?([^"'\\n]+)["']?\\s*$`, 'm');
-  const matched = body.match(matcher);
-  return matched?.[1]?.trim();
-}
 
 interface SkillDetailModalContentProps {
   skill: Skill;
@@ -77,6 +69,8 @@ const SkillDetailModalContent = memo<SkillDetailModalContentProps>(({ skill }) =
 
   const label = extractFrontmatterField(skillContent, 'name') || skill.name;
   const readmeDescription = extractFrontmatterField(skillContent, 'description');
+  const frontmatterIcon = resolveSkillIcon(extractFrontmatterField(skillContent, 'icon'), skill.baseDir);
+  const fallbackIcon = resolveSkillIcon(skill.icon, skill.baseDir) || skill.icon;
   const author = extractFrontmatterField(skillContent, 'author') || skill.author || 'Unknown';
   const localizedDescription = readmeDescription || skill.description || '';
 
@@ -86,7 +80,7 @@ const SkillDetailModalContent = memo<SkillDetailModalContentProps>(({ skill }) =
       contentMap,
       description: skill.description || '',
       error,
-      icon: skill.icon,
+      icon: frontmatterIcon || fallbackIcon,
       identifier: skill.id,
       label,
       loading,
@@ -101,6 +95,8 @@ const SkillDetailModalContent = memo<SkillDetailModalContentProps>(({ skill }) =
       author,
       contentMap,
       error,
+      fallbackIcon,
+      frontmatterIcon,
       label,
       loading,
       localizedDescription,

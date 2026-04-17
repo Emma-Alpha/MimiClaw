@@ -4,6 +4,7 @@ import Agents from './Agents';
 import Header from './Header';
 import Nav, { type TabKey } from './Nav';
 import Overview from './Overview';
+import { styles } from './styles';
 
 const Schema = lazy(() => import('./Schema'));
 
@@ -34,9 +35,11 @@ const SkillDetailInner = memo(() => {
 
   return (
     <Flexbox gap={16}>
-      <Header />
-      <Nav activeTab={activeTab} setActiveTab={setActiveTab} />
-      {renderContent()}
+      <div className={styles.stickyTop}>
+        <Header />
+        <Nav activeTab={activeTab} setActiveTab={setActiveTab} />
+      </div>
+      <div className={styles.tabContent}>{renderContent()}</div>
     </Flexbox>
   );
 });

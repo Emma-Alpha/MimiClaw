@@ -4,10 +4,8 @@ import { BookOpenIcon, BotIcon, CodeIcon } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const navStyles = createStaticStyles(({ css, cssVar }) => ({
-  nav: css`
-    border-block-end: 1px solid ${cssVar.colorBorder};
-  `,
+const navStyles = createStaticStyles(({ css }) => ({
+  nav: css``,
   tabs: css`
     overflow-x: auto;
     flex: 1;

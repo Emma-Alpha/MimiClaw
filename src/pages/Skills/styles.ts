@@ -40,6 +40,13 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
     box-sizing: border-box;
     height: 100%;
     overflow: hidden;
+    --skills-inline-padding: 32px;
+    @media (max-width: 992px) {
+      --skills-inline-padding: 20px;
+    }
+    @media (max-width: 640px) {
+      --skills-inline-padding: 12px;
+    }
   `,
   skillsPageInner: css`
     width: 100%;
@@ -48,28 +55,33 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 12px;
     height: 100%;
-    padding: 0 32px;
     overflow: hidden;
-    @media (max-width: 992px) {
-      padding: 0 20px;
-    }
-    @media (max-width: 640px) {
-      padding: 0 12px;
-    }
+  `,
+  skillsPageHeader: css`
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    padding-inline: var(--skills-inline-padding);
+    background: color-mix(in srgb, ${token.colorBgContainer} 78%, transparent);
+    backdrop-filter: blur(12px) saturate(130%);
+    -webkit-backdrop-filter: blur(12px) saturate(130%);
   `,
   skillsPageContent: css`
     flex: 1;
     min-height: 0;
     overflow-y: auto;
     padding-bottom: 40px;
+    overflow-x: hidden;
     @media (max-width: 992px) {
       padding-bottom: 28px;
     }
     @media (max-width: 640px) {
       padding-bottom: 20px;
     }
+  `,
+  skillsPageContentInner: css`
+    padding-inline: var(--skills-inline-padding);
   `,
   loadingWrapper: css`
     display: flex;
@@ -361,8 +373,9 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
     margin-bottom: 4px;
   `,
   skillName: css`
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-width: 0;
+    max-width: min(52vw, 520px);
     font-size: 15px;
     font-weight: 500;
     color: ${token.colorText};
@@ -427,14 +440,17 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
     }
   `,
   skillStateText: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     font-size: 14px;
     color: ${token.colorTextTertiary};
     white-space: nowrap;
     min-width: 60px;
-    text-align: right;
+    justify-content: flex-end;
     @media (max-width: 768px) {
       min-width: auto;
-      text-align: left;
+      justify-content: flex-start;
       font-size: 13px;
     }
   `,
@@ -499,22 +515,13 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
   skillSourceTag: css`
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
     height: 20px;
     padding: 0 6px;
+    margin-inline-end: 0;
     border-radius: 6px;
     font-size: 11px;
     font-weight: 500;
-    color: #22a055;
-    background: #e9f7ee;
-  `,
-  skillSourceDot: css`
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    border: 1.5px solid #22a055;
-    display: inline-block;
-    box-sizing: border-box;
   `,
 
   /* Install Sheet */

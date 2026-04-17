@@ -146,35 +146,39 @@ export function Skills() {
   return (
     <div className={styles.skillsPageRoot}>
       <div className={styles.skillsPageInner}>
-        <SettingHeader
-          title={t('title')}
-          extra={
-            <Button icon={<Icon icon={Store} />} size="large" onClick={handleOpenStore}>
-              {t('store.open', { defaultValue: 'Skill store' })}
-            </Button>
-          }
-        />
-
         <div className={styles.skillsPageContent}>
-          {error && (
-            <div className={styles.errorBanner}>
-              <AlertCircle style={{ width: 20, height: 20, flexShrink: 0 }} />
-              <span>
-                {['fetchTimeoutError', 'fetchRateLimitError', 'timeoutError', 'rateLimitError'].includes(error)
-                  ? t(`toast.${error}`, { path: skillsDirPath })
-                  : error}
-              </span>
-            </div>
-          )}
+          <div className={styles.skillsPageHeader}>
+            <SettingHeader
+              title={t('title')}
+              extra={
+                <Button icon={<Icon icon={Store} />} size="large" onClick={handleOpenStore}>
+                  {t('store.open', { defaultValue: 'Skill store' })}
+                </Button>
+              }
+            />
+          </div>
 
-          <SkillList
-            skills={skills}
-            onSelectSkill={openSkillDetail}
-            onToggle={handleToggle}
-            onUninstall={handleUninstall}
-            onOpenFolder={handleOpenSkillFolder}
-            outdated={outdated}
-          />
+          <div className={styles.skillsPageContentInner}>
+            {error && (
+              <div className={styles.errorBanner}>
+                <AlertCircle style={{ width: 20, height: 20, flexShrink: 0 }} />
+                <span>
+                  {['fetchTimeoutError', 'fetchRateLimitError', 'timeoutError', 'rateLimitError'].includes(error)
+                    ? t(`toast.${error}`, { path: skillsDirPath })
+                    : error}
+                </span>
+              </div>
+            )}
+
+            <SkillList
+              skills={skills}
+              onSelectSkill={openSkillDetail}
+              onToggle={handleToggle}
+              onUninstall={handleUninstall}
+              onOpenFolder={handleOpenSkillFolder}
+              outdated={outdated}
+            />
+          </div>
         </div>
       </div>
     </div>

@@ -44,6 +44,8 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+    border-radius: 12px;
 
     width: ${ICON_SIZE}px;
     height: ${ICON_SIZE}px;
@@ -57,6 +59,22 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   nav: css`
     border-block-end: 1px solid ${cssVar.colorBorder};
+  `,
+  stickyTop: css`
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-block: 8px 12px;
+    margin-block-start: -8px;
+    background: color-mix(in srgb, ${cssVar.colorBgContainer} 76%, transparent);
+    backdrop-filter: blur(14px) saturate(135%);
+    -webkit-backdrop-filter: blur(14px) saturate(135%);
+  `,
+  tabContent: css`
+    padding-top: 4px;
   `,
   sectionTitle: css`
     font-size: 14px;

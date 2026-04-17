@@ -14,6 +14,7 @@ type GatewaySkillStatus = {
   name?: string;
   description?: string;
   disabled?: boolean;
+  icon?: string;
   emoji?: string;
   version?: string;
   author?: string;
@@ -142,7 +143,7 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
             name: s.name || s.skillKey,
             description: s.description || '',
             enabled: !s.disabled,
-            icon: s.emoji || '📦',
+            icon: s.icon || s.emoji || '📦',
             version: s.version || '1.0.0',
             author: s.author,
             config: {
