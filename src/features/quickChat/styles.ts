@@ -8,7 +8,7 @@ export const useMiniChatStyles = createStyles(
 			--mini-chat-content-width: min(800px, calc(100% - (var(--mini-chat-side-gap) * 2)));
 			--mini-chat-dock-inline-padding: 12px;
 			height: 100vh;
-			width: 100vw;
+			width: 100%;
 			display: flex;
 		flex-direction: column;
 		overflow: hidden;
