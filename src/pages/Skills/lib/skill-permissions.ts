@@ -24,7 +24,7 @@ export function resolvePermissions(skill: Skill, category: SkillCategory): Skill
 
   if (category === 'local') {
     return {
-      canToggle: !isCore,
+      canToggle: false,
       canUninstall: !isCore,
       canConfigure: !isCore,
       canUpdate: false,

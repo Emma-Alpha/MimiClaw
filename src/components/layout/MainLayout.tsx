@@ -42,6 +42,7 @@ const useStyles = createStyles(({ token, css }) => ({
   content: css`
     flex: 1;
     min-height: 0;
+    min-width: 0;
     position: relative;
     z-index: 10;
     display: flex;

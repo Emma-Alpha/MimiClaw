@@ -3,11 +3,14 @@
  * @see https://www.npmjs.com/package/skills
  */
 import { spawn } from 'node:child_process';
-import { homedir } from 'node:os';
+import fs from 'node:fs';
+import path from 'node:path';
+import { homedir, tmpdir } from 'node:os';
 import type { NodeRuntimeStatus } from './node-runtime';
 import { ensureNode } from './node-runtime';
 import { logger } from '../utils/logger';
 import { quoteForCmd } from '../utils/paths';
+import { getSkillDetail, type SkillDetailPayload } from './skill-detail-utils';
 
 /** Pinned CLI; bump only after verifying JSON/text output compatibility. */
 export const PINNED_SKILLS_PKG_VERSION = '1.5.0';
@@ -28,6 +31,9 @@ export interface SkillListEntry {
   version: string;
   source?: string;
   baseDir?: string;
+  icon?: string;
+  name?: string;
+  description?: string;
 }
 
 export interface OutdatedEntry {
@@ -106,6 +112,28 @@ function safeJsonParse<T>(raw: string, label: string): T {
   }
 }
 
+function parseSkillManifestMeta(
+  skillDir: string,
+): { description?: string; icon?: string; name?: string } {
+  try {
+    const manifestPath = path.join(skillDir, 'SKILL.md');
+    if (!fs.existsSync(manifestPath)) return {};
+    const raw = fs.readFileSync(manifestPath, 'utf8');
+    const fm = raw.match(/^---\s*\n([\s\S]*?)\n---/);
+    if (!fm) return {};
+    const body = fm[1];
+    const pick = (key: string) =>
+      body.match(new RegExp(`^\\s*${key}\\s*:\\s*["']?([^"'\\n]+)["']?\\s*$`, 'm'))?.[1]?.trim();
+    return {
+      name: pick('name'),
+      description: pick('description'),
+      icon: pick('icon'),
+    };
+  } catch {
+    return {};
+  }
+}
+
 export type EnsureNodeFn = (onProgress?: (s: NodeRuntimeStatus) => void) => Promise<{
   nodePath: string;
   npxPath: string;
@@ -114,7 +142,10 @@ export type EnsureNodeFn = (onProgress?: (s: NodeRuntimeStatus) => void) => Prom
 export class SkillsCliRunner {
   constructor(private readonly ensureNpx: EnsureNodeFn = ensureNode) {}
 
-  private async run(args: string[], options?: { cwd?: string }): Promise<string> {
+  private async run(
+    args: string[],
+    options?: { cwd?: string; envOverrides?: NodeJS.ProcessEnv },
+  ): Promise<string> {
     const { npxPath } = await this.ensureNpx();
     const pkg = `skills@${PINNED_SKILLS_PKG_VERSION}`;
     const fullArgs = ['-y', pkg, ...args];
@@ -128,6 +159,7 @@ export class SkillsCliRunner {
       ...process.env,
       CI: 'true',
       FORCE_COLOR: '0',
+      ...(options?.envOverrides || {}),
     };
 
     return new Promise((resolve, reject) => {
@@ -185,17 +217,92 @@ export class SkillsCliRunner {
     if (!Array.isArray(parsed)) {
       throw new SkillsCliParseError('skills list JSON is not an array', out);
     }
-    return parsed.map((row) => ({
-      slug: row.name,
-      version: '1.0.0',
-      source: 'agents-skills-personal',
-      baseDir: row.path,
-    }));
+    return parsed.map((row) => {
+      const meta = parseSkillManifestMeta(row.path);
+      return {
+        slug: row.name,
+        version: '1.0.0',
+        source: 'agents-skills-personal',
+        baseDir: row.path,
+        name: meta.name,
+        description: meta.description,
+        icon: meta.icon,
+      };
+    });
   }
 
   async install(slug: string, _version?: string): Promise<void> {
     const args = ['add', slug.trim(), '-g', '-y'];
     await this.run(args);
+  }
+
+  private buildIsolatedHomeEnv(homeDir: string): NodeJS.ProcessEnv {
+    if (process.platform === 'win32') {
+      return {
+        APPDATA: path.join(homeDir, 'AppData', 'Roaming'),
+        HOME: homeDir,
+        LOCALAPPDATA: path.join(homeDir, 'AppData', 'Local'),
+        USERPROFILE: homeDir,
+      };
+    }
+
+    return {
+      HOME: homeDir,
+      XDG_CONFIG_HOME: path.join(homeDir, '.config'),
+    };
+  }
+
+  async previewDetail(
+    slugOrName: string,
+  ): Promise<{ baseDir: string; detail: SkillDetailPayload; resolvedSlug: string }> {
+    const target = slugOrName.trim();
+    if (!target) {
+      throw new Error('Missing skill slug');
+    }
+
+    const tmpHome = fs.mkdtempSync(path.join(tmpdir(), 'mimiclaw-skill-preview-'));
+    const envOverrides = this.buildIsolatedHomeEnv(tmpHome);
+
+    try {
+      await this.run(['add', target, '-g', '-y'], {
+        cwd: tmpHome,
+        envOverrides,
+      });
+
+      const out = await this.run(['list', '-g', '--json'], {
+        cwd: tmpHome,
+        envOverrides,
+      });
+
+      const parsed = safeJsonParse<Array<{ name: string; path: string }>>(
+        out,
+        'skills list -g --json (preview)',
+      );
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        throw new SkillsCliParseError('No installed skill found in preview environment', out);
+      }
+
+      const normalized = target.toLowerCase();
+      const tail = normalized.includes('@') ? normalized.split('@').pop() || normalized : normalized;
+
+      const matched =
+        parsed.find((item) => item.name.toLowerCase() === normalized) ||
+        parsed.find((item) => item.name.toLowerCase() === tail) ||
+        parsed[0];
+
+      const detail = getSkillDetail(matched.name, matched.name, matched.path);
+      return {
+        baseDir: matched.path,
+        detail,
+        resolvedSlug: matched.name,
+      };
+    } finally {
+      try {
+        fs.rmSync(tmpHome, { recursive: true, force: true });
+      } catch (error) {
+        logger.warn('[skills] Failed to clean preview temp dir', error);
+      }
+    }
   }
 
   uninstallSkillName(name: string): Promise<void> {

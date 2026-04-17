@@ -156,6 +156,17 @@ export async function handleSkillRoutes(
     return true;
   }
 
+  if (url.pathname === '/api/skills/preview-detail' && req.method === 'POST') {
+    try {
+      const body = await parseJsonBody<{ slug: string }>(req);
+      const preview = await ctx.skillsCliRunner.previewDetail(body.slug);
+      sendJson(res, 200, { success: true, ...preview });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
   if (url.pathname === '/api/skills/ensure-node' && req.method === 'POST') {
     try {
       void ensureNode((s) => {

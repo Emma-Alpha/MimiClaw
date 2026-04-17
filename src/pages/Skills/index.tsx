@@ -155,25 +155,27 @@ export function Skills() {
           }
         />
 
-        {error && (
-          <div className={styles.errorBanner}>
-            <AlertCircle style={{ width: 20, height: 20, flexShrink: 0 }} />
-            <span>
-              {['fetchTimeoutError', 'fetchRateLimitError', 'timeoutError', 'rateLimitError'].includes(error)
-                ? t(`toast.${error}`, { path: skillsDirPath })
-                : error}
-            </span>
-          </div>
-        )}
+        <div className={styles.skillsPageContent}>
+          {error && (
+            <div className={styles.errorBanner}>
+              <AlertCircle style={{ width: 20, height: 20, flexShrink: 0 }} />
+              <span>
+                {['fetchTimeoutError', 'fetchRateLimitError', 'timeoutError', 'rateLimitError'].includes(error)
+                  ? t(`toast.${error}`, { path: skillsDirPath })
+                  : error}
+              </span>
+            </div>
+          )}
 
-        <SkillList
-          skills={skills}
-          onSelectSkill={openSkillDetail}
-          onToggle={handleToggle}
-          onUninstall={handleUninstall}
-          onOpenFolder={handleOpenSkillFolder}
-          outdated={outdated}
-        />
+          <SkillList
+            skills={skills}
+            onSelectSkill={openSkillDetail}
+            onToggle={handleToggle}
+            onUninstall={handleUninstall}
+            onOpenFolder={handleOpenSkillFolder}
+            outdated={outdated}
+          />
+        </div>
       </div>
     </div>
   );

@@ -20,6 +20,7 @@
     "list": {
         "modalTitle": "技能详情",
         "status": {
+            "enabled": "已启用",
             "installed": "已安装",
             "disabled": "未启用"
         },

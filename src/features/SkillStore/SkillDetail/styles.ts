@@ -7,8 +7,11 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     cursor: pointer;
 
     display: inline-flex;
+    max-width: 100%;
     gap: 4px;
     align-items: center;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 
     color: ${cssVar.colorPrimary};
 
@@ -49,6 +52,8 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     font-size: 14px;
     line-height: 1.8;
     color: ${cssVar.colorText};
+    overflow-wrap: anywhere;
+    word-break: break-word;
   `,
   nav: css`
     border-block-end: 1px solid ${cssVar.colorBorder};
@@ -67,5 +72,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     font-size: 12px;
     line-height: 1.6;
     color: ${cssVar.colorTextTertiary};
+    overflow-wrap: anywhere;
+    word-break: break-word;
   `,
 }));

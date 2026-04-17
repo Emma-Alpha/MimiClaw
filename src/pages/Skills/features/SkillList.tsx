@@ -1,9 +1,10 @@
-import { Puzzle, Lock, FolderOpen, Ellipsis, Eye, Power, Trash2 } from 'lucide-react';
+import { ClaudeCode, OpenClaw } from '@lobehub/icons';
+import { Package, Lock, FolderOpen, Ellipsis, Eye, Power, Trash2, Cloud, Wrench } from 'lucide-react';
 import { Dropdown, type MenuProps } from 'antd';
 import type { Skill } from '@/types/skill';
 import { useTranslation } from 'react-i18next';
 import { useSkillsStyles } from '../styles';
-import { categorizeSkill } from '../lib/source-taxonomy';
+import { categorizeSkill, type SkillCategory } from '../lib/source-taxonomy';
 import { resolvePermissions } from '../lib/skill-permissions';
 import { UpdateBadge } from './UpdateBadge';
 
@@ -16,10 +17,48 @@ interface SkillListProps {
   outdated: Record<string, { current: string; latest: string }>;
 }
 
+const IMAGE_ICON_RE = /^(https?:\/\/|data:image\/|\/)/i;
+
+function renderMainIcon(skill: Skill, category: SkillCategory, dim: boolean) {
+  const opacity = dim ? 0.45 : 1;
+  const iconStyle = { opacity };
+  const name = `${skill.name || ''} ${skill.slug || ''}`.toLowerCase();
+
+  if (skill.icon && IMAGE_ICON_RE.test(skill.icon)) {
+    return (
+      <img
+        alt={skill.name}
+        src={skill.icon}
+        style={{ width: 24, height: 24, objectFit: 'contain', ...iconStyle }}
+      />
+    );
+  }
+
+  if (name.includes('claude')) {
+    return <ClaudeCode.Color size={24} style={iconStyle} />;
+  }
+
+  if (name.includes('openclaw')) {
+    return <OpenClaw.Color size={24} style={iconStyle} />;
+  }
+
+  if (category === 'bundled') {
+    return <Package size={22} style={iconStyle} />;
+  }
+
+  if (category === 'remote') {
+    return <Cloud size={22} style={iconStyle} />;
+  }
+
+  return <Wrench size={22} style={iconStyle} />;
+}
+
 function sortSkills(list: Skill[]): Skill[] {
   return [...list].sort((a, b) => {
-    if (a.enabled && !b.enabled) return -1;
-    if (!a.enabled && b.enabled) return 1;
+    const aEnabled = categorizeSkill(a) === 'local' ? true : a.enabled;
+    const bEnabled = categorizeSkill(b) === 'local' ? true : b.enabled;
+    if (aEnabled && !bEnabled) return -1;
+    if (!aEnabled && bEnabled) return 1;
     if (a.isCore && !b.isCore) return -1;
     if (!a.isCore && b.isCore) return 1;
     return a.name.localeCompare(b.name);
@@ -42,9 +81,15 @@ export function SkillList({
 
   function renderRow(skill: Skill) {
     const cat = categorizeSkill(skill);
+    const isLocal = cat === 'local';
     const perms = resolvePermissions(skill, cat);
     const hasUpdate = !!(outdated[skill.id] || (skill.slug && outdated[skill.slug]));
-    const dim = !skill.enabled;
+    const dim = !isLocal && !skill.enabled;
+    const statusText = isLocal
+      ? t('list.status.installed', { defaultValue: 'Installed' })
+      : skill.enabled
+        ? t('list.status.enabled', { defaultValue: 'Enabled' })
+        : t('list.status.disabled', { defaultValue: 'Disabled' });
 
     const sourceLabel =
       cat === 'bundled'
@@ -124,9 +169,7 @@ export function SkillList({
         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onSelectSkill(skill)}
       >
         {/* 48 × 48 icon block */}
-        <div className={styles.skillIcon} style={{ opacity: dim ? 0.45 : 1 }}>
-          {skill.icon || '🧩'}
-        </div>
+        <div className={styles.skillIcon}>{renderMainIcon(skill, cat, dim)}</div>
 
         {/* Name + description */}
         <div className={styles.skillMeta}>
@@ -138,7 +181,7 @@ export function SkillList({
               <Lock style={{ width: 11, height: 11, color: 'var(--ant-color-text-tertiary)', flexShrink: 0 }} />
             )}
             {!skill.isCore && skill.isBundled && (
-              <Puzzle style={{ width: 11, height: 11, color: 'rgba(59,130,246,0.65)', flexShrink: 0 }} />
+              <Package style={{ width: 11, height: 11, color: 'rgba(59,130,246,0.65)', flexShrink: 0 }} />
             )}
             {hasUpdate && <UpdateBadge />}
             <span className={styles.skillSourceTag}>
@@ -155,8 +198,12 @@ export function SkillList({
 
         {/* Controls — stop click from propagating to the row */}
         <div className={styles.skillControls}>
-          <span className={`${styles.skillStateText} ${styles.skillStateInstalled}`}>
-            {t('list.status.installed', { defaultValue: 'Installed' })}
+          <span
+            className={`${styles.skillStateText} ${
+              isLocal || skill.enabled ? styles.skillStateInstalled : styles.skillStateDisabled
+            }`}
+          >
+            {statusText}
           </span>
           {menuItems.length > 0 && (
             <Dropdown menu={{ items: menuItems, onClick: handleMenuClick }} trigger={['click']} placement="bottomRight">

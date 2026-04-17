@@ -20,6 +20,7 @@
     "list": {
         "modalTitle": "Skill details",
         "status": {
+            "enabled": "Enabled",
             "installed": "Installed",
             "disabled": "Disabled"
         },

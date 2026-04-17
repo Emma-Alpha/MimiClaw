@@ -20,6 +20,7 @@
     "list": {
         "modalTitle": "スキル詳細",
         "status": {
+            "enabled": "有効",
             "installed": "インストール済み",
             "disabled": "無効"
         },

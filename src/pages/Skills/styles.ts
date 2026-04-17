@@ -4,35 +4,72 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
   pageRoot: css`
     display: flex;
     flex-direction: column;
-    margin: -24px;
-    height: calc(100vh - 2.5rem);
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    height: 100%;
     overflow: hidden;
   `,
   pageInner: css`
-    width: 100%;
-    max-width: 80rem;
+    width: min(80rem, 100%);
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     margin-left: auto;
     margin-right: auto;
     display: flex;
     flex-direction: column;
     height: 100%;
-    padding: 40px 40px 40px 40px;
+    padding: 40px 32px 32px;
     padding-top: 64px;
+    overflow-y: auto;
+    @media (max-width: 992px) {
+      padding: 24px 20px 24px;
+      padding-top: 44px;
+    }
+    @media (max-width: 640px) {
+      padding: 20px 12px 20px;
+      padding-top: 32px;
+    }
   `,
   skillsPageRoot: css`
     display: flex;
     flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     height: 100%;
     overflow: hidden;
   `,
   skillsPageInner: css`
     width: 100%;
     max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding: 0 32px 40px;
+    height: 100%;
+    padding: 0 32px;
+    overflow: hidden;
+    @media (max-width: 992px) {
+      padding: 0 20px;
+    }
+    @media (max-width: 640px) {
+      padding: 0 12px;
+    }
+  `,
+  skillsPageContent: css`
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    padding-bottom: 40px;
+    @media (max-width: 992px) {
+      padding-bottom: 28px;
+    }
+    @media (max-width: 640px) {
+      padding-bottom: 20px;
+    }
   `,
   loadingWrapper: css`
     display: flex;
@@ -185,7 +222,8 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
     font-size: 14px;
     font-weight: 500;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
     gap: 8px;
   `,
 
@@ -256,20 +294,30 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
     color: ${token.colorTextSecondary};
   `,
   skillRow: css`
-    display: flex;
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    width: 100%;
+    box-sizing: border-box;
     align-items: center;
     gap: 16px;
     padding: 14px 0;
     border-radius: ${token.borderRadius}px;
     transition: background 0.15s;
     cursor: pointer;
+    min-width: 0;
+    @media (max-width: 768px) {
+      grid-template-columns: 40px minmax(0, 1fr);
+      column-gap: 12px;
+      row-gap: 8px;
+      align-items: flex-start;
+    }
     &:hover {
       background: transparent;
     }
   `,
   skillIcon: css`
     flex-shrink: 0;
+    grid-column: 1;
     width: 48px;
     height: 48px;
     border-radius: 12px;
@@ -279,6 +327,13 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
     justify-content: center;
     font-size: 24px;
     transition: opacity 0.2s;
+    @media (max-width: 768px) {
+      grid-row: 1 / span 2;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      font-size: 20px;
+    }
   `,
   skillInfo: css`
     display: flex;
@@ -291,17 +346,23 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
   skillMeta: css`
     display: flex;
     flex-direction: column;
+    grid-column: 2;
     flex: 1;
+    width: 100%;
     overflow: hidden;
     min-width: 0;
   `,
   skillNameRow: css`
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    min-width: 0;
     gap: 8px;
     margin-bottom: 4px;
   `,
   skillName: css`
+    flex: 1 1 auto;
+    min-width: 0;
     font-size: 15px;
     font-weight: 500;
     color: ${token.colorText};
@@ -353,9 +414,17 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
   `,
   skillControls: css`
     display: flex;
+    grid-column: 3;
+    justify-self: end;
     align-items: center;
     gap: 12px;
     flex-shrink: 0;
+    @media (max-width: 768px) {
+      grid-column: 2;
+      width: 100%;
+      justify-content: space-between;
+      gap: 10px;
+    }
   `,
   skillStateText: css`
     font-size: 14px;
@@ -363,9 +432,18 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
     white-space: nowrap;
     min-width: 60px;
     text-align: right;
+    @media (max-width: 768px) {
+      min-width: auto;
+      text-align: left;
+      font-size: 13px;
+    }
   `,
   skillStateInstalled: css`
     color: ${token.colorSuccess};
+    font-weight: 500;
+  `,
+  skillStateDisabled: css`
+    color: ${token.colorTextTertiary};
     font-weight: 500;
   `,
   skillActionMenuBtn: css`
