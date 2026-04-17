@@ -1,6 +1,7 @@
 import { Flexbox, Skeleton } from '@lobehub/ui';
 import { lazy, memo, Suspense, useState } from 'react';
 import Agents from './Agents';
+import { useDetailContext } from './DetailContext';
 import Header from './Header';
 import Nav, { type TabKey } from './Nav';
 import Overview from './Overview';
@@ -15,12 +16,14 @@ const TabSkeleton = () => (
 );
 
 const SkillDetailInner = memo(() => {
+  const { isInstalled } = useDetailContext();
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
+  const resolvedActiveTab = !isInstalled && activeTab === 'agents' ? 'overview' : activeTab;
 
   const renderContent = () => {
-    switch (activeTab) {
+    switch (resolvedActiveTab) {
       case 'agents':
-        return <Agents />;
+        return isInstalled ? <Agents /> : <Overview />;
       case 'schema':
         return (
           <Suspense fallback={<TabSkeleton />}>
@@ -37,7 +40,7 @@ const SkillDetailInner = memo(() => {
     <Flexbox gap={16}>
       <div className={styles.stickyTop}>
         <Header />
-        <Nav activeTab={activeTab} setActiveTab={setActiveTab} />
+        <Nav activeTab={resolvedActiveTab} setActiveTab={setActiveTab} showAgentsTab={isInstalled} />
       </div>
       <div className={styles.tabContent}>{renderContent()}</div>
     </Flexbox>

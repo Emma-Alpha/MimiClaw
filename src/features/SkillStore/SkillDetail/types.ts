@@ -24,6 +24,7 @@ export type SkillDetailContextValue = {
   description: string;
   icon?: string;
   identifier: string;
+  isInstalled: boolean;
   label: string;
   localizedDescription: string;
   localizedReadme: string;

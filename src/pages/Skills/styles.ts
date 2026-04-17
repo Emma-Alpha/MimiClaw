@@ -20,8 +20,7 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
     display: flex;
     flex-direction: column;
     height: 100%;
-    padding: 40px 32px 32px;
-    padding-top: 64px;
+    padding: 0px 32px 32px;
     overflow-y: auto;
     @media (max-width: 992px) {
       padding: 24px 20px 24px;

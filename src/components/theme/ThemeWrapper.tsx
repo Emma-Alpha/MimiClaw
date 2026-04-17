@@ -18,6 +18,7 @@ import { useSettingsStore } from '@/stores/settings';
 import {
   createMimiThemeConfig,
 } from '@/styles/typography-tokens';
+import { GlobalStyle } from "@/styles"
 
 type ResolvedAppearance = 'light' | 'dark';
 
@@ -116,6 +117,7 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
         >
           <LobeConfigProvider motion={motion}>
             <LobeUiCompatGlobalStyle />
+            <GlobalStyle />
             <AntdConfigProvider getPopupContainer={getPopupContainer}>
               {/* Provide AppElementContext so @lobehub/ui DropdownMenu portals
                   render inside the theme container rather than document.body */}

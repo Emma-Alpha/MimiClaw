@@ -82,6 +82,7 @@ const SkillDetailModalContent = memo<SkillDetailModalContentProps>(({ skill }) =
       error,
       icon: frontmatterIcon || fallbackIcon,
       identifier: skill.id,
+      isInstalled: true,
       label,
       loading,
       localizedDescription,

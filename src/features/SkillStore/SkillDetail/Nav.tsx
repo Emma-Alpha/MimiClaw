@@ -22,14 +22,15 @@ export type TabKey = 'overview' | 'schema' | 'agents';
 
 interface NavProps {
   activeTab: TabKey;
+  showAgentsTab?: boolean;
   setActiveTab: (tab: TabKey) => void;
 }
 
-const Nav = memo<NavProps>(({ activeTab, setActiveTab }) => {
+const Nav = memo<NavProps>(({ activeTab, setActiveTab, showAgentsTab = true }) => {
   const { t } = useTranslation('skills');
 
-  const items = useMemo(
-    () => [
+  const items = useMemo(() => {
+    const next = [
       {
         icon: <Icon icon={BookOpenIcon} size={16} />,
         key: 'overview',
@@ -40,14 +41,18 @@ const Nav = memo<NavProps>(({ activeTab, setActiveTab }) => {
         key: 'schema',
         label: t('detail.tabs.schema', { defaultValue: '技能功能' }),
       },
-      {
+    ];
+
+    if (showAgentsTab) {
+      next.push({
         icon: <Icon icon={BotIcon} size={16} />,
         key: 'agents',
         label: t('detail.tabs.agents', { defaultValue: '使用该技能的助理' }),
-      },
-    ],
-    [t],
-  );
+      });
+    }
+
+    return next;
+  }, [showAgentsTab, t]);
 
   return (
     <Flexbox className={navStyles.nav}>

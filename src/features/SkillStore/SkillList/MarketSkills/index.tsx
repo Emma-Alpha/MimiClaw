@@ -123,14 +123,14 @@ const MarketSkillList = memo<MarketSkillListProps>(({ keywords }) => {
 
   return (
     <div className={styles.listContainer}>
-      {searching && (
+      {/* {searching && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px 8px' }}>
           <LoadingSpinner size="sm" />
           <Text type={'secondary'} style={{ fontSize: 12 }}>
             {t('marketplace.searching')}
           </Text>
         </div>
-      )}
+      )} */}
       <div className={styles.grid}>
         {sortedRows.map((item) => {
           const installedSkill =

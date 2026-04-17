@@ -114,6 +114,7 @@ const MarketSkillDetailModalContent = memo<MarketSkillDetailModalContentProps>(
         error,
         icon: virtualSkill.icon,
         identifier: resolvedSlug,
+        isInstalled: false,
         label,
         loading,
         localizedDescription,

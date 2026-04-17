@@ -4,10 +4,11 @@ import type { ReactNode } from 'react';
 
 interface SettingHeaderProps {
   extra?: ReactNode;
+  leading?: ReactNode;
   title: ReactNode;
 }
 
-export function SettingHeader({ title, extra }: SettingHeaderProps) {
+export function SettingHeader({ title, extra, leading }: SettingHeaderProps) {
   return (
     <div style={{ paddingTop: 12, marginBottom: 32 }}>
       <div
@@ -20,9 +21,12 @@ export function SettingHeader({ title, extra }: SettingHeaderProps) {
           marginBottom: 24,
         }}
       >
-        <Text strong fontSize={24} style={{ marginRight: 'auto' }}>
-          {title}
-        </Text>
+        <div style={{ alignItems: 'center', display: 'flex', gap: 8, marginRight: 'auto', minWidth: 0 }}>
+          {leading}
+          <Text strong fontSize={24}>
+            {title}
+          </Text>
+        </div>
         {extra ? <div style={{ marginLeft: 'auto' }}>{extra}</div> : null}
       </div>
       <Divider style={{ margin: 0 }} />
