@@ -77,6 +77,9 @@ import {
   fetchVoiceChatConfig,
   saveVoiceChatConfig,
 } from '@/lib/voice-chat';
+import {
+  exportFallbackConfigBundle,
+} from '@/lib/fallback-config';
 import type {
   CodeAgentExecutionMode,
   CodeAgentHealth,
@@ -277,6 +280,10 @@ export function Settings() {
   const [voiceChatAccessKeyDraft, setVoiceChatAccessKeyDraft] = useState('');
   const [voiceChatEndpointDraft, setVoiceChatEndpointDraft] = useState(DEFAULT_VOICE_CHAT_ENDPOINT);
   const [showVoiceChatAccessKey, setShowVoiceChatAccessKey] = useState(false);
+  const [exportingFallbackBundle, setExportingFallbackBundle] = useState(false);
+  const [showFallbackExportPanel, setShowFallbackExportPanel] = useState(false);
+  const [fallbackExportPassword, setFallbackExportPassword] = useState('');
+  const [showFallbackExportPassword, setShowFallbackExportPassword] = useState(false);
 
   const isWindows = window.electron.platform === 'win32';
   const showCliTools = true;

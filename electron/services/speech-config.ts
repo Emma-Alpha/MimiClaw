@@ -31,6 +31,14 @@ export interface VolcengineSpeechCredentials {
   endpoint: string;
 }
 
+export interface VolcengineSpeechStoredConfig {
+  appId: string;
+  cluster: string;
+  token: string;
+  language: VolcengineSpeechLanguage;
+  endpoint: string;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let speechStoreInstance: any = null;
 
@@ -141,4 +149,32 @@ export async function getVolcengineSpeechAccessToken(): Promise<string> {
   const store = await getSpeechStore();
   const value = store.get('volcengine');
   return value.token.trim();
+}
+
+export async function exportVolcengineSpeechStoredConfig(): Promise<VolcengineSpeechStoredConfig> {
+  const store = await getSpeechStore();
+  const value = store.get('volcengine');
+  return {
+    appId: value.appId.trim(),
+    cluster: value.cluster.trim(),
+    token: value.token.trim(),
+    language: value.language,
+    endpoint: normalizeEndpoint(value.endpoint),
+  };
+}
+
+export async function importVolcengineSpeechStoredConfig(input: Partial<VolcengineSpeechStoredConfig>): Promise<void> {
+  const store = await getSpeechStore();
+  const current = store.get('volcengine');
+  const nextLanguage = input.language === 'en-US' || input.language === 'ja-JP' || input.language === 'zh-CN'
+    ? input.language
+    : current.language;
+
+  store.set('volcengine', {
+    appId: typeof input.appId === 'string' ? input.appId.trim() : current.appId,
+    cluster: typeof input.cluster === 'string' ? input.cluster.trim() : current.cluster,
+    token: typeof input.token === 'string' ? input.token.trim() : current.token,
+    language: nextLanguage,
+    endpoint: typeof input.endpoint === 'string' ? normalizeEndpoint(input.endpoint) : normalizeEndpoint(current.endpoint),
+  });
 }

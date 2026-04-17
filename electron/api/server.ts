@@ -21,6 +21,7 @@ import { handleLocalExecutorRoutes } from './routes/local-executor';
 import { handleJizhiRoutes } from './routes/jizhi';
 import { handleVoiceChatRoutes } from './routes/voice-chat';
 import { handleXiaojiuRoutes } from './routes/xiaojiu';
+import { handleFallbackConfigRoutes } from './routes/fallback-config';
 import { sendJson } from './route-utils';
 
 type RouteHandler = (
@@ -47,6 +48,7 @@ const routeHandlers: RouteHandler[] = [
   handleJizhiRoutes,
   handleXiaojiuRoutes,
   handleVoiceChatRoutes,
+  handleFallbackConfigRoutes,
   handleCronRoutes,
   handleLogRoutes,
   handleUsageRoutes,

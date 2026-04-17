@@ -29,6 +29,10 @@ import { toast } from 'sonner';
 import { invokeIpc } from '@/lib/api-client';
 import { hostApiFetch } from '@/lib/host-api';
 import { resolveCloudOnlyMode } from '@/lib/app-env';
+import {
+  autoApplyFallbackConfigBundle,
+  fetchFallbackConfigStatus,
+} from '@/lib/fallback-config';
 import { useSetupStyles } from './styles';
 
 interface SetupStep {
@@ -108,6 +112,12 @@ export function Setup() {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [providerConfigured, setProviderConfigured] = useState(false);
   const [apiKey, setApiKey] = useState('');
+  const [hasAttemptedFallbackAutoApply, setHasAttemptedFallbackAutoApply] = useState(false);
+  const [showFallbackAutoApplyPanel, setShowFallbackAutoApplyPanel] = useState(false);
+  const [fallbackAutoApplyPassword, setFallbackAutoApplyPassword] = useState('');
+  const [showFallbackAutoApplyPassword, setShowFallbackAutoApplyPassword] = useState(false);
+  const [applyingFallbackBundle, setApplyingFallbackBundle] = useState(false);
+  const [fallbackBundleSource, setFallbackBundleSource] = useState<'local' | 'bundled' | null>(null);
 
   const steps = getSteps(t);
   const safeStepIndex = Number.isInteger(currentStep)
@@ -132,8 +142,70 @@ export function Setup() {
     }
   }, [safeStepIndex, providerConfigured, isRemoteMode]);
 
+  useEffect(() => {
+    if (safeStepIndex !== STEP.WELCOME || hasAttemptedFallbackAutoApply) return;
+
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const status = await fetchFallbackConfigStatus();
+        if (!status.exists || cancelled) return;
+        if (!cancelled) {
+          setFallbackBundleSource(status.source ?? 'local');
+          setShowFallbackAutoApplyPanel(true);
+        }
+      } catch {
+        // ignore auto apply failures in setup
+      } finally {
+        if (!cancelled) {
+          setHasAttemptedFallbackAutoApply(true);
+        }
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [hasAttemptedFallbackAutoApply, safeStepIndex, t]);
+
   const handleNext = async () => {
     setCurrentStep((i) => i + 1);
+  };
+
+  const handleApplyFallbackBundle = async () => {
+    const password = fallbackAutoApplyPassword.trim();
+    if (!password) {
+      toast.error('请输入兜底配置包口令');
+      return;
+    }
+
+    setApplyingFallbackBundle(true);
+    try {
+      const result = await autoApplyFallbackConfigBundle(password);
+      if (result.success && result.applied) {
+        toast.success('已从兜底配置包自动预填');
+        window.location.reload();
+        return;
+      }
+
+      if (result.success && result.reason === 'already-configured') {
+        toast.success('检测到已有配置，已跳过兜底导入');
+        setShowFallbackAutoApplyPanel(false);
+        return;
+      }
+
+      if (!result.success && result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.error('兜底配置包导入失败');
+    } catch (error) {
+      toast.error(String(error));
+    } finally {
+      setApplyingFallbackBundle(false);
+    }
   };
 
   const handleBack = () => {
@@ -189,7 +261,19 @@ export function Setup() {
               className={styles.stepContent}
             >
               <div className={styles.stepContentInner}>
-                {safeStepIndex === STEP.WELCOME && <WelcomeContent />}
+                {safeStepIndex === STEP.WELCOME && (
+                  <WelcomeContent
+                    showFallbackAutoApplyPanel={showFallbackAutoApplyPanel}
+                    fallbackBundleSource={fallbackBundleSource}
+                    fallbackAutoApplyPassword={fallbackAutoApplyPassword}
+                    showFallbackAutoApplyPassword={showFallbackAutoApplyPassword}
+                    applyingFallbackBundle={applyingFallbackBundle}
+                    onFallbackAutoApplyPasswordChange={setFallbackAutoApplyPassword}
+                    onToggleFallbackAutoApplyPassword={() => setShowFallbackAutoApplyPassword((value) => !value)}
+                    onApplyFallbackBundle={() => { void handleApplyFallbackBundle(); }}
+                    onSkipFallbackAutoApply={() => setShowFallbackAutoApplyPanel(false)}
+                  />
+                )}
                 {safeStepIndex === STEP.PROVIDER && (
                   <ProviderContent
                     providers={providers}
@@ -250,7 +334,29 @@ export function Setup() {
 
 // ==================== Step Content Components ====================
 
-function WelcomeContent() {
+interface WelcomeContentProps {
+  showFallbackAutoApplyPanel: boolean;
+  fallbackBundleSource: 'local' | 'bundled' | null;
+  fallbackAutoApplyPassword: string;
+  showFallbackAutoApplyPassword: boolean;
+  applyingFallbackBundle: boolean;
+  onFallbackAutoApplyPasswordChange: (value: string) => void;
+  onToggleFallbackAutoApplyPassword: () => void;
+  onApplyFallbackBundle: () => void;
+  onSkipFallbackAutoApply: () => void;
+}
+
+function WelcomeContent({
+  showFallbackAutoApplyPanel,
+  fallbackBundleSource,
+  fallbackAutoApplyPassword,
+  showFallbackAutoApplyPassword,
+  applyingFallbackBundle,
+  onFallbackAutoApplyPasswordChange,
+  onToggleFallbackAutoApplyPassword,
+  onApplyFallbackBundle,
+  onSkipFallbackAutoApply,
+}: WelcomeContentProps) {
   const { t } = useTranslation('setup');
   const { styles } = useSetupStyles();
   const { language, setLanguage } = useSettingsStore();
@@ -284,6 +390,63 @@ function WelcomeContent() {
           ))}
         </div>
       </div>
+
+      {showFallbackAutoApplyPanel && (
+        <div
+          style={{
+            marginTop: 20,
+            padding: 16,
+            borderRadius: 16,
+            border: '1px solid rgba(99,102,241,0.22)',
+            background: 'rgba(99,102,241,0.08)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+            检测到{fallbackBundleSource === 'bundled' ? '内置' : '本地'}兜底配置包，输入口令可自动预填初始化配置。
+          </p>
+          <div style={{ position: 'relative' }}>
+            <Input
+              type={showFallbackAutoApplyPassword ? 'text' : 'password'}
+              value={fallbackAutoApplyPassword}
+              onChange={(event) => onFallbackAutoApplyPasswordChange(event.target.value)}
+              placeholder="请输入兜底配置包口令"
+              className={styles.inputXl}
+              style={{ paddingRight: 40 }}
+            />
+            <button
+              type="button"
+              onClick={onToggleFallbackAutoApplyPassword}
+              style={{
+                position: 'absolute',
+                right: 10,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                color: 'var(--color-text-secondary)',
+                padding: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {showFallbackAutoApplyPassword ? <EyeOff style={{ width: 16, height: 16 }} /> : <Eye style={{ width: 16, height: 16 }} />}
+            </button>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <Button type="text" onClick={onSkipFallbackAutoApply} disabled={applyingFallbackBundle}>
+              稍后再说
+            </Button>
+            <Button type="primary" onClick={onApplyFallbackBundle} disabled={applyingFallbackBundle}>
+              {applyingFallbackBundle ? '导入中...' : '自动预填'}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

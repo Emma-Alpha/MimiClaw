@@ -83,6 +83,7 @@
 - Skills 系统：内置 `pdf` / `xlsx` / `docx` / `pptx` 等常用能力
 - 多渠道管理：支持多账号、账号与 Agent 绑定、默认账号切换
 - 定时任务：通过 Cron 自动化执行重复工作
+- 兜底配置包：可在设置页直接输入口令并导出语音对话、ASR、Gateway 关键配置为本地加密文件；也支持在打包时将 `default-fallback-profile.json` 放入 `resources/fallback/` 进行内置，首次初始化输入口令即可自动预填
 
 ---
 

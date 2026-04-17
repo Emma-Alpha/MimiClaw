@@ -41,6 +41,12 @@ export interface VoiceChatRealtimeCredentials {
   accessKeySource: 'voice-chat' | 'speech-asr';
 }
 
+export interface VoiceChatRealtimeStoredConfig {
+  accessKey: string;
+  appId: string;
+  endpoint: string;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let voiceChatStoreInstance: any = null;
 
@@ -290,4 +296,25 @@ export async function getVoiceChatWindowBounds(): Promise<VoiceChatWindowBounds 
 export async function saveVoiceChatWindowBounds(bounds: VoiceChatWindowBounds): Promise<void> {
   const store = await getVoiceChatStore();
   store.set('window.bounds', bounds);
+}
+
+export async function exportVoiceChatRealtimeStoredConfig(): Promise<VoiceChatRealtimeStoredConfig> {
+  const store = await getVoiceChatStore();
+  const value = store.get('realtime');
+  return {
+    accessKey: (value.accessKey ?? value.apiKey ?? '').trim(),
+    appId: (value.appId ?? value.botId ?? '').trim(),
+    endpoint: normalizeEndpoint(value.endpoint),
+  };
+}
+
+export async function importVoiceChatRealtimeStoredConfig(input: Partial<VoiceChatRealtimeStoredConfig>): Promise<void> {
+  const store = await getVoiceChatStore();
+  const current = store.get('realtime');
+
+  store.set('realtime', {
+    accessKey: typeof input.accessKey === 'string' ? input.accessKey.trim() : (current.accessKey ?? current.apiKey ?? ''),
+    appId: typeof input.appId === 'string' ? input.appId.trim() : (current.appId ?? current.botId ?? ''),
+    endpoint: typeof input.endpoint === 'string' ? normalizeEndpoint(input.endpoint) : normalizeEndpoint(current.endpoint),
+  });
 }
