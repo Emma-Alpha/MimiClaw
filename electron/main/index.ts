@@ -180,6 +180,7 @@ let hostApiServer: Server | null = null;
 let pendingDeepLinkUrl: string | null = null;
 const mainWindowFocusState = createMainWindowFocusState();
 const quitLifecycleState = createQuitLifecycleState();
+const macDockIconSyncTimeouts = new Set<ReturnType<typeof setTimeout>>();
 
 function notifyCloudAuthSuccess(session: CloudSession): void {
   hostEventBus.emit('cloud:auth-success', session);
@@ -306,47 +307,90 @@ function getIconDirCandidates(): string[] {
   return [...new Set(candidates)];
 }
 
-function loadNativeImageFromCandidates(fileCandidates: string[]): { icon: Electron.NativeImage; sourcePath: string } | null {
-  const iconDirs = getIconDirCandidates();
-  for (const iconDir of iconDirs) {
-    for (const candidate of fileCandidates) {
-      const iconPath = join(iconDir, candidate);
-      if (!existsSync(iconPath)) {
-        continue;
-      }
+function resolveExistingIconPaths(filePaths: string[]): string[] {
+  const resolvedPaths: string[] = [];
+  const seen = new Set<string>();
 
-      // Prefer loading from bytes so paths containing Unicode/symlinks remain robust.
-      try {
-        const icon = nativeImage.createFromBuffer(readFileSync(iconPath));
-        if (!icon.isEmpty()) {
-          return { icon, sourcePath: iconPath };
-        }
-      } catch {
-        // Fall through to path loader.
-      }
+  for (const filePath of filePaths) {
+    if (!filePath || seen.has(filePath) || !existsSync(filePath)) {
+      continue;
+    }
 
-      const icon = nativeImage.createFromPath(iconPath);
+    seen.add(filePath);
+    resolvedPaths.push(filePath);
+  }
+
+  return resolvedPaths;
+}
+
+function loadNativeImageFromPaths(filePaths: string[]): { icon: Electron.NativeImage; sourcePath: string } | null {
+  for (const iconPath of resolveExistingIconPaths(filePaths)) {
+    // Prefer loading from bytes so paths containing Unicode/symlinks remain robust.
+    try {
+      const icon = nativeImage.createFromBuffer(readFileSync(iconPath));
       if (!icon.isEmpty()) {
         return { icon, sourcePath: iconPath };
       }
+    } catch {
+      // Fall through to path loader.
+    }
+
+    const icon = nativeImage.createFromPath(iconPath);
+    if (!icon.isEmpty()) {
+      return { icon, sourcePath: iconPath };
     }
   }
 
   return null;
 }
 
-function resolveIconPathsFromCandidates(fileCandidates: string[]): string[] {
-  const paths: string[] = [];
+function loadNativeImageFromCandidates(fileCandidates: string[]): { icon: Electron.NativeImage; sourcePath: string } | null {
+  const iconPaths: string[] = [];
   const iconDirs = getIconDirCandidates();
   for (const iconDir of iconDirs) {
     for (const candidate of fileCandidates) {
-      const iconPath = join(iconDir, candidate);
-      if (existsSync(iconPath)) {
-        paths.push(iconPath);
-      }
+      iconPaths.push(join(iconDir, candidate));
     }
   }
-  return [...new Set(paths)];
+
+  return loadNativeImageFromPaths(iconPaths);
+}
+
+function getMacDockIconPathCandidates(): string[] {
+  if (app.isPackaged) {
+    // Prefer the bundle's .icns file first. When users overwrite the existing
+    // .app in place, LaunchServices/Dock can momentarily surface a stale cached
+    // icon; explicitly re-applying the bundle icon at runtime is the most
+    // reliable way to override that cache.
+    return resolveExistingIconPaths([
+      join(process.resourcesPath, 'icon.icns'),
+      join(process.resourcesPath, 'resources', 'icons', 'icon.icns'),
+      join(process.resourcesPath, 'icons', 'icon.icns'),
+      join(process.resourcesPath, 'resources', 'icons', 'icon.png'),
+      join(process.resourcesPath, 'resources', 'icons', '512x512.png'),
+      join(process.resourcesPath, 'icons', 'icon.png'),
+      join(process.resourcesPath, 'icons', '512x512.png'),
+    ]);
+  }
+
+  return resolveExistingIconPaths([
+    join(__dirname, '../../resources/icons', 'icon.png'),
+    join(__dirname, '../../resources/icons', '512x512.png'),
+    join(__dirname, '../../resources/icons', 'icon.icns'),
+    join(app.getAppPath(), 'resources', 'icons', 'icon.png'),
+    join(app.getAppPath(), 'resources', 'icons', '512x512.png'),
+    join(app.getAppPath(), 'resources', 'icons', 'icon.icns'),
+    join(process.cwd(), 'resources', 'icons', 'icon.png'),
+    join(process.cwd(), 'resources', 'icons', '512x512.png'),
+    join(process.cwd(), 'resources', 'icons', 'icon.icns'),
+  ]);
+}
+
+function clearMacDockIconSyncTimeouts(): void {
+  for (const timeout of macDockIconSyncTimeouts) {
+    clearTimeout(timeout);
+  }
+  macDockIconSyncTimeouts.clear();
 }
 
 /**
@@ -546,7 +590,7 @@ function createMainWindow(): BrowserWindow {
       return;
     }
 
-    syncMacDockIcon();
+    syncMacDockIcon('main-window-ready-to-show');
 
     const action = consumeMainWindowReady(mainWindowFocusState);
     if (action === 'focus') {
@@ -574,12 +618,12 @@ function createMainWindow(): BrowserWindow {
   return win;
 }
 
-function syncMacDockIcon(): void {
+function syncMacDockIcon(reason = 'unspecified'): void {
   if (process.platform !== 'darwin' || !app.dock) return;
 
-  const iconPaths = resolveIconPathsFromCandidates(['icon.png', '512x512.png', 'icon.icns']);
+  const iconPaths = getMacDockIconPathCandidates();
   if (iconPaths.length === 0) {
-    logger.warn(`Failed to resolve macOS Dock icon. Checked: ${getIconDirCandidates().join(', ')}`);
+    logger.warn(`Failed to resolve macOS Dock icon during "${reason}". Checked: ${getIconDirCandidates().join(', ')}, ${process.resourcesPath}`);
     return;
   }
 
@@ -591,46 +635,45 @@ function syncMacDockIcon(): void {
     try {
       app.dock.setIcon(iconPath);
       selectedPath = iconPath;
-      logger.debug(`macOS Dock icon path set to: ${iconPath}`);
+      logger.debug(`macOS Dock icon path set during "${reason}" to: ${iconPath}`);
       break;
     } catch (error) {
       logger.warn(`Failed to set macOS Dock icon from path "${iconPath}"`, error);
     }
   }
 
-  // Some macOS/Electron dev-mode combinations do not refresh from path-only
-  // updates consistently. Re-apply via nativeImage as a best-effort fallback.
-  const resolved = loadNativeImageFromCandidates(['icon.png', '512x512.png', 'icon.icns']);
+  // Path updates are not always enough: development mode can miss the refresh,
+  // and packaged apps that were overwritten in place can briefly keep Dock's
+  // stale cached icon. Re-apply via nativeImage as a best-effort correction.
+  const resolved = loadNativeImageFromPaths(iconPaths);
   if (resolved) {
     try {
       app.dock.setIcon(resolved.icon);
-      logger.debug(`macOS Dock icon nativeImage fallback set from: ${resolved.sourcePath}`);
+      logger.debug(`macOS Dock icon nativeImage fallback set during "${reason}" from: ${resolved.sourcePath}`);
     } catch (error) {
       logger.warn(`Failed to set macOS Dock icon from nativeImage "${resolved.sourcePath}"`, error);
     }
   }
 
   const delayedIconPath = selectedPath ?? iconPaths[0];
-  // Startup race guard: re-apply after launch ticks so Dock has a second chance
-  // to pick up the icon in development mode.
-  setTimeout(() => {
-    if (!app.isReady() || process.platform !== 'darwin' || !app.dock) return;
-    try {
-      app.dock.setIcon(delayedIconPath);
-      logger.debug(`macOS Dock icon re-applied (500ms) from path: ${delayedIconPath}`);
-    } catch (error) {
-      logger.warn(`Failed to re-apply macOS Dock icon (500ms) from "${delayedIconPath}"`, error);
-    }
-  }, 500);
-  setTimeout(() => {
-    if (!app.isReady() || process.platform !== 'darwin' || !app.dock) return;
-    try {
-      app.dock.setIcon(delayedIconPath);
-      logger.debug(`macOS Dock icon re-applied (2000ms) from path: ${delayedIconPath}`);
-    } catch (error) {
-      logger.warn(`Failed to re-apply macOS Dock icon (2000ms) from "${delayedIconPath}"`, error);
-    }
-  }, 2000);
+  const reapplyDelaysMs = app.isPackaged ? [750, 3000, 8000] : [500, 2000];
+  clearMacDockIconSyncTimeouts();
+
+  // Give Dock a few more opportunities to adopt the icon, especially after
+  // packaged app upgrades where LaunchServices caches can lag behind startup.
+  for (const delayMs of reapplyDelaysMs) {
+    const timeout = setTimeout(() => {
+      macDockIconSyncTimeouts.delete(timeout);
+      if (!app.isReady() || process.platform !== 'darwin' || !app.dock) return;
+      try {
+        app.dock.setIcon(delayedIconPath);
+        logger.debug(`macOS Dock icon re-applied during "${reason}" (${delayMs}ms) from path: ${delayedIconPath}`);
+      } catch (error) {
+        logger.warn(`Failed to re-apply macOS Dock icon (${delayMs}ms) from "${delayedIconPath}"`, error);
+      }
+    }, delayMs);
+    macDockIconSyncTimeouts.add(timeout);
+  }
 }
 
 function performBestEffortQuitCleanup(): void {
@@ -671,11 +714,11 @@ async function initialize(): Promise<void> {
 
   // Set application menu
   createMenu();
-  syncMacDockIcon();
+  syncMacDockIcon('initialize-after-menu');
 
   // Create the main window
   const window = createMainWindow();
-  syncMacDockIcon();
+  syncMacDockIcon('initialize-after-main-window');
 
   // Create system tray
   createTray(window);
@@ -1006,6 +1049,7 @@ async function initialize(): Promise<void> {
   //      subscribe to gateway:status-changed IPC events before the first
   //      state transition fires — so no status event is silently dropped.
   window.webContents.once('did-finish-load', () => {
+    syncMacDockIcon('main-window-did-finish-load');
     void (async () => {
       // Start Gateway automatically (this seeds missing bootstrap files with full templates)
       const gatewayAutoStart = await getSetting('gatewayAutoStart');
@@ -1076,6 +1120,7 @@ if (gotTheLock) {
   app.on('will-quit', () => {
     globalShortcut.unregisterAll();
     stopVoiceShortcutMonitor();
+    clearMacDockIconSyncTimeouts();
     releaseProcessInstanceFileLock();
   });
 
@@ -1189,6 +1234,7 @@ if (gotTheLock) {
     // Register activate handler AFTER app is ready to prevent
     // "Cannot create BrowserWindow before app is ready" on macOS.
     app.on('activate', () => {
+      syncMacDockIcon('app-activate');
       if (BrowserWindow.getAllWindows().length === 0) {
         createMainWindow();
       } else {
