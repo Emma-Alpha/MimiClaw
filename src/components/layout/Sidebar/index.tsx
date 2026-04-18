@@ -91,16 +91,32 @@ const useStyles = createStyles(({ css, token }) => ({
     padding: 4px 8px;
     border-top: 1px solid ${token.colorBorderSecondary};
   `,
-	/* sub-items are indented — align text with section header text (icon 28 + gap 8 + outer pad 8 = 44) */
-	subItem: css`
-    padding-inline-start: 16px !important;
+	subItemLevel1: css`
+    padding-inline-start: 20px !important;
+  `,
+	workspaceChildren: css`
+    position: relative;
+    margin: 2px 0 6px 28px;
+    padding-inline-start: 12px;
+
+    &::before {
+      position: absolute;
+      inset-block: 6px 8px;
+      inset-inline-start: 0;
+      width: 1px;
+      background: ${token.colorBorderSecondary};
+      content: "";
+    }
+  `,
+	subItemLevel2: css`
+    padding-inline-start: 10px !important;
   `,
 	timeLabel: css`
     font-size: 11px;
     color: ${cssVar.colorTextQuaternary};
     flex-shrink: 0;
   `,
-	sessionListToggle: css`
+  sessionListToggle: css`
     width: 100%;
     padding: 2px 4px 2px 20px;
     font-size: 11px;
@@ -114,15 +130,24 @@ const useStyles = createStyles(({ css, token }) => ({
     text-align: left;
     &:hover { background: ${cssVar.colorFillTertiary}; }
   `,
+	sessionListToggleNested: css`
+    padding-inline-start: 10px;
+  `,
 	emptyHint: css`
     padding: 4px 8px 4px 20px;
     font-size: 12px;
     color: ${cssVar.colorTextQuaternary};
   `,
+	emptyHintNested: css`
+    padding: 4px 8px 4px 10px;
+  `,
 	warningText: css`
     padding: 4px 8px 4px 20px;
     font-size: 11px;
     color: ${token.colorWarning};
+  `,
+	warningTextNested: css`
+    padding: 4px 8px 4px 10px;
   `,
 	searchWrap: css`
     padding: 2px 8px;
@@ -168,7 +193,7 @@ function getWorkspaceSecondaryLabel(workspace: SidebarThreadWorkspace): string {
 // ─── component ────────────────────────────────────────────────────────────────
 
 export function Sidebar() {
-	const { styles } = useStyles();
+	const { styles, cx } = useStyles();
 
 	// ── settings store ────────────────────────────────────────────────────────
 	const sidebarCollapsed = useSettingsStore((s) => s.sidebarCollapsed);
@@ -966,7 +991,7 @@ export function Sidebar() {
 						return (
 							<div key={workspace.id}>
 								<NavItem
-									className={styles.subItem}
+									className={styles.subItemLevel1}
 									icon={FolderOpen}
 									iconHover={expanded ? ChevronDown : ChevronRight}
 									title={
@@ -1034,17 +1059,19 @@ export function Sidebar() {
 								/>
 
 								{expanded && (
-									<>
+									<div className={styles.workspaceChildren}>
 										{isLoading && (
-											<div className={styles.emptyHint}>
+											<div className={cx(styles.emptyHint, styles.emptyHintNested)}>
 												{t("status.loading", { defaultValue: "加载中..." })}
 											</div>
 										)}
 										{!isLoading && error && (
-											<div className={styles.warningText}>{error}</div>
+											<div className={cx(styles.warningText, styles.warningTextNested)}>
+												{error}
+											</div>
 										)}
 										{!isLoading && !error && visibleSessions.length === 0 && (
-											<div className={styles.emptyHint}>
+											<div className={cx(styles.emptyHint, styles.emptyHintNested)}>
 												{t("sidebar.empty.thread", { defaultValue: "无线程" })}
 											</div>
 										)}
@@ -1056,7 +1083,7 @@ export function Sidebar() {
 											return (
 												<NavItem
 													key={`${workspace.id}:${session.sessionId}`}
-													className={styles.subItem}
+													className={styles.subItemLevel2}
 													title={session.title}
 													active={isActive}
 													extra={
@@ -1067,7 +1094,6 @@ export function Sidebar() {
 															)}
 														/>
 													}
-													style={{ paddingInlineStart: 28 }}
 													onClick={() =>
 														handleThreadSession(workspace, session.sessionId)
 													}
@@ -1077,7 +1103,10 @@ export function Sidebar() {
 										{canToggleSessions && (
 											<button
 												type="button"
-												className={styles.sessionListToggle}
+												className={cx(
+													styles.sessionListToggle,
+													styles.sessionListToggleNested,
+												)}
 												onClick={() =>
 													setWorkspaceSessionsExpanded((prev) => ({
 														...prev,
@@ -1094,7 +1123,7 @@ export function Sidebar() {
 														})}
 											</button>
 										)}
-									</>
+									</div>
 								)}
 							</div>
 						);
@@ -1143,7 +1172,7 @@ export function Sidebar() {
 						return (
 							<NavItem
 								key={session.key}
-								className={styles.subItem}
+								className={styles.subItemLevel1}
 								icon={isRunning ? Loader2 : undefined}
 								title={session.label}
 								active={isActive}
@@ -1236,7 +1265,7 @@ export function Sidebar() {
 								return (
 									<NavItem
 										key={session.id}
-										className={styles.subItem}
+										className={styles.subItemLevel1}
 										title={session.label}
 										active={isActive}
 										extra={
@@ -1312,7 +1341,7 @@ export function Sidebar() {
 						return (
 							<NavItem
 								key={session.id}
-								className={styles.subItem}
+								className={styles.subItemLevel1}
 								title={session.label}
 								active={isActive}
 								extra={

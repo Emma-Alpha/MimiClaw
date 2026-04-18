@@ -2,27 +2,49 @@ import { createStyles } from 'antd-style';
 
 export const useCronStyles = createStyles(({ css, token }) => ({
   pageRoot: css`
-    position: relative;
-    flex: 1;
-    overflow: auto;
-    background:
-      radial-gradient(circle at top left, rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.12), transparent 24%),
-      linear-gradient(180deg, ${token.colorBgLayout} 0%, ${token.colorBgContainer} 24%);
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    overflow: hidden;
+    background: ${token.colorBgContainer};
+    --cron-inline-padding: 32px;
+
+    @media (max-width: 992px) {
+      --cron-inline-padding: 20px;
+    }
+
+    @media (max-width: 640px) {
+      --cron-inline-padding: 12px;
+    }
   `,
   pageInner: css`
-    position: relative;
-    z-index: 1;
-    margin: 0 auto;
     display: flex;
-    width: 100%;
-    max-width: 1280px;
+    flex: 1;
+    min-height: 0;
     flex-direction: column;
-    gap: 20px;
-    padding: 24px;
-
-    @media (max-width: 768px) {
-      padding: 16px;
-    }
+    overflow: hidden;
+  `,
+  pageHeader: css`
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    padding-inline: var(--cron-inline-padding);
+    background: color-mix(in srgb, ${token.colorBgContainer} 82%, transparent);
+    backdrop-filter: blur(12px) saturate(130%);
+    -webkit-backdrop-filter: blur(12px) saturate(130%);
+  `,
+  pageContent: css`
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: 36px;
+  `,
+  pageContentInner: css`
+    width: min(880px, 100%);
+    margin-inline: auto;
+    padding-inline: var(--cron-inline-padding);
   `,
   loadingWrapper: css`
     display: flex;
@@ -30,222 +52,115 @@ export const useCronStyles = createStyles(({ css, token }) => ({
     align-items: center;
     justify-content: center;
   `,
-
-  heroCard: css`
-    position: relative;
-    overflow: hidden;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    border-radius: 28px;
-    background:
-      linear-gradient(135deg, rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.09) 0%, transparent 42%),
-      ${token.colorBgElevated};
-    box-shadow: ${token.boxShadowSecondary};
-    backdrop-filter: blur(24px);
-
-    &::after {
-      content: '';
-      position: absolute;
-      right: -120px;
-      bottom: -140px;
-      width: 320px;
-      height: 320px;
-      background: radial-gradient(circle, rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.18), transparent 72%);
-      pointer-events: none;
-    }
-
-    [data-theme='dark'] & {
-      border-color: rgba(255, 255, 255, 0.08);
-      background:
-        linear-gradient(135deg, rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.18) 0%, transparent 44%),
-        ${token.colorBgContainer};
-    }
-  `,
-  heroGrid: css`
-    position: relative;
-    z-index: 1;
-    display: grid;
-    gap: 24px;
-    padding: 28px;
-
-    @media (min-width: 1080px) {
-      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
-      align-items: stretch;
-    }
-
-    @media (max-width: 768px) {
-      padding: 20px;
-    }
-  `,
-  heroContent: css`
-    display: flex;
-    flex-direction: column;
-    gap: 28px;
-  `,
-  heroCopyBlock: css`
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-  `,
-  heroEyebrowRow: css`
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
-  `,
-  heroEyebrow: css`
-    padding: 6px 12px;
-    border-radius: 999px;
-    background: rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.1);
-    color: ${token.colorPrimary};
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-  `,
-  heroStatusBadge: css`
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 999px;
-    border: 1px solid transparent;
-    font-size: 12px;
-    font-weight: 600;
-  `,
-  heroStatusReady: css`
-    border-color: rgba(34, 197, 94, 0.22);
-    background: rgba(34, 197, 94, 0.1);
-    color: #15803d;
-
-    [data-theme='dark'] & {
-      color: #4ade80;
-    }
-  `,
-  heroStatusIssue: css`
-    border-color: rgba(245, 158, 11, 0.24);
-    background: rgba(245, 158, 11, 0.1);
-    color: #b45309;
-
-    [data-theme='dark'] & {
-      color: #fbbf24;
-    }
-  `,
-  heroStatusOffline: css`
-    border-color: rgba(239, 68, 68, 0.22);
-    background: rgba(239, 68, 68, 0.1);
-    color: ${token.colorError};
-  `,
-  heroHeadingBlock: css`
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    max-width: 44rem;
-  `,
-  heroTitle: css`
-    margin: 0;
-    font-size: clamp(28px, 4vw, 40px);
-    font-weight: 700;
-    letter-spacing: -0.04em;
-    line-height: 1.05;
-    color: ${token.colorText};
-  `,
-  heroSubtitle: css`
-    margin: 0;
-    font-size: 14px;
-    line-height: 1.75;
+  headerIcon: css`
+    width: 18px;
+    height: 18px;
     color: ${token.colorTextSecondary};
   `,
-  heroActionRow: css`
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-  `,
-  secondaryActionButton: css`
-    height: 40px;
-    border-radius: 999px;
-    border-color: rgba(0, 0, 0, 0.1);
-    background: rgba(255, 255, 255, 0.56);
-    box-shadow: none;
-    color: ${token.colorText};
-    font-weight: 600;
 
-    &:hover {
-      border-color: rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.22);
-      background: rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.06) !important;
-      color: ${token.colorPrimary} !important;
-    }
+  noticeBanner: css`
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    border-radius: ${token.borderRadiusLG}px;
+    font-size: 13px;
+    line-height: 1.65;
+    font-weight: 500;
+  `,
+  noticeWarning: css`
+    border: 1px solid rgba(234, 179, 8, 0.28);
+    background: rgba(234, 179, 8, 0.1);
+    color: #a16207;
 
     [data-theme='dark'] & {
-      border-color: rgba(255, 255, 255, 0.1);
-      background: rgba(255, 255, 255, 0.04);
+      color: #facc15;
     }
   `,
-  primaryActionButton: css`
-    height: 40px;
-    border: none;
-    border-radius: 999px;
-    padding-inline: 18px;
-    background: linear-gradient(135deg, ${token.colorPrimary}, ${token.colorPrimaryHover});
-    box-shadow: 0 12px 24px rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.24);
+  noticeError: css`
+    border: 1px solid rgba(239, 68, 68, 0.22);
+    background: rgba(239, 68, 68, 0.08);
+    color: ${token.colorError};
+  `,
+
+  sectionStack: css`
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-bottom: 8px;
+  `,
+  infoPanel: css`
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    border-radius: 24px;
+    background: rgba(0, 0, 0, 0.03);
+    padding: 24px;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+
+    [data-theme='dark'] & {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.06);
+    }
+  `,
+  panelTitle: css`
+    font-size: 15px;
     font-weight: 600;
+    color: ${token.colorText};
+  `,
+  panelDesc: css`
+    font-size: 13px;
+    line-height: 1.65;
+    color: ${token.colorTextSecondary};
+  `,
+  gatewayStatusTag: css`
+    align-self: flex-start;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-weight: 500;
+  `,
+  gatewayStatusTagReady: css`
+    background: rgba(34, 197, 94, 0.1);
+    color: #16a34a;
+    border-color: rgba(34, 197, 94, 0.18);
+  `,
+  gatewayStatusTagWarning: css`
+    background: rgba(245, 158, 11, 0.1);
+    color: #ca8a04;
+    border-color: rgba(245, 158, 11, 0.18);
+  `,
+  gatewayStatusTagOffline: css`
+    background: rgba(239, 68, 68, 0.1);
+    color: ${token.colorError};
+    border-color: rgba(239, 68, 68, 0.18);
   `,
 
   statsGrid: css`
     display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
 
-    @media (min-width: 900px) {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+    @media (max-width: 640px) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   `,
-  statCard: css`
+  statBlock: css`
     display: flex;
-    align-items: center;
-    gap: 14px;
-    min-height: 96px;
-    border: 1px solid rgba(0, 0, 0, 0.07);
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.7);
+    flex-direction: column;
+    gap: 6px;
     padding: 16px;
-    backdrop-filter: blur(14px);
+    border-radius: 18px;
+    background: ${token.colorBgContainer};
+    border: 1px solid rgba(0, 0, 0, 0.05);
 
     [data-theme='dark'] & {
-      border-color: rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.02);
     }
   `,
-  statIconWrap: css`
-    display: inline-flex;
-    height: 44px;
-    width: 44px;
-    align-items: center;
-    justify-content: center;
-    border-radius: 14px;
-  `,
-  statIconPrimary: css`
-    background: rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.12);
-    color: ${token.colorPrimary};
-  `,
-  statIconSuccess: css`
-    background: rgba(34, 197, 94, 0.12);
-    color: #16a34a;
-  `,
-  statIconWarning: css`
-    background: rgba(245, 158, 11, 0.12);
-    color: #d97706;
-  `,
-  statIconDanger: css`
-    background: rgba(239, 68, 68, 0.12);
-    color: ${token.colorError};
-  `,
-  statContent: css`
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: 4px;
-  `,
   statValue: css`
-    font-size: 26px;
+    font-size: 22px;
     font-weight: 700;
     line-height: 1;
     color: ${token.colorText};
@@ -255,228 +170,121 @@ export const useCronStyles = createStyles(({ css, token }) => ({
     color: ${token.colorTextSecondary};
   `,
 
-  heroAside: css`
+  summaryGrid: css`
     display: grid;
-    gap: 16px;
-  `,
-  spotlightCard: css`
-    display: flex;
-    min-height: 150px;
-    flex-direction: column;
-    justify-content: center;
-    gap: 10px;
-    border: 1px solid rgba(0, 0, 0, 0.07);
-    border-radius: 22px;
-    background: rgba(255, 255, 255, 0.78);
-    padding: 20px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
-    backdrop-filter: blur(14px);
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 
-    [data-theme='dark'] & {
-      border-color: rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.04);
-      box-shadow: none;
+    @media (max-width: 640px) {
+      grid-template-columns: 1fr;
     }
   `,
-  spotlightLabel: css`
+  summaryCard: css`
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 16px;
+    border-radius: 18px;
+    background: ${token.colorBgContainer};
+    border: 1px solid rgba(0, 0, 0, 0.05);
+
+    [data-theme='dark'] & {
+      border-color: rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.02);
+    }
+  `,
+  summaryLabel: css`
     font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
     color: ${token.colorTextSecondary};
   `,
-  spotlightTitle: css`
-    font-size: 16px;
+  summaryTitle: css`
+    font-size: 14px;
     font-weight: 600;
     color: ${token.colorText};
   `,
-  spotlightValue: css`
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: ${token.colorText};
-  `,
-  spotlightMeta: css`
+  summaryMeta: css`
     font-size: 13px;
     line-height: 1.65;
     color: ${token.colorTextSecondary};
   `,
-  spotlightEmpty: css`
-    font-size: 13px;
-    line-height: 1.7;
-    color: ${token.colorTextSecondary};
-  `,
-  spotlightRow: css`
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  `,
-  spotlightStateDot: css`
-    width: 10px;
-    height: 10px;
-    flex-shrink: 0;
-    border-radius: 50%;
-  `,
-  spotlightStateSuccess: css`
-    background: #22c55e;
-  `,
-  spotlightStateError: css`
-    background: ${token.colorError};
-  `,
 
-  noticeCard: css`
+  emptyPanel: css`
     display: flex;
-    align-items: center;
-    gap: 12px;
-    border-radius: 18px;
-    border: 1px solid transparent;
-    padding: 14px 16px;
-    font-size: 13px;
-    line-height: 1.6;
-  `,
-  noticeWarning: css`
-    border-color: rgba(245, 158, 11, 0.2);
-    background: rgba(245, 158, 11, 0.1);
-    color: #b45309;
-
-    [data-theme='dark'] & {
-      color: #fbbf24;
-    }
-  `,
-  noticeError: css`
-    border-color: rgba(239, 68, 68, 0.22);
-    background: rgba(239, 68, 68, 0.1);
-    color: ${token.colorError};
-  `,
-  noticeIcon: css`
-    width: 18px;
-    height: 18px;
-    flex-shrink: 0;
-  `,
-  noticeText: css`
-    font-weight: 500;
-  `,
-
-  sectionHeader: css`
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 12px;
-  `,
-  sectionTitle: css`
-    margin: 0;
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: ${token.colorText};
-  `,
-  sectionDesc: css`
-    margin: 6px 0 0;
-    max-width: 40rem;
-    font-size: 13px;
-    line-height: 1.75;
-    color: ${token.colorTextSecondary};
-  `,
-
-  emptyStateCard: css`
-    display: flex;
-    align-items: center;
     flex-direction: column;
-    justify-content: center;
-    gap: 14px;
-    border: 1px solid rgba(0, 0, 0, 0.07);
-    border-radius: 24px;
-    background: ${token.colorBgElevated};
-    padding: 56px 24px;
+    align-items: center;
+    gap: 12px;
+    padding: 40px 24px;
     text-align: center;
+    border-radius: 24px;
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px dashed rgba(0, 0, 0, 0.08);
 
     [data-theme='dark'] & {
+      background: rgba(255, 255, 255, 0.02);
       border-color: rgba(255, 255, 255, 0.08);
     }
   `,
-  emptyIconWrap: css`
+  emptyIcon: css`
     display: inline-flex;
-    height: 64px;
-    width: 64px;
     align-items: center;
     justify-content: center;
-    border-radius: 20px;
-    background: rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.1);
-    color: ${token.colorPrimary};
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+    background: rgba(0, 0, 0, 0.04);
+    color: ${token.colorTextSecondary};
+
+    [data-theme='dark'] & {
+      background: rgba(255, 255, 255, 0.04);
+    }
   `,
   emptyTitle: css`
-    margin: 0;
-    font-size: 20px;
-    font-weight: 700;
+    font-size: 18px;
+    font-weight: 600;
     color: ${token.colorText};
   `,
   emptyDesc: css`
     max-width: 36rem;
-    margin: 0;
-    font-size: 14px;
+    font-size: 13px;
     line-height: 1.75;
     color: ${token.colorTextSecondary};
   `,
-  emptyCreateBtn: css`
-    height: 42px;
-    margin-top: 4px;
-    border-radius: 999px;
-    padding-inline: 18px;
-    font-weight: 600;
-  `,
 
-  jobGrid: css`
-    display: grid;
-    gap: 16px;
-
-    @media (min-width: 900px) {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+  jobList: css`
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   `,
   jobCard: css`
-    overflow: hidden;
-    border: 1px solid rgba(0, 0, 0, 0.07);
-    border-radius: 24px;
-    background:
-      linear-gradient(180deg, rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.02), transparent 42%),
-      ${token.colorBgElevated};
-    box-shadow: ${token.boxShadowTertiary};
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px 20px;
+    border-radius: 22px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    background: rgba(0, 0, 0, 0.02);
     cursor: pointer;
-    transition:
-      transform 0.2s ease,
-      box-shadow 0.2s ease,
-      border-color 0.2s ease;
+    transition: border-color 0.2s, background 0.2s, transform 0.2s;
 
     &:hover {
-      transform: translateY(-2px);
-      border-color: rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.18);
-      box-shadow: ${token.boxShadowSecondary};
+      transform: translateY(-1px);
+      background: rgba(0, 0, 0, 0.03);
+      border-color: rgba(0, 0, 0, 0.08);
     }
 
     [data-theme='dark'] & {
-      border-color: rgba(255, 255, 255, 0.08);
-      background:
-        linear-gradient(180deg, rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.08), transparent 42%),
-        ${token.colorBgContainer};
+      background: rgba(255, 255, 255, 0.02);
+      border-color: rgba(255, 255, 255, 0.06);
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: rgba(255, 255, 255, 0.1);
+      }
     }
   `,
   jobCardFailed: css`
     border-color: rgba(239, 68, 68, 0.18);
-    background:
-      linear-gradient(180deg, rgba(239, 68, 68, 0.06), transparent 44%),
-      ${token.colorBgElevated};
-  `,
-  jobCardPaused: css`
-    background:
-      linear-gradient(180deg, rgba(148, 163, 184, 0.06), transparent 44%),
-      ${token.colorBgElevated};
-  `,
-  jobCardShell: css`
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 20px;
+    background: rgba(239, 68, 68, 0.04);
   `,
   jobCardHeader: css`
     display: flex;
@@ -484,190 +292,111 @@ export const useCronStyles = createStyles(({ css, token }) => ({
     justify-content: space-between;
     gap: 16px;
   `,
-  jobCardIdentity: css`
-    display: flex;
-    min-width: 0;
-    align-items: flex-start;
-    gap: 14px;
-  `,
   jobCardIcon: css`
     display: inline-flex;
-    height: 44px;
-    width: 44px;
-    flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    border-radius: 14px;
-  `,
-  jobCardIconActive: css`
-    background: rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.12);
-    color: ${token.colorPrimary};
-  `,
-  jobCardIconPaused: css`
-    background: rgba(148, 163, 184, 0.16);
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.05);
     color: ${token.colorTextSecondary};
-  `,
-  jobCardIconFailed: css`
-    background: rgba(239, 68, 68, 0.12);
-    color: ${token.colorError};
-  `,
-  jobCardTitleBlock: css`
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: 8px;
-  `,
-  jobCardNameRow: css`
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-  `,
-  jobCardName: css`
-    margin: 0;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 17px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: ${token.colorText};
-  `,
-  jobCardStatus: css`
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-  `,
-  jobCardStatusActive: css`
-    background: rgba(34, 197, 94, 0.12);
-    color: #15803d;
 
     [data-theme='dark'] & {
-      color: #4ade80;
+      background: rgba(255, 255, 255, 0.06);
     }
   `,
-  jobCardStatusPaused: css`
-    background: rgba(148, 163, 184, 0.14);
+  jobCardIconFailed: css`
+    background: rgba(239, 68, 68, 0.1);
+    color: ${token.colorError};
+  `,
+  jobCardIconPaused: css`
+    background: rgba(148, 163, 184, 0.12);
     color: ${token.colorTextSecondary};
   `,
-  jobCardStatusFailed: css`
-    background: rgba(239, 68, 68, 0.12);
-    color: ${token.colorError};
+  jobCardName: css`
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 15px;
+    font-weight: 600;
+    color: ${token.colorText};
   `,
   jobCardSchedule: css`
     display: flex;
     align-items: center;
     gap: 6px;
-    margin: 0;
-    font-size: 13px;
-    color: ${token.colorTextSecondary};
-  `,
-  jobCardSwitchWrap: css`
-    flex-shrink: 0;
-  `,
-  jobCardMessageBlock: css`
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    border-radius: 18px;
-    background: rgba(0, 0, 0, 0.035);
-    padding: 14px;
-    color: ${token.colorTextSecondary};
-
-    [data-theme='dark'] & {
-      background: rgba(255, 255, 255, 0.04);
-    }
-  `,
-  jobCardMessage: css`
-    margin: 0;
-    display: -webkit-box;
-    overflow: hidden;
-    font-size: 13px;
-    line-height: 1.75;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-  `,
-  jobMetaRow: css`
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  `,
-  jobMetaPill: css`
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    border-radius: 999px;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    background: rgba(255, 255, 255, 0.7);
-    padding: 7px 11px;
     font-size: 12px;
     color: ${token.colorTextSecondary};
+  `,
+  statusTag: css`
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-weight: 500;
+  `,
+  statusTagActive: css`
+    background: rgba(34, 197, 94, 0.1);
+    color: #16a34a;
+    border-color: rgba(34, 197, 94, 0.18);
+  `,
+  statusTagPaused: css`
+    background: rgba(0, 0, 0, 0.05);
+    color: ${token.colorTextSecondary};
+    border-color: rgba(0, 0, 0, 0.06);
 
     [data-theme='dark'] & {
-      border-color: rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.03);
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.06);
     }
+  `,
+  statusTagFailed: css`
+    background: rgba(239, 68, 68, 0.1);
+    color: ${token.colorError};
+    border-color: rgba(239, 68, 68, 0.18);
+  `,
+  jobCardMessage: css`
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 1.75;
+    color: ${token.colorTextSecondary};
+  `,
+  jobMetaRow: css`
+    align-items: center;
+  `,
+  metaTag: css`
+    border-radius: 999px;
+    background: ${token.colorBgContainer};
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    color: ${token.colorTextSecondary};
+    font-weight: 400;
+
+    [data-theme='dark'] & {
+      background: rgba(255, 255, 255, 0.02);
+      border-color: rgba(255, 255, 255, 0.06);
+    }
+  `,
+  metaTagIconWrap: css`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   `,
   jobErrorBox: css`
     display: flex;
     align-items: flex-start;
     gap: 8px;
-    border: 1px solid rgba(239, 68, 68, 0.16);
+    padding: 12px 14px;
     border-radius: 16px;
     background: rgba(239, 68, 68, 0.08);
-    padding: 12px 14px;
-    color: ${token.colorError};
-  `,
-  jobErrorText: css`
-    display: -webkit-box;
-    overflow: hidden;
-    margin: 0;
+    border: 1px solid rgba(239, 68, 68, 0.16);
     font-size: 12px;
     line-height: 1.7;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
+    color: ${token.colorError};
   `,
   jobActionRow: css`
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 4px;
-  `,
-  jobRunButton: css`
-    height: 34px;
-    border-radius: 999px;
-    border-color: rgba(0, 0, 0, 0.08);
-    font-size: 12px;
-    font-weight: 600;
-    box-shadow: none;
-
-    &:hover {
-      border-color: rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.22);
-      color: ${token.colorPrimary} !important;
-    }
-
-    [data-theme='dark'] & {
-      border-color: rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.03);
-    }
-  `,
-  jobDeleteButton: css`
-    height: 34px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
-    color: ${token.colorError};
-
-    &:hover {
-      color: ${token.colorError} !important;
-      background: rgba(239, 68, 68, 0.08) !important;
-    }
+    align-items: center;
   `,
 
   dialogOverlay: css`
@@ -688,16 +417,12 @@ export const useCronStyles = createStyles(({ css, token }) => ({
     overflow: hidden;
     border: 1px solid rgba(0, 0, 0, 0.08);
     border-radius: 28px;
-    background:
-      linear-gradient(180deg, rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.06), transparent 34%),
-      ${token.colorBgElevated};
+    background: ${token.colorBgElevated};
     box-shadow: ${token.boxShadowSecondary};
 
     [data-theme='dark'] & {
       border-color: rgba(255, 255, 255, 0.08);
-      background:
-        linear-gradient(180deg, rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.12), transparent 34%),
-        ${token.colorBgContainer};
+      background: ${token.colorBgContainer};
     }
   `,
   dialogHeader: css`

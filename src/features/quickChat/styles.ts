@@ -1169,33 +1169,29 @@ export const useMiniChatStyles = createStyles(
 	`,
 	threadTerminalCard: css`
 		border-top: 1px solid ${token.colorBorderSecondary};
-		border-bottom: 1px solid ${token.colorBorderSecondary};
 		background: ${token.colorBgContainer};
 		overflow: hidden;
 		display: flex;
 		flex-direction: column;
-		box-shadow:
-			0 -8px 20px rgba(15, 23, 42, 0.04),
-			0 1px 2px rgba(15, 23, 42, 0.06);
 	`,
 	threadTerminalHeader: css`
-		height: 36px;
+		height: 32px;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 12px;
-		padding: 0 10px;
+		gap: 10px;
+		padding: 0 8px;
 		border-bottom: 1px solid ${token.colorBorderSecondary};
-		background: ${token.colorFillQuaternary};
+		background: ${token.colorBgContainer};
 	`,
 	threadTerminalTabs: css`
 		flex: 1;
 		min-width: 0;
 		display: flex;
 		align-items: center;
-		gap: 6px;
+		gap: 2px;
 		overflow-x: auto;
-		padding: 4px 0;
+		padding: 3px 0;
 
 		&::-webkit-scrollbar {
 			height: 0;
@@ -1205,28 +1201,28 @@ export const useMiniChatStyles = createStyles(
 		display: inline-flex;
 		align-items: center;
 		gap: 4px;
-		max-width: 180px;
-		padding: 0 6px;
-		height: 26px;
-		border: 1px solid ${token.colorBorderSecondary};
-		border-radius: 9px;
-		background: ${token.colorBgContainer};
+		max-width: 156px;
+		padding: 0 4px 0 2px;
+		height: 24px;
+		border: 1px solid transparent;
+		border-radius: 6px;
+		background: transparent;
 		color: ${token.colorTextSecondary};
 		flex-shrink: 0;
+		transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
 	`,
 	threadTerminalTabActive: css`
-		border-color: ${token.colorPrimaryBorder};
-		background: ${token.colorBgElevated};
+		border-color: ${token.colorBorderSecondary};
+		background: ${token.colorFillQuaternary};
 		color: ${token.colorText};
-		box-shadow: inset 0 0 0 1px ${token.colorPrimaryBorder};
 	`,
 	threadTerminalTabVisible: css`
-		background: ${token.colorBgElevated};
+		background: ${token.colorFillTertiary};
 	`,
 	threadTerminalTabButton: css`
 		display: inline-flex;
 		align-items: center;
-		gap: 6px;
+		gap: 5px;
 		min-width: 0;
 		flex: 1;
 		height: 100%;
@@ -1238,16 +1234,16 @@ export const useMiniChatStyles = createStyles(
 	`,
 	threadTerminalTabLabel: css`
 		font-size: 11px;
-		font-weight: 500;
+		font-weight: 450;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	`,
 	threadTerminalTabClose: css`
-		width: 18px;
-		height: 18px;
+		width: 16px;
+		height: 16px;
 		border: none;
-		border-radius: 6px;
+		border-radius: 4px;
 		background: transparent;
 		color: ${token.colorTextTertiary};
 		display: inline-flex;
@@ -1255,148 +1251,91 @@ export const useMiniChatStyles = createStyles(
 		justify-content: center;
 		cursor: pointer;
 		flex-shrink: 0;
+		opacity: 0.5;
+		transition: opacity 0.14s ease, background 0.14s ease, color 0.14s ease;
 
 		&:hover {
-			background: ${token.colorFillSecondary};
+			opacity: 1;
+			background: ${token.colorFill};
 			color: ${token.colorText};
 		}
 	`,
-	threadTerminalTabNew: css`
-		width: 26px;
-		height: 26px;
-		border: 1px dashed ${token.colorBorder};
-		border-radius: 9px;
-		background: transparent;
-		color: ${token.colorTextTertiary};
+	threadTerminalHeaderMeta: css`
+		flex: 0 1 280px;
+		min-width: 0;
 		display: inline-flex;
 		align-items: center;
-		justify-content: center;
+		gap: 8px;
+		justify-content: flex-end;
+		color: ${token.colorTextTertiary};
+	`,
+	threadTerminalHeaderMetaShell: css`
 		flex-shrink: 0;
-		cursor: pointer;
-
-		&:hover {
-			border-color: ${token.colorPrimaryBorder};
-			color: ${token.colorText};
-		}
+		font-size: 10px;
+		font-weight: 600;
+		font-family: ${token.fontFamilyCode};
+		color: ${token.colorTextSecondary};
+		text-transform: lowercase;
+	`,
+	threadTerminalHeaderMetaText: css`
+		min-width: 0;
+		font-size: 10px;
+		font-family: ${token.fontFamilyCode};
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	`,
 	threadTerminalHeaderRight: css`
 		display: inline-flex;
 		align-items: center;
-		gap: 8px;
+		gap: 4px;
 		min-width: 0;
 	`,
 	threadTerminalHeaderClose: css`
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 24px;
-		height: 24px;
-		border: none;
-		background: transparent;
 		color: ${token.colorTextTertiary};
-		border-radius: 6px;
-		cursor: pointer;
-		transition: background 0.16s ease, color 0.16s ease;
-
-		&:hover {
-			background: ${token.colorFillSecondary};
-			color: ${token.colorText};
-		}
 	`,
 	threadTerminalActionButton: css`
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 26px;
-		height: 26px;
-		border: 1px solid ${token.colorBorderSecondary};
-		border-radius: 9px;
-		background: ${token.colorBgContainer};
+		border: none !important;
+		box-shadow: none !important;
+		background: transparent !important;
 		color: ${token.colorTextTertiary};
-		cursor: pointer;
-		flex-shrink: 0;
+		border-radius: 6px;
 
 		&:hover {
-			color: ${token.colorText};
-			border-color: ${token.colorPrimaryBorder};
+			background: ${token.colorFillQuaternary} !important;
+			color: ${token.colorText} !important;
 		}
 	`,
 	threadTerminalActionButtonActive: css`
-		color: ${token.colorText};
-		border-color: ${token.colorPrimaryBorder};
-		box-shadow: inset 0 0 0 1px ${token.colorPrimaryBorder};
+		background: ${token.colorFillTertiary} !important;
+		color: ${token.colorText} !important;
 	`,
-	threadTerminalShellPicker: css`
+	threadTerminalShellSelectWrap: css`
 		display: inline-flex;
 		align-items: center;
-		gap: 6px;
-		padding: 0 8px;
-		height: 26px;
-		border-radius: 9px;
-		background: ${token.colorBgContainer};
-		border: 1px solid ${token.colorBorderSecondary};
-	`,
-	threadTerminalShellPickerLabel: css`
-		font-size: 10px;
-		font-weight: 600;
-		color: ${token.colorTextTertiary};
+		height: 24px;
+		padding: 0 6px;
+		border-radius: 6px;
+		background: transparent;
 	`,
 	threadTerminalShellSelect: css`
 		border: none;
 		background: transparent;
 		color: ${token.colorTextSecondary};
-		font-size: 11px;
+		font-size: 10px;
 		font-weight: 500;
+		font-family: ${token.fontFamilyCode};
 		outline: none;
 		cursor: pointer;
 	`,
-	threadTerminalSubHeader: css`
-		height: 32px;
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 8px;
-		padding: 0 10px;
-		border-bottom: 1px solid ${token.colorBorderSecondary};
-		background: ${token.colorBgContainer};
-	`,
-	threadTerminalTitle: css`
-		display: inline-flex;
-		align-items: center;
-		gap: 8px;
-		font-size: 11px;
-		font-weight: 600;
-		letter-spacing: 0.02em;
-		color: ${token.colorTextSecondary};
-	`,
-	threadTerminalShellBadge: css`
-		display: inline-flex;
-		align-items: center;
-		height: 18px;
-		padding: 0 7px;
-		border-radius: 999px;
-		background: ${token.colorFillSecondary};
-		color: ${token.colorTextTertiary};
-		font-size: 10px;
-		font-family: ${token.fontFamilyCode};
-	`,
-	threadTerminalMeta: css`
-		font-size: 10px;
-		color: ${token.colorTextTertiary};
-		font-family: ${token.fontFamilyCode};
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	`,
 	threadTerminalStatusDot: css`
-		width: 6px;
-		height: 6px;
+		width: 5px;
+		height: 5px;
 		border-radius: 999px;
 		flex-shrink: 0;
 	`,
 	threadTerminalStatusDotLive: css`
 		background: ${token.colorSuccess};
-		box-shadow: 0 0 0 3px ${token.colorSuccessBg};
 	`,
 	threadTerminalStatusDotIdle: css`
 		background: ${token.colorTextQuaternary};
@@ -1413,12 +1352,8 @@ export const useMiniChatStyles = createStyles(
 		min-height: 0;
 		display: flex;
 		overflow: hidden;
-		padding: 8px 10px 10px;
-		background: linear-gradient(
-			180deg,
-			${token.colorBgContainer} 0%,
-			${token.colorBgElevated} 100%
-		);
+		padding: 8px 8px 8px;
+		background: ${token.colorBgContainer};
 	`,
 	threadTerminalViewportStack: css`
 		position: relative;
@@ -1443,9 +1378,9 @@ export const useMiniChatStyles = createStyles(
 		visibility: hidden;
 	`,
 	threadTerminalViewFocused: css`
-		outline: 1px solid ${token.colorPrimaryBorder};
+		outline: 1px solid ${token.colorBorderSecondary};
 		outline-offset: -1px;
-		border-radius: 10px;
+		border-radius: 8px;
 	`,
 	threadTerminalViewport: css`
 		width: 100%;
@@ -1492,8 +1427,8 @@ export const useMiniChatStyles = createStyles(
 		position: absolute;
 		top: 0;
 		bottom: 0;
-		width: 12px;
-		margin-left: -6px;
+		width: 10px;
+		margin-left: -5px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -1501,8 +1436,8 @@ export const useMiniChatStyles = createStyles(
 		z-index: 2;
 	`,
 	threadTerminalSplitGrip: css`
-		width: 4px;
-		height: 54px;
+		width: 2px;
+		height: 44px;
 		border-radius: 999px;
 		background: ${token.colorBorder};
 	`,
