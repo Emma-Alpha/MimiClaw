@@ -12,7 +12,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		margin-bottom: 6px;
 	`,
 	body: css`
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 		line-height: 1.55;
 		color: ${token.colorTextTertiary};
 		font-style: italic;
@@ -24,7 +24,7 @@ const useStyles = createStyles(({ css, token }) => ({
 	redacted: css`
 		color: ${token.colorTextQuaternary};
 		font-style: normal;
-		font-size: 11px;
+		font-size: calc(${token.fontSizeSM}px - 1px);
 	`,
 }));
 

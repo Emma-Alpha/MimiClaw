@@ -141,7 +141,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		border: 1px solid ${token.colorBorder};
 		border-radius: 8px;
 		background: ${token.colorFillTertiary};
-		font-size: 13px;
+		font-size: calc(${token.fontSizeSM}px + 1px);
 		line-height: 1;
 		color: ${token.colorTextSecondary};
 		cursor: pointer;
@@ -192,7 +192,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		overflow: hidden;
 		text-overflow: ellipsis;
 		color: ${token.colorTextSecondary};
-		font-size: 13px;
+		font-size: calc(${token.fontSizeSM}px + 1px);
 		letter-spacing: 0;
 	`,
 	chevron: css`
@@ -233,7 +233,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		display: flex;
 		align-items: flex-start;
 		gap: 8px;
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 		line-height: 1.45;
 		min-width: 0;
 	`,
@@ -250,7 +250,7 @@ const useStyles = createStyles(({ css, token }) => ({
 	code: css`
 		display: block;
 		font-family: ${token.fontFamilyCode};
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 		line-height: 1.45;
 		color: ${token.colorTextTertiary};
 		background: ${token.colorBgContainer};

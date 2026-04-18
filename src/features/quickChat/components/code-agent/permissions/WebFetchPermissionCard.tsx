@@ -9,7 +9,7 @@ interface Props {
 
 const useStyles = createStyles(({ css, token }) => ({
 	url: css`
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 		font-family: ${token.fontFamilyCode};
 		color: ${token.colorPrimary};
 		word-break: break-all;

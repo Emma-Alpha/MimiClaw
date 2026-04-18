@@ -16,7 +16,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		display: flex;
 		align-items: center;
 		gap: 5px;
-		font-size: 11px;
+		font-size: calc(${token.fontSizeSM}px - 1px);
 		font-family: ${token.fontFamilyCode};
 		color: ${token.colorTextSecondary};
 		padding: 3px 0;
@@ -27,7 +27,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		display: flex;
 		align-items: center;
 		gap: 5px;
-		font-size: 11px;
+		font-size: calc(${token.fontSizeSM}px - 1px);
 		font-family: ${token.fontFamilyCode};
 		color: ${token.colorTextTertiary};
 		padding: 2px 0 4px 0;

@@ -9,7 +9,7 @@ interface Props {
 
 const useStyles = createStyles(({ css, token }) => ({
 	row: css`
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 		font-family: ${token.fontFamilyCode};
 		color: ${token.colorTextSecondary};
 		background: ${token.colorFillSecondary};
@@ -19,7 +19,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		word-break: break-all;
 	`,
 	meta: css`
-		font-size: 11px;
+		font-size: calc(${token.fontSizeSM}px - 1px);
 		color: ${token.colorTextTertiary};
 		margin-top: 4px;
 	`,

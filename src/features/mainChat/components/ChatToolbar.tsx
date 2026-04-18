@@ -2,13 +2,18 @@
  * Chat Toolbar
  * Unified header style matching MiniChat embedded codex header.
  */
-import { useMemo } from 'react';
+import { useMemo, type CSSProperties } from 'react';
 import { RefreshCw, Brain } from 'lucide-react';
 import { ActionIcon } from '@lobehub/ui';
 import { OpenClaw } from '@lobehub/icons';
 import { createStyles } from 'antd-style';
 import { useChatStore } from '@/stores/chat';
 import { useAgentsStore } from '@/stores/agents';
+import {
+  CHAT_SESSION_HEADER_ICON_SIZE,
+  CHAT_SESSION_META_FONT_SIZE,
+  CHAT_SESSION_TITLE_FONT_SIZE,
+} from '@/styles/typography-tokens';
 import { useTranslation } from 'react-i18next';
 
 const useStyles = createStyles(({ token, css }) => ({
@@ -39,7 +44,7 @@ const useStyles = createStyles(({ token, css }) => ({
     min-width: 0;
   `,
   sessionTitle: css`
-    font-size: 13px;
+    font-size: ${CHAT_SESSION_TITLE_FONT_SIZE}px;
     font-weight: 500;
     line-height: 1.2;
     color: ${token.colorText};
@@ -48,7 +53,7 @@ const useStyles = createStyles(({ token, css }) => ({
     text-overflow: ellipsis;
   `,
   agentName: css`
-    font-size: 11px;
+    font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
     font-weight: 400;
     line-height: 1.2;
     color: ${token.colorTextTertiary};
@@ -71,6 +76,9 @@ const useStyles = createStyles(({ token, css }) => ({
 export function ChatToolbar() {
   const { t } = useTranslation('chat');
   const { styles, cx } = useStyles();
+  const toolbarDragStyle: CSSProperties & { WebkitAppRegion: 'no-drag' } = {
+    WebkitAppRegion: 'no-drag',
+  };
 
   const refresh = useChatStore((s) => s.refresh);
   const loading = useChatStore((s) => s.loading);
@@ -89,12 +97,11 @@ export function ChatToolbar() {
   const sessionTitle = currentSessionKey ? (sessionLabels[currentSessionKey] ?? '') : '';
 
   return (
-    // biome-ignore lint/suspicious/noExplicitAny: WebkitAppRegion is not in CSSProperties
-    <div className={styles.toolbar} style={{ WebkitAppRegion: 'no-drag' } as any}>
+    <div className={styles.toolbar} style={toolbarDragStyle}>
       {/* Left: icon + title stack */}
       <div className={styles.left}>
         <span className={styles.icon}>
-          <OpenClaw.Color size={14} />
+          <OpenClaw.Color size={CHAT_SESSION_HEADER_ICON_SIZE} />
         </span>
         <div className={styles.titleWrap}>
           {sessionTitle ? (

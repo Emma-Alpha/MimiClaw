@@ -19,14 +19,21 @@ export const APP_CARD_RADIUS = 16;
 export const APP_STATUS_BADGE_RADIUS = 10;
 
 export const CHAT_ACTION_BUTTON_SIZE = 28;
-export const CHAT_ACTION_ICON_SIZE = 15;
-export const CHAT_ACTION_ICON_SIZE_COMPACT = 14;
+export const CHAT_ACTION_ICON_SIZE = 16;
+export const CHAT_ACTION_ICON_SIZE_COMPACT = 15;
 export const CHAT_ACTION_BUTTON_SIZE_COMPACT = 24;
 export const CHAT_PRIMARY_ACTION_BUTTON_SIZE = 30;
-export const CHAT_PRIMARY_ACTION_ICON_SIZE = 15;
+export const CHAT_PRIMARY_ACTION_ICON_SIZE = 16;
 export const CHAT_STOP_ICON_SIZE = 12;
 export const CHAT_CHIP_ICON_SIZE = 12;
 export const CHAT_INPUT_ICON_SIZE = 16;
+export const CHAT_NAV_ICON_SIZE = 16;
+export const CHAT_SESSION_CARD_ICON_SIZE = 18;
+export const CHAT_SESSION_EMPTY_ICON_SIZE = 24;
+export const CHAT_SESSION_HEADER_ICON_SIZE = 16;
+export const CHAT_SESSION_META_FONT_SIZE = 11;
+export const CHAT_SESSION_META_ICON_SIZE = 12;
+export const CHAT_SESSION_TITLE_FONT_SIZE = 13;
 
 type ChatTypographyScale = {
   base: number;

@@ -15,6 +15,10 @@ import { ComposerBase, ComposerChip, ComposerIconButton } from '@/features/mainC
 import { Button } from '@/components/ui/button';
 import { JizhiMessageContent } from '@/features/jizhi/components/JizhiMessageContent';
 import { cn } from '@/lib/utils';
+import {
+  CHAT_SESSION_CARD_ICON_SIZE,
+  CHAT_SESSION_EMPTY_ICON_SIZE,
+} from '@/styles/typography-tokens';
 import { useStyles } from './JizhiChat.styles';
 import {
   extractDroppedPathsFromTransfer,
@@ -615,7 +619,9 @@ export function JizhiChat() {
       <div className={styles.emptyRoot}>
         <div className={styles.emptyCard}>
           <div className={styles.emptyIcon}>
-            <MessageSquare style={{ width: 28, height: 28 }} />
+            <MessageSquare
+              style={{ width: CHAT_SESSION_EMPTY_ICON_SIZE, height: CHAT_SESSION_EMPTY_ICON_SIZE }}
+            />
           </div>
           <div className={styles.emptyTitle}>选择一个极智会话</div>
           <p className={styles.emptyDesc}>
@@ -632,7 +638,9 @@ export function JizhiChat() {
         <div className={styles.headerInner}>
           <div className={styles.headerCard}>
             <div className={styles.headerIcon}>
-              <MessageSquare style={{ width: 20, height: 20 }} />
+              <MessageSquare
+                style={{ width: CHAT_SESSION_CARD_ICON_SIZE, height: CHAT_SESSION_CARD_ICON_SIZE }}
+              />
             </div>
             <div className={styles.headerContent}>
               <div className={styles.headerTitleRow}>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Mic, Bot, Clock3 } from 'lucide-react';
 import { fetchVoiceChatMessages } from '@/lib/voice-chat';
 import { useVoiceChatSessionsStore } from '@/stores/voice-chat-sessions';
+import { CHAT_SESSION_CARD_ICON_SIZE } from '@/styles/typography-tokens';
 import { useStyles } from './VoiceChatHistory.styles';
 import type { VoiceChatHistoryMessage } from '../../../../../shared/voice-chat';
 
@@ -25,27 +26,29 @@ export function VoiceChatHistory() {
   const activeSession = sessions.find((session) => session.id === activeSessionId) ?? null;
 
   useEffect(() => {
-    if (!activeSessionId) {
-      setMessages([]);
-      return;
-    }
+    if (!activeSessionId) return;
 
     let disposed = false;
-    setLoading(true);
-    setError(null);
-    void fetchVoiceChatMessages(activeSessionId)
-      .then((nextMessages) => {
+
+    const loadMessages = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const nextMessages = await fetchVoiceChatMessages(activeSessionId);
         if (disposed) return;
         setMessages(nextMessages);
-      })
-      .catch((nextError) => {
+      } catch (nextError) {
         if (disposed) return;
         setError(nextError instanceof Error ? nextError.message : String(nextError));
-      })
-      .finally(() => {
-        if (disposed) return;
-        setLoading(false);
-      });
+      } finally {
+        if (!disposed) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadMessages();
 
     return () => {
       disposed = true;
@@ -54,13 +57,13 @@ export function VoiceChatHistory() {
 
   const groupedMessages = useMemo(() => {
     const groups = new Map<string, VoiceChatHistoryMessage[]>();
-    for (const message of messages) {
+    for (const message of activeSessionId ? messages : []) {
       const bucket = groups.get(message.groupId) ?? [];
       bucket.push(message);
       groups.set(message.groupId, bucket);
     }
     return Array.from(groups.values());
-  }, [messages]);
+  }, [activeSessionId, messages]);
 
   return (
     <div className={styles.root}>
@@ -68,7 +71,9 @@ export function VoiceChatHistory() {
         <div className={styles.headerSection}>
           <div className={styles.headerRow}>
             <div className={styles.headerIcon}>
-              <Mic style={{ width: 20, height: 20 }} />
+              <Mic
+                style={{ width: CHAT_SESSION_CARD_ICON_SIZE, height: CHAT_SESSION_CARD_ICON_SIZE }}
+              />
             </div>
             <div className={styles.headerContent}>
               <h1 className={styles.headerTitle}>

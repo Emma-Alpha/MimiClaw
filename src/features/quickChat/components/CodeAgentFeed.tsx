@@ -75,7 +75,7 @@ const useFeedStyles = createStyles(({ token, css }) => ({
 	dot: css`
 		flex-shrink: 0;
 		width: 14px;
-		font-size: 11px;
+		font-size: calc(${token.fontSizeSM}px - 1px);
 		line-height: 1;
 		color: #22c55e;
 		margin-top: 2px;
@@ -91,7 +91,7 @@ const useFeedStyles = createStyles(({ token, css }) => ({
 	// Tool name: bold, monospace
 	toolName: css`
 		flex-shrink: 0;
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 		font-weight: 600;
 		font-family: ${token.fontFamilyCode};
 		color: ${token.colorText};
@@ -103,7 +103,7 @@ const useFeedStyles = createStyles(({ token, css }) => ({
 
 	// Arg / path
 	toolArg: css`
-		font-size: 11.5px;
+		font-size: calc(${token.fontSizeSM}px - 0.5px);
 		font-family: ${token.fontFamilyCode};
 		color: ${token.colorTextTertiary};
 		overflow: hidden;
@@ -115,7 +115,7 @@ const useFeedStyles = createStyles(({ token, css }) => ({
 
 	// Result summary shown below the tool name (e.g. "66 lines of output")
 	toolResult: css`
-		font-size: 11px;
+		font-size: calc(${token.fontSizeSM}px - 1px);
 		color: ${token.colorTextQuaternary};
 		padding-left: 22px; /* align with tool name */
 		margin-top: -1px;
@@ -131,11 +131,11 @@ const useFeedStyles = createStyles(({ token, css }) => ({
 		gap: 8px;
 		padding: 2px 0;
 		color: ${token.colorTextTertiary};
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 	`,
 	thinkingSpinner: css`
 		font-family: monospace;
-		font-size: 13px;
+		font-size: calc(${token.fontSizeSM}px + 1px);
 		color: #818cf8;
 		width: 14px;
 		flex-shrink: 0;
@@ -151,7 +151,7 @@ const useFeedStyles = createStyles(({ token, css }) => ({
 
 	// Final text response
 	text: css`
-		font-size: 13px;
+		font-size: ${token.fontSize}px;
 		line-height: 1.6;
 		color: ${token.colorText};
 		overflow-wrap: anywhere;
@@ -166,7 +166,7 @@ const useFeedStyles = createStyles(({ token, css }) => ({
 			background: ${token.colorFillAlter};
 			border: 1px solid ${token.colorBorderSecondary};
 			padding: 0.1em 0.3em;
-			font-size: 12px;
+			font-size: ${token.fontSizeSM}px;
 		}
 		& pre code { background: transparent !important; border: none !important; padding: 0 !important; }
 	`,
@@ -175,8 +175,8 @@ const useFeedStyles = createStyles(({ token, css }) => ({
 	cursor: css`
 		display: inline-block;
 		margin-left: 1px;
-		height: 13px;
-		width: 6px;
+		height: 1em;
+		width: 0.45em;
 		background: ${token.colorTextSecondary};
 		opacity: 0.5;
 		vertical-align: text-bottom;

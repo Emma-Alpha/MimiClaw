@@ -51,7 +51,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		display: flex;
 		align-items: center;
 		gap: 6px;
-		font-size: var(--mimi-font-size-xs);
+		font-size: calc(${token.fontSizeSM}px - 1px);
 		line-height: 1.3;
 		color: ${token.colorTextSecondary};
 		font-weight: 500;
@@ -87,7 +87,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		flex-shrink: 0;
 		margin-left: 4px;
 		color: rgba(22, 163, 74, 0.88);
-		font-size: 11px;
+		font-size: calc(${token.fontSizeSM}px - 1px);
 	`,
 	list: css`
 		display: flex;
@@ -99,7 +99,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		display: flex;
 		align-items: flex-start;
 		gap: 7px;
-		font-size: var(--mimi-font-size-xs);
+		font-size: calc(${token.fontSizeSM}px - 1px);
 		line-height: 1.48;
 		padding: 0;
 	`,

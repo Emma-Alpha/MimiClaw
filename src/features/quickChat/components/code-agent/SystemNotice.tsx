@@ -10,7 +10,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		display: flex;
 		align-items: center;
 		gap: 6px;
-		font-size: 11px;
+		font-size: calc(${token.fontSizeSM}px - 1px);
 		color: ${token.colorTextTertiary};
 		padding: 2px 0;
 		font-family: ${token.fontFamilyCode};

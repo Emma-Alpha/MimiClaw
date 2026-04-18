@@ -1,4 +1,8 @@
 import { createStyles } from 'antd-style';
+import {
+  CHAT_SESSION_META_FONT_SIZE,
+  CHAT_SESSION_TITLE_FONT_SIZE,
+} from '@/styles/typography-tokens';
 
 export const useStyles = createStyles(({ css, token }) => ({
   root: css`
@@ -51,7 +55,7 @@ export const useStyles = createStyles(({ css, token }) => ({
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: ${token.fontSizeSM}px;
+    font-size: ${CHAT_SESSION_TITLE_FONT_SIZE}px;
     font-weight: 600;
     color: #0f172a;
   `,
@@ -65,7 +69,7 @@ export const useStyles = createStyles(({ css, token }) => ({
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    font-size: 12px;
+    font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
     color: #64748b;
   `,
   metaBadge: css`

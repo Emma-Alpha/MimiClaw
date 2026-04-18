@@ -9,7 +9,7 @@ interface Props {
 
 const useStyles = createStyles(({ css, token }) => ({
 	desc: css`
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 		color: ${token.colorTextSecondary};
 		background: ${token.colorFillSecondary};
 		padding: 5px 8px;

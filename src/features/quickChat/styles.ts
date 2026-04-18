@@ -1,4 +1,8 @@
 import { createStyles } from "antd-style";
+import {
+	CHAT_SESSION_META_FONT_SIZE,
+	CHAT_SESSION_TITLE_FONT_SIZE,
+} from "@/styles/typography-tokens";
 
 export const useMiniChatStyles = createStyles(
 	({ token, css }, props: { isCollapsed?: boolean } = {}) => ({
@@ -79,7 +83,7 @@ export const useMiniChatStyles = createStyles(
 		overflow: visible;
 		pointer-events: auto;
 		gap: 8px;
-		font-size: 14px;
+		font-size: ${CHAT_SESSION_TITLE_FONT_SIZE}px;
 		font-weight: 500;
 	`,
 		embeddedThreadWrap: css`
@@ -105,7 +109,7 @@ export const useMiniChatStyles = createStyles(
 		flex-shrink: 0;
 	`,
 		embeddedThreadLabel: css`
-		font-size: 13px;
+		font-size: ${CHAT_SESSION_TITLE_FONT_SIZE}px;
 		font-weight: 500;
 		line-height: 1.2;
 		color: ${token.colorText};
@@ -136,7 +140,7 @@ export const useMiniChatStyles = createStyles(
 		background: ${token.colorBgElevated};
 		color: ${token.colorTextSecondary};
 		cursor: pointer;
-		font-size: 11px;
+		font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
 		line-height: 1;
 		transition: all 0.18s ease;
 		box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
@@ -419,7 +423,7 @@ export const useMiniChatStyles = createStyles(
 			Arial,
 			sans-serif;
 		font-weight: 600;
-		font-size: 14px;
+		font-size: ${CHAT_SESSION_TITLE_FONT_SIZE}px;
 		line-height: 1;
 		letter-spacing: -0.015em;
 		color: rgba(255, 255, 255, 0.98);
@@ -509,7 +513,7 @@ export const useMiniChatStyles = createStyles(
 			Helvetica,
 			Arial,
 			sans-serif;
-		font-size: 12px;
+		font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
 		line-height: 1;
 		font-weight: 600;
 		letter-spacing: -0.01em;
@@ -804,7 +808,7 @@ export const useMiniChatStyles = createStyles(
 	`,
 		islandSessionSearchInput: css`
 		width: 100%;
-		font-size: 14px;
+		font-size: ${CHAT_SESSION_TITLE_FONT_SIZE}px;
 		font-weight: 400;
 		line-height: 1.3;
 		background: transparent;
@@ -857,7 +861,7 @@ export const useMiniChatStyles = createStyles(
 		islandSessionItemTitle: css`
 		flex: 1;
 		min-width: 0;
-		font-size: 14px;
+		font-size: ${CHAT_SESSION_TITLE_FONT_SIZE}px;
 		font-weight: 400;
 		color: #111827;
 		overflow: hidden;
@@ -874,7 +878,7 @@ export const useMiniChatStyles = createStyles(
 		justify-content: flex-end;
 	`,
 		islandSessionItemMeta: css`
-		font-size: 12px;
+		font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
 		line-height: 1;
 		color: #98a2b3;
 		font-weight: 400;
@@ -889,7 +893,7 @@ export const useMiniChatStyles = createStyles(
 		border-radius: 999px;
 		background: ${token.colorPrimaryBg};
 		color: ${token.colorPrimaryText};
-		font-size: 11px;
+		font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
 		font-weight: 500;
 		line-height: 1;
 	`,
@@ -916,7 +920,7 @@ export const useMiniChatStyles = createStyles(
 		align-items: center;
 		gap: 8px;
 		padding: 8px 12px;
-		font-size: 14px;
+		font-size: ${CHAT_SESSION_TITLE_FONT_SIZE}px;
 		font-weight: 400;
 		color: ${token.colorTextSecondary};
 		border-radius: 8px;

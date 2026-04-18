@@ -19,6 +19,11 @@ import type {
 	CodeAgentContextWindowUsage,
 } from "@/stores/code-agent";
 import { SearchInput } from "@/components/common/SearchInput";
+import {
+	CHAT_NAV_ICON_SIZE,
+	CHAT_SESSION_HEADER_ICON_SIZE,
+	CHAT_SESSION_META_ICON_SIZE,
+} from "@/styles/typography-tokens";
 import type { MiniChatTarget } from "../types";
 import { useMiniChatStyles } from "../styles";
 import {
@@ -210,7 +215,7 @@ function MiniChatHeaderImpl({
 				onValueChange={setSessionQuery}
 				placeholder="搜索最近任务"
 				aria-label="搜索最近任务"
-				iconSize={18}
+				iconSize={CHAT_NAV_ICON_SIZE}
 				className={styles.islandSessionSearch}
 				iconClassName={styles.islandSessionSearchIcon}
 				inputClassName={styles.islandSessionSearchInput}
@@ -270,7 +275,7 @@ function MiniChatHeaderImpl({
 					onNewConversation();
 				}}
 			>
-				<RotateCcw size={12} />
+				<RotateCcw size={CHAT_SESSION_META_ICON_SIZE} />
 				<span>新对话</span>
 				</button>
 			</div>
@@ -288,7 +293,7 @@ function MiniChatHeaderImpl({
 		>
 			<div className={cx(styles.brand, embedded && styles.brandEmbedded)}>
 				{draftTarget !== "code" && <div className={styles.brandLogo}>
-					<OpenClaw.Color size={14} />
+					<OpenClaw.Color size={CHAT_SESSION_HEADER_ICON_SIZE} />
 				</div>}
 					{!embedded && draftTarget !== "code" ? (
 						<div className={styles.brandText}>
@@ -307,7 +312,11 @@ function MiniChatHeaderImpl({
 						<div className={styles.embeddedThreadWrap}>
 							<div className={styles.embeddedThreadBtn}>
 								<span className={styles.embeddedThreadIcon}>
-									{isCodeMode ? <ClaudeCode.Color size={12} /> : <OpenClaw.Color size={12} />}
+									{isCodeMode ? (
+										<ClaudeCode.Color size={CHAT_SESSION_HEADER_ICON_SIZE} />
+									) : (
+										<OpenClaw.Color size={CHAT_SESSION_HEADER_ICON_SIZE} />
+									)}
 								</span>
 								<span className={styles.embeddedThreadLabel} title={embeddedHeaderTitle}>
 									{embeddedHeaderTitleDisplay}
@@ -331,7 +340,7 @@ function MiniChatHeaderImpl({
 								aria-label={terminalToggleTitle}
 								aria-pressed={isTerminalVisible}
 							>
-								<SquareTerminal size={12} />
+								<SquareTerminal size={CHAT_SESSION_META_ICON_SIZE} />
 								<span className={styles.embeddedToolbarButtonLabel}>切换终端</span>
 								{terminalShortcutLabel ? (
 									<span className={styles.embeddedToolbarButtonShortcut}>
@@ -353,7 +362,7 @@ function MiniChatHeaderImpl({
 									)}
 									aria-label={embeddedStatusLabel}
 								>
-									<EmbeddedStatusIcon size={13} />
+									<EmbeddedStatusIcon size={CHAT_SESSION_META_ICON_SIZE + 1} />
 								</span>
 							</Tooltip>
 						) : null}
@@ -400,7 +409,11 @@ function MiniChatHeaderImpl({
 													event.stopPropagation();
 												}}
 											>
-												{isCodeMode ? <ClaudeCode.Color size={14} /> : <OpenClaw.Color size={14} />}
+												{isCodeMode ? (
+													<ClaudeCode.Color size={CHAT_SESSION_HEADER_ICON_SIZE} />
+												) : (
+													<OpenClaw.Color size={CHAT_SESSION_HEADER_ICON_SIZE} />
+												)}
 											</button>
 											</Dropdown>
 										</div>

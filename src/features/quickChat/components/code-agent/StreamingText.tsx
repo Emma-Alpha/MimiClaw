@@ -11,14 +11,14 @@ interface Props {
 const useStyles = createStyles(({ css, token }) => ({
 	wrap: css`
 		position: relative;
-		font-size: 13px;
+		font-size: ${token.fontSize}px;
 		line-height: 1.6;
 		color: ${token.colorText};
 	`,
 	cursor: css`
 		display: inline-block;
-		width: 7px;
-		height: 13px;
+		width: 0.45em;
+		height: 1em;
 		background: ${token.colorPrimary};
 		margin-left: 1px;
 		vertical-align: text-bottom;

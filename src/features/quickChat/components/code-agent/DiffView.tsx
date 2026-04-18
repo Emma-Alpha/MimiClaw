@@ -23,7 +23,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		align-items: center;
 		gap: 6px;
 		padding: 7px 12px;
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 		font-weight: 600;
 		color: ${token.colorText};
 		border-bottom: 1px solid ${token.colorBorderSecondary};
@@ -39,7 +39,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		min-width: 0;
 	`,
 	stat: css`
-		font-size: 11px;
+		font-size: calc(${token.fontSizeSM}px - 1px);
 		font-weight: 600;
 		margin-left: 2px;
 		flex-shrink: 0;
@@ -54,7 +54,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		position: relative;
 		overflow: hidden;
 		font-family: ${token.fontFamilyCode};
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 		line-height: 1.65;
 	`,
 	codeWrapCollapsed: css`
@@ -83,7 +83,7 @@ const useStyles = createStyles(({ css, token }) => ({
 	lineHunk: css`
 		background: ${token.colorFillQuaternary};
 		color: ${token.colorTextQuaternary};
-		font-size: 11px;
+		font-size: calc(${token.fontSizeSM}px - 1px);
 	`,
 	expandBtn: css`
 		display: flex;

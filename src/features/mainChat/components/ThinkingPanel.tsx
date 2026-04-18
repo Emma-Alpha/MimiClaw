@@ -41,7 +41,7 @@ const useStyles = createStyles(({ css, token }) => {
 		gap: 8px;
 		min-height: 24px;
 		color: ${token.colorTextSecondary};
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 	`,
 	indicatorShell: css`
 		display: inline-flex;
@@ -69,14 +69,14 @@ const useStyles = createStyles(({ css, token }) => {
 		font-weight: 500;
 	`,
 	redacted: css`
-		font-size: 11px;
+		font-size: calc(${token.fontSizeSM}px - 1px);
 		color: ${token.colorTextQuaternary};
 	`,
 	scroll: css`
 		padding: 0 10px 10px;
 	`,
 	bodyDefault: css`
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 		line-height: 1.6;
 		color: ${token.colorTextSecondary};
 		white-space: pre-wrap;
@@ -84,8 +84,8 @@ const useStyles = createStyles(({ css, token }) => {
 	`,
 	cursor: css`
 		display: inline-block;
-		width: 6px;
-		height: 11px;
+		width: 0.5em;
+		height: 1em;
 		margin-left: 1px;
 		vertical-align: text-bottom;
 		background: ${token.colorTextSecondary};

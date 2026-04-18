@@ -16,17 +16,17 @@ const useStyles = createStyles(({ css, token }) => ({
 		display: flex;
 		align-items: center;
 		gap: 6px;
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 		font-weight: 600;
 		color: ${token.colorWarning};
 	`,
 	title: css`
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 		font-weight: 600;
 		color: ${token.colorText};
 	`,
 	summary: css`
-		font-size: 11px;
+		font-size: calc(${token.fontSizeSM}px - 1px);
 		color: ${token.colorTextSecondary};
 		font-family: monospace;
 		background: ${token.colorFillSecondary};
@@ -45,7 +45,7 @@ const useStyles = createStyles(({ css, token }) => ({
 	btn: css`
 		padding: 3px 10px;
 		border-radius: 6px;
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 		font-weight: 500;
 		cursor: pointer;
 		border: 1px solid transparent;

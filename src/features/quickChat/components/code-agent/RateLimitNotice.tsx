@@ -12,7 +12,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		display: flex;
 		align-items: center;
 		gap: 4px;
-		font-size: 11px;
+		font-size: calc(${token.fontSizeSM}px - 1px);
 		font-family: ${token.fontFamilyCode};
 		padding: 2px 0;
 	`,

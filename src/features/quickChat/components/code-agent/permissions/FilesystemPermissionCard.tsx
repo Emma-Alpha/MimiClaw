@@ -10,7 +10,7 @@ interface Props {
 
 const useStyles = createStyles(({ css, token }) => ({
 	row: css`
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 		font-family: ${token.fontFamilyCode};
 		color: ${token.colorTextSecondary};
 		background: ${token.colorFillSecondary};

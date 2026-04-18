@@ -12,13 +12,13 @@ const useStyles = createStyles(({ css, token }) => ({
 		align-items: center;
 		gap: 6px;
 		padding: 4px 0;
-		font-size: 13px;
+		font-size: calc(${token.fontSizeSM}px + 1px);
 		line-height: 1.5;
 		color: ${token.colorTextSecondary};
 	`,
 	star: css`
 		flex-shrink: 0;
-		font-size: 11px;
+		font-size: calc(${token.fontSizeSM}px - 1px);
 		animation: starPulse 2s ease-in-out infinite;
 
 		@keyframes starPulse {
@@ -38,8 +38,8 @@ const useStyles = createStyles(({ css, token }) => ({
 		top: 50%;
 		left: 0;
 		display: inline-block;
-		width: 8px;
-		height: 16px;
+		width: 0.55em;
+		height: 1em;
 		background: ${token.colorTextSecondary};
 		border-radius: 1px;
 		transform: translateY(-50%);
@@ -49,7 +49,7 @@ const useStyles = createStyles(({ css, token }) => ({
 
 		@keyframes cursorTravel {
 			from { left: 0; }
-			to { left: calc(100% - 8px); }
+			to { left: calc(100% - 0.55em); }
 		}
 
 		@keyframes caretBlink {

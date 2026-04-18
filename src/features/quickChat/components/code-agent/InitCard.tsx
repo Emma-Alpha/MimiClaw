@@ -12,7 +12,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		display: flex;
 		align-items: center;
 		gap: 6px;
-		font-size: 11px;
+		font-size: calc(${token.fontSizeSM}px - 1px);
 		color: ${token.colorTextTertiary};
 		padding: 4px 8px;
 		border-radius: 6px;
@@ -26,7 +26,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		border-radius: 4px;
 		background: ${token.colorFillSecondary};
 		color: ${token.colorTextSecondary};
-		font-size: 10px;
+		font-size: calc(${token.fontSizeSM}px - 2px);
 	`,
 	model: css`
 		color: ${token.colorText};

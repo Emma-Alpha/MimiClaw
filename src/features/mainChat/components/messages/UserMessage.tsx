@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { theme } from 'antd';
 import { File, Folder } from 'lucide-react';
 import type { Descendant } from 'slate';
 
@@ -66,6 +67,7 @@ export function UserMessage({
 }: UserMessageProps) {
   void message;
   const { styles, cx } = useMessageStyles();
+  const { token } = theme.useToken();
   const [lightboxImg, setLightboxImg] = useState<LightboxImage | null>(null);
 
   const videoFiles = attachedFiles.filter((f) => f.mimeType.startsWith('video/'));
@@ -172,7 +174,7 @@ export function UserMessage({
                     style={{ maxWidth: 120, maxHeight: 90, borderRadius: 6, objectFit: 'cover', display: 'block' }}
                   />
                 ) : (
-                  <span key={img.fileName} style={{ fontSize: 11, opacity: 0.6 }}>{img.fileName}</span>
+                  <span key={img.fileName} style={{ fontSize: token.fontSizeSM - 1, opacity: 0.6 }}>{img.fileName}</span>
                 ),
               )}
             </div>
@@ -199,7 +201,7 @@ export function UserMessage({
                     style={{ maxWidth: 120, maxHeight: 90, borderRadius: 6, objectFit: 'cover', display: 'block' }}
                   />
                 ) : (
-                  <span key={img.fileName} style={{ fontSize: 11, opacity: 0.6 }}>{img.fileName}</span>
+                  <span key={img.fileName} style={{ fontSize: token.fontSizeSM - 1, opacity: 0.6 }}>{img.fileName}</span>
                 ),
               )}
             </div>

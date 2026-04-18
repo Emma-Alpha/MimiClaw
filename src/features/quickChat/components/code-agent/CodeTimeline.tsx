@@ -56,7 +56,7 @@ userImageList: css`
 		display: block;
 	`,
 	userImageFallback: css`
-		font-size: 11px;
+		font-size: calc(${token.fontSizeSM}px - 1px);
 		opacity: 0.65;
 		padding: 2px 4px;
 	`,
@@ -73,7 +73,7 @@ userImageList: css`
 		max-width: 220px;
 		padding: 3px 8px;
 		border-radius: 14px;
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 		border: 1px solid ${token.colorBorderSecondary};
 		background: ${token.colorBgContainer};
 		color: ${token.colorText};

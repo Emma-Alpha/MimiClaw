@@ -92,7 +92,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     background: ${token.colorBgContainer};
     border: 1px solid ${token.colorBorderSecondary};
     color: ${token.colorText};
-    font-size: 14px;
+    font-size: ${token.fontSize}px;
     line-height: 1.55;
     word-break: break-word;
     white-space: pre-wrap;
@@ -113,7 +113,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     justify-content: flex-end;
   `,
   userMessageText: css`
-    font-size: 14px;
+    font-size: ${token.fontSize}px;
     line-height: 1.5;
     color: ${token.colorText};
     white-space: pre-wrap;
@@ -131,7 +131,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     max-width: 220px;
     padding: 3px 8px;
     border-radius: 14px;
-    font-size: var(--mimi-font-size-sm);
+    font-size: ${token.fontSizeSM}px;
     border: 1px solid ${token.colorBorderSecondary};
     background: ${token.colorFillTertiary};
     color: ${token.colorText};
@@ -152,22 +152,22 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     background: transparent;
   `,
   messageMetaLabel: css`
-    font-size: var(--mimi-font-size-sm);
+    font-size: ${token.fontSizeSM}px;
     font-weight: var(--mimi-font-weight-semibold);
     letter-spacing: 0.01em;
     color: ${token.colorTextSecondary};
   `,
   messageMetaDot: css`
-    font-size: var(--mimi-font-size-xs);
+    font-size: calc(${token.fontSizeSM}px - 1px);
     color: ${token.colorTextQuaternary};
   `,
   messageMetaTime: css`
-    font-size: var(--mimi-font-size-xs);
+    font-size: calc(${token.fontSizeSM}px - 1px);
     color: ${token.colorTextTertiary};
     font-variant-numeric: tabular-nums;
   `,
   messageMetaStreaming: css`
-    font-size: var(--mimi-font-size-xs);
+    font-size: calc(${token.fontSizeSM}px - 1px);
     font-weight: var(--mimi-font-weight-medium);
     padding: 2px 7px;
     border-radius: 999px;
@@ -181,7 +181,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: calc(${token.fontSizeSM}px - 2px);
     font-weight: 600;
     color: ${token.colorTextSecondary};
     border: 1px solid ${token.colorBorderSecondary};
@@ -193,8 +193,8 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
-    font-size: var(--mimi-font-size-base);
-    line-height: var(--mimi-line-height-relaxed);
+    font-size: ${token.fontSize}px;
+    line-height: ${token.lineHeightLG};
     color: ${token.colorText};
     overflow-wrap: anywhere;
     word-break: break-word;
@@ -221,26 +221,26 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     h4 {
       margin-top: 1.35em;
       margin-bottom: 0.55em;
-      line-height: var(--mimi-line-height-base);
+      line-height: ${token.lineHeight};
       font-weight: var(--mimi-font-weight-semibold);
       letter-spacing: -0.01em;
       color: ${token.colorText};
     }
 
     h1 {
-      font-size: var(--mimi-font-size-xl);
+      font-size: ${token.fontSizeXL}px;
     }
 
     h2 {
-      font-size: calc(var(--mimi-font-size-lg) + 1px);
+      font-size: calc(${token.fontSizeLG}px + 1px);
     }
 
     h3 {
-      font-size: var(--mimi-font-size-lg);
+      font-size: ${token.fontSizeLG}px;
     }
 
     h4 {
-      font-size: var(--mimi-font-size-base);
+      font-size: ${token.fontSize}px;
     }
 
     ul,
@@ -333,7 +333,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     box-sizing: border-box;
   `,
   activityElapsed: css`
-    font-size: var(--mimi-font-size-sm);
+    font-size: ${token.fontSizeSM}px;
     color: ${token.colorTextTertiary};
   `,
   assistantActions: css`
@@ -380,7 +380,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
   `,
   toolLabel: css`
     font-family: ${token.fontFamilyCode};
-    font-size: var(--mimi-font-size-sm);
+    font-size: ${token.fontSizeSM}px;
     font-weight: var(--mimi-font-weight-medium);
   `,
   toolCardBody: css`
@@ -389,8 +389,8 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     border-top: 1px solid ${unifiedCardBorder};
     background: ${unifiedCardBackgroundHover};
     font-family: ${token.fontFamilyCode};
-    font-size: var(--mimi-font-size-xs);
-    line-height: var(--mimi-line-height-relaxed);
+    font-size: calc(${token.fontSizeSM}px - 1px);
+    line-height: ${token.lineHeightLG};
     color: ${token.colorTextSecondary};
     overflow-x: auto;
     white-space: pre-wrap;
@@ -413,7 +413,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     border-radius: 999px;
     border: 1px solid ${unifiedCardBorder};
     background: ${unifiedCardBackground};
-    font-size: var(--mimi-font-size-sm);
+    font-size: ${token.fontSizeSM}px;
     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   `,
   toolStatusRunning: css`
@@ -432,18 +432,18 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     color: ${token.colorError};
   `,
   toolStatusText: css`
-    font-size: var(--mimi-font-size-sm);
+    font-size: ${token.fontSizeSM}px;
     font-weight: var(--mimi-font-weight-medium);
     white-space: nowrap;
   `,
   toolStatusDuration: css`
-    font-size: var(--mimi-font-size-xs);
+    font-size: calc(${token.fontSizeSM}px - 1px);
     color: ${token.colorTextTertiary};
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   `,
   toolStatusSummary: css`
-    font-size: var(--mimi-font-size-xs);
+    font-size: calc(${token.fontSizeSM}px - 1px);
     color: ${token.colorTextSecondary};
     overflow: hidden;
     text-overflow: ellipsis;
@@ -471,7 +471,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     overflow: hidden;
   `,
   fileCardName: css`
-    font-size: var(--mimi-font-size-sm);
+    font-size: ${token.fontSizeSM}px;
     font-weight: var(--mimi-font-weight-medium);
     margin: 0;
     overflow: hidden;
@@ -480,7 +480,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     color: ${token.colorText};
   `,
   fileCardSize: css`
-    font-size: var(--mimi-font-size-2xs);
+    font-size: calc(${token.fontSizeSM}px - 2px);
     margin: 2px 0 0;
     color: ${token.colorTextTertiary};
   `,
@@ -609,7 +609,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     background: ${token.colorFillQuaternary};
   `,
   videoFileName: css`
-    font-size: var(--mimi-font-size-xs);
+    font-size: calc(${token.fontSizeSM}px - 1px);
     color: ${token.colorTextSecondary};
     overflow: hidden;
     text-overflow: ellipsis;
@@ -643,11 +643,11 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     gap: 8px;
     height: 132px;
     color: ${token.colorTextTertiary};
-    font-size: var(--mimi-font-size-sm);
+    font-size: ${token.fontSizeSM}px;
     background: ${token.colorFillQuaternary};
   `,
   toolInputSummary: css`
-    font-size: var(--mimi-font-size-xs);
+    font-size: calc(${token.fontSizeSM}px - 1px);
     color: ${token.colorTextTertiary};
     font-family: ${token.fontFamilyCode};
     overflow: hidden;
@@ -685,7 +685,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
   toolResultBody: css`
     padding: 10px 12px 12px;
     font-family: ${token.fontFamilyCode};
-    font-size: var(--mimi-font-size-xs);
+    font-size: calc(${token.fontSizeSM}px - 1px);
     color: ${token.colorTextSecondary};
     overflow-x: auto;
     max-height: 400px;
@@ -693,7 +693,7 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     white-space: pre-wrap;
     word-break: break-word;
     margin: 0;
-    line-height: var(--mimi-line-height-relaxed);
+    line-height: ${token.lineHeightLG};
     border-top: 1px solid ${unifiedCardBorder};
     background: ${unifiedCardBackgroundHover};
   `,

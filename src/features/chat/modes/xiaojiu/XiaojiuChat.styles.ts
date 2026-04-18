@@ -1,4 +1,8 @@
 import { createStyles } from 'antd-style';
+import {
+  CHAT_SESSION_META_FONT_SIZE,
+  CHAT_SESSION_TITLE_FONT_SIZE,
+} from '@/styles/typography-tokens';
 
 export const useStyles = createStyles(({ css, token }) => ({
   emptyRoot: css`
@@ -33,7 +37,7 @@ export const useStyles = createStyles(({ css, token }) => ({
     color: #2667d8;
   `,
   emptyTitle: css`
-    font-size: ${token.fontSizeSM}px;
+    font-size: ${CHAT_SESSION_TITLE_FONT_SIZE}px;
     font-weight: 600;
     color: ${token.colorText};
   `,
@@ -95,7 +99,7 @@ export const useStyles = createStyles(({ css, token }) => ({
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: ${token.fontSizeSM}px;
+    font-size: ${CHAT_SESSION_TITLE_FONT_SIZE}px;
     font-weight: 600;
     color: ${token.colorText};
   `,
@@ -103,7 +107,7 @@ export const useStyles = createStyles(({ css, token }) => ({
     border-radius: 9999px;
     background: #e8f2ff;
     padding: 2px 8px;
-    font-size: 11px;
+    font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
     font-weight: 500;
     color: #2667d8;
   `,
@@ -111,13 +115,13 @@ export const useStyles = createStyles(({ css, token }) => ({
     border-radius: 9999px;
     background: #fef2f2;
     padding: 2px 8px;
-    font-size: 11px;
+    font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
     font-weight: 500;
     color: #d92d20;
   `,
   headerMeta: css`
     margin-top: 4px;
-    font-size: 12px;
+    font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
     color: rgba(0, 0, 0, 0.45);
   `,
   syncErrorBar: css`

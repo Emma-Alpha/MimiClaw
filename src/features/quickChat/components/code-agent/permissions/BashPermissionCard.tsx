@@ -9,12 +9,12 @@ interface Props {
 
 const useStyles = createStyles(({ css, token }) => ({
 	meta: css`
-		font-size: 11px;
+		font-size: calc(${token.fontSizeSM}px - 1px);
 		color: ${token.colorTextTertiary};
 		margin-bottom: 4px;
 	`,
 	cmd: css`
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 		font-family: ${token.fontFamilyCode};
 		background: ${token.colorFillSecondary};
 		border: 1px solid ${token.colorBorderSecondary};

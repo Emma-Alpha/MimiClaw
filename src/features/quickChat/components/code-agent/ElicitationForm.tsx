@@ -53,7 +53,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		border-bottom: 2px solid #e5e7eb;
 	`,
 	title: css`
-		font-size: 14px;
+		font-size: ${token.fontSize}px;
 		font-weight: 600;
 		line-height: 1.2;
 		color: #111827;
@@ -62,14 +62,14 @@ const useStyles = createStyles(({ css, token }) => ({
 		text-overflow: ellipsis;
 	`,
 	message: css`
-		font-size: 14px;
+		font-size: ${token.fontSize}px;
 		line-height: 1.6;
 		color: #111827;
 		white-space: pre-wrap;
 		word-break: break-word;
 	`,
 	secondaryMessage: css`
-		font-size: 13px;
+		font-size: calc(${token.fontSizeSM}px + 1px);
 		line-height: 1.6;
 		color: #6b7280;
 		white-space: pre-wrap;
@@ -142,20 +142,20 @@ const useStyles = createStyles(({ css, token }) => ({
 		min-width: 0;
 	`,
 	optionTitle: css`
-		font-size: 14px;
+		font-size: ${token.fontSize}px;
 		font-weight: 600;
 		line-height: 1.35;
 		color: #111827;
 	`,
 	optionDescription: css`
-		font-size: 13px;
+		font-size: calc(${token.fontSizeSM}px + 1px);
 		line-height: 1.55;
 		color: #6b7280;
 		white-space: pre-wrap;
 		word-break: break-word;
 	`,
 	inputLabel: css`
-		font-size: 13px;
+		font-size: calc(${token.fontSizeSM}px + 1px);
 		font-weight: 600;
 		color: #111827;
 	`,
@@ -166,7 +166,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		border-radius: 12px;
 		border: 1px solid #d1d5db;
 		background: #fff;
-		font-size: 14px;
+		font-size: ${token.fontSize}px;
 		line-height: 1.5;
 		color: #111827;
 
@@ -178,7 +178,7 @@ const useStyles = createStyles(({ css, token }) => ({
 	`,
 	jsonTextarea: css`
 		width: 100%;
-		font-size: 13px;
+		font-size: calc(${token.fontSizeSM}px + 1px);
 		line-height: 1.5;
 		font-family: ${token.fontFamilyCode};
 		border: 1px solid #d1d5db;
@@ -203,7 +203,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		gap: 12px;
 	`,
 	actionHint: css`
-		font-size: 12px;
+		font-size: ${token.fontSizeSM}px;
 		color: #6b7280;
 	`,
 	submitButton: css`
@@ -213,7 +213,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		border-radius: 12px;
 		background: #f3f4f6;
 		color: #9ca3af;
-		font-size: 14px;
+		font-size: ${token.fontSize}px;
 		font-weight: 600;
 		line-height: 1.2;
 		text-align: left;

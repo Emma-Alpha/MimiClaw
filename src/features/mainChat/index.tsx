@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { useMinLoading } from '@/hooks/use-min-loading';
 import { ChatSkeletonList } from './components/ChatSkeletonList';
 import { BackBottomButton } from '@/components/common/BackBottomButton';
+import { CHAT_SESSION_HEADER_ICON_SIZE } from '@/styles/typography-tokens';
 
 const useStyles = createStyles(({ token, css }) => ({
   chatPage: css`
@@ -617,7 +618,7 @@ function TypingIndicator({ startedAt }: { startedAt?: number }) {
       avatar={{
         avatar: (
           <span className={styles.messageMetaAvatar}>
-            <OpenClaw.Color size={14} />
+            <OpenClaw.Color size={CHAT_SESSION_HEADER_ICON_SIZE} />
           </span>
         ),
         backgroundColor: 'transparent',
@@ -688,7 +689,7 @@ function ActivityIndicator({ phase, startedAt }: { phase: 'tool_processing'; sta
       avatar={{
         avatar: (
           <span className={styles.messageMetaAvatar}>
-            <OpenClaw.Color size={14} />
+            <OpenClaw.Color size={CHAT_SESSION_HEADER_ICON_SIZE} />
           </span>
         ),
         backgroundColor: 'transparent',

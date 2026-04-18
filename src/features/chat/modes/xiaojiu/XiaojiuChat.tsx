@@ -3,6 +3,10 @@ import { ChatItem } from '@lobehub/ui/chat';
 import { Loader2, MessageSquare, RefreshCw, Image as ImageIcon, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRemoteMessengerStore } from '@/stores/remote-messenger';
+import {
+  CHAT_SESSION_CARD_ICON_SIZE,
+  CHAT_SESSION_EMPTY_ICON_SIZE,
+} from '@/styles/typography-tokens';
 import { useXiaojiuChatStore, type XiaojiuAttachment, type XiaojiuMessage } from '@/stores/xiaojiu-chat';
 import { useStyles } from './XiaojiuChat.styles';
 
@@ -273,7 +277,9 @@ export function XiaojiuChat() {
       <div className={styles.emptyRoot}>
         <div className={styles.emptyCard}>
           <div className={styles.emptyIcon}>
-            <MessageSquare style={{ width: 28, height: 28 }} />
+            <MessageSquare
+              style={{ width: CHAT_SESSION_EMPTY_ICON_SIZE, height: CHAT_SESSION_EMPTY_ICON_SIZE }}
+            />
           </div>
           <div className={styles.emptyTitle}>选择一个小九会话</div>
           <p className={styles.emptyDesc}>
@@ -296,7 +302,9 @@ export function XiaojiuChat() {
             />
           ) : (
             <div className={styles.avatarFallback}>
-              <MessageSquare style={{ width: 20, height: 20 }} />
+              <MessageSquare
+                style={{ width: CHAT_SESSION_CARD_ICON_SIZE, height: CHAT_SESSION_CARD_ICON_SIZE }}
+              />
             </div>
           )}
           <div className={styles.headerContent}>
