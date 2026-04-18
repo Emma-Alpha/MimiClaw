@@ -135,11 +135,11 @@ export function createMenu(): void {
           },
         },
         {
-          label: 'Channels',
+          label: 'Plugins',
           accelerator: 'CmdOrCtrl+3',
           click: () => {
             const win = BrowserWindow.getFocusedWindow();
-            win?.webContents.send('navigate', '/channels');
+            win?.webContents.send('navigate', '/plugins');
           },
         },
         {

@@ -12,8 +12,7 @@ import { MainLayout } from "./components/layout/MainLayout";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Models } from "./pages/Models";
 import { UnifiedChatPage } from "./features/chat/pages/UnifiedChatPage";
-import { Agents } from "./pages/Agents";
-import { Channels } from "./pages/Channels";
+import { Plugins } from "./pages/Plugins";
 import { Skills } from "./pages/Skills";
 import { SkillsStorePage } from "./pages/Skills/store";
 import { Cron } from "./pages/Cron";
@@ -336,8 +335,9 @@ function App() {
 							<Route path="/jizhi-chat" element={<Navigate to="/chat/jizhi" replace />} />
 							<Route path="/voice-chat" element={<Navigate to="/chat/voice" replace />} />
 							<Route path="/models" element={<Models />} />
-							<Route path="/agents" element={<Agents />} />
-							<Route path="/channels" element={<Channels />} />
+							<Route path="/plugins" element={<Plugins />} />
+							<Route path="/agents" element={<Navigate to="/plugins" replace />} />
+							<Route path="/channels" element={<Navigate to="/plugins" replace />} />
 							<Route path="/skills" element={<Skills />} />
 							<Route path="/skills/store" element={<SkillsStorePage />} />
 							<Route path="/cron" element={<Cron />} />

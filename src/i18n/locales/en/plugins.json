@@ -1,0 +1,46 @@
+{
+  "title": "Plugins",
+  "notice": "This page currently focuses on two things: installing plugins and surfacing MCP-capable plugins. Broader plugin management can come later.",
+  "descriptionFallback": "No description available",
+  "actions": {
+    "install": "Install",
+    "installing": "Installing",
+    "openExtensionsFolder": "Open Plugins Folder",
+    "openFolder": "Open Folder",
+    "refresh": "Refresh"
+  },
+  "section": {
+    "catalog": {
+      "title": "Plugin Install",
+      "description": "Browse the OpenClaw plugins currently supported by MimiClaw and install them directly."
+    },
+    "mcp": {
+      "title": "MCP Plugins",
+      "description": "Quickly review plugins that expose MCP capabilities."
+    }
+  },
+  "status": {
+    "available": "Available",
+    "enabled": "Enabled",
+    "installed": "Installed"
+  },
+  "source": {
+    "bundled": "Bundled",
+    "detected": "Detected",
+    "npm": "NPM",
+    "path": "Local Path"
+  },
+  "badge": {
+    "mcp": "MCP"
+  },
+  "empty": {
+    "catalog": "No plugins to show yet",
+    "mcp": "No MCP plugins found"
+  },
+  "toast": {
+    "failedOpenFolder": "Failed to open plugin folder: {{error}}",
+    "failedRefresh": "Failed to refresh plugin list",
+    "installFailed": "Failed to install {{name}}: {{error}}",
+    "installed": "{{name}} installed"
+  }
+}

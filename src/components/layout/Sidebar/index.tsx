@@ -880,15 +880,15 @@ export function Sidebar() {
 			{/* Agents */}
 			<NavItem
 				icon={Blocks}
-				title={t("sidebar.pluginsNav", { defaultValue: "Plugins" })}
-				active={pathname === "/agents"}
-				onClick={() => navigate("/agents")}
+				title={t("sidebar.plugins", { defaultValue: "Plugins" })}
+				active={pathname === "/plugins" || pathname.startsWith("/plugins/")}
+				onClick={() => navigate("/plugins")}
 			/>
 
 			{/* 自动化 */}
 			<NavItem
 				icon={Clock}
-				title={t("sidebar.automationNav", { defaultValue: "自动化" })}
+				title={t("sidebar.cronTasks", { defaultValue: "自动化" })}
 				active={pathname === "/cron"}
 				onClick={() => navigate("/cron")}
 			/>

@@ -944,13 +944,13 @@ export function LegacySidebar() {
 					</NavLink>
 
 					<NavLink
-						to="/agents"
+						to="/plugins"
 						className={({ isActive }) =>
 							cx(styles.navAction, isActive ? styles.navActionActive : styles.navActionIdle)
 						}
 					>
 						<Blocks className={styles.primaryActionIcon} />
-						<span className={styles.truncate}>{t("sidebar.pluginsNav", { defaultValue: "Plugins" })}</span>
+						<span className={styles.truncate}>{t("sidebar.plugins", { defaultValue: "Plugins" })}</span>
 					</NavLink>
 
 					<NavLink

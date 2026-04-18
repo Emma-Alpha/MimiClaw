@@ -15,8 +15,7 @@ import {
 	PanelLeftClose,
 	Ellipsis,
 	Cpu,
-	Bot,
-	Network,
+	Blocks,
 	Puzzle,
 	Clock,
 } from "lucide-react";
@@ -276,14 +275,9 @@ function ManagementMenu({
 				icon: <Cpu style={{ width: 15, height: 15 }} strokeWidth={2} />,
 			},
 			{
-				to: "/agents",
-				label: t("sidebar.agents"),
-				icon: <Bot style={{ width: 15, height: 15 }} strokeWidth={2} />,
-			},
-			{
-				to: "/channels",
-				label: t("sidebar.channels"),
-				icon: <Network style={{ width: 15, height: 15 }} strokeWidth={2} />,
+				to: "/plugins",
+				label: t("sidebar.plugins"),
+				icon: <Blocks style={{ width: 15, height: 15 }} strokeWidth={2} />,
 			},
 			{
 				to: "/skills",

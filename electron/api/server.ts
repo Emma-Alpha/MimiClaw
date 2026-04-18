@@ -10,6 +10,7 @@ import { handleSettingsRoutes } from './routes/settings';
 import { handleProviderRoutes } from './routes/providers';
 import { handleAgentRoutes } from './routes/agents';
 import { handleChannelRoutes } from './routes/channels';
+import { handlePluginRoutes } from './routes/plugins';
 import { handleLogRoutes } from './routes/logs';
 import { handleUsageRoutes } from './routes/usage';
 import { handleSkillRoutes } from './routes/skills';
@@ -40,6 +41,7 @@ const routeHandlers: RouteHandler[] = [
   handleProviderRoutes,
   handleAgentRoutes,
   handleChannelRoutes,
+  handlePluginRoutes,
   handleSkillRoutes,
   handleLocalExecutorRoutes,
   handleFileRoutes,

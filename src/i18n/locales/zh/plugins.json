@@ -1,0 +1,46 @@
+{
+  "title": "Plugins",
+  "notice": "当前页面先聚焦两件事：安装插件，以及查看带有 MCP 能力的插件。更完整的插件管理能力后续再补。",
+  "descriptionFallback": "暂无描述",
+  "actions": {
+    "install": "安装",
+    "installing": "安装中",
+    "openExtensionsFolder": "打开插件目录",
+    "openFolder": "打开文件夹",
+    "refresh": "刷新"
+  },
+  "section": {
+    "catalog": {
+      "title": "插件安装",
+      "description": "查看当前支持的 OpenClaw 插件，并直接完成安装。"
+    },
+    "mcp": {
+      "title": "MCP 插件",
+      "description": "聚合展示具备 MCP 能力的插件，便于快速确认可用扩展。"
+    }
+  },
+  "status": {
+    "available": "可安装",
+    "enabled": "已启用",
+    "installed": "已安装"
+  },
+  "source": {
+    "bundled": "内置",
+    "detected": "已检测",
+    "npm": "NPM",
+    "path": "本地路径"
+  },
+  "badge": {
+    "mcp": "MCP"
+  },
+  "empty": {
+    "catalog": "暂无可展示的插件",
+    "mcp": "暂无 MCP 插件"
+  },
+  "toast": {
+    "failedOpenFolder": "打开插件目录失败：{{error}}",
+    "failedRefresh": "刷新插件列表失败",
+    "installFailed": "安装 {{name}} 失败：{{error}}",
+    "installed": "{{name}} 安装完成"
+  }
+}

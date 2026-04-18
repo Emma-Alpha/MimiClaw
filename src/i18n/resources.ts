@@ -12,6 +12,7 @@ export const NAMESPACES = [
   'chat',
   'channels',
   'agents',
+  'plugins',
   'skills',
   'cron',
   'setup',

@@ -10,4 +10,6 @@
 
 Skills 技能页：技能商店使用 `npx skills`（skills.sh）搜索与安装；需要时可在 `~/.mimiclaw/runtime/node` 自动准备 Node 运行时（详见 [README.md](README.md) 执行能力一节）。
 
+Plugins 页面：当前聚焦 OpenClaw 插件安装与 MCP 插件展示，独立 Channels 页面已移除。
+
 补充：版本发布时新增了交互式脚本 `pnpm run version:select`，可直接选择 `patch / minor / major`。

@@ -1,0 +1,46 @@
+{
+  "title": "Plugins",
+  "notice": "このページでは当面、プラグインのインストールと MCP 対応プラグインの確認に絞っています。より広い管理機能は後続で追加します。",
+  "descriptionFallback": "説明はまだありません",
+  "actions": {
+    "install": "インストール",
+    "installing": "インストール中",
+    "openExtensionsFolder": "プラグインフォルダーを開く",
+    "openFolder": "フォルダーを開く",
+    "refresh": "更新"
+  },
+  "section": {
+    "catalog": {
+      "title": "プラグインのインストール",
+      "description": "MimiClaw が現在サポートしている OpenClaw プラグインを確認し、そのままインストールできます。"
+    },
+    "mcp": {
+      "title": "MCP プラグイン",
+      "description": "MCP 機能を持つプラグインをまとめて確認できます。"
+    }
+  },
+  "status": {
+    "available": "インストール可能",
+    "enabled": "有効",
+    "installed": "インストール済み"
+  },
+  "source": {
+    "bundled": "同梱",
+    "detected": "検出済み",
+    "npm": "NPM",
+    "path": "ローカルパス"
+  },
+  "badge": {
+    "mcp": "MCP"
+  },
+  "empty": {
+    "catalog": "表示できるプラグインはまだありません",
+    "mcp": "MCP プラグインは見つかりませんでした"
+  },
+  "toast": {
+    "failedOpenFolder": "プラグインフォルダーを開けませんでした: {{error}}",
+    "failedRefresh": "プラグイン一覧の更新に失敗しました",
+    "installFailed": "{{name}} のインストールに失敗しました: {{error}}",
+    "installed": "{{name}} をインストールしました"
+  }
+}
