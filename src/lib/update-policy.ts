@@ -9,6 +9,8 @@ export type ParsedUpdatePolicy = {
   learnMoreUrl?: string;
 };
 
+export type UpdateReleaseTier = 'patch' | 'minor' | 'major' | 'unknown';
+
 export function parseUpdatePolicy(raw: unknown): ParsedUpdatePolicy | null {
   if (!raw || typeof raw !== 'object') return null;
   const o = raw as Record<string, unknown>;
@@ -45,4 +47,20 @@ export function isVersionBelow(current: string, minimum: string): boolean {
   const b = comparableAppVersion(minimum);
   if (!a || !b) return false;
   return semver.lt(a, b);
+}
+
+export function getUpdateReleaseTier(current: string, target: string): UpdateReleaseTier | null {
+  const from = comparableAppVersion(current);
+  const to = comparableAppVersion(target);
+
+  if (!from || !to) {
+    return current.trim() === target.trim() ? null : 'unknown';
+  }
+
+  if (semver.eq(from, to)) return null;
+  if (semver.major(from) !== semver.major(to)) return 'major';
+  if (semver.minor(from) !== semver.minor(to)) return 'minor';
+  if (semver.patch(from) !== semver.patch(to)) return 'patch';
+
+  return 'unknown';
 }

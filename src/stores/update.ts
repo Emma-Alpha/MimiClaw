@@ -5,7 +5,12 @@
 import { create } from 'zustand';
 import { useSettingsStore } from './settings';
 import { invokeIpc } from '@/lib/api-client';
-import { isVersionBelow, parseUpdatePolicy } from '@/lib/update-policy';
+import {
+  getUpdateReleaseTier,
+  isVersionBelow,
+  parseUpdatePolicy,
+  type UpdateReleaseTier,
+} from '@/lib/update-policy';
 
 export interface UpdateInfo {
   version: string;
@@ -45,13 +50,23 @@ type PendingForceModalOptions = {
   learnMoreUrl?: string;
 };
 
+type IncomingUpdateSnapshot = {
+  status: UpdateStatus;
+  info?: UpdateInfo;
+  progress?: ProgressInfo;
+  error?: string;
+};
+
 interface UpdateState {
   status: UpdateStatus;
   currentVersion: string;
   updateInfo: UpdateInfo | null;
+  availableUpdateTier: UpdateReleaseTier | null;
   progress: ProgressInfo | null;
   error: string | null;
   isInitialized: boolean;
+  isUpdateAvailablePopupOpen: boolean;
+  dismissedUpdateVersion: string | null;
   /** Seconds remaining before auto-install, or null if inactive. */
   autoInstallCountdown: number | null;
 
@@ -71,6 +86,8 @@ interface UpdateState {
     learnMoreUrl?: string;
     reason?: 'below-minimum' | 'update-available';
   }) => void;
+  openUpdateAvailablePopup: () => void;
+  dismissUpdateAvailablePopup: () => void;
   dismissForcedUpdateModal: () => void;
   checkForUpdates: () => Promise<void>;
   downloadUpdate: () => Promise<void>;
@@ -81,13 +98,80 @@ interface UpdateState {
   clearError: () => void;
 }
 
+function shouldAutoOpenUpdatePopup(
+  tier: UpdateReleaseTier | null,
+  version: string | null,
+  dismissedVersion: string | null,
+) {
+  if (!version || dismissedVersion === version) return false;
+  return tier !== 'patch';
+}
+
+function buildIncomingUpdatePatch(
+  state: Pick<
+    UpdateState,
+    | 'currentVersion'
+    | 'dismissedUpdateVersion'
+    | 'forcedUpdateModal'
+    | 'isUpdateAvailablePopupOpen'
+    | 'pendingForceModalOptions'
+    | 'pendingForceModalWhenAvailable'
+    | 'updateInfo'
+  >,
+  incoming: IncomingUpdateSnapshot,
+): Partial<UpdateState> {
+  const nextInfo = incoming.info || null;
+  const nextTier = nextInfo ? getUpdateReleaseTier(state.currentVersion, nextInfo.version) : null;
+  const nextVersion = nextInfo?.version ?? null;
+  const isSameVersion = nextVersion != null && nextVersion === state.updateInfo?.version;
+
+  const patch: Partial<UpdateState> = {
+    status: incoming.status,
+    updateInfo: nextInfo,
+    availableUpdateTier: nextTier,
+    progress: incoming.progress || null,
+    error: incoming.error || null,
+  };
+
+  if (incoming.status === 'available') {
+    patch.isUpdateAvailablePopupOpen = (isSameVersion && state.isUpdateAvailablePopupOpen)
+      || shouldAutoOpenUpdatePopup(nextTier, nextVersion, state.dismissedUpdateVersion);
+  } else {
+    patch.isUpdateAvailablePopupOpen = false;
+  }
+
+  if (state.pendingForceModalWhenAvailable && incoming.status === 'available') {
+    const opt = state.pendingForceModalOptions;
+    patch.forcedUpdateModal = {
+      title: opt?.title,
+      message: opt?.message,
+      blockDismiss: !opt?.allowDismiss,
+      learnMoreUrl: opt?.learnMoreUrl,
+      reason: 'update-available',
+    };
+    patch.pendingForceModalWhenAvailable = false;
+    patch.pendingForceModalOptions = null;
+  } else if (
+    state.pendingForceModalWhenAvailable
+    && (incoming.status === 'not-available' || incoming.status === 'error')
+  ) {
+    patch.pendingForceModalWhenAvailable = false;
+    patch.pendingForceModalOptions = null;
+  }
+
+  return patch;
+}
+
 export const useUpdateStore = create<UpdateState>((set, get) => ({
   status: 'idle',
   currentVersion: '0.0.0',
   updateInfo: null,
+  availableUpdateTier: null,
   progress: null,
   error: null,
   isInitialized: false,
+  isUpdateAvailablePopupOpen: false,
+  dismissedUpdateVersion: null,
   autoInstallCountdown: null,
 
   forcedUpdateModal: null,
@@ -114,12 +198,7 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
         progress?: ProgressInfo;
         error?: string;
       }>('update:status');
-      set({
-        status: status.status,
-        updateInfo: status.info || null,
-        progress: status.progress || null,
-        error: status.error || null,
-      });
+      set((state) => buildIncomingUpdatePatch(state, status));
     } catch (error) {
       console.error('Failed to get update status:', error);
     }
@@ -134,37 +213,7 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
         progress?: ProgressInfo;
         error?: string;
       };
-      set((state) => {
-        const patch: Partial<UpdateState> = {
-          status: incoming.status,
-          updateInfo: incoming.info || null,
-          progress: incoming.progress || null,
-          error: incoming.error || null,
-        };
-        if (state.pendingForceModalWhenAvailable && incoming.status === 'available') {
-          const opt = state.pendingForceModalOptions;
-          patch.forcedUpdateModal = {
-            title: opt?.title,
-            message: opt?.message,
-            blockDismiss: !opt?.allowDismiss,
-            learnMoreUrl: opt?.learnMoreUrl,
-            reason: 'update-available',
-          };
-          console.log('✅ Update available! Creating forcedUpdateModal:', {
-            optAllowDismiss: opt?.allowDismiss,
-            blockDismiss: !opt?.allowDismiss,
-          });
-          patch.pendingForceModalWhenAvailable = false;
-          patch.pendingForceModalOptions = null;
-        } else if (
-          state.pendingForceModalWhenAvailable
-          && (incoming.status === 'not-available' || incoming.status === 'error')
-        ) {
-          patch.pendingForceModalWhenAvailable = false;
-          patch.pendingForceModalOptions = null;
-        }
-        return patch;
-      });
+      set((state) => buildIncomingUpdatePatch(state, incoming));
     });
 
     window.electron.ipcRenderer.on('update:auto-install-countdown', (data) => {
@@ -280,6 +329,19 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
     });
   },
 
+  openUpdateAvailablePopup: () => {
+    if (get().status !== 'available' || !get().updateInfo) return;
+    set({ isUpdateAvailablePopupOpen: true });
+  },
+
+  dismissUpdateAvailablePopup: () => {
+    const version = get().updateInfo?.version ?? null;
+    set({
+      dismissedUpdateVersion: version,
+      isUpdateAvailablePopupOpen: false,
+    });
+  },
+
   dismissForcedUpdateModal: () => {
     const m = get().forcedUpdateModal;
     if (m?.blockDismiss) return;
@@ -306,38 +368,12 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
 
       const resolvedStatus = result.status;
       if (resolvedStatus) {
-        set((state) => {
-          const incoming = resolvedStatus;
-          const patch: Partial<UpdateState> = {
-            status: incoming.status,
-            updateInfo: incoming.info || null,
-            progress: incoming.progress || null,
-            error: incoming.error || null,
-          };
-          if (state.pendingForceModalWhenAvailable && incoming.status === 'available') {
-            const opt = state.pendingForceModalOptions;
-            patch.forcedUpdateModal = {
-              title: opt?.title,
-              message: opt?.message,
-              blockDismiss: !opt?.allowDismiss,
-              learnMoreUrl: opt?.learnMoreUrl,
-              reason: 'update-available',
-            };
-            patch.pendingForceModalWhenAvailable = false;
-            patch.pendingForceModalOptions = null;
-          } else if (
-            state.pendingForceModalWhenAvailable
-            && (incoming.status === 'not-available' || incoming.status === 'error')
-          ) {
-            patch.pendingForceModalWhenAvailable = false;
-            patch.pendingForceModalOptions = null;
-          }
-          return patch;
-        });
+        set((state) => buildIncomingUpdatePatch(state, resolvedStatus));
       } else if (!result.success) {
         set({
           status: 'error',
           error: result.error || 'Failed to check for updates',
+          isUpdateAvailablePopupOpen: false,
           pendingForceModalWhenAvailable: false,
           pendingForceModalOptions: null,
         });
@@ -346,6 +382,7 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
       set({
         status: 'error',
         error: String(error),
+        isUpdateAvailablePopupOpen: false,
         pendingForceModalWhenAvailable: false,
         pendingForceModalOptions: null,
       });
@@ -357,6 +394,7 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
         set({
           status: 'error',
           error: 'Update check completed without a result. This usually means the app is running in dev mode.',
+          isUpdateAvailablePopupOpen: false,
           pendingForceModalWhenAvailable: false,
           pendingForceModalOptions: null,
         });
@@ -374,10 +412,14 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
       }>('update:download');
 
       if (!result.success) {
-        set({ status: 'error', error: result.error || 'Failed to download update' });
+        set({
+          status: 'error',
+          error: result.error || 'Failed to download update',
+          isUpdateAvailablePopupOpen: false,
+        });
       }
     } catch (error) {
-      set({ status: 'error', error: String(error) });
+      set({ status: 'error', error: String(error), isUpdateAvailablePopupOpen: false });
     }
   },
 
@@ -385,10 +427,14 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
     try {
       const result = await invokeIpc<{ success?: boolean; error?: string }>('update:install');
       if (result && result.success === false) {
-        set({ status: 'error', error: result.error || 'Failed to install update' });
+        set({
+          status: 'error',
+          error: result.error || 'Failed to install update',
+          isUpdateAvailablePopupOpen: false,
+        });
       }
     } catch (error) {
-      set({ status: 'error', error: String(error) });
+      set({ status: 'error', error: String(error), isUpdateAvailablePopupOpen: false });
     }
   },
 
@@ -416,5 +462,9 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
     }
   },
 
-  clearError: () => set({ error: null, status: 'idle' }),
+  clearError: () => set({
+    error: null,
+    status: 'idle',
+    isUpdateAvailablePopupOpen: false,
+  }),
 }));

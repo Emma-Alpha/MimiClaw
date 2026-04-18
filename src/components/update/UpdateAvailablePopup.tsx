@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { createStyles } from 'antd-style';
 import { useUpdateStore } from '@/stores/update';
 import { Button } from '@/components/ui/button';
@@ -106,24 +105,23 @@ export function UpdateAvailablePopup() {
   const { styles } = useStyles();
   const status = useUpdateStore((s) => s.status);
   const updateInfo = useUpdateStore((s) => s.updateInfo);
+  const isUpdateAvailablePopupOpen = useUpdateStore((s) => s.isUpdateAvailablePopupOpen);
   const downloadUpdate = useUpdateStore((s) => s.downloadUpdate);
+  const dismissUpdateAvailablePopup = useUpdateStore((s) => s.dismissUpdateAvailablePopup);
   const forcedUpdateModal = useUpdateStore((s) => s.forcedUpdateModal);
-
-  const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
 
   // If there's a forced update modal, don't show the soft popup
   if (forcedUpdateModal) return null;
 
   // Only show when available and not dismissed
-  if (status !== 'available' || !updateInfo) return null;
-  if (dismissedVersion === updateInfo.version) return null;
+  if (status !== 'available' || !updateInfo || !isUpdateAvailablePopupOpen) return null;
 
   const handleDownload = () => {
     void downloadUpdate();
   };
 
   const handleDismiss = () => {
-    setDismissedVersion(updateInfo.version);
+    dismissUpdateAvailablePopup();
   };
 
   return (

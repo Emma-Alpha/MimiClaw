@@ -128,6 +128,14 @@ corepack enable
 corepack prepare
 ```
 
+版本发布时，可使用交互式脚本选择升级粒度：
+
+```bash
+pnpm run version:select
+```
+
+脚本会像 changesets 一样提示选择 `patch / minor / major`，并继续复用现有版本号更新逻辑。
+
 ---
 
 ## 关键能力截图

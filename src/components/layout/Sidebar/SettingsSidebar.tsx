@@ -4,6 +4,7 @@ import { Cpu, Info, Network, Palette, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 
+import { SidebarUpdateAction } from '@/components/update/SidebarUpdateAction';
 import { useSettingsStore } from '@/stores/settings';
 import { NavItem, SideBarHeaderLayout, SideBarLayout } from '@/features/NavPanel';
 
@@ -18,10 +19,15 @@ const useStyles = createStyles(({ token, css }) => ({
     border-right: 1px solid ${token.colorBorderSecondary};
     background: ${token.colorBgLayout};
   `,
-  topSpacer: css`
+  topBar: css`
     height: ${window.electron?.platform === 'darwin' ? '40px' : '2.75rem'};
     width: 100%;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding-inline: 8px;
+    padding-inline-start: ${window.electron?.platform === 'darwin' ? '72px' : '8px'};
   `,
 }));
 
@@ -43,7 +49,9 @@ export function SettingsSidebar() {
 
   return (
     <aside className={styles.aside}>
-      <div className={styles.topSpacer} />
+      <div className={styles.topBar}>
+        <SidebarUpdateAction />
+      </div>
       <SideBarLayout
         header={
           <SideBarHeaderLayout

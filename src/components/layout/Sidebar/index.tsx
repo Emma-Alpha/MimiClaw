@@ -50,6 +50,7 @@ import {
 	normalizeWorkspacePath,
 } from "@/lib/sidebar-workspace";
 import { SearchInput } from "@/components/common/SearchInput";
+import { SidebarUpdateAction } from "@/components/update/SidebarUpdateAction";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 import { NavItem, SideBarLayout } from "@/features/NavPanel";
@@ -81,10 +82,15 @@ const useStyles = createStyles(({ css, token }) => ({
     border-right: 1px solid ${token.colorBorderSecondary};
     background: ${token.colorBgLayout};
   `,
-	topSpacer: css`
+	topBar: css`
     height: ${window.electron?.platform === "darwin" ? "40px" : "2.75rem"};
     width: 100%;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding-inline: 8px;
+    padding-inline-start: ${window.electron?.platform === "darwin" ? "72px" : "8px"};
   `,
 	footer: css`
     flex-shrink: 0;
@@ -269,7 +275,7 @@ export function Sidebar() {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const pathname = location.pathname;
-	const { t, i18n } = useTranslation(["common"]);
+	const { t, i18n } = useTranslation(["common", "settings"]);
 
 	// ── local state ───────────────────────────────────────────────────────────
 	const [sessionToDelete, setSessionToDelete] = useState<{
@@ -1371,7 +1377,9 @@ export function Sidebar() {
 
 	return (
 		<aside className={styles.aside}>
-			<div className={styles.topSpacer} />
+			<div className={styles.topBar}>
+				<SidebarUpdateAction />
+			</div>
 
 			<SideBarLayout header={headerNode} body={bodyNode} />
 

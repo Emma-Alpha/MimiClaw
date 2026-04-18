@@ -80,6 +80,7 @@
     "package:linux:cloud:test": "zx scripts/package-cloud.mjs --mode=test --platform=linux",
     "package:linux:cloud:prod": "zx scripts/package-cloud.mjs --mode=production --platform=linux",
     "release": "pnpm run uv:download && pnpm run package && electron-builder --publish always",
+    "version:select": "node scripts/release-version.mjs",
     "version:patch": "node scripts/npm-version.mjs patch",
     "version:minor": "node scripts/npm-version.mjs minor",
     "version:major": "node scripts/npm-version.mjs major",
