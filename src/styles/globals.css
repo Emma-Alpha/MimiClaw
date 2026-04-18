@@ -61,7 +61,7 @@ body {
 }
 
 [style*="--lobe-markdown-font-size"] {
-  --lobe-markdown-font-size: var(--app-font-size-max) !important;
+  --lobe-markdown-font-size: var(--mimi-markdown-font-size-override, var(--app-font-size-max)) !important;
 }
 
 [data-slate-editor="true"],

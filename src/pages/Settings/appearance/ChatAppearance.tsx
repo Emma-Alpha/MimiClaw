@@ -123,7 +123,12 @@ const ChatAppearance = memo(() => {
       >
         <div style={{ padding: '0 16px 16px' }}>
           <div style={{ border: '1px solid var(--ant-color-border-secondary)', borderRadius: 16, overflow: 'hidden' }}>
-            <Center style={{ padding: 20 }}>
+            <Center
+              style={{
+                '--mimi-markdown-font-size-override': `${fontSize}px`,
+                padding: 20,
+              } as CSSProperties}
+            >
               <Markdown fontSize={fontSize} variant={'chat'}>
                 {markdownSample}
               </Markdown>
