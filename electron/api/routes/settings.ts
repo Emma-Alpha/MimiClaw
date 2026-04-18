@@ -49,6 +49,17 @@ function patchTouchesPet(patch: Partial<AppSettings>): boolean {
     || Object.prototype.hasOwnProperty.call(patch, 'petAnimation');
 }
 
+function normalizeSettingValue<K extends keyof AppSettings>(
+  key: K,
+  value: AppSettings[K] | null,
+): AppSettings[K] {
+  if ((key === 'primaryColor' || key === 'neutralColor') && value === null) {
+    return undefined as AppSettings[K];
+  }
+
+  return value as AppSettings[K];
+}
+
 export async function handleSettingsRoutes(
   req: IncomingMessage,
   res: ServerResponse,
@@ -62,7 +73,13 @@ export async function handleSettingsRoutes(
 
   if (url.pathname === '/api/settings' && req.method === 'PUT') {
     try {
-      const patch = await parseJsonBody<Partial<AppSettings>>(req);
+      const rawPatch = await parseJsonBody<Record<string, unknown>>(req);
+      const patch = Object.fromEntries(
+        Object.entries(rawPatch).map(([key, value]) => [
+          key,
+          normalizeSettingValue(key as keyof AppSettings, value as AppSettings[keyof AppSettings] | null),
+        ]),
+      ) as Partial<AppSettings>;
       const entries = Object.entries(patch) as Array<[keyof AppSettings, AppSettings[keyof AppSettings]]>;
       for (const [key, value] of entries) {
         await setSetting(key, value);
@@ -119,8 +136,8 @@ export async function handleSettingsRoutes(
   if (url.pathname.startsWith('/api/settings/') && req.method === 'PUT') {
     const key = url.pathname.slice('/api/settings/'.length) as keyof AppSettings;
     try {
-      const body = await parseJsonBody<{ value: AppSettings[keyof AppSettings] }>(req);
-      await setSetting(key, body.value);
+      const body = await parseJsonBody<{ value: AppSettings[keyof AppSettings] | null }>(req);
+      await setSetting(key, normalizeSettingValue(key, body.value));
       if (
         key === 'proxyEnabled' ||
         key === 'proxyServer' ||

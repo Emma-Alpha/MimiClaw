@@ -28,8 +28,8 @@ export interface AppSettings {
   // General
   theme: 'light' | 'dark' | 'system';
   language: string;
-  primaryColor: string;
-  neutralColor: string;
+  primaryColor?: string;
+  neutralColor?: string;
   fontSize: number;
   highlighterTheme: string;
   mermaidTheme: string;
@@ -114,8 +114,6 @@ function createDefaultSettings(): AppSettings {
     // General
     theme: 'system',
     language: resolveSupportedLanguage(getSystemLocale()),
-    primaryColor: 'blue',
-    neutralColor: 'slate',
     fontSize: 14,
     highlighterTheme: 'lobe-theme',
     mermaidTheme: 'lobe-theme',
@@ -202,6 +200,10 @@ export async function setSetting<K extends keyof AppSettings>(
   value: AppSettings[K]
 ): Promise<void> {
   const store = await getSettingsStore();
+  if (value === undefined) {
+    store.delete(key);
+    return;
+  }
   store.set(key, value);
 }
 

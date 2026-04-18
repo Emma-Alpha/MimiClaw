@@ -66,8 +66,8 @@ interface SettingsState extends CloudAuthState {
   // General
   theme: Theme;
   language: string;
-  primaryColor: string;
-  neutralColor: string;
+  primaryColor?: string;
+  neutralColor?: string;
   fontSize: number;
   highlighterTheme: string;
   mermaidTheme: string;
@@ -128,8 +128,8 @@ interface SettingsState extends CloudAuthState {
   init: () => Promise<void>;
   setTheme: (theme: Theme) => void;
   setLanguage: (language: string) => void;
-  setPrimaryColor: (value: string) => void;
-  setNeutralColor: (value: string) => void;
+  setPrimaryColor: (value?: string) => void;
+  setNeutralColor: (value?: string) => void;
   setFontSize: (value: number) => void;
   setHighlighterTheme: (value: string) => void;
   setMermaidTheme: (value: string) => void;
@@ -193,8 +193,8 @@ interface SettingsState extends CloudAuthState {
 const defaultSettings = {
   theme: 'system' as Theme,
   language: resolveSupportedLanguage(typeof navigator !== 'undefined' ? navigator.language : undefined),
-  primaryColor: 'blue',
-  neutralColor: 'slate',
+  primaryColor: undefined as string | undefined,
+  neutralColor: undefined as string | undefined,
   fontSize: 14,
   highlighterTheme: 'lobe-theme',
   mermaidTheme: 'lobe-theme',
@@ -366,6 +366,12 @@ export const useSettingsStore = create<SettingsState>()(
             : remoteThreadExpanded;
           const nextSettings: MainProcessSettingsPatch = {
             ...settings,
+            ...(!Object.prototype.hasOwnProperty.call(rawSettings, 'primaryColor')
+              ? { primaryColor: undefined }
+              : {}),
+            ...(!Object.prototype.hasOwnProperty.call(rawSettings, 'neutralColor')
+              ? { neutralColor: undefined }
+              : {}),
             sidebarThreadWorkspaces: mergedThreadWorkspaces,
             sidebarThreadWorkspaceExpanded: mergedThreadExpanded,
           };
@@ -423,14 +429,14 @@ export const useSettingsStore = create<SettingsState>()(
         set({ primaryColor });
         void hostApiFetch('/api/settings', {
           method: 'PUT',
-          body: JSON.stringify({ primaryColor }),
+          body: JSON.stringify({ primaryColor: primaryColor ?? null }),
         }).catch(() => { });
       },
       setNeutralColor: (neutralColor) => {
         set({ neutralColor });
         void hostApiFetch('/api/settings', {
           method: 'PUT',
-          body: JSON.stringify({ neutralColor }),
+          body: JSON.stringify({ neutralColor: neutralColor ?? null }),
         }).catch(() => { });
       },
       setFontSize: (fontSize) => {
