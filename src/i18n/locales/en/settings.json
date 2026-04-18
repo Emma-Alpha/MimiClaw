@@ -91,6 +91,10 @@
       "slate": "Slate"
     }
   },
+  "voicePet": {
+    "title": "Voice & Pet",
+    "description": "Manage the floating pet, Volcengine ASR, and voice chat in one place."
+  },
   "pet": {
     "title": "Floating Pet",
     "description": "Show a transparent floating pet window with right-click animation switching.",

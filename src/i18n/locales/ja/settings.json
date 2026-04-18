@@ -91,6 +91,10 @@
       "slate": "スレート"
     }
   },
+  "voicePet": {
+    "title": "音声とペット",
+    "description": "フローティングペット、Volcengine ASR、音声会話をまとめて管理します。"
+  },
   "pet": {
     "title": "フローティングペット",
     "description": "透明なペットウィンドウを表示し、右クリックで動きを切り替えます。",

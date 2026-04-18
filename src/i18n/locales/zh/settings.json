@@ -91,6 +91,10 @@
       "slate": "石板"
     }
   },
+  "voicePet": {
+    "title": "语音与宠物",
+    "description": "集中管理桌面宠物、火山引擎 ASR 与语音对话。"
+  },
   "pet": {
     "title": "桌面悬浮宠物",
     "description": "显示一个透明悬浮宠物窗口，支持右键切换动作。",

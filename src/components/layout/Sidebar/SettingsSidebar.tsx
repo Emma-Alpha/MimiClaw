@@ -1,6 +1,6 @@
 import { Flexbox } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
-import { Cpu, Info, Network, Palette, RefreshCw } from 'lucide-react';
+import { Bot, Cpu, Info, Network, Palette, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 
@@ -41,6 +41,7 @@ export function SettingsSidebar() {
 
   const navItems = [
     { key: 'appearance', label: t('appearance.title'), icon: Palette },
+    { key: 'voicePet',   label: t('voicePet.title'),   icon: Bot      },
     { key: 'gateway',    label: t('gateway.title'),    icon: Network  },
     { key: 'updates',    label: t('updates.title'),    icon: RefreshCw },
     ...(devModeUnlocked ? [{ key: 'developer', label: t('developer.title'), icon: Cpu }] : []),

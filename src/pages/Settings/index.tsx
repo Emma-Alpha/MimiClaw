@@ -255,7 +255,7 @@ export function Settings() {
   const [savingCodeAgentConfig, setSavingCodeAgentConfig] = useState(false);
   const [showCodeAgentApiKey, setShowCodeAgentApiKey] = useState(false);
 
-  type SettingsSection = 'appearance' | 'gateway' | 'updates' | 'developer' | 'about';
+  type SettingsSection = 'appearance' | 'voicePet' | 'gateway' | 'updates' | 'developer' | 'about';
   const [searchParams] = useSearchParams();
   const activeSection = (searchParams.get('section') as SettingsSection) ?? 'appearance';
 
@@ -942,6 +942,7 @@ export function Settings() {
           <SettingHeader
             title={
               activeSection === 'appearance' ? t('appearance.title') :
+              activeSection === 'voicePet' ? t('voicePet.title') :
               activeSection === 'gateway' ? t('gateway.title') :
               activeSection === 'updates' ? t('updates.title') :
               activeSection === 'developer' ? t('developer.title') :
@@ -953,7 +954,12 @@ export function Settings() {
           {activeSection === 'appearance' && (
             <div className={styles.section}>
               <SettingsAppearance />
+            </div>
+          )}
 
+          {/* Voice & Pet */}
+          {activeSection === 'voicePet' && (
+            <div className={styles.section}>
               <Form
                 collapsible={false}
                 initialValues={{
