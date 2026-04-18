@@ -7,21 +7,9 @@ import { useTranslation } from 'react-i18next';
 import { Select } from '@/components/ui/select';
 import { SUPPORTED_LANGUAGES } from '@/i18n';
 import { useSettingsStore } from '@/stores/settings';
-
-const themePreview = (mode: 'light' | 'dark' | 'system') =>
-  `data:image/svg+xml;utf8,${encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="100" height="60" viewBox="0 0 100 60" fill="none">
-      <rect width="100" height="60" rx="12" fill="${mode === 'dark' ? '#171717' : '#F6F6F4'}"/>
-      <rect x="0" y="0" width="100" height="16" rx="12" fill="${mode === 'dark' ? '#111827' : '#2F80FF'}"/>
-      <circle cx="12" cy="8" r="2" fill="${mode === 'system' ? '#FFD84D' : mode === 'dark' ? '#9CA3AF' : '#FF8A34'}"/>
-      <circle cx="20" cy="8" r="2" fill="${mode === 'system' ? '#B7E34B' : mode === 'dark' ? '#6B7280' : '#FFD84D'}"/>
-      <circle cx="28" cy="8" r="2" fill="${mode === 'system' ? '#3B82F6' : mode === 'dark' ? '#4B5563' : '#49CC68'}"/>
-      <rect x="8" y="24" width="18" height="28" rx="4" fill="${mode === 'dark' ? '#20242D' : '#FFFFFF'}" stroke="${mode === 'dark' ? '#30343D' : '#E5E7EB'}"/>
-      <rect x="32" y="24" width="48" height="18" rx="4" fill="${mode === 'dark' ? '#20242D' : '#FFFFFF'}" stroke="${mode === 'dark' ? '#30343D' : '#E5E7EB'}"/>
-      <rect x="54" y="46" width="20" height="8" rx="4" fill="${mode === 'dark' ? '#374151' : '#111827'}"/>
-      ${mode === 'system' ? '<rect x="50" y="0" width="50" height="60" rx="12" fill="#111827" opacity="0.95"/>' : ''}
-    </svg>
-  `)}`;
+import themeAutoImage from '@/assets/settings/theme_auto.webp';
+import themeDarkImage from '@/assets/settings/theme_dark.webp';
+import themeLightImage from '@/assets/settings/theme_light.webp';
 
 const CommonAppearance = memo(() => {
   const { t } = useTranslation('settings');
@@ -62,9 +50,9 @@ const CommonAppearance = memo(() => {
                   value={theme}
                   width={100}
                   options={[
-                    { icon: Sun, img: themePreview('light'), label: t('appearance.light'), value: 'light' },
-                    { icon: Moon, img: themePreview('dark'), label: t('appearance.dark'), value: 'dark' },
-                    { icon: Monitor, img: themePreview('system'), label: t('appearance.system'), value: 'system' },
+                    { icon: Sun, img: themeLightImage, label: t('appearance.light'), value: 'light' },
+                    { icon: Moon, img: themeDarkImage, label: t('appearance.dark'), value: 'dark' },
+                    { icon: Monitor, img: themeAutoImage, label: t('appearance.system'), value: 'system' },
                   ]}
                   onChange={(value) => setTheme(value as 'light' | 'dark' | 'system')}
                 />
