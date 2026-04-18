@@ -1,13 +1,13 @@
 import { createStyles } from 'antd-style';
 
-export const useStyles = createStyles(({ css }) => ({
+export const useStyles = createStyles(({ css, token }) => ({
   root: css`
     display: flex;
     height: 100vh;
     flex-direction: column;
     overflow: hidden;
-    background: #ededed;
-    color: #111111;
+    background: ${token.colorBgLayout};
+    color: ${token.colorText};
   `,
   titleBar: css`
     position: relative;
@@ -16,7 +16,7 @@ export const useStyles = createStyles(({ css }) => ({
     align-items: center;
     justify-content: space-between;
     padding: 0 16px;
-    background: #ededed;
+    background: ${token.colorBgLayout};
     z-index: 10;
   `,
   titleCenter: css`
@@ -27,7 +27,7 @@ export const useStyles = createStyles(({ css }) => ({
   titleText: css`
     font-size: 14px;
     font-weight: 500;
-    color: #111111;
+    color: ${token.colorText};
   `,
   closeBtn: css`
     position: absolute;
@@ -40,12 +40,12 @@ export const useStyles = createStyles(({ css }) => ({
     border-radius: 9999px;
     border: none;
     background: transparent;
-    color: #111111;
-    opacity: 0.6;
+    color: ${token.colorTextSecondary};
     cursor: pointer;
-    transition: opacity 0.2s;
+    transition: background-color 0.2s ease, color 0.2s ease;
     &:hover {
-      opacity: 1;
+      background: ${token.colorFillTertiary};
+      color: ${token.colorText};
     }
   `,
   body: css`
@@ -91,10 +91,10 @@ export const useStyles = createStyles(({ css }) => ({
     align-items: center;
     justify-content: center;
     border-radius: 9999px;
-    background: #ffffff;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    background: ${token.colorBgElevated};
+    box-shadow: ${token.boxShadowSecondary};
     overflow: hidden;
-    border: 2px solid rgba(16, 185, 129, 0.2);
+    border: 2px solid color-mix(in srgb, ${token.colorSuccess} 28%, transparent);
     flex-shrink: 0;
   `,
   avatarVideo: css`
@@ -107,7 +107,7 @@ export const useStyles = createStyles(({ css }) => ({
     min-height: 30px;
     text-align: center;
     font-size: 14px;
-    color: rgba(17, 17, 17, 0.6);
+    color: ${token.colorTextSecondary};
     letter-spacing: 0.05em;
   `,
   transcriptArea: css`
@@ -138,12 +138,12 @@ export const useStyles = createStyles(({ css }) => ({
     font-size: 14px;
     font-weight: 500;
     line-height: 1.6;
-    color: #111111;
+    color: ${token.colorText};
   `,
   userText: css`
     font-size: 14px;
     line-height: 1.6;
-    color: rgba(17, 17, 17, 0.7);
+    color: ${token.colorTextSecondary};
   `,
   waveformWrap: css`
     margin-top: 16px;
@@ -166,11 +166,11 @@ export const useStyles = createStyles(({ css }) => ({
     left: 16px;
     right: 16px;
     z-index: 50;
-    border-radius: 12px;
-    background: #ffffff;
+    border-radius: ${token.borderRadiusLG}px;
+    background: ${token.colorBgElevated};
     padding: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    box-shadow: ${token.boxShadowSecondary};
+    border: 1px solid ${token.colorErrorBorder};
   `,
   errorInner: css`
     display: flex;
@@ -180,7 +180,7 @@ export const useStyles = createStyles(({ css }) => ({
   errorIcon: css`
     margin-top: 2px;
     flex-shrink: 0;
-    color: #ef4444;
+    color: ${token.colorError};
   `,
   errorContent: css`
     min-width: 0;
@@ -188,13 +188,13 @@ export const useStyles = createStyles(({ css }) => ({
   `,
   errorTitle: css`
     font-weight: 500;
-    color: #111111;
+    color: ${token.colorText};
   `,
   errorMessage: css`
     margin-top: 4px;
     font-size: 13px;
     line-height: 20px;
-    color: rgba(17, 17, 17, 0.6);
+    color: ${token.colorTextSecondary};
   `,
   errorActions: css`
     margin-top: 12px;
@@ -203,32 +203,32 @@ export const useStyles = createStyles(({ css }) => ({
   `,
   errorBtnRetry: css`
     flex: 1;
-    border-radius: 8px;
-    background: #07c160;
+    border-radius: ${token.borderRadiusLG}px;
+    background: ${token.colorSuccess};
     padding: 8px 0;
     font-size: 14px;
     font-weight: 500;
     color: #fff;
     border: none;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background-color 0.2s ease;
     &:hover {
-      background: #06ad56;
+      background: ${token.colorSuccessHover};
     }
   `,
   errorBtnSettings: css`
     flex: 1;
-    border-radius: 8px;
-    background: #f2f2f2;
+    border-radius: ${token.borderRadiusLG}px;
+    background: ${token.colorFillQuaternary};
     padding: 8px 0;
     font-size: 14px;
     font-weight: 500;
-    color: #111111;
+    color: ${token.colorText};
     border: none;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background-color 0.2s ease;
     &:hover {
-      background: #e5e5e5;
+      background: ${token.colorFillTertiary};
     }
   `,
 
@@ -252,7 +252,7 @@ export const useStyles = createStyles(({ css }) => ({
   `,
   controlLabel: css`
     font-size: 12px;
-    color: rgba(17, 17, 17, 0.5);
+    color: ${token.colorTextTertiary};
   `,
   ctrlBtnMuted: css`
     display: flex;
@@ -263,9 +263,9 @@ export const useStyles = createStyles(({ css }) => ({
     border-radius: 9999px;
     border: none;
     cursor: pointer;
-    background: #ffffff;
-    color: #111111;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    background: ${token.colorBgElevated};
+    color: ${token.colorText};
+    box-shadow: ${token.boxShadowSecondary};
     transition: all 0.3s;
   `,
   ctrlBtnActive: css`
@@ -277,11 +277,11 @@ export const useStyles = createStyles(({ css }) => ({
     border-radius: 9999px;
     border: none;
     cursor: pointer;
-    background: rgba(7, 193, 96, 0.1);
-    color: #07c160;
+    background: color-mix(in srgb, ${token.colorSuccess} 12%, transparent);
+    color: ${token.colorSuccess};
     transition: all 0.3s;
     &:hover {
-      background: rgba(7, 193, 96, 0.2);
+      background: color-mix(in srgb, ${token.colorSuccess} 18%, transparent);
     }
   `,
   callBtnStart: css`
@@ -293,9 +293,9 @@ export const useStyles = createStyles(({ css }) => ({
     border-radius: 9999px;
     border: none;
     cursor: pointer;
-    background: #07c160;
+    background: ${token.colorSuccess};
     color: #fff;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: ${token.boxShadowSecondary};
     transition: transform 0.2s;
     &:hover {
       transform: scale(1.05);
@@ -309,7 +309,7 @@ export const useStyles = createStyles(({ css }) => ({
     }
   `,
   callBtnStartDisabled: css`
-    background: rgba(7, 193, 96, 0.5);
+    background: color-mix(in srgb, ${token.colorSuccess} 55%, transparent);
   `,
   callBtnHangup: css`
     display: flex;
@@ -320,9 +320,9 @@ export const useStyles = createStyles(({ css }) => ({
     border-radius: 9999px;
     border: none;
     cursor: pointer;
-    background: #fa5151;
+    background: ${token.colorError};
     color: #fff;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: ${token.boxShadowSecondary};
     transition: transform 0.2s;
     &:hover {
       transform: scale(1.05);

@@ -7,7 +7,6 @@ import {
 	useRef,
 	useEffect,
 	useMemo,
-	createRef,
 } from "react";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 
@@ -30,6 +29,13 @@ import { ComposerAttachmentPreview, ImageLightbox } from "@/features/mainChat/co
 import { StyledDropdown } from "@/components/common/StyledDropdown";
 import { Tooltip } from "@/components/ui/tooltip";
 import { invokeIpc } from "@/lib/api-client";
+import {
+	CHAT_ACTION_ICON_SIZE,
+	CHAT_ACTION_ICON_SIZE_COMPACT,
+	CHAT_CHIP_ICON_SIZE,
+	CHAT_PRIMARY_ACTION_ICON_SIZE,
+	CHAT_STOP_ICON_SIZE,
+} from "@/styles/typography-tokens";
 import {
 	type UnifiedComposerInputValue,
 	UnifiedComposerInput,
@@ -341,18 +347,13 @@ export function MiniChatComposer({
 		return () => { unsubscribe?.(); };
 	}, []);
 
-	const mentionItemRefs = useRef<Array<React.RefObject<HTMLButtonElement | null>>>([]);
+	const mentionItemNodesRef = useRef<Array<HTMLButtonElement | null>>([]);
 	const mentionListRef = useRef<HTMLDivElement>(null);
-	if (mentionItemRefs.current.length !== mentionOptions.length) {
-		mentionItemRefs.current = mentionOptions.map(
-			(_, index) => mentionItemRefs.current[index] ?? createRef<HTMLButtonElement>(),
-		);
-	}
 
 	useEffect(() => {
 		if (!showMentionPicker) return;
 		const mentionList = mentionListRef.current;
-		const activeItem = mentionItemRefs.current[activeMentionIndex]?.current;
+		const activeItem = mentionItemNodesRef.current[activeMentionIndex];
 		if (!mentionList || !activeItem) return;
 
 		const itemTop = activeItem.offsetTop;
@@ -368,7 +369,7 @@ export function MiniChatComposer({
 		if (itemBottom > visibleBottom) {
 			mentionList.scrollTop = itemBottom - mentionList.clientHeight;
 		}
-	}, [activeMentionIndex, mentionOptions.length, showMentionPicker]);
+	}, [activeMentionIndex, showMentionPicker]);
 
 	const hasInput =
 		input.trim().length > 0 || attachments.length > 0 || droppedPaths.length > 0;
@@ -400,14 +401,14 @@ export function MiniChatComposer({
 		{
 			key: "file",
 			label: "上传文件",
-			icon: <Paperclip style={{ width: 14, height: 14 }} />,
+			icon: <Paperclip style={{ width: CHAT_CHIP_ICON_SIZE, height: CHAT_CHIP_ICON_SIZE }} />,
 			onClick: onUploadFile,
 			disabled,
 		},
 		{
 			key: "folder",
 			label: "上传文件夹",
-			icon: <FolderOpen style={{ width: 14, height: 14 }} />,
+			icon: <FolderOpen style={{ width: CHAT_CHIP_ICON_SIZE, height: CHAT_CHIP_ICON_SIZE }} />,
 			onClick: onUploadFolder,
 			disabled,
 		},
@@ -527,7 +528,7 @@ export function MiniChatComposer({
 				disabled={disabled}
 				title="添加附件"
 			>
-				<Plus style={{ width: 15, height: 15 }} />
+				<Plus style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />
 			</button>
 		</StyledDropdown>
 	);
@@ -551,7 +552,7 @@ export function MiniChatComposer({
 					disabled={disabled}
 					title="截图"
 				>
-					<Camera size={13} />
+					<Camera size={CHAT_ACTION_ICON_SIZE_COMPACT} />
 				</button>
 			</span>
 		</Tooltip>
@@ -603,7 +604,7 @@ export function MiniChatComposer({
 					disabled={isTranscribing}
 					title={isRecording ? "停止录音" : "语音输入"}
 				>
-					<Mic style={{ width: 14, height: 14 }} />
+					<Mic style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />
 				</button>
 			);
 
@@ -618,21 +619,21 @@ export function MiniChatComposer({
 							onClick={onSend}
 							title="停止生成"
 						>
-							<Square style={{ width: 12, height: 12 }} fill="currentColor" />
+							<Square style={{ width: CHAT_STOP_ICON_SIZE, height: CHAT_STOP_ICON_SIZE }} fill="currentColor" />
 						</button>
 					</>
 				);
 			}
-			return (
-				<>
-					{micAction}
+				return (
+					<>
+						{micAction}
 						<Button
 							htmlType="button"
 							className={baseSendButtonClassName}
 							disabled={sendDisabled || sendingDisabledByRecording}
 							onClick={onSend}
 							title={sendingDisabledByRecording ? (isTranscribing ? "正在转写" : "请先停止录音") : "发送"}
-							icon={<Send style={{ width: 15, height: 15, transform: "translateX(-0.4px) translateY(0.35px)" }} />}
+							icon={<Send style={{ width: CHAT_PRIMARY_ACTION_ICON_SIZE, height: CHAT_PRIMARY_ACTION_ICON_SIZE, transform: "translateX(-0.4px) translateY(0.35px)" }} />}
 						/>
 					</>
 				);
@@ -648,15 +649,15 @@ export function MiniChatComposer({
 						disabled={isTranscribing}
 						title={isRecording ? '停止录音' : '语音输入'}
 					>
-						<Mic style={{ width: 14, height: 14 }} />
+						<Mic style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />
 					</button>
-					<Button
-						htmlType="button"
-						className={loadingSendButtonClassName}
+						<Button
+							htmlType="button"
+							className={loadingSendButtonClassName}
 						disabled={false}
 						onClick={onSend}
 						title="停止生成"
-						icon={<Square style={{ width: 12, height: 12 }} fill="currentColor" />}
+						icon={<Square style={{ width: CHAT_STOP_ICON_SIZE, height: CHAT_STOP_ICON_SIZE }} fill="currentColor" />}
 					/>
 				</>
 			);
@@ -672,15 +673,15 @@ export function MiniChatComposer({
 						disabled={isTranscribing}
 						title={isRecording ? '停止录音' : '语音输入'}
 					>
-						<Mic style={{ width: 14, height: 14 }} />
+						<Mic style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />
 					</button>
-					<Button
-						htmlType="button"
-						className={baseSendButtonClassName}
+						<Button
+							htmlType="button"
+							className={baseSendButtonClassName}
 						disabled={sendDisabled || sendingDisabledByRecording}
 						onClick={onSend}
 						title={sendingDisabledByRecording ? (isTranscribing ? '正在转写' : '请先停止录音') : '发送'}
-						icon={<Send style={{ width: 15, height: 15, transform: "translateX(-0.4px) translateY(0.35px)" }} />}
+						icon={<Send style={{ width: CHAT_PRIMARY_ACTION_ICON_SIZE, height: CHAT_PRIMARY_ACTION_ICON_SIZE, transform: "translateX(-0.4px) translateY(0.35px)" }} />}
 					/>
 				</>
 			);
@@ -694,7 +695,7 @@ export function MiniChatComposer({
 				disabled={isTranscribing}
 				title={isRecording ? '停止录音' : '语音输入'}
 			>
-				<Mic style={{ width: 15, height: 15 }} />
+				<Mic style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />
 			</button>
 		);
 	};
@@ -838,7 +839,9 @@ export function MiniChatComposer({
 							{mentionOptions.map((option, index) => (
 								<button
 									key={option.id}
-									ref={mentionItemRefs.current[index]}
+									ref={(node) => {
+										mentionItemNodesRef.current[index] = node;
+									}}
 									type="button"
 									onMouseEnter={() => {
 										onActiveMentionIndexChange(index);

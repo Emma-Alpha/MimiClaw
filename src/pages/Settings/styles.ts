@@ -16,8 +16,8 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-    background: #f3f3f2;
-    border-right: 1px solid rgba(0,0,0,0.06);
+    background: ${token.colorBgLayout};
+    border-right: 1px solid ${token.colorBorderSecondary};
   `,
   sidebarNav: css`
     padding: 4px 12px;
@@ -39,11 +39,11 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
     color: ${token.colorTextSecondary};
     &:hover {
       color: ${token.colorText};
-      background: rgba(0,0,0,0.05);
+      background: ${token.colorFillTertiary};
     }
   `,
   navItemActive: css`
-    background: rgba(0,0,0,0.07);
+    background: ${token.colorFillSecondary};
     color: ${token.colorText};
   `,
 
@@ -98,7 +98,7 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
   settingLabelMuted: css`
     font-size: 14px;
     font-weight: 500;
-    color: rgba(0,0,0,0.8);
+    color: ${token.colorText};
   `,
   settingDesc: css`
     font-size: 13px;
@@ -115,11 +115,11 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
   pickerWrap: css`
     display: inline-flex;
     gap: 4px;
-    background: rgba(0,0,0,0.04);
+    background: ${token.colorFillQuaternary};
     padding: 4px;
     border-radius: 16px;
-    border: 1px solid rgba(0,0,0,0.05);
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+    border: 1px solid ${token.colorBorderSecondary};
+    box-shadow: inset 0 1px 2px color-mix(in srgb, ${token.colorText} 6%, transparent);
   `,
   pickerBtn: css`
     display: flex;
@@ -137,14 +137,13 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
     color: ${token.colorTextSecondary};
     &:hover {
       color: ${token.colorText};
-      background: rgba(0,0,0,0.05);
+      background: ${token.colorFillTertiary};
     }
   `,
   pickerBtnActive: css`
     background: ${token.colorBgContainer};
     color: ${token.colorText};
-    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
-    ring: 1px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 2px color-mix(in srgb, ${token.colorText} 10%, transparent);
   `,
   langPickerBtn: css`
     display: flex;
@@ -161,7 +160,7 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
     color: ${token.colorTextSecondary};
     &:hover {
       color: ${token.colorText};
-      background: rgba(0,0,0,0.05);
+      background: ${token.colorFillTertiary};
     }
   `,
 
@@ -171,7 +170,7 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
     align-items: center;
     gap: 6px;
     padding: 6px 12px;
-    border-radius: 9999px;
+    border-radius: 10px;
     font-size: 13px;
     font-weight: 500;
     border: 1px solid transparent;
@@ -217,8 +216,8 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
   logPanel: css`
     padding: 16px;
     border-radius: 16px;
-    background: rgba(0,0,0,0.05);
-    border: 1px solid rgba(0,0,0,0.05);
+    background: ${token.colorFillQuaternary};
+    border: 1px solid ${token.colorBorderSecondary};
   `,
   logPanelHeader: css`
     display: flex;
@@ -240,8 +239,8 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
     overflow: auto;
     white-space: pre-wrap;
     font-family: monospace;
-    border: 1px solid rgba(0,0,0,0.05);
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+    border: 1px solid ${token.colorBorderSecondary};
+    box-shadow: inset 0 1px 2px color-mix(in srgb, ${token.colorText} 6%, transparent);
   `,
 
   // Panel / card areas
@@ -250,9 +249,9 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
     flex-direction: column;
     gap: 12px;
     border-radius: 24px;
-    background: rgba(0,0,0,0.03);
+    background: ${token.colorFillQuaternary};
     padding: 24px;
-    border: none;
+    border: 1px solid ${token.colorBorderSecondary};
   `,
   infoPanelHeader: css`
     display: flex;
@@ -265,16 +264,16 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
   monoInput: css`
     height: 40px;
     border-radius: 12px;
-    background: rgba(0,0,0,0.05);
-    border: 1px solid transparent;
+    background: ${token.colorFillQuaternary};
+    border: 1px solid ${token.colorBorderSecondary};
     font-family: monospace;
     font-size: 13px;
   `,
   monoInputFull: css`
     height: 40px;
     border-radius: 12px;
-    background: rgba(0,0,0,0.05);
-    border: 1px solid transparent;
+    background: ${token.colorFillQuaternary};
+    border: 1px solid ${token.colorBorderSecondary};
     font-family: monospace;
     font-size: 13px;
     flex: 1;
@@ -324,7 +323,7 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
   // Reset section
   resetSection: css`
     padding-top: 8px;
-    border-top: 1px solid rgba(0,0,0,0.1);
+    border-top: 1px solid ${token.colorBorderSecondary};
   `,
   destructiveLabel: css`
     font-size: 14px;
@@ -346,9 +345,9 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
     flex-direction: column;
     gap: 12px;
     border-radius: 16px;
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid ${token.colorBorderSecondary};
     padding: 20px;
-    background: rgba(0,0,0,0.05);
+    background: ${token.colorFillQuaternary};
   `,
   outputGrid2: css`
     display: grid;
@@ -360,13 +359,13 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
   outputLabel: css`
     font-size: 12px;
     font-weight: 600;
-    color: rgba(0,0,0,0.8);
+    color: ${token.colorText};
   `,
   outputPre: css`
     max-height: 288px;
     overflow: auto;
     border-radius: 12px;
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid ${token.colorBorderSecondary};
     background: ${token.colorBgContainer};
     padding: 12px;
     font-size: 11px;
@@ -378,7 +377,7 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
     max-height: 160px;
     overflow: auto;
     border-radius: 12px;
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid ${token.colorBorderSecondary};
     background: ${token.colorBgContainer};
     padding: 12px;
     font-size: 11px;
@@ -390,8 +389,8 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
     max-height: 288px;
     overflow: auto;
     border-radius: 12px;
-    border: 1px solid rgba(0,0,0,0.1);
-    background: rgba(0,0,0,0.05);
+    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorFillQuaternary};
     padding: 12px;
     font-size: 11px;
     font-family: monospace;
@@ -411,16 +410,16 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
   // Code agent card
   codeAgentCard: css`
     border-radius: 16px;
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid ${token.colorBorderSecondary};
     padding: 20px;
-    background: rgba(0,0,0,0.05);
+    background: ${token.colorFillQuaternary};
     display: flex;
     flex-direction: column;
     gap: 16px;
   `,
   codeAgentInnerCard: css`
     border-radius: 12px;
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid ${token.colorBorderSecondary};
     background: ${token.colorBgContainer};
     padding: 16px;
     display: flex;
@@ -455,27 +454,27 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
   `,
   fieldLabelSmall: css`
     font-size: 13px;
-    color: rgba(0,0,0,0.8);
+    color: ${token.colorText};
   `,
   fieldInput: css`
     height: 40px;
     border-radius: 12px;
     background: ${token.colorBgContainer};
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid ${token.colorBorderSecondary};
     font-size: 13px;
   `,
   fieldInputMono: css`
     height: 40px;
     border-radius: 12px;
     background: ${token.colorBgContainer};
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid ${token.colorBorderSecondary};
     font-family: monospace;
     font-size: 13px;
   `,
   fieldSelect: css`
     height: 40px;
     border-radius: 12px;
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid ${token.colorBorderSecondary};
     background: ${token.colorBgContainer};
     font-size: 13px;
   `,
@@ -483,14 +482,14 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
     min-height: 92px;
     border-radius: 12px;
     background: ${token.colorBgContainer};
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid ${token.colorBorderSecondary};
     font-size: 13px;
   `,
   fieldTextareaMono: css`
     min-height: 92px;
     border-radius: 12px;
     background: ${token.colorBgContainer};
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid ${token.colorBorderSecondary};
     font-size: 13px;
     font-family: monospace;
   `,
@@ -501,21 +500,21 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
     flex-direction: column;
     gap: 16px;
     border-radius: 16px;
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid ${token.colorBorderSecondary};
     padding: 20px;
-    background: rgba(0,0,0,0.05);
+    background: ${token.colorFillQuaternary};
   `,
   telemetryTableWrap: css`
     max-height: 320px;
     overflow: auto;
     border-radius: 12px;
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid ${token.colorBorderSecondary};
     background: ${token.colorBgContainer};
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+    box-shadow: inset 0 1px 2px color-mix(in srgb, ${token.colorText} 6%, transparent);
   `,
   telemetryAggHeader: css`
-    border-bottom: 1px solid rgba(0,0,0,0.05);
-    background: rgba(0,0,0,0.05);
+    border-bottom: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorFillQuaternary};
     padding: 12px;
   `,
   telemetryAggTitle: css`
@@ -529,7 +528,7 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
     grid-template-columns: minmax(0,1.6fr) 0.7fr 0.9fr 0.8fr 1fr;
     gap: 8px;
     border-radius: 8px;
-    border: 1px solid rgba(0,0,0,0.05);
+    border: 1px solid ${token.colorBorderSecondary};
     background: ${token.colorBgContainer};
     padding: 8px 12px;
   `,
@@ -543,8 +542,8 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
   `,
   telemetryEntry: css`
     border-radius: 8px;
-    border: 1px solid rgba(0,0,0,0.05);
-    background: rgba(0,0,0,0.05);
+    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorFillQuaternary};
     padding: 12px;
   `,
   telemetryEntryHeader: css`
@@ -600,7 +599,7 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
     align-items: center;
     justify-content: space-between;
     border-radius: 16px;
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid ${token.colorBorderSecondary};
     padding: 20px;
     background: transparent;
   `,
@@ -658,5 +657,30 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
     font-family: monospace;
     color: ${token.colorTextSecondary};
     word-break: break-all;
+  `,
+  smallActionButton: css`
+    && {
+      height: 32px;
+      border-radius: 12px;
+      padding-inline: 16px;
+      font-size: 12px;
+      box-shadow: none;
+    }
+  `,
+  smallTextActionButton: css`
+    && {
+      height: 28px;
+      border-radius: 10px;
+      padding-inline: 12px;
+      font-size: 12px;
+    }
+  `,
+  statusTag: css`
+    display: inline-flex;
+    align-items: center;
+    border-radius: 10px;
+    padding: 4px 12px;
+    font-size: 12px;
+    line-height: 1.2;
   `,
 }));

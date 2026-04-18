@@ -1,4 +1,9 @@
-import { createStyles } from "antd-style";
+import { createStyles } from 'antd-style';
+import {
+  CHAT_ACTION_BUTTON_SIZE,
+  CHAT_ACTION_BUTTON_SIZE_COMPACT,
+  CHAT_PRIMARY_ACTION_BUTTON_SIZE,
+} from '@/styles/typography-tokens';
 
 export const useComposerStyles = createStyles(({ css, token }) => ({
 	container: css`
@@ -47,7 +52,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 	pillFused: css`
 		border-top-left-radius: 18px;
 		border-top-right-radius: 18px;
-		border-top-color: rgba(17, 24, 39, 0.07);
+		border-top-color: ${token.colorBorderSecondary};
 	`,
 	pillMultiline: css`
 		align-items: flex-start;
@@ -60,14 +65,14 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		border-radius: 22px;
 		padding: 9px 10px 8px;
 		min-height: 96px;
-		background: #ffffff;
+		background: ${token.colorBgContainer};
 		border-color: transparent;
 		box-shadow: 0 0 0 0.5px var(--mini-chat-ring-color);
 	`,
 	pillCodexFused: css`
 		border-top-left-radius: 18px;
 		border-top-right-radius: 18px;
-		border-top-color: rgba(17, 24, 39, 0.07);
+		border-top-color: ${token.colorBorderSecondary};
 	`,
 	pillTopRow: css`
 		display: flex;
@@ -128,7 +133,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		outline: none;
 		background: transparent;
 		color: ${token.colorText};
-		font-size: 14px;
+		font-size: var(--mimi-font-size-base);
 		line-height: 1.5;
 		white-space: pre-wrap;
 		word-break: break-word;
@@ -154,9 +159,9 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 28px;
-		height: 28px;
-		border-radius: 14px;
+		width: ${CHAT_ACTION_BUTTON_SIZE}px;
+		height: ${CHAT_ACTION_BUTTON_SIZE}px;
+		border-radius: ${CHAT_ACTION_BUTTON_SIZE / 2}px;
 		border: none;
 		background: ${token.colorFillSecondary};
 		color: ${token.colorTextSecondary};
@@ -176,15 +181,15 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		}
 	`,
 	plusButtonCodex: css`
-		width: 22px;
-		height: 22px;
-		border-radius: 12px;
+		width: ${CHAT_ACTION_BUTTON_SIZE_COMPACT}px;
+		height: ${CHAT_ACTION_BUTTON_SIZE_COMPACT}px;
+		border-radius: ${CHAT_ACTION_BUTTON_SIZE_COMPACT / 2}px;
 		background: transparent;
-		color: rgba(17, 24, 39, 0.42);
+		color: ${token.colorTextTertiary};
 
 		&:hover:not(:disabled) {
-			background: rgba(17, 24, 39, 0.06);
-			color: rgba(17, 24, 39, 0.68);
+			background: ${token.colorFillQuaternary};
+			color: ${token.colorTextSecondary};
 			transform: none;
 		}
 	`,
@@ -193,11 +198,11 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 28px;
-		min-width: 28px;
-		height: 28px;
+		width: ${CHAT_ACTION_BUTTON_SIZE}px;
+		min-width: ${CHAT_ACTION_BUTTON_SIZE}px;
+		height: ${CHAT_ACTION_BUTTON_SIZE}px;
 		padding: 0 !important;
-		border-radius: 14px;
+		border-radius: ${CHAT_ACTION_BUTTON_SIZE / 2}px;
 		border: none !important;
 		background: ${token.colorText} !important;
 		color: ${token.colorBgLayout} !important;
@@ -233,7 +238,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		}
 	`,
 	editorCodex: css`
-		font-size: 14px;
+		font-size: var(--mimi-font-size-base);
 		line-height: 1.5;
 		font-weight: 400;
 		padding: 2px 0 0;
@@ -250,7 +255,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		border: none;
 		background: transparent;
 		color: ${token.colorTextTertiary};
-		font-size: 12px;
+		font-size: var(--mimi-font-size-xs);
 		font-weight: 500;
 		white-space: nowrap;
 		flex-shrink: 0;
@@ -269,7 +274,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		background: ${token.colorFillQuaternary};
 		border: 1px solid ${token.colorBorderSecondary};
 		color: ${token.colorTextTertiary};
-		font-size: 11px;
+		font-size: var(--mimi-font-size-2xs);
 		line-height: 1;
 		font-variant-numeric: tabular-nums;
 	`,
@@ -306,10 +311,10 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 24px;
-		height: 24px;
+		width: ${CHAT_ACTION_BUTTON_SIZE_COMPACT}px;
+		height: ${CHAT_ACTION_BUTTON_SIZE_COMPACT}px;
 		border: none;
-		border-radius: 12px;
+		border-radius: ${CHAT_ACTION_BUTTON_SIZE_COMPACT / 2}px;
 		background: transparent;
 		color: ${token.colorTextTertiary};
 		cursor: pointer;
@@ -335,8 +340,8 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		border-radius: 0;
 		border: none;
 		background: transparent;
-		color: rgba(17, 24, 39, 0.62);
-		font-size: 12px;
+		color: ${token.colorTextSecondary};
+		font-size: var(--mimi-font-size-xs);
 		font-weight: 500;
 		white-space: nowrap;
 		line-height: 1;
@@ -347,7 +352,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 
 		&:is(button):hover {
 			background: transparent;
-			color: rgba(17, 24, 39, 0.78);
+			color: ${token.colorText};
 		}
 	`,
 	attachmentMenuLabel: css`
@@ -368,7 +373,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		background: ${token.colorFillQuaternary};
 		border: 1px solid ${token.colorBorderSecondary};
 		color: ${token.colorTextTertiary};
-		font-size: 11px;
+		font-size: var(--mimi-font-size-2xs);
 		line-height: 1;
 		font-variant-numeric: tabular-nums;
 	`,
@@ -390,7 +395,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		align-items: center;
 		gap: 8px;
 		color: ${token.colorTextSecondary};
-		font-size: 12px;
+		font-size: var(--mimi-font-size-xs);
 		font-weight: 500;
 		line-height: 1;
 	`,
@@ -404,7 +409,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		background: ${token.colorFillQuaternary};
 		border: 1px solid ${token.colorBorderSecondary};
 		color: ${token.colorTextTertiary};
-		font-size: 11px;
+		font-size: var(--mimi-font-size-2xs);
 		line-height: 1;
 		font-variant-numeric: tabular-nums;
 	`,
@@ -412,9 +417,9 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 28px;
-		height: 28px;
-		border-radius: 14px;
+		width: ${CHAT_ACTION_BUTTON_SIZE}px;
+		height: ${CHAT_ACTION_BUTTON_SIZE}px;
+		border-radius: ${CHAT_ACTION_BUTTON_SIZE / 2}px;
 		border: none;
 		background: ${token.colorFillSecondary};
 		color: ${token.colorTextSecondary};
@@ -445,9 +450,9 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 28px;
-		height: 28px;
-		border-radius: 14px;
+		width: ${CHAT_ACTION_BUTTON_SIZE}px;
+		height: ${CHAT_ACTION_BUTTON_SIZE}px;
+		border-radius: ${CHAT_ACTION_BUTTON_SIZE / 2}px;
 		border: none;
 		background: transparent;
 		color: ${token.colorTextTertiary};
@@ -463,9 +468,9 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 28px;
-		height: 28px;
-		border-radius: 14px;
+		width: ${CHAT_ACTION_BUTTON_SIZE}px;
+		height: ${CHAT_ACTION_BUTTON_SIZE}px;
+		border-radius: ${CHAT_ACTION_BUTTON_SIZE / 2}px;
 		border: none;
 		background: ${token.colorText};
 		color: ${token.colorBgLayout};
@@ -475,7 +480,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 
 		&:hover:not(:disabled) {
 			transform: scale(1.05);
-			background: rgba(17, 24, 39, 0.92);
+			background: ${token.colorTextSecondary};
 		}
 
 		&:active:not(:disabled) {
@@ -515,10 +520,10 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 	`,
 	sendButtonCodex: css`
 		&& {
-			width: 30px;
-			min-width: 30px;
-			height: 30px;
-			border-radius: 15px;
+			width: ${CHAT_PRIMARY_ACTION_BUTTON_SIZE}px;
+			min-width: ${CHAT_PRIMARY_ACTION_BUTTON_SIZE}px;
+			height: ${CHAT_PRIMARY_ACTION_BUTTON_SIZE}px;
+			border-radius: ${CHAT_PRIMARY_ACTION_BUTTON_SIZE / 2}px;
 			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
 		}
 	`,
@@ -569,14 +574,14 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		}
 	`,
 	recordingTime: css`
-		font-size: 13px;
+		font-size: var(--mimi-font-size-sm);
 		color: ${token.colorTextSecondary};
 		font-weight: 600;
 		font-variant-numeric: tabular-nums;
 		letter-spacing: 0.5px;
 	`,
 	recordingLabel: css`
-		font-size: 13px;
+		font-size: var(--mimi-font-size-sm);
 		color: ${token.colorTextQuaternary};
 		flex: 1;
 		margin-left: 4px;
@@ -613,10 +618,10 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		margin: 0 2px;
 		height: 22px;
 		border-radius: 11px;
-		background: linear-gradient(180deg, #f7fbff 0%, #eef6ff 100%);
-		border: none;
-		font-size: 12px;
-		color: #3d6fb2;
+		background: color-mix(in srgb, ${token.colorPrimary} 10%, ${token.colorBgContainer});
+		border: 1px solid color-mix(in srgb, ${token.colorPrimary} 18%, ${token.colorBorderSecondary});
+		font-size: var(--mimi-font-size-xs);
+		color: ${token.colorPrimary};
 		line-height: 1;
 		max-width: 240px;
 		cursor: default;
@@ -639,15 +644,15 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		}
 
 		&:hover {
-			background: linear-gradient(180deg, #f3f9ff 0%, #e8f2ff 100%);
+			background: color-mix(in srgb, ${token.colorPrimary} 14%, ${token.colorBgContainer});
 		}
 
 		&[data-snippet-ref="true"] {
-			background: linear-gradient(180deg, #f4f9ff 0%, #e9f3ff 100%);
+			background: color-mix(in srgb, ${token.colorPrimary} 8%, ${token.colorBgElevated});
 		}
 
 		&[data-snippet-ref="true"]:hover {
-			background: linear-gradient(180deg, #eff7ff 0%, #e2efff 100%);
+			background: color-mix(in srgb, ${token.colorPrimary} 12%, ${token.colorBgElevated});
 		}
 	`,
 	pathChipIcon: css`
@@ -659,11 +664,11 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		line-height: 1;
 		border: none;
 		background: transparent;
-		color: #5e8fca;
+		color: color-mix(in srgb, ${token.colorPrimary} 72%, ${token.colorTextSecondary});
 		flex-shrink: 0;
 
 		[data-snippet-ref="true"] & {
-			color: #6e9bc6;
+			color: color-mix(in srgb, ${token.colorPrimary} 64%, ${token.colorTextSecondary});
 			background: transparent;
 		}
 	`,
@@ -675,15 +680,15 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		white-space: nowrap;
 		flex: 1;
 		min-width: 0;
-		color: #356cae;
-		font-size: 12px;
+		color: ${token.colorPrimary};
+		font-size: var(--mimi-font-size-xs);
 		font-weight: 600;
 		line-height: 1;
 		letter-spacing: 0;
 		text-rendering: geometricPrecision;
 
 		[data-snippet-ref="true"] & {
-			color: #5f8fc0;
+			color: color-mix(in srgb, ${token.colorPrimary} 76%, ${token.colorTextSecondary});
 			font-weight: 600;
 		}
 	`,
@@ -696,7 +701,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		border-radius: 7px;
 		border: none;
 		background: transparent;
-		color: #7ea7db;
+		color: color-mix(in srgb, ${token.colorPrimary} 60%, ${token.colorTextSecondary});
 		cursor: pointer;
 		padding: 0;
 		flex-shrink: 0;
@@ -710,8 +715,8 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 			color 0.14s ease;
 
 		&:hover {
-			background: rgba(130, 170, 225, 0.18);
-			color: #4f86ca;
+			background: color-mix(in srgb, ${token.colorPrimary} 14%, transparent);
+			color: color-mix(in srgb, ${token.colorPrimary} 80%, ${token.colorText});
 		}
 
 		span[contenteditable="false"]:hover &,
@@ -765,12 +770,12 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		box-shadow: ${token.boxShadowSecondary};
 	`,
 	mentionEmptyStateTitle: css`
-		font-size: 13px;
+		font-size: var(--mimi-font-size-sm);
 		font-weight: 600;
 		color: ${token.colorText};
 	`,
 	mentionEmptyStateDescription: css`
-		font-size: 12px;
+		font-size: var(--mimi-font-size-xs);
 		line-height: 1.5;
 		color: ${token.colorTextSecondary};
 	`,
@@ -780,7 +785,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		border: none;
 		background: transparent;
 		color: ${token.colorPrimary};
-		font-size: 12px;
+		font-size: var(--mimi-font-size-xs);
 		font-weight: 600;
 		cursor: pointer;
 
@@ -836,7 +841,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		gap: 6px;
 	`,
 	mentionResultTitle: css`
-		font-size: 12px;
+		font-size: var(--mimi-font-size-xs);
 		font-weight: 500;
 		color: ${token.colorText};
 		overflow: hidden;
@@ -844,7 +849,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		white-space: nowrap;
 	`,
 	mentionResultPath: css`
-		font-size: 11px;
+		font-size: var(--mimi-font-size-2xs);
 		color: ${token.colorTextTertiary};
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -867,7 +872,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 	`,
 	claudeSlashSectionTitle: css`
 		padding: 4px 14px 6px;
-		font-size: 11px;
+		font-size: var(--mimi-font-size-2xs);
 		font-weight: 600;
 		letter-spacing: 0.3px;
 		text-transform: uppercase;
@@ -886,7 +891,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		background: transparent;
 		border: none;
 		text-align: left;
-		font-size: 13px;
+		font-size: var(--mimi-font-size-sm);
 		line-height: 1.35;
 		font-weight: 500;
 		color: ${token.colorText};
@@ -904,7 +909,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		background: ${token.colorFillSecondary};
 	`,
 	claudeSlashItemHint: css`
-		font-size: 12px;
+		font-size: var(--mimi-font-size-xs);
 		font-weight: 400;
 		color: ${token.colorTextTertiary};
 		overflow: hidden;
@@ -922,9 +927,9 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		height: 22px;
 		border-radius: 11px;
 		border: none;
-		background: linear-gradient(180deg, #fbf7ff 0%, #f2eaff 100%);
-		color: #7a4ce4;
-		font-size: 12px;
+		background: color-mix(in srgb, #8b5bea 10%, ${token.colorBgContainer});
+		color: color-mix(in srgb, #8b5bea 86%, ${token.colorText});
+		font-size: var(--mimi-font-size-xs);
 		font-weight: 600;
 		letter-spacing: 0;
 		line-height: 1;
@@ -944,15 +949,15 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 			width: 14px;
 			height: 14px;
 			border-radius: 7px;
-			background: #ecddff;
-			color: #8b5bea;
+			background: color-mix(in srgb, #8b5bea 18%, ${token.colorBgContainer});
+			color: color-mix(in srgb, #8b5bea 86%, ${token.colorText});
 			font-size: 9px;
 			line-height: 1;
 			flex-shrink: 0;
 		}
 
 		&:hover {
-			background: linear-gradient(180deg, #f8f0ff 0%, #efe3ff 100%);
+			background: color-mix(in srgb, #8b5bea 14%, ${token.colorBgContainer});
 		}
 	`,
 }));

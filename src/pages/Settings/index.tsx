@@ -1036,11 +1036,9 @@ export function Settings() {
                 extra={
                   <Badge
                     variant="outline"
+                    className={styles.statusTag}
                     style={{
-                      borderRadius: 9999,
                       border: 'none',
-                      padding: '4px 12px',
-                      fontSize: 12,
                       background: speechConfig?.configured ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
                       color: speechConfig?.configured ? '#059669' : '#d97706',
                     }}
@@ -1128,16 +1126,16 @@ export function Settings() {
                   <div className={styles.speechBtnRow}>
                     <Button
                       type="primary"
+                      className={styles.smallActionButton}
                       onClick={() => void handleSaveSpeechConfig()}
                       disabled={speechSaving}
-                      style={{ borderRadius: 9999, padding: '0 24px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                     >
                       {speechSaving ? t('speech.saving') : t('speech.save')}
                     </Button>
                     <Button
+                      className={styles.smallActionButton}
                       onClick={() => { void loadSpeechConfig(); }}
                       disabled={speechLoading || speechSaving}
-                      style={{ borderRadius: 9999, padding: '0 24px', border: 'none', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                     >
                       {t('common:actions.refresh')}
                     </Button>
@@ -1154,10 +1152,8 @@ export function Settings() {
                 extra={
                   <Badge
                     variant="outline"
+                    className={styles.statusTag}
                     style={{
-                      borderRadius: 9999,
-                      padding: '4px 12px',
-                      fontSize: 12,
                       background: voiceChatConfig?.configured ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
                       color: voiceChatConfig?.configured ? '#047857' : '#b45309',
                       border: voiceChatConfig?.configured ? '1px solid rgba(16,185,129,0.2)' : '1px solid rgba(245,158,11,0.2)',
@@ -1229,16 +1225,16 @@ export function Settings() {
                   <div className={styles.flexWrapRow}>
                     <Button
                       type="primary"
+                      className={styles.smallActionButton}
                       onClick={() => void handleSaveVoiceChatRealtimeConfig()}
                       disabled={voiceChatSaving}
-                      style={{ borderRadius: 9999, padding: '0 20px' }}
                     >
                       {voiceChatSaving ? t('voiceChat.saving') : t('voiceChat.save')}
                     </Button>
                     <Button
+                      className={styles.smallActionButton}
                       onClick={() => { void loadVoiceChatRealtimeConfig(); }}
                       disabled={voiceChatLoading || voiceChatSaving}
-                      style={{ borderRadius: 9999, padding: '0 20px' }}
                     >
                       {t('common:actions.refresh')}
                     </Button>
@@ -1270,11 +1266,11 @@ export function Settings() {
                     )} />
                     {gatewayStatus.state}
                   </div>
-                  <Button size="small" onClick={restartGateway} style={{ borderRadius: 9999, height: 32, padding: '0 16px', border: '1px solid rgba(0,0,0,0.1)', background: 'transparent' }}>
+                  <Button size="small" className={styles.smallActionButton} onClick={restartGateway} style={{ border: '1px solid var(--ant-color-border-secondary)', background: 'transparent' }}>
                     <RefreshCw style={{ height: 14, width: 14, marginRight: 6 }} />
                     {t('common:actions.restart')}
                   </Button>
-                  <Button size="small" onClick={handleShowLogs} style={{ borderRadius: 9999, height: 32, padding: '0 16px', border: '1px solid rgba(0,0,0,0.1)', background: 'transparent' }}>
+                  <Button size="small" className={styles.smallActionButton} onClick={handleShowLogs} style={{ border: '1px solid var(--ant-color-border-secondary)', background: 'transparent' }}>
                     <FileText style={{ height: 14, width: 14, marginRight: 6 }} />
                     {t('gateway.logs')}
                   </Button>
@@ -1286,11 +1282,11 @@ export function Settings() {
                   <div className={styles.logPanelHeader}>
                     <p className={styles.logPanelTitle}>{t('gateway.appLogs')}</p>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <Button type="text" size="small" style={{ height: 28, fontSize: 12, borderRadius: 9999 }} onClick={handleOpenLogDir}>
+                      <Button type="text" size="small" className={styles.smallTextActionButton} onClick={handleOpenLogDir}>
                         <ExternalLink style={{ height: 12, width: 12, marginRight: 6 }} />
                         {t('gateway.openFolder')}
                       </Button>
-                      <Button type="text" size="small" style={{ height: 28, fontSize: 12, borderRadius: 9999 }} onClick={() => setShowLogs(false)}>
+                      <Button type="text" size="small" className={styles.smallTextActionButton} onClick={() => setShowLogs(false)}>
                         {t('common:actions.close')}
                       </Button>
                     </div>
@@ -1386,13 +1382,13 @@ export function Settings() {
                   )}
 
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <Button size="small" disabled={cloudGatewayLoading || cloudGateway.gatewayState === 'running'} onClick={() => void handleCloudGatewayAction('start')} style={{ fontSize: 12, height: 28, borderRadius: 9999 }}>
+                    <Button size="small" className={styles.smallActionButton} disabled={cloudGatewayLoading || cloudGateway.gatewayState === 'running'} onClick={() => void handleCloudGatewayAction('start')}>
                       {t('gateway.cloudGatewayStart')}
                     </Button>
-                    <Button size="small" disabled={cloudGatewayLoading || cloudGateway.gatewayState !== 'running'} onClick={() => void handleCloudGatewayAction('stop')} style={{ fontSize: 12, height: 28, borderRadius: 9999 }}>
+                    <Button size="small" className={styles.smallActionButton} disabled={cloudGatewayLoading || cloudGateway.gatewayState !== 'running'} onClick={() => void handleCloudGatewayAction('stop')}>
                       {t('gateway.cloudGatewayStop')}
                     </Button>
-                    <Button size="small" disabled={cloudGatewayLoading} onClick={() => void handleCloudGatewayAction('restart')} style={{ fontSize: 12, height: 28, borderRadius: 9999 }}>
+                    <Button size="small" className={styles.smallActionButton} disabled={cloudGatewayLoading} onClick={() => void handleCloudGatewayAction('restart')}>
                       {t('gateway.cloudGatewayRestart')}
                     </Button>
                   </div>
@@ -1422,7 +1418,7 @@ export function Settings() {
                     <Label className={styles.destructiveLabel}>{t('advanced.resetData')}</Label>
                     <p className={styles.settingDesc}>{t('advanced.resetDataDesc')}</p>
                   </div>
-                  <Button type="primary" danger size="small" style={{ borderRadius: 9999, flexShrink: 0 }} onClick={() => setShowResetConfirm(true)} disabled={resetting}>
+                  <Button type="primary" danger size="small" className={styles.smallActionButton} style={{ flexShrink: 0 }} onClick={() => setShowResetConfirm(true)} disabled={resetting}>
                     {t('advanced.resetDataBtn')}
                   </Button>
                 </div>
@@ -1488,7 +1484,7 @@ export function Settings() {
                         </div>
 
                         <div className={styles.flexRow} style={{ paddingTop: 8 }}>
-                          <Button onClick={handleSaveProxySettings} disabled={savingProxy} style={{ borderRadius: 12, height: 40, padding: '0 20px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                          <Button onClick={handleSaveProxySettings} disabled={savingProxy} style={{ borderRadius: 12, height: 40, padding: '0 20px', background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}>
                             <RefreshCw style={{ height: 16, width: 16, marginRight: 8, animation: savingProxy ? 'spin 1s linear infinite' : undefined }} />
                             {savingProxy ? t('common:status.saving') : t('common:actions.save')}
                           </Button>
@@ -1502,11 +1498,11 @@ export function Settings() {
                     <p className={styles.settingDesc}>{t('developer.gatewayTokenDesc')}</p>
                     <div className={styles.flexWrapRow}>
                       <Input readOnly value={controlUiInfo?.token || ''} placeholder={t('developer.tokenUnavailable')} className={styles.monoInputFull} />
-                      <Button onClick={refreshControlUiInfo} disabled={!devModeUnlocked} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                      <Button onClick={refreshControlUiInfo} disabled={!devModeUnlocked} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}>
                         <RefreshCw style={{ height: 16, width: 16, marginRight: 8 }} />
                         {t('common:actions.load')}
                       </Button>
-                      <Button onClick={handleCopyGatewayToken} disabled={!controlUiInfo?.token} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                      <Button onClick={handleCopyGatewayToken} disabled={!controlUiInfo?.token} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}>
                         <Copy style={{ height: 16, width: 16, marginRight: 8 }} />
                         {t('common:actions.copy')}
                       </Button>
@@ -1520,7 +1516,7 @@ export function Settings() {
                       {isWindows && <p className={styles.hintText12}>{t('developer.cliPowershell')}</p>}
                       <div className={styles.flexWrapRow}>
                         <Input readOnly value={openclawCliCommand} placeholder={openclawCliError || t('developer.cmdUnavailable')} className={styles.monoInputFull} />
-                        <Button onClick={handleCopyCliCommand} disabled={!openclawCliCommand} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <Button onClick={handleCopyCliCommand} disabled={!openclawCliCommand} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}>
                           <Copy style={{ height: 16, width: 16, marginRight: 8 }} />
                           {t('common:actions.copy')}
                         </Button>
@@ -1535,15 +1531,15 @@ export function Settings() {
                         <p className={styles.settingDesc}>{t('developer.doctorDesc')}</p>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <Button onClick={() => void handleRunOpenClawDoctor('diagnose')} disabled={doctorRunningMode !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <Button onClick={() => void handleRunOpenClawDoctor('diagnose')} disabled={doctorRunningMode !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}>
                           <RefreshCw style={{ height: 16, width: 16, marginRight: 8, animation: doctorRunningMode === 'diagnose' ? 'spin 1s linear infinite' : undefined }} />
                           {doctorRunningMode === 'diagnose' ? t('common:status.running') : t('developer.runDoctor')}
                         </Button>
-                        <Button onClick={() => void handleRunOpenClawDoctor('fix')} disabled={doctorRunningMode !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <Button onClick={() => void handleRunOpenClawDoctor('fix')} disabled={doctorRunningMode !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}>
                           <RefreshCw style={{ height: 16, width: 16, marginRight: 8, animation: doctorRunningMode === 'fix' ? 'spin 1s linear infinite' : undefined }} />
                           {doctorRunningMode === 'fix' ? t('common:status.running') : t('developer.runDoctorFix')}
                         </Button>
-                        <Button onClick={handleCopyDoctorOutput} disabled={!doctorResult} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <Button onClick={handleCopyDoctorOutput} disabled={!doctorResult} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}>
                           <Copy style={{ height: 16, width: 16, marginRight: 8 }} />
                           {t('common:actions.copy')}
                         </Button>
@@ -1553,15 +1549,15 @@ export function Settings() {
                     {doctorResult && (
                       <div className={styles.outputPanel}>
                         <div className={styles.badgeRow}>
-                          <Badge variant={doctorResult.success ? 'secondary' : 'destructive'} style={{ borderRadius: 9999, padding: '4px 12px' }}>
+                          <Badge variant={doctorResult.success ? 'secondary' : 'destructive'} className={styles.statusTag}>
                             {doctorResult.mode === 'fix'
                               ? (doctorResult.success ? t('developer.doctorFixOk') : t('developer.doctorFixIssue'))
                               : (doctorResult.success ? t('developer.doctorOk') : t('developer.doctorIssue'))}
                           </Badge>
-                          <Badge variant="outline" style={{ borderRadius: 9999, padding: '4px 12px' }}>
+                          <Badge variant="outline" className={styles.statusTag}>
                             {t('developer.doctorExitCode')}: {doctorResult.exitCode ?? 'null'}
                           </Badge>
-                          <Badge variant="outline" style={{ borderRadius: 9999, padding: '4px 12px' }}>
+                          <Badge variant="outline" className={styles.statusTag}>
                             {t('developer.doctorDuration')}: {Math.round(doctorResult.durationMs)}ms
                           </Badge>
                         </div>
@@ -1591,17 +1587,17 @@ export function Settings() {
                         <p className={styles.settingDesc}>{t('developer.codeAgentDesc')}</p>
                       </div>
                       <div className={styles.flexWrapRow}>
-                        <Button onClick={() => void handleCodeAgentHealthCheck()} disabled={codeAgentBusyAction !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <Button onClick={() => void handleCodeAgentHealthCheck()} disabled={codeAgentBusyAction !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}>
                           <RefreshCw style={{ height: 16, width: 16, marginRight: 8, animation: codeAgentBusyAction === 'health' ? 'spin 1s linear infinite' : undefined }} />
                           {t('developer.codeAgentCheckHealth')}
                         </Button>
-                        <Button onClick={() => void handleCodeAgentLifecycleAction('start')} disabled={codeAgentBusyAction !== null || codeAgentStatus?.state === 'running'} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <Button onClick={() => void handleCodeAgentLifecycleAction('start')} disabled={codeAgentBusyAction !== null || codeAgentStatus?.state === 'running'} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}>
                           {t('developer.codeAgentStart')}
                         </Button>
-                        <Button onClick={() => void handleCodeAgentLifecycleAction('stop')} disabled={codeAgentBusyAction !== null || codeAgentStatus?.state !== 'running'} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <Button onClick={() => void handleCodeAgentLifecycleAction('stop')} disabled={codeAgentBusyAction !== null || codeAgentStatus?.state !== 'running'} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}>
                           {t('developer.codeAgentStop')}
                         </Button>
-                        <Button onClick={() => void handleCodeAgentLifecycleAction('restart')} disabled={codeAgentBusyAction !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}>
+                        <Button onClick={() => void handleCodeAgentLifecycleAction('restart')} disabled={codeAgentBusyAction !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}>
                           {t('common:actions.restart')}
                         </Button>
                       </div>
@@ -1609,14 +1605,13 @@ export function Settings() {
 
                     <div className={styles.codeAgentCard}>
                       <div className={styles.badgeRow}>
-                        <Badge variant="outline" style={{ borderRadius: 9999, padding: '4px 12px' }}>
+                        <Badge variant="outline" className={styles.statusTag}>
                           {t('developer.codeAgentExecutionMode')}: {codeAgentHealth?.executionMode || codeAgentStatus?.executionMode || codeAgentConfigDraft.executionMode}
                         </Badge>
                         <Badge
                           variant="outline"
+                          className={styles.statusTag}
                           style={{
-                            borderRadius: 9999,
-                            padding: '4px 12px',
                             ...(codeAgentStatus?.state === 'running' ? { borderColor: 'rgba(34,197,94,0.3)', color: '#15803d', background: 'rgba(34,197,94,0.1)' } : {}),
                             ...(codeAgentStatus?.state === 'error' ? { borderColor: 'rgba(239,68,68,0.3)', color: '#dc2626', background: 'rgba(239,68,68,0.1)' } : {}),
                           }}
@@ -1625,9 +1620,8 @@ export function Settings() {
                         </Badge>
                         <Badge
                           variant="outline"
+                          className={styles.statusTag}
                           style={{
-                            borderRadius: 9999,
-                            padding: '4px 12px',
                             ...(codeAgentStatus?.state === 'running' && codeAgentHealth?.ok ? { borderColor: 'rgba(34,197,94,0.3)', color: '#15803d', background: 'rgba(34,197,94,0.1)' } : {}),
                             ...(codeAgentStatus?.state === 'running' && codeAgentHealth && !codeAgentHealth.ok ? { borderColor: 'rgba(245,158,11,0.3)', color: '#b45309', background: 'rgba(245,158,11,0.1)' } : {}),
                             ...(codeAgentStatus?.state === 'error' ? { borderColor: 'rgba(239,68,68,0.3)', color: '#dc2626', background: 'rgba(239,68,68,0.1)' } : {}),
@@ -1643,19 +1637,19 @@ export function Settings() {
                             return '-';
                           })()}
                         </Badge>
-                        <Badge variant="outline" style={{ borderRadius: 9999, padding: '4px 12px' }}>
+                        <Badge variant="outline" className={styles.statusTag}>
                           {t('developer.codeAgentRuntime')}: {codeAgentStatus?.runtime || codeAgentHealth?.runtime || '-'}
                         </Badge>
-                        <Badge variant="outline" style={{ borderRadius: 9999, padding: '4px 12px' }}>
+                        <Badge variant="outline" className={styles.statusTag}>
                           {t('developer.codeAgentVendor')}: {(codeAgentStatus?.vendorPresent ?? codeAgentHealth?.vendorPresent) ? t('developer.codeAgentYes') : t('developer.codeAgentNo')}
                         </Badge>
                         {typeof codeAgentHealth?.protocolVersion === 'number' && (
-                          <Badge variant="outline" style={{ borderRadius: 9999, padding: '4px 12px' }}>
+                          <Badge variant="outline" className={styles.statusTag}>
                             {t('developer.codeAgentProtocol')}: v{codeAgentHealth.protocolVersion}
                           </Badge>
                         )}
                         {codeAgentHealth?.cliVersion && (
-                          <Badge variant="outline" style={{ borderRadius: 9999, padding: '4px 12px' }}>
+                          <Badge variant="outline" className={styles.statusTag}>
                             {t('developer.codeAgentCliVersion')}: {codeAgentHealth.cliVersion}
                           </Badge>
                         )}
@@ -1707,7 +1701,7 @@ export function Settings() {
                           <Button
                             onClick={() => void handleSaveCodeAgentConfig()}
                             disabled={savingCodeAgentConfig}
-                            style={{ borderRadius: 12, height: 36, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}
+                            style={{ borderRadius: 12, height: 36, padding: '0 16px', background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}
                           >
                             <RefreshCw style={{ height: 16, width: 16, marginRight: 8, animation: savingCodeAgentConfig ? 'spin 1s linear infinite' : undefined }} />
                             {savingCodeAgentConfig ? t('common:status.saving') : t('common:actions.save')}
@@ -1898,7 +1892,7 @@ export function Settings() {
                           type="primary"
                           onClick={() => void handleCodeAgentRun()}
                           disabled={codeAgentBusyAction !== null}
-                          style={{ borderRadius: 12, height: 40, padding: '0 20px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}
+                          style={{ borderRadius: 12, height: 40, padding: '0 20px', background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}
                         >
                           <RefreshCw style={{ height: 16, width: 16, marginRight: 8, animation: codeAgentBusyAction === 'run' ? 'spin 1s linear infinite' : undefined }} />
                           {codeAgentBusyAction === 'run' ? t('common:status.running') : t('developer.codeAgentRun')}
@@ -1908,16 +1902,16 @@ export function Settings() {
                       <div className={styles.codeAgentInnerCard}>
                         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                           <div className={styles.badgeRow}>
-                            <Badge variant="secondary" style={{ borderRadius: 9999, padding: '4px 12px' }}>
+                            <Badge variant="secondary" className={styles.statusTag}>
                               {t('developer.codeAgentLastRun')}
                             </Badge>
                             {codeAgentLastRun?.result?.status && (
-                              <Badge variant="outline" style={{ borderRadius: 9999, padding: '4px 12px' }}>
+                              <Badge variant="outline" className={styles.statusTag}>
                                 {codeAgentLastRun.result.status}
                               </Badge>
                             )}
                             {codeAgentLastRun?.error && (
-                              <Badge variant="destructive" style={{ borderRadius: 9999, padding: '4px 12px' }}>
+                              <Badge variant="destructive" className={styles.statusTag}>
                                 {t('common:status.error')}
                               </Badge>
                             )}
@@ -1926,7 +1920,7 @@ export function Settings() {
                             type="text"
                             size="small"
                             onClick={() => setShowCodeAgentRunDetails((prev) => !prev)}
-                            style={{ borderRadius: 9999, height: 32, padding: '0 16px' }}
+                            className={styles.smallTextActionButton}
                             disabled={!codeAgentLastRun}
                           >
                             {showCodeAgentRunDetails ? t('common:actions.hide') : t('common:actions.show')}
@@ -2011,7 +2005,8 @@ export function Settings() {
                       <Button
                         size="small"
                         onClick={() => setShowTelemetryViewer((prev) => !prev)}
-                        style={{ borderRadius: 9999, padding: '0 20px', height: 36, background: 'transparent', border: '1px solid rgba(0,0,0,0.1)' }}
+                        className={styles.smallActionButton}
+                        style={{ height: 36, padding: '0 20px', background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}
                       >
                         {showTelemetryViewer
                           ? t('common:actions.hide')
@@ -2022,19 +2017,19 @@ export function Settings() {
                     {showTelemetryViewer && (
                       <div className={styles.telemetryPanel}>
                         <div className={styles.flexWrapRow}>
-                          <Badge variant="secondary" style={{ borderRadius: 9999, padding: '4px 12px' }}>{t('developer.telemetryTotal')}: {telemetryStats.total}</Badge>
-                          <Badge variant={telemetryStats.errorCount > 0 ? 'destructive' : 'secondary'} style={{ borderRadius: 9999, padding: '4px 12px' }}>
+                          <Badge variant="secondary" className={styles.statusTag}>{t('developer.telemetryTotal')}: {telemetryStats.total}</Badge>
+                          <Badge variant={telemetryStats.errorCount > 0 ? 'destructive' : 'secondary'} className={styles.statusTag}>
                             {t('developer.telemetryErrors')}: {telemetryStats.errorCount}
                           </Badge>
-                          <Badge variant={telemetryStats.slowCount > 0 ? 'secondary' : 'outline'} style={{ borderRadius: 9999, padding: '4px 12px' }}>
+                          <Badge variant={telemetryStats.slowCount > 0 ? 'secondary' : 'outline'} className={styles.statusTag}>
                             {t('developer.telemetrySlow')}: {telemetryStats.slowCount}
                           </Badge>
                           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                            <Button size="small" onClick={handleCopyTelemetry} style={{ borderRadius: 9999, height: 32, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.08)' }}>
+                            <Button size="small" className={styles.smallActionButton} onClick={handleCopyTelemetry} style={{ background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}>
                               <Copy style={{ height: 14, width: 14, marginRight: 6 }} />
                               {t('common:actions.copy')}
                             </Button>
-                            <Button size="small" onClick={handleClearTelemetry} style={{ borderRadius: 9999, height: 32, padding: '0 16px', background: 'transparent', border: '1px solid rgba(0,0,0,0.08)' }}>
+                            <Button size="small" className={styles.smallActionButton} onClick={handleClearTelemetry} style={{ background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}>
                               {t('common:actions.clear')}
                             </Button>
                           </div>

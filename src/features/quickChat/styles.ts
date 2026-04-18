@@ -577,14 +577,14 @@ export const useMiniChatStyles = createStyles(
 			color: ${token.colorText};
 		}
 	`,
-		islandDropdown: css`
+	islandDropdown: css`
 		width: min(94vw, 640px);
 		min-width: 320px;
 		max-height: calc(100vh - 72px);
 		border-radius: 24px;
-		border: 1px solid #eaecef;
-		background: #ffffff;
-		box-shadow: 0 16px 40px rgba(16, 24, 40, 0.12);
+		border: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorBgElevated};
+		box-shadow: ${token.boxShadowSecondary};
 		padding: 10px 0;
 		display: flex;
 		flex-direction: column;

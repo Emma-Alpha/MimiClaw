@@ -11,6 +11,11 @@ import { createStyles } from "antd-style";
 import { Button } from "antd";
 import { Loader2, Send, Square, X, FileText, Film, Music, FileArchive, File as FileIcon } from "lucide-react";
 import type { UnifiedComposerPath } from "@/lib/unified-composer";
+import {
+	CHAT_ACTION_BUTTON_SIZE,
+	CHAT_PRIMARY_ACTION_ICON_SIZE,
+	CHAT_STOP_ICON_SIZE,
+} from "@/styles/typography-tokens";
 import { UnifiedComposerInput } from "./unified-composer-input";
 import { formatFileSize, type FileAttachment } from "../lib/composer-helpers";
 
@@ -138,7 +143,7 @@ const useStyles = createStyles(({ token, css }) => ({
 		width: 100%;
 		padding: 0;
 		line-height: 1.5;
-		font-size: 14px;
+		font-size: var(--mimi-font-size-base);
 		box-shadow: none !important;
 		background: transparent;
 		white-space: pre-wrap;
@@ -151,7 +156,7 @@ const useStyles = createStyles(({ token, css }) => ({
 	inputEditorDesktop: css`
 		min-height: 24px;
 		max-height: 200px;
-		font-size: 14px;
+		font-size: var(--mimi-font-size-base);
 		line-height: 1.5;
 	`,
 	inputEditorCompact: css`
@@ -177,7 +182,7 @@ const useStyles = createStyles(({ token, css }) => ({
 		border-radius: 999px;
 		background: ${token.colorFillQuaternary};
 		border: 1px solid ${token.colorBorderSecondary};
-		font-size: 12px;
+		font-size: var(--mimi-font-size-xs);
 		color: ${token.colorText};
 		max-width: 260px;
 		cursor: text;
@@ -194,7 +199,7 @@ const useStyles = createStyles(({ token, css }) => ({
 		flex: 1;
 		min-width: 0;
 		color: ${token.colorText};
-		font-size: 12px;
+		font-size: var(--mimi-font-size-xs);
 		font-weight: 500;
 	`,
 	pathChipRemove: css`
@@ -276,12 +281,12 @@ const useStyles = createStyles(({ token, css }) => ({
 		}
 	`,
 	iconButtonDesktop: css`
-		width: 28px;
-		height: 28px;
+		width: ${CHAT_ACTION_BUTTON_SIZE}px;
+		height: ${CHAT_ACTION_BUTTON_SIZE}px;
 	`,
 	iconButtonCompact: css`
-		width: 28px;
-		height: 28px;
+		width: ${CHAT_ACTION_BUTTON_SIZE}px;
+		height: ${CHAT_ACTION_BUTTON_SIZE}px;
 	`,
 	iconButtonActive: css`
 		border-color: ${token.colorPrimaryBorder};
@@ -315,11 +320,11 @@ const useStyles = createStyles(({ token, css }) => ({
 	`,
 	chipDesktop: css`
 		padding: 6px 10px;
-		font-size: 12px;
+		font-size: var(--mimi-font-size-xs);
 	`,
 	chipCompact: css`
 		padding: 4px 8px;
-		font-size: 11px;
+		font-size: var(--mimi-font-size-2xs);
 	`,
 	chipLabel: css`
 		min-width: 0;
@@ -351,12 +356,12 @@ const useStyles = createStyles(({ token, css }) => ({
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 28px;
-		min-width: 28px;
-		height: 28px;
+		width: ${CHAT_ACTION_BUTTON_SIZE}px;
+		min-width: ${CHAT_ACTION_BUTTON_SIZE}px;
+		height: ${CHAT_ACTION_BUTTON_SIZE}px;
 		padding: 0 !important;
 		border: none !important;
-		border-radius: 14px;
+		border-radius: ${CHAT_ACTION_BUTTON_SIZE / 2}px;
 		background: ${token.colorText} !important;
 		color: ${token.colorBgContainer} !important;
 		cursor: pointer;
@@ -422,7 +427,7 @@ const useStyles = createStyles(({ token, css }) => ({
 		overflow: hidden;
 	`,
 	previewName: css`
-		font-size: 11px;
+		font-size: var(--mimi-font-size-2xs);
 		font-weight: 500;
 		margin: 0;
 		overflow: hidden;
@@ -430,7 +435,7 @@ const useStyles = createStyles(({ token, css }) => ({
 		white-space: nowrap;
 	`,
 	previewSize: css`
-		font-size: 10px;
+		font-size: var(--mimi-font-size-2xs);
 		margin: 0;
 		opacity: 0.6;
 	`,
@@ -444,7 +449,7 @@ const useStyles = createStyles(({ token, css }) => ({
 	previewError: css`
 		background: rgba(239, 68, 68, 0.2);
 		color: #ef4444;
-		font-size: 10px;
+		font-size: var(--mimi-font-size-2xs);
 		font-weight: 500;
 	`,
 	previewLoading: css`
@@ -910,14 +915,14 @@ export function ComposerBase({
 							title={sendButtonTitle}
 							icon={
 								canStop ? (
-									<Square style={{ width: 12, height: 12 }} fill="currentColor" />
+									<Square style={{ width: CHAT_STOP_ICON_SIZE, height: CHAT_STOP_ICON_SIZE }} fill="currentColor" />
 								) : loading ? (
 									<Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />
 								) : (
 									<Send
 										style={{
-											width: compact ? 14 : 15,
-											height: compact ? 14 : 15,
+											width: CHAT_PRIMARY_ACTION_ICON_SIZE,
+											height: CHAT_PRIMARY_ACTION_ICON_SIZE,
 											transform: "translateX(-0.4px) translateY(0.35px)",
 										}}
 									/>

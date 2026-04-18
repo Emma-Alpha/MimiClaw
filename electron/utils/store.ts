@@ -6,6 +6,11 @@
 import { randomBytes } from 'crypto';
 import { app } from 'electron';
 import { DEFAULT_CODE_AGENT_RUNTIME_CONFIG, type CodeAgentRuntimeConfig } from '../../shared/code-agent';
+import {
+  DEFAULT_APP_THEME_MODE,
+  DEFAULT_CHAT_FONT_SIZE,
+  DEFAULT_NEUTRAL_COLOR,
+} from '../../shared/appearance';
 import { resolveSupportedLanguage } from '../../shared/language';
 import type { StoredPetCompanion } from '../../shared/pet-companion';
 import { DEFAULT_PET_ANIMATION, type PetAnimation } from '../../shared/pet';
@@ -112,9 +117,10 @@ function getSystemLocale(): string {
 function createDefaultSettings(): AppSettings {
   return {
     // General
-    theme: 'system',
+    theme: DEFAULT_APP_THEME_MODE,
     language: resolveSupportedLanguage(getSystemLocale()),
-    fontSize: 14,
+    neutralColor: DEFAULT_NEUTRAL_COLOR,
+    fontSize: DEFAULT_CHAT_FONT_SIZE,
     highlighterTheme: 'lobe-theme',
     mermaidTheme: 'lobe-theme',
     transitionMode: 'smooth',

@@ -3,7 +3,7 @@
  * Provides antd v6 + antd-style theme context using @4399ywkf/theme-system color algorithms.
  * Bridges the existing useSettingsStore theme ('light' | 'dark' | 'system') to antd-style.
  */
-import { type ReactNode, useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { type CSSProperties, type ReactNode, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ConfigProvider as AntdConfigProvider } from 'antd';
 import { ConfigProvider as LobeConfigProvider, ThemeProvider as LobeThemeProvider } from '@lobehub/ui';
 import type { NeutralColors, PrimaryColors } from '@4399ywkf/theme-system';
@@ -18,8 +18,12 @@ import { motion } from 'motion/react';
 import { useSettingsStore } from '@/stores/settings';
 import {
   createMimiThemeConfig,
+  getChatTypographyVars,
 } from '@/styles/typography-tokens';
-import { GlobalStyle } from "@/styles"
+import { GlobalStyle } from '@/styles';
+import {
+  DEFAULT_NEUTRAL_COLOR,
+} from '../../../shared/appearance';
 
 type ResolvedAppearance = 'light' | 'dark';
 
@@ -74,11 +78,16 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
   const theme = useSettingsStore((s) => s.theme);
   const primaryColor = useSettingsStore((s) => s.primaryColor);
   const neutralColor = useSettingsStore((s) => s.neutralColor);
+  const fontSize = useSettingsStore((s) => s.fontSize);
   const animationMode = useSettingsStore((s) => s.animationMode);
   const popupContainerRef = useRef<HTMLDivElement>(null);
   const [appElement, setAppElement] = useState<HTMLDivElement | null>(null);
 
   const resolvedAppearance: ResolvedAppearance = resolveAppearance(theme);
+  const typographyVars = useMemo(
+    () => getChatTypographyVars(fontSize),
+    [fontSize],
+  );
 
   // Sync data-theme attribute for antd CSS variable mode
   // and the .dark class for Tailwind CSS variables (darkMode: ['class'])
@@ -93,8 +102,9 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
     (appearance) => {
       const baseTheme = createMimiThemeConfig({
         appearance: appearance as ResolvedAppearance,
-        neutralColor: (neutralColor || 'slate') as NeutralColors,
-        primaryColor: (primaryColor || 'blue') as PrimaryColors,
+        fontSize,
+        neutralColor: (neutralColor || DEFAULT_NEUTRAL_COLOR) as NeutralColors,
+        primaryColor: primaryColor as PrimaryColors | undefined,
       });
 
       return {
@@ -109,7 +119,7 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
         cssVar: { prefix: 'ant', key: 'lobe-vars' },
       };
     },
-    [animationMode, neutralColor, primaryColor],
+    [animationMode, fontSize, neutralColor, primaryColor],
   );
 
   const getPopupContainer = useCallback(
@@ -118,41 +128,47 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
   );
 
   return (
-    <div ref={popupContainerRef} data-ywkf-root style={{ position: 'relative', height: '100%' }}>
-     
-        <LobeThemeProvider
-          appearance={resolvedAppearance}
-          customTheme={{
-            neutralColor: (neutralColor || 'slate') as NeutralColors,
-            primaryColor: (primaryColor || 'blue') as PrimaryColors,
-          }}
-          defaultAppearance={resolvedAppearance}
-          defaultThemeMode={resolvedAppearance}
-          enableCustomFonts={false}
-          enableGlobalStyle={false}
-          themeMode={theme === 'system' ? 'auto' : theme}
-          theme={getAntdTheme}
-        >
-          <LobeConfigProvider motion={motion}>
-            <LobeUiCompatGlobalStyle />
-            <GlobalStyle />
-            <AntdConfigProvider getPopupContainer={getPopupContainer}>
-              {/* Provide AppElementContext so @lobehub/ui DropdownMenu portals
-                  render inside the theme container rather than document.body */}
-              <div
-                ref={setAppElement}
-                style={{ display: 'contents' }}
-              >
-                 <StyleProvider>
+    <div
+      ref={popupContainerRef}
+      data-ywkf-root
+      style={{
+        position: 'relative',
+        height: '100%',
+        ...(typographyVars as CSSProperties),
+      }}
+    >
+      <LobeThemeProvider
+        appearance={resolvedAppearance}
+        customTheme={{
+          neutralColor: (neutralColor || DEFAULT_NEUTRAL_COLOR) as NeutralColors,
+          primaryColor: primaryColor as PrimaryColors | undefined,
+        }}
+        defaultAppearance={resolvedAppearance}
+        defaultThemeMode={resolvedAppearance}
+        enableCustomFonts={false}
+        enableGlobalStyle={false}
+        themeMode={theme === 'system' ? 'auto' : theme}
+        theme={getAntdTheme}
+      >
+        <LobeConfigProvider motion={motion}>
+          <LobeUiCompatGlobalStyle />
+          <GlobalStyle />
+          <AntdConfigProvider getPopupContainer={getPopupContainer}>
+            {/* Provide AppElementContext so @lobehub/ui DropdownMenu portals
+                render inside the theme container rather than document.body */}
+            <div
+              ref={setAppElement}
+              style={{ display: 'contents' }}
+            >
+              <StyleProvider>
                 <AppElementContext.Provider value={appElement}>
                   {children}
                 </AppElementContext.Provider>
-                </StyleProvider>
-              </div>
-            </AntdConfigProvider>
-          </LobeConfigProvider>
-        </LobeThemeProvider>
-      
+              </StyleProvider>
+            </div>
+          </AntdConfigProvider>
+        </LobeConfigProvider>
+      </LobeThemeProvider>
     </div>
   );
 }

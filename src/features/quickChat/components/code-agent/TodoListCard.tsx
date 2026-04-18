@@ -15,7 +15,7 @@ interface Props {
 	fusedWithComposer?: boolean;
 }
 
-const useStyles = createStyles(({ css }) => ({
+const useStyles = createStyles(({ css, token }) => ({
 	card: css`
 		display: flex;
 		flex-direction: column;
@@ -25,18 +25,16 @@ const useStyles = createStyles(({ css }) => ({
 		position: relative;
 		padding: 10px 14px 12px;
 		border-radius: 18px;
-		border: 1px solid rgba(17, 24, 39, 0.08);
-		background: rgba(255, 255, 255, 0.74);
+		border: 1px solid ${token.colorBorderSecondary};
+		background: color-mix(in srgb, ${token.colorBgElevated} 82%, transparent);
 		backdrop-filter: blur(18px) saturate(160%);
 		-webkit-backdrop-filter: blur(18px) saturate(160%);
-		box-shadow:
-			inset 0 1px 0 rgba(255, 255, 255, 0.86),
-			0 8px 24px rgba(15, 23, 42, 0.08);
+		box-shadow: ${token.boxShadowSecondary};
 	`,
 	cardDockFused: css`
 		border-bottom-left-radius: 12px;
 		border-bottom-right-radius: 12px;
-		border-bottom-color: rgba(17, 24, 39, 0.08);
+		border-bottom-color: ${token.colorBorderSecondary};
 		padding-bottom: 12px;
 	`,
 	header: css`
@@ -53,9 +51,9 @@ const useStyles = createStyles(({ css }) => ({
 		display: flex;
 		align-items: center;
 		gap: 6px;
-		font-size: 12px;
+		font-size: var(--mimi-font-size-xs);
 		line-height: 1.3;
-		color: rgba(17, 24, 39, 0.52);
+		color: ${token.colorTextSecondary};
 		font-weight: 500;
 	`,
 	headerAction: css`
@@ -65,13 +63,13 @@ const useStyles = createStyles(({ css }) => ({
 		width: 18px;
 		height: 18px;
 		border-radius: 999px;
-		color: rgba(17, 24, 39, 0.55);
+		color: ${token.colorTextSecondary};
 		cursor: pointer;
 		transition: background-color 0.2s ease, color 0.2s ease;
 
 		&:hover {
-			color: rgba(17, 24, 39, 0.78);
-			background: rgba(17, 24, 39, 0.08);
+			color: ${token.colorText};
+			background: ${token.colorFillQuaternary};
 		}
 	`,
 	headerDot: css`
@@ -80,7 +78,7 @@ const useStyles = createStyles(({ css }) => ({
 		width: 3px;
 		height: 3px;
 		border-radius: 999px;
-		background: rgba(17, 24, 39, 0.42);
+		background: ${token.colorTextTertiary};
 	`,
 	headerCount: css`
 		color: inherit;
@@ -101,7 +99,7 @@ const useStyles = createStyles(({ css }) => ({
 		display: flex;
 		align-items: flex-start;
 		gap: 7px;
-		font-size: 12px;
+		font-size: var(--mimi-font-size-xs);
 		line-height: 1.48;
 		padding: 0;
 	`,
@@ -120,23 +118,23 @@ const useStyles = createStyles(({ css }) => ({
 		align-items: center;
 		min-width: 18px;
 		font-variant-numeric: tabular-nums;
-		color: rgba(17, 24, 39, 0.86);
+		color: ${token.colorText};
 	`,
 	itemCompleted: css`
 		color: rgba(22, 163, 74, 0.9);
 	`,
 	itemInProgress: css`
-		color: rgba(17, 24, 39, 0.55);
+		color: ${token.colorTextSecondary};
 	`,
 	itemPending: css`
-		color: rgba(17, 24, 39, 0.44);
+		color: ${token.colorTextTertiary};
 	`,
 	itemText: css`
-		color: rgba(17, 24, 39, 0.92);
+		color: ${token.colorText};
 		word-break: break-word;
 	`,
 	itemTextCompleted: css`
-		color: rgba(17, 24, 39, 0.74);
+		color: ${token.colorTextSecondary};
 	`,
 	itemTextInProgress: css`
 		font-weight: 500;

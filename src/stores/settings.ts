@@ -7,6 +7,12 @@ import { persist } from 'zustand/middleware';
 import i18n from '@/i18n';
 import { hostApiFetch } from '@/lib/host-api';
 import { DEFAULT_CODE_AGENT_RUNTIME_CONFIG, type CodeAgentRuntimeConfig } from '../../shared/code-agent';
+import {
+  clampChatFontSize,
+  DEFAULT_APP_THEME_MODE,
+  DEFAULT_CHAT_FONT_SIZE,
+  DEFAULT_NEUTRAL_COLOR,
+} from '../../shared/appearance';
 import { resolveSupportedLanguage } from '../../shared/language';
 import {
   normalizePetCompanion,
@@ -191,11 +197,11 @@ interface SettingsState extends CloudAuthState {
 }
 
 const defaultSettings = {
-  theme: 'system' as Theme,
+  theme: DEFAULT_APP_THEME_MODE as Theme,
   language: resolveSupportedLanguage(typeof navigator !== 'undefined' ? navigator.language : undefined),
   primaryColor: undefined as string | undefined,
-  neutralColor: undefined as string | undefined,
-  fontSize: 14,
+  neutralColor: DEFAULT_NEUTRAL_COLOR as string | undefined,
+  fontSize: DEFAULT_CHAT_FONT_SIZE,
   highlighterTheme: 'lobe-theme',
   mermaidTheme: 'lobe-theme',
   transitionMode: 'smooth' as TransitionMode,
@@ -370,7 +376,7 @@ export const useSettingsStore = create<SettingsState>()(
               ? { primaryColor: undefined }
               : {}),
             ...(!Object.prototype.hasOwnProperty.call(rawSettings, 'neutralColor')
-              ? { neutralColor: undefined }
+              ? { neutralColor: DEFAULT_NEUTRAL_COLOR }
               : {}),
             sidebarThreadWorkspaces: mergedThreadWorkspaces,
             sidebarThreadWorkspaceExpanded: mergedThreadExpanded,
@@ -415,7 +421,13 @@ export const useSettingsStore = create<SettingsState>()(
         }
       },
 
-      setTheme: (theme) => set({ theme }),
+      setTheme: (theme) => {
+        set({ theme });
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ theme }),
+        }).catch(() => { });
+      },
       setLanguage: (language) => {
         const resolvedLanguage = resolveSupportedLanguage(language);
         i18n.changeLanguage(resolvedLanguage);
@@ -440,7 +452,7 @@ export const useSettingsStore = create<SettingsState>()(
         }).catch(() => { });
       },
       setFontSize: (fontSize) => {
-        const normalized = Math.max(12, Math.min(18, Math.round(fontSize)));
+        const normalized = clampChatFontSize(fontSize);
         set({ fontSize: normalized });
         void hostApiFetch('/api/settings', {
           method: 'PUT',

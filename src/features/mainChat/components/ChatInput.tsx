@@ -29,6 +29,11 @@ import { useChatStore } from "@/stores/chat";
 import type { AgentSummary } from "@/types/agent";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import {
+	CHAT_ACTION_ICON_SIZE,
+	CHAT_CHIP_ICON_SIZE,
+	CHAT_STOP_ICON_SIZE,
+} from "@/styles/typography-tokens";
 
 // ── Styles ───────────────────────────────────────────────────────
 
@@ -766,7 +771,7 @@ export function ChatInput({
 						{selectedTarget ? (
 							<ComposerChip
 								variant="desktop"
-								icon={<AtSign style={{ width: 12, height: 12 }} />}
+								icon={<AtSign style={{ width: CHAT_CHIP_ICON_SIZE, height: CHAT_CHIP_ICON_SIZE }} />}
 								onRemove={() => setTargetAgentId(null)}
 								removableTitle={t("composer.clearTarget")}
 								title={t("composer.clearTarget")}
@@ -777,7 +782,7 @@ export function ChatInput({
 
 						<ComposerIconButton
 							variant="desktop"
-							icon={<Paperclip style={{ width: 16, height: 16 }} />}
+							icon={<Paperclip style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />}
 							onClick={() => {
 								void pickFiles();
 							}}
@@ -787,7 +792,7 @@ export function ChatInput({
 
 						<ComposerIconButton
 							variant="desktop"
-							icon={<Camera style={{ width: 16, height: 16 }} />}
+							icon={<Camera style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />}
 							onClick={() => {
 								void captureScreenshot();
 							}}
@@ -799,7 +804,7 @@ export function ChatInput({
 							<div ref={pickerRef} style={{ position: "relative" }}>
 								<ComposerIconButton
 									variant="desktop"
-									icon={<AtSign style={{ width: 16, height: 16 }} />}
+									icon={<AtSign style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />}
 									onClick={() => setPickerOpen((open) => !open)}
 									disabled={disabled || sending}
 									title={t("composer.pickAgent")}
@@ -860,13 +865,13 @@ export function ChatInput({
 									padding: 0,
 								}}
 							>
-								<Square style={{ width: 13, height: 13 }} />
+								<Square style={{ width: CHAT_STOP_ICON_SIZE, height: CHAT_STOP_ICON_SIZE }} />
 							</button>
 						</div>
 					) : (
 						<ComposerIconButton
 							variant="desktop"
-							icon={<Mic style={{ width: 16, height: 16 }} />}
+							icon={<Mic style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />}
 							onClick={toggleRecording}
 							disabled={disabled || sending}
 							title={t("composer.startRecording", "开始录音")}
