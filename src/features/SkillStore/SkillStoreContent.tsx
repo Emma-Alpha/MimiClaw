@@ -8,7 +8,7 @@ enum SkillStoreTab {
 }
 
 export const SkillStoreContent = () => {
-  const [activeTab, setActiveTab] = useState<SkillStoreTab>(SkillStoreTab.Skills);
+  const [activeTab] = useState<SkillStoreTab>(SkillStoreTab.Skills);
   const [skillKeywords, setSkillKeywords] = useState('');
 
 

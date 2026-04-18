@@ -185,15 +185,6 @@ function MiniChatHeaderImpl({
 	const islandMetricValue = contextIndicator
 		? formatTokenCount(contextIndicator.remainingTokens)
 		: null;
-	const islandProgressPercent = contextIndicator?.usedPercentage ?? 0;
-	const islandProgressTone = contextIndicator?.ringColor ?? "#0071e3";
-	const islandTextMaxWidth = contextIndicator
-		? isGeneratingNow
-			? "calc(100% - 132px)"
-			: "calc(100% - 104px)"
-		: isGeneratingNow
-			? "calc(100% - 78px)"
-			: "calc(100% - 46px)";
 
 	const useCodexHeader = embedded && !showWindowActions;
 	const embeddedHeaderTitle = viewModel.headerTitle || "新线程";

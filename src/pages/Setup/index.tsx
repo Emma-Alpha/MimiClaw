@@ -23,7 +23,6 @@ import { toast } from 'sonner';
 import { invokeIpc } from '@/lib/api-client';
 import { resolveCloudOnlyMode } from '@/lib/app-env';
 import {
-  autoApplyFallbackConfigBundle,
   fetchFallbackConfigStatus,
 } from '@/lib/fallback-config';
 import { useSetupStyles } from './styles';
@@ -80,7 +79,7 @@ export function Setup() {
   const [showFallbackAutoApplyPanel, setShowFallbackAutoApplyPanel] = useState(false);
   const [fallbackAutoApplyPassword, setFallbackAutoApplyPassword] = useState('');
   const [showFallbackAutoApplyPassword, setShowFallbackAutoApplyPassword] = useState(false);
-  const [applyingFallbackBundle, setApplyingFallbackBundle] = useState(false);
+  const [applyingFallbackBundle] = useState(false);
   const [fallbackBundleSource, setFallbackBundleSource] = useState<'local' | 'bundled' | null>(null);
 
   const steps = getSteps(t);
@@ -245,7 +244,18 @@ export function Setup() {
 
 // ==================== Step Content Components ====================
 
-function WelcomeContent() {
+interface WelcomeContentProps {
+  applyingFallbackBundle?: boolean;
+  fallbackAutoApplyPassword?: string;
+  fallbackBundleSource?: 'local' | 'bundled' | null;
+  onFallbackAutoApplyPasswordChange?: (value: string) => void;
+  onSkipFallbackAutoApply?: () => void;
+  onToggleFallbackAutoApplyPassword?: () => void;
+  showFallbackAutoApplyPanel?: boolean;
+  showFallbackAutoApplyPassword?: boolean;
+}
+
+function WelcomeContent(_props: WelcomeContentProps) {
   const { t } = useTranslation('setup');
   const { styles } = useSetupStyles();
   const { language, setLanguage } = useSettingsStore();
