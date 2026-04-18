@@ -21,6 +21,7 @@ import {
 import { useChatStore } from "@/stores/chat";
 import { useSettingsStore } from "@/stores/settings";
 import { toast } from "sonner";
+import { applyResponseLanguageToPrompt } from "@/lib/unified-composer";
 import type {
 	CodeAgentImageAttachment,
 	CodeAgentStatus,
@@ -342,7 +343,11 @@ export function useMiniChatSubmissionActions({
 				chatSubmitInFlightRef.current = true;
 				clearComposer();
 				try {
-					await sendMessage(prompt, readyAttachments);
+					const responseLanguage = useSettingsStore.getState().responseLanguage;
+					await sendMessage(
+						applyResponseLanguageToPrompt(prompt, responseLanguage),
+						readyAttachments,
+					);
 					return true;
 				} finally {
 					chatSubmitInFlightRef.current = false;
@@ -356,12 +361,17 @@ export function useMiniChatSubmissionActions({
 				? JSON.parse(JSON.stringify(raw))
 				: undefined;
 			clearComposer();
-			return runMiniCodeTask(prompt, imageAttachments, {
+			const responseLanguage = useSettingsStore.getState().responseLanguage;
+			return runMiniCodeTask(
+				applyResponseLanguageToPrompt(prompt, responseLanguage),
+				imageAttachments,
+				{
 				imagePreviews,
 				pathTags: mergedPathTags,
 				displayText: rawText,
 				richContent: snapshotRichContent,
-			});
+				},
+			);
 		},
 		[
 			activeSkillsRef,

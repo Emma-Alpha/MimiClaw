@@ -2,15 +2,94 @@
   "title": "Settings",
   "subtitle": "Configure your 极智 experience",
   "appearance": {
-    "title": "General",
+    "title": "Appearance",
     "description": "Customize the look and feel",
+    "common": {
+      "title": "General Settings"
+    },
+    "app": {
+      "title": "Application Appearance",
+      "paletteTitle": "Color Palette"
+    },
     "theme": "Theme",
     "light": "Light",
     "dark": "Dark",
     "system": "System",
     "language": "Language",
     "launchAtStartup": "Launch at system startup",
-    "launchAtStartupDesc": "Automatically launch 极智 when you log in"
+    "launchAtStartupDesc": "Automatically launch 极智 when you log in",
+    "launchAtStartupDisabled": "Disabled",
+    "launchAtStartupEnabled": "Enabled",
+    "primaryColor": {
+      "title": "Theme Color",
+      "desc": "Custom theme color"
+    },
+    "neutralColor": {
+      "title": "Neutral Color",
+      "desc": "Custom grayscale with different color tendencies"
+    },
+    "animationMode": {
+      "title": "Response Animation",
+      "desc": "Adjust the animation intensity used across the application",
+      "disabled": "Off",
+      "agile": "Agile",
+      "elegant": "Elegant"
+    },
+    "contextMenuMode": {
+      "title": "Right-Click Menu Mode",
+      "desc": "Enable the right-click menu for some list items.",
+      "disabled": "Disabled",
+      "default": "Default"
+    },
+    "responseLanguage": {
+      "title": "Reply Language",
+      "desc": "Set the language used for AI replies"
+    },
+    "chat": {
+      "title": "Chat Appearance",
+      "autoScroll": {
+        "title": "Auto-scroll During AI Response",
+        "desc": "Automatically keep the latest streaming reply in view"
+      },
+      "fontSize": {
+        "title": "Font Size",
+        "desc": "Font size of messages",
+        "standard": "Standard"
+      },
+      "highlighterTheme": {
+        "title": "Code Highlight Theme"
+      },
+      "mermaidTheme": {
+        "title": "Mermaid Theme"
+      },
+      "transitionMode": {
+        "title": "Transition Animation",
+        "desc": "Choose how chat messages appear",
+        "none": "None",
+        "fadeIn": "Fade In",
+        "smooth": "Smooth"
+      }
+    },
+    "colors": {
+      "default": "Default",
+      "red": "Red",
+      "orange": "Orange",
+      "gold": "Gold",
+      "yellow": "Yellow",
+      "lime": "Lime",
+      "green": "Green",
+      "cyan": "Cyan",
+      "blue": "Blue",
+      "geekblue": "Geek Blue",
+      "purple": "Purple",
+      "magenta": "Magenta",
+      "volcano": "Volcano",
+      "mauve": "Mauve",
+      "olive": "Olive",
+      "sage": "Sage",
+      "sand": "Sand",
+      "slate": "Slate"
+    }
   },
   "pet": {
     "title": "Floating Pet",

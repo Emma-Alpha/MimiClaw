@@ -287,6 +287,7 @@ export function LegacySidebar() {
 	const setSidebarFolderExpanded = useSettingsStore((state) => state.setSidebarFolderExpanded);
 	const sidebarThreadWorkspaces = useSettingsStore((state) => state.sidebarThreadWorkspaces);
 	const sidebarThreadWorkspaceExpanded = useSettingsStore((state) => state.sidebarThreadWorkspaceExpanded);
+	const contextMenuMode = useSettingsStore((state) => state.contextMenuMode);
 	const sidebarActiveContext = useSettingsStore((state) => state.sidebarActiveContext);
 	const setSidebarThreadWorkspaceExpanded = useSettingsStore((state) => state.setSidebarThreadWorkspaceExpanded);
 	const setSidebarActiveContext = useSettingsStore((state) => state.setSidebarActiveContext);
@@ -1020,6 +1021,10 @@ export function LegacySidebar() {
 								handleWorkspaceOpenInFinder(workspace);
 							},
 						};
+						const workspaceMenuTrigger: Array<"click" | "contextMenu"> =
+							contextMenuMode === "default"
+								? ["click", "contextMenu"]
+								: ["click"];
 
 						return (
 							<div
@@ -1078,7 +1083,7 @@ export function LegacySidebar() {
 										>
 											<Plus className={styles.primaryActionIcon} />
 										</button>
-										<Dropdown menu={workspaceMenu} trigger={["click"]}>
+										<Dropdown menu={workspaceMenu} trigger={workspaceMenuTrigger}>
 											<button
 												type="button"
 												onClick={(event) => event.stopPropagation()}

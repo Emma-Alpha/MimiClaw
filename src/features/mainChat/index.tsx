@@ -13,6 +13,7 @@ import { ChatItem } from '@lobehub/ui/chat';
 import { useChatStore, type RawMessage } from '@/stores/chat';
 import { useGatewayStore } from '@/stores/gateway';
 import { useAgentsStore } from '@/stores/agents';
+import { useSettingsStore } from '@/stores/settings';
 import { useLocation } from 'react-router-dom';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ChatMessage } from './components/ChatMessage';
@@ -244,6 +245,7 @@ export function Chat() {
   const streamingMessage = useChatStore((s) => s.streamingMessage);
   const streamingTools = useChatStore((s) => s.streamingTools);
   const pendingFinal = useChatStore((s) => s.pendingFinal);
+  const enableAutoScrollOnStreaming = useSettingsStore((s) => s.enableAutoScrollOnStreaming);
   const sendMessage = useChatStore((s) => s.sendMessage);
   const abortRun = useChatStore((s) => s.abortRun);
   const clearError = useChatStore((s) => s.clearError);
@@ -421,12 +423,12 @@ export function Chat() {
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
-      const shouldFollow = atBottom && sending;
+      const shouldFollow = enableAutoScrollOnStreaming && atBottom && sending;
       if (!shouldFollow || timelineRows.length === 0) return;
       scrollToBottom(false);
     });
     return () => cancelAnimationFrame(raf);
-  }, [atBottom, sending, timelineRows.length, scrollToBottom]);
+  }, [atBottom, enableAutoScrollOnStreaming, sending, timelineRows.length, scrollToBottom]);
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => scrollToBottom(false));

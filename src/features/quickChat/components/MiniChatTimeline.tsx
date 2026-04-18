@@ -15,6 +15,7 @@ import { useFileReferenceMarkdownProps } from "./file-reference-markdown";
 import { BackBottomButton } from "@/components/common/BackBottomButton";
 import { UserMessage } from "@/features/mainChat/components/messages/UserMessage";
 import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/code-agent";
+import { useSettingsStore } from "@/stores/settings";
 
 type MiniChatTimelineProps = {
 	embedded?: boolean;
@@ -76,6 +77,7 @@ function MiniChatTimelineImpl({
 }: MiniChatTimelineProps) {
 	const { styles, cx } = useMiniChatStyles();
 	const markdownProps = useFileReferenceMarkdownProps(codeWorkspaceRoot);
+	const enableAutoScrollOnStreaming = useSettingsStore((state) => state.enableAutoScrollOnStreaming);
 	const vListRef = useRef<VListHandle | null>(null);
 	const [atBottom, setAtBottom] = useState(true);
 
@@ -334,6 +336,7 @@ function MiniChatTimelineImpl({
 	const hasContent = timelineItems.length > 0 || showChatPending || codeSending || codeAgentItems.length > 0 || hasActiveCodeStream;
 
 	useEffect(() => {
+		if (!enableAutoScrollOnStreaming) return;
 		if (timelineRows.length === 0) return;
 
 		const raf = requestAnimationFrame(() => {
@@ -351,6 +354,7 @@ function MiniChatTimelineImpl({
 		streamingThinkingText,
 		streamingAssistantText,
 		effectiveVendorStatusText,
+		enableAutoScrollOnStreaming,
 		isThinking,
 		isCodeStreaming,
 		spinnerMode,

@@ -16,6 +16,7 @@ import { type FileAttachment, readFileAsBase64 } from "../lib/composer-helpers";
 import { hostApiFetch } from "@/lib/host-api";
 import { invokeIpc } from "@/lib/api-client";
 import {
+	applyResponseLanguageToPrompt,
 	extractDroppedPathsFromTransfer,
 	mergeUnifiedComposerPaths,
 	toOpenClawSubmission,
@@ -219,6 +220,7 @@ export function ChatInput({
 
 	const gatewayStatus = useGatewayStore((s) => s.status);
 	const remoteGatewayUrl = useSettingsStore((s) => s.remoteGatewayUrl);
+	const responseLanguage = useSettingsStore((s) => s.responseLanguage);
 	const agents = useAgentsStore((s) => s.agents);
 	const currentAgentId = useChatStore((s) => s.currentAgentId);
 
@@ -652,17 +654,21 @@ export function ChatInput({
 			attachments: readyAttachments,
 			paths: droppedPaths,
 		});
+		const finalPrompt = applyResponseLanguageToPrompt(
+			submission.prompt,
+			responseLanguage,
+		);
 		setInput("");
 		setAttachments([]);
 		setDroppedPaths([]);
 		onSend(
-			submission.prompt,
+			finalPrompt,
 			submission.attachments.length > 0 ? submission.attachments : undefined,
 			targetAgentId,
 		);
 		setTargetAgentId(null);
 		setPickerOpen(false);
-	}, [input, attachments, canSend, droppedPaths, onSend, targetAgentId]);
+	}, [input, attachments, canSend, droppedPaths, onSend, responseLanguage, targetAgentId]);
 
 	const handleStop = useCallback(() => {
 		if (sending && onStop) onStop();

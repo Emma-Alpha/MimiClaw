@@ -2,15 +2,94 @@
   "title": "設定",
   "subtitle": "极智 の体験をカスタマイズ",
   "appearance": {
-    "title": "通用",
+    "title": "外観",
     "description": "外観とスタイルをカスタマイズ",
+    "common": {
+      "title": "一般設定"
+    },
+    "app": {
+      "title": "アプリ外観",
+      "paletteTitle": "カラーパレット"
+    },
     "theme": "テーマ",
     "light": "ライト",
     "dark": "ダーク",
     "system": "システム",
     "language": "言語",
     "launchAtStartup": "システム起動時に自動起動",
-    "launchAtStartupDesc": "ログイン時に 极智 を自動的に起動します"
+    "launchAtStartupDesc": "ログイン時に 极智 を自動的に起動します",
+    "launchAtStartupDisabled": "使用しない",
+    "launchAtStartupEnabled": "デフォルト",
+    "primaryColor": {
+      "title": "テーマカラー",
+      "desc": "カスタムテーマカラー"
+    },
+    "neutralColor": {
+      "title": "ニュートラルカラー",
+      "desc": "色味の異なるグレースケールを選択"
+    },
+    "animationMode": {
+      "title": "応答アニメーション",
+      "desc": "アプリ全体のアニメーション強度を調整",
+      "disabled": "オフ",
+      "agile": "軽快",
+      "elegant": "優雅"
+    },
+    "contextMenuMode": {
+      "title": "右クリックメニュー方式",
+      "desc": "一部のリスト項目で右クリックメニューを有効にします。",
+      "disabled": "使用しない",
+      "default": "デフォルト"
+    },
+    "responseLanguage": {
+      "title": "返信言語",
+      "desc": "AI の返信に使う言語を設定します"
+    },
+    "chat": {
+      "title": "チャット外観",
+      "autoScroll": {
+        "title": "AI 応答中に自動スクロール",
+        "desc": "AI が応答を生成している間、常に最新の位置へ追従します"
+      },
+      "fontSize": {
+        "title": "フォントサイズ",
+        "desc": "メッセージの文字サイズ",
+        "standard": "標準"
+      },
+      "highlighterTheme": {
+        "title": "コードハイライトテーマ"
+      },
+      "mermaidTheme": {
+        "title": "Mermaid テーマ"
+      },
+      "transitionMode": {
+        "title": "トランジション",
+        "desc": "チャットメッセージの表示方法を選択",
+        "none": "なし",
+        "fadeIn": "フェードイン",
+        "smooth": "スムーズ"
+      }
+    },
+    "colors": {
+      "default": "デフォルト",
+      "red": "赤",
+      "orange": "オレンジ",
+      "gold": "ゴールド",
+      "yellow": "黄",
+      "lime": "ライム",
+      "green": "緑",
+      "cyan": "シアン",
+      "blue": "青",
+      "geekblue": "ギークブルー",
+      "purple": "紫",
+      "magenta": "マゼンタ",
+      "volcano": "ボルケーノ",
+      "mauve": "モーブ",
+      "olive": "オリーブ",
+      "sage": "セージ",
+      "sand": "サンド",
+      "slate": "スレート"
+    }
   },
   "pet": {
     "title": "フローティングペット",

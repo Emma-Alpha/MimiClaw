@@ -5,9 +5,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Sun,
-  Moon,
-  Monitor,
   RefreshCw,
   ExternalLink,
   Copy,
@@ -45,7 +42,6 @@ import {
   type UiTelemetryEntry,
 } from '@/lib/telemetry';
 import { useTranslation } from 'react-i18next';
-import { SUPPORTED_LANGUAGES } from '@/i18n';
 import {
   hostApiFetch,
   fetchCloudGatewayStatus,
@@ -66,6 +62,7 @@ import {
 import { subscribeHostEvent } from '@/lib/host-events';
 import { cn } from '@/lib/utils';
 import { useSettingsStyles } from './styles';
+import SettingsAppearance from './appearance';
 import { PET_IDLE_ANIMATIONS, PET_ANIMATION_LABEL_KEYS, type PetAnimation } from '@/lib/pet-floating';
 import {
   fetchVolcengineSpeechConfig,
@@ -78,7 +75,6 @@ import {
   saveVoiceChatConfig,
 } from '@/lib/voice-chat';
 import {
-  exportFallbackConfigBundle,
 } from '@/lib/fallback-config';
 import type {
   CodeAgentExecutionMode,
@@ -109,50 +105,6 @@ function FormSwitch({
   disabled?: boolean;
 }) {
   return <Switch checked={checked} onChange={onChange} disabled={disabled} />;
-}
-
-function ThemePicker({ value, onChange }: { value?: string; onChange?: (v: string) => void }) {
-  const { t } = useTranslation('settings');
-  const { styles } = useSettingsStyles();
-  return (
-    <div className={styles.pickerWrap}>
-      {(
-        [
-          { value: 'light', label: t('appearance.light'), Icon: Sun },
-          { value: 'dark', label: t('appearance.dark'), Icon: Moon },
-          { value: 'system', label: t('appearance.system'), Icon: Monitor },
-        ] as const
-      ).map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onChange?.(opt.value)}
-          className={cn(styles.pickerBtn, value === opt.value && styles.pickerBtnActive)}
-        >
-          <opt.Icon style={{ height: 16, width: 16 }} />
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function LanguagePicker({ value, onChange }: { value?: string; onChange?: (v: string) => void }) {
-  const { styles } = useSettingsStyles();
-  return (
-    <div className={styles.pickerWrap}>
-      {SUPPORTED_LANGUAGES.map((lang) => (
-        <button
-          key={lang.code}
-          type="button"
-          onClick={() => onChange?.(lang.code)}
-          className={cn(styles.pickerBtn, value === lang.code && styles.pickerBtnActive)}
-        >
-          {lang.label}
-        </button>
-      ))}
-    </div>
-  );
 }
 
 function readStoredCodeAgentWorkspaceRoot(): string {
@@ -198,12 +150,6 @@ export function Settings() {
   const { t } = useTranslation('settings');
   const { styles } = useSettingsStyles();
   const {
-    theme,
-    setTheme,
-    language,
-    setLanguage,
-    launchAtStartup,
-    setLaunchAtStartup,
     gatewayAutoStart,
     setGatewayAutoStart,
     remoteGatewayUrl,
@@ -280,11 +226,6 @@ export function Settings() {
   const [voiceChatAccessKeyDraft, setVoiceChatAccessKeyDraft] = useState('');
   const [voiceChatEndpointDraft, setVoiceChatEndpointDraft] = useState(DEFAULT_VOICE_CHAT_ENDPOINT);
   const [showVoiceChatAccessKey, setShowVoiceChatAccessKey] = useState(false);
-  const [exportingFallbackBundle, setExportingFallbackBundle] = useState(false);
-  const [showFallbackExportPanel, setShowFallbackExportPanel] = useState(false);
-  const [fallbackExportPassword, setFallbackExportPassword] = useState('');
-  const [showFallbackExportPassword, setShowFallbackExportPassword] = useState(false);
-
   const isWindows = window.electron.platform === 'win32';
   const showCliTools = true;
   const [showLogs, setShowLogs] = useState(false);
@@ -1011,13 +952,11 @@ export function Settings() {
           {/* Appearance */}
           {activeSection === 'appearance' && (
             <div className={styles.section}>
-              {/* ── General + Pet settings via @lobehub/ui Form ────────────── */}
+              <SettingsAppearance />
+
               <Form
                 collapsible={false}
                 initialValues={{
-                  theme,
-                  language,
-                  launchAtStartup,
                   petEnabled,
                   petAnimation,
                   xiaojiuEnabled,
@@ -1025,31 +964,6 @@ export function Settings() {
                 }}
                 items={
                   [
-                    {
-                      title: t('appearance.title'),
-                      children: [
-                        {
-                          label: t('appearance.theme'),
-                          children: <ThemePicker />,
-                          name: 'theme',
-                          minWidth: undefined,
-                        },
-                        {
-                          label: t('appearance.language'),
-                          children: <LanguagePicker />,
-                          name: 'language',
-                          minWidth: undefined,
-                        },
-                        {
-                          label: t('appearance.launchAtStartup'),
-                          desc: t('appearance.launchAtStartupDesc'),
-                          children: <FormSwitch />,
-                          name: 'launchAtStartup',
-                          valuePropName: 'checked',
-                          minWidth: undefined,
-                        },
-                      ],
-                    },
                     {
                       title: t('pet.title'),
                       children: [
@@ -1101,9 +1015,6 @@ export function Settings() {
                 itemsType="group"
                 variant="filled"
                 onValuesChange={(changedValues: Record<string, unknown>) => {
-                  if ('theme' in changedValues) setTheme(changedValues.theme as 'light' | 'dark' | 'system');
-                  if ('language' in changedValues) setLanguage(changedValues.language as string);
-                  if ('launchAtStartup' in changedValues) setLaunchAtStartup(changedValues.launchAtStartup as boolean);
                   if ('petEnabled' in changedValues) setPetEnabled(changedValues.petEnabled as boolean);
                   if ('petAnimation' in changedValues) setPetAnimation(changedValues.petAnimation as PetAnimation);
                   if ('xiaojiuEnabled' in changedValues) setXiaojiuEnabled(changedValues.xiaojiuEnabled as boolean);

@@ -649,6 +649,28 @@ export function composePromptWithPaths(text: string, paths: UnifiedComposerPath[
 		: pathLines.join("\n");
 }
 
+function formatResponseLanguageLabel(responseLanguage: string): string {
+	const normalized = responseLanguage.trim().toLowerCase();
+	if (!normalized) return '';
+	if (normalized.startsWith('zh')) return '简体中文';
+	if (normalized.startsWith('en')) return 'English';
+	if (normalized.startsWith('ja')) return '日本語';
+	return responseLanguage.trim();
+}
+
+export function applyResponseLanguageToPrompt(
+	prompt: string,
+	responseLanguage?: string | null,
+): string {
+	const languageLabel = formatResponseLanguageLabel(responseLanguage ?? '');
+	if (!languageLabel) return prompt.trim();
+
+	const normalizedPrompt = prompt.trim();
+	const suffix = `Please answer in ${languageLabel}.`;
+
+	return normalizedPrompt ? `${normalizedPrompt}\n\n${suffix}` : suffix;
+}
+
 export function toOpenClawSubmission(
 	draft: UnifiedComposerDraft,
 ): { prompt: string; attachments: FileAttachment[] } {

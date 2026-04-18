@@ -1,6 +1,7 @@
 import { Markdown } from '@lobehub/ui';
 import { File } from 'lucide-react';
 
+import { useSettingsStore } from '@/stores/settings';
 import { ThinkingPanel } from '../../../ThinkingPanel';
 import { imageSrc } from '../../media-utils';
 import {
@@ -24,6 +25,7 @@ export function AssistantStandardAbove({
   tools,
 }: AssistantProtocolAboveProps) {
   const { styles } = useMessageStyles();
+  const transitionMode = useSettingsStore((state) => state.transitionMode);
   const visibleThinking = showThinking ? thinking : null;
   const thinkingIsStreaming = isStreaming && !!visibleThinking;
   const hasStreamingToolStatus = isStreaming && streamingTools.length > 0;
@@ -38,7 +40,12 @@ export function AssistantStandardAbove({
           showStreamingCursor={thinkingIsStreaming}
           variant="card"
           renderContent={(content: string) => (
-            <Markdown variant="chat" headerMultiple={0} animated={thinkingIsStreaming} {...markdownProps}>
+            <Markdown
+              variant="chat"
+              headerMultiple={0}
+              animated={transitionMode === 'fadeIn' && thinkingIsStreaming}
+              {...markdownProps}
+            >
               {content || ' '}
             </Markdown>
           )}

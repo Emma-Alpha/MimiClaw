@@ -25,6 +25,9 @@ import {
 
 type Theme = 'light' | 'dark' | 'system';
 type UpdateChannel = 'stable' | 'beta' | 'dev';
+export type AnimationMode = 'disabled' | 'agile' | 'elegant';
+export type ContextMenuMode = 'disabled' | 'default';
+export type TransitionMode = 'none' | 'fadeIn' | 'smooth';
 export type SidebarProject = {
   id: string;
   name: string;
@@ -63,6 +66,16 @@ interface SettingsState extends CloudAuthState {
   // General
   theme: Theme;
   language: string;
+  primaryColor: string;
+  neutralColor: string;
+  fontSize: number;
+  highlighterTheme: string;
+  mermaidTheme: string;
+  transitionMode: TransitionMode;
+  animationMode: AnimationMode;
+  contextMenuMode: ContextMenuMode;
+  responseLanguage: string;
+  enableAutoScrollOnStreaming: boolean;
   startMinimized: boolean;
   launchAtStartup: boolean;
   telemetryEnabled: boolean;
@@ -115,6 +128,16 @@ interface SettingsState extends CloudAuthState {
   init: () => Promise<void>;
   setTheme: (theme: Theme) => void;
   setLanguage: (language: string) => void;
+  setPrimaryColor: (value: string) => void;
+  setNeutralColor: (value: string) => void;
+  setFontSize: (value: number) => void;
+  setHighlighterTheme: (value: string) => void;
+  setMermaidTheme: (value: string) => void;
+  setTransitionMode: (value: TransitionMode) => void;
+  setAnimationMode: (value: AnimationMode) => void;
+  setContextMenuMode: (value: ContextMenuMode) => void;
+  setResponseLanguage: (value: string) => void;
+  setEnableAutoScrollOnStreaming: (value: boolean) => void;
   setStartMinimized: (value: boolean) => void;
   setLaunchAtStartup: (value: boolean) => void;
   setTelemetryEnabled: (value: boolean) => void;
@@ -170,6 +193,16 @@ interface SettingsState extends CloudAuthState {
 const defaultSettings = {
   theme: 'system' as Theme,
   language: resolveSupportedLanguage(typeof navigator !== 'undefined' ? navigator.language : undefined),
+  primaryColor: 'blue',
+  neutralColor: 'slate',
+  fontSize: 14,
+  highlighterTheme: 'lobe-theme',
+  mermaidTheme: 'lobe-theme',
+  transitionMode: 'smooth' as TransitionMode,
+  animationMode: 'agile' as AnimationMode,
+  contextMenuMode: 'default' as ContextMenuMode,
+  responseLanguage: '',
+  enableAutoScrollOnStreaming: true,
   startMinimized: false,
   launchAtStartup: false,
   telemetryEnabled: true,
@@ -232,6 +265,16 @@ const defaultSettings = {
 const MAIN_PROCESS_SETTINGS_KEYS = [
   'theme',
   'language',
+  'primaryColor',
+  'neutralColor',
+  'fontSize',
+  'highlighterTheme',
+  'mermaidTheme',
+  'transitionMode',
+  'animationMode',
+  'contextMenuMode',
+  'responseLanguage',
+  'enableAutoScrollOnStreaming',
   'startMinimized',
   'launchAtStartup',
   'telemetryEnabled',
@@ -374,6 +417,77 @@ export const useSettingsStore = create<SettingsState>()(
         void hostApiFetch('/api/settings/language', {
           method: 'PUT',
           body: JSON.stringify({ value: resolvedLanguage }),
+        }).catch(() => { });
+      },
+      setPrimaryColor: (primaryColor) => {
+        set({ primaryColor });
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ primaryColor }),
+        }).catch(() => { });
+      },
+      setNeutralColor: (neutralColor) => {
+        set({ neutralColor });
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ neutralColor }),
+        }).catch(() => { });
+      },
+      setFontSize: (fontSize) => {
+        const normalized = Math.max(12, Math.min(18, Math.round(fontSize)));
+        set({ fontSize: normalized });
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ fontSize: normalized }),
+        }).catch(() => { });
+      },
+      setHighlighterTheme: (highlighterTheme) => {
+        set({ highlighterTheme });
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ highlighterTheme }),
+        }).catch(() => { });
+      },
+      setMermaidTheme: (mermaidTheme) => {
+        set({ mermaidTheme });
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ mermaidTheme }),
+        }).catch(() => { });
+      },
+      setTransitionMode: (transitionMode) => {
+        set({ transitionMode });
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ transitionMode }),
+        }).catch(() => { });
+      },
+      setAnimationMode: (animationMode) => {
+        set({ animationMode });
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ animationMode }),
+        }).catch(() => { });
+      },
+      setContextMenuMode: (contextMenuMode) => {
+        set({ contextMenuMode });
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ contextMenuMode }),
+        }).catch(() => { });
+      },
+      setResponseLanguage: (responseLanguage) => {
+        set({ responseLanguage });
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ responseLanguage }),
+        }).catch(() => { });
+      },
+      setEnableAutoScrollOnStreaming: (enableAutoScrollOnStreaming) => {
+        set({ enableAutoScrollOnStreaming });
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ enableAutoScrollOnStreaming }),
         }).catch(() => { });
       },
       setStartMinimized: (startMinimized) => set({ startMinimized }),

@@ -23,6 +23,16 @@ const PBKDF2_KEYLEN = 32;
 const PBKDF2_DIGEST = 'sha256';
 
 const SETTINGS_KEYS: ReadonlyArray<keyof AppSettings> = [
+  'primaryColor',
+  'neutralColor',
+  'fontSize',
+  'highlighterTheme',
+  'mermaidTheme',
+  'transitionMode',
+  'animationMode',
+  'contextMenuMode',
+  'responseLanguage',
+  'enableAutoScrollOnStreaming',
   'gatewayAutoStart',
   'gatewayPort',
   'gatewayToken',

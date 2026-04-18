@@ -18,7 +18,6 @@ import {
 	Mic,
 	Pin,
 	Plus,
-	Search,
 	Settings as SettingsIcon,
 	SquarePen,
 	Trash2,
@@ -49,7 +48,6 @@ import {
 	deriveWorkspaceName,
 	normalizeWorkspacePath,
 } from "@/lib/sidebar-workspace";
-import { SearchInput } from "@/components/common/SearchInput";
 import { SidebarUpdateAction } from "@/components/update/SidebarUpdateAction";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
@@ -216,6 +214,7 @@ export function Sidebar() {
 		(s) => s.sidebarThreadWorkspaceExpanded,
 	);
 	const sidebarActiveContext = useSettingsStore((s) => s.sidebarActiveContext);
+	const contextMenuMode = useSettingsStore((s) => s.contextMenuMode);
 	const setSidebarThreadWorkspaceExpanded = useSettingsStore(
 		(s) => s.setSidebarThreadWorkspaceExpanded,
 	);
@@ -282,8 +281,7 @@ export function Sidebar() {
 		key: string;
 		label: string;
 	} | null>(null);
-	const [searchQuery, setSearchQuery] = useState("");
-	const [searchExpanded, setSearchExpanded] = useState(false);
+	const [searchQuery] = useState("");
 	const [openClawSessionsExpanded, setOpenClawSessionsExpanded] =
 		useState(false);
 	const [xiaojiuSessionsExpanded, setXiaojiuSessionsExpanded] = useState(false);
@@ -303,7 +301,6 @@ export function Sidebar() {
 	const [workspaceAvailabilityById, setWorkspaceAvailabilityById] = useState<
 		Record<string, WorkspaceAvailability>
 	>({});
-	const searchInputRef = useRef<HTMLInputElement>(null);
 	const didRunMigrationRef = useRef(false);
 	const didInitialWorkspaceFetchRef = useRef(false);
 	const fetchedWorkspaceIdsRef = useRef<Set<string>>(new Set());
@@ -675,11 +672,6 @@ export function Sidebar() {
 		upsertSidebarThreadWorkspace,
 	]);
 
-	const focusSearch = useCallback(() => {
-		setSearchExpanded(true);
-		window.setTimeout(() => searchInputRef.current?.focus(), 0);
-	}, []);
-
 	const handleOpenClawNewThread = useCallback(() => {
 		setSidebarActiveContext({ kind: "openclaw", workspaceId: null });
 		setFolderExpanded("openclaw", true);
@@ -993,6 +985,10 @@ export function Sidebar() {
 								handleWorkspaceOpenInFinder(workspace);
 							},
 						};
+						const workspaceMenuTrigger: Array<"click" | "contextMenu"> =
+							contextMenuMode === "default"
+								? ["click", "contextMenu"]
+								: ["click"];
 
 						return (
 							<div key={workspace.id}>
@@ -1041,7 +1037,7 @@ export function Sidebar() {
 													handleWorkspaceNewThread(workspace);
 												}}
 											/>
-											<Dropdown menu={workspaceMenu} trigger={["click"]}>
+											<Dropdown menu={workspaceMenu} trigger={workspaceMenuTrigger}>
 												<ActionIcon
 													icon={Ellipsis}
 													size={{ blockSize: 20, size: 12 }}

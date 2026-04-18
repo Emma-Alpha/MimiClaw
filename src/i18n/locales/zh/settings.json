@@ -2,15 +2,94 @@
   "title": "设置",
   "subtitle": "配置您的 极智 体验",
   "appearance": {
-    "title": "通用",
+    "title": "外观",
     "description": "自定义外观和风格",
+    "common": {
+      "title": "通用设置"
+    },
+    "app": {
+      "title": "应用外观",
+      "paletteTitle": "调色盘"
+    },
     "theme": "主题",
     "light": "浅色",
     "dark": "深色",
     "system": "跟随系统",
     "language": "语言",
     "launchAtStartup": "开机自动启动",
-    "launchAtStartupDesc": "登录系统后自动启动 极智"
+    "launchAtStartupDesc": "登录系统后自动启动 极智",
+    "launchAtStartupDisabled": "不使用",
+    "launchAtStartupEnabled": "默认",
+    "primaryColor": {
+      "title": "主题色",
+      "desc": "自定义主题色"
+    },
+    "neutralColor": {
+      "title": "中性色",
+      "desc": "不同色彩倾向的灰阶自定义"
+    },
+    "animationMode": {
+      "title": "响应动画",
+      "desc": "调整应用程序的操作响应动画速度",
+      "disabled": "关闭",
+      "agile": "敏捷",
+      "elegant": "优雅"
+    },
+    "contextMenuMode": {
+      "title": "右键菜单方案",
+      "desc": "为部分列表项启用右键菜单。",
+      "disabled": "不使用",
+      "default": "默认"
+    },
+    "responseLanguage": {
+      "title": "回复语言",
+      "desc": "设置 AI 回复使用的语言"
+    },
+    "chat": {
+      "title": "聊天外观",
+      "autoScroll": {
+        "title": "AI 回复时自动滚动",
+        "desc": "当 AI 正在生成回复时，自动滚动到底部"
+      },
+      "fontSize": {
+        "title": "字体大小",
+        "desc": "消息字体大小",
+        "standard": "标准"
+      },
+      "highlighterTheme": {
+        "title": "代码高亮主题"
+      },
+      "mermaidTheme": {
+        "title": "Mermaid 主题"
+      },
+      "transitionMode": {
+        "title": "过渡动画",
+        "desc": "选择聊天消息的显示方式",
+        "none": "无",
+        "fadeIn": "淡入",
+        "smooth": "平滑"
+      }
+    },
+    "colors": {
+      "default": "默认",
+      "red": "红",
+      "orange": "橙",
+      "gold": "金",
+      "yellow": "黄",
+      "lime": "青柠",
+      "green": "绿",
+      "cyan": "青",
+      "blue": "蓝",
+      "geekblue": "极客蓝",
+      "purple": "紫",
+      "magenta": "洋红",
+      "volcano": "火山",
+      "mauve": "灰紫",
+      "olive": "橄榄",
+      "sage": "鼠尾草",
+      "sand": "沙",
+      "slate": "石板"
+    }
   },
   "pet": {
     "title": "桌面悬浮宠物",

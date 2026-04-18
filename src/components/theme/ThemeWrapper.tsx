@@ -6,6 +6,7 @@
 import { type ReactNode, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { ConfigProvider as AntdConfigProvider } from 'antd';
 import { ConfigProvider as LobeConfigProvider, ThemeProvider as LobeThemeProvider } from '@lobehub/ui';
+import type { NeutralColors, PrimaryColors } from '@4399ywkf/theme-system';
 // @ts-expect-error – internal path, not in public types
 import AppElementContext from '@lobehub/ui/es/ThemeProvider/AppElementContext';
 import {
@@ -71,6 +72,9 @@ const LobeUiCompatGlobalStyle = createGlobalStyle`
 
 export function ThemeWrapper({ children }: ThemeWrapperProps) {
   const theme = useSettingsStore((s) => s.theme);
+  const primaryColor = useSettingsStore((s) => s.primaryColor);
+  const neutralColor = useSettingsStore((s) => s.neutralColor);
+  const animationMode = useSettingsStore((s) => s.animationMode);
   const popupContainerRef = useRef<HTMLDivElement>(null);
   const [appElement, setAppElement] = useState<HTMLDivElement | null>(null);
 
@@ -86,16 +90,26 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
   }, [resolvedAppearance]);
 
   const getAntdTheme = useCallback<GetAntdTheme>(
-    (appearance) => ({
-      ...createMimiThemeConfig({
+    (appearance) => {
+      const baseTheme = createMimiThemeConfig({
         appearance: appearance as ResolvedAppearance,
-        neutralColor: 'slate',
-      }),
-      // Enable antd CSS variable mode so --ant-* vars are injected at :root,
-      // making them accessible to @lobehub/ui portals that render outside the tree.
-      cssVar: { prefix: 'ant', key: 'lobe-vars' },
-    }),
-    [],
+        neutralColor: (neutralColor || 'slate') as NeutralColors,
+        primaryColor: (primaryColor || 'blue') as PrimaryColors,
+      });
+
+      return {
+        ...baseTheme,
+        token: {
+          ...(baseTheme.token ?? {}),
+          motion: animationMode !== 'disabled',
+          motionUnit: animationMode === 'agile' ? 0.05 : 0.1,
+        },
+        // Enable antd CSS variable mode so --ant-* vars are injected at :root,
+        // making them accessible to @lobehub/ui portals that render outside the tree.
+        cssVar: { prefix: 'ant', key: 'lobe-vars' },
+      };
+    },
+    [animationMode, neutralColor, primaryColor],
   );
 
   const getPopupContainer = useCallback(
@@ -108,6 +122,10 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
      
         <LobeThemeProvider
           appearance={resolvedAppearance}
+          customTheme={{
+            neutralColor: (neutralColor || 'slate') as NeutralColors,
+            primaryColor: (primaryColor || 'blue') as PrimaryColors,
+          }}
           defaultAppearance={resolvedAppearance}
           defaultThemeMode={resolvedAppearance}
           enableCustomFonts={false}

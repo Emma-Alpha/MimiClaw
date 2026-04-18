@@ -28,6 +28,16 @@ export interface AppSettings {
   // General
   theme: 'light' | 'dark' | 'system';
   language: string;
+  primaryColor: string;
+  neutralColor: string;
+  fontSize: number;
+  highlighterTheme: string;
+  mermaidTheme: string;
+  transitionMode: 'none' | 'fadeIn' | 'smooth';
+  animationMode: 'disabled' | 'agile' | 'elegant';
+  contextMenuMode: 'disabled' | 'default';
+  responseLanguage: string;
+  enableAutoScrollOnStreaming: boolean;
   startMinimized: boolean;
   launchAtStartup: boolean;
   telemetryEnabled: boolean;
@@ -104,6 +114,16 @@ function createDefaultSettings(): AppSettings {
     // General
     theme: 'system',
     language: resolveSupportedLanguage(getSystemLocale()),
+    primaryColor: 'blue',
+    neutralColor: 'slate',
+    fontSize: 14,
+    highlighterTheme: 'lobe-theme',
+    mermaidTheme: 'lobe-theme',
+    transitionMode: 'smooth',
+    animationMode: 'agile',
+    contextMenuMode: 'default',
+    responseLanguage: '',
+    enableAutoScrollOnStreaming: true,
     startMinimized: false,
     launchAtStartup: false,
     telemetryEnabled: true,

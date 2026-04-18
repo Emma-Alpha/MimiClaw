@@ -5,6 +5,7 @@ import { useResponsive } from "antd-style";
 
 import type { EnhancedMarkdownProps } from '@/lib/markdown-enhancements';
 import type { AttachedFileMeta, RawMessage } from '@/stores/chat';
+import { useSettingsStore } from '@/stores/settings';
 import { getAssistantProtocolComponents } from './protocols/assistant';
 import type { AssistantToolEntry } from './protocols/assistant/types';
 import { AssistantActions, ImageLightbox } from './shared';
@@ -75,6 +76,7 @@ export function AssistantMessage({
 }: AssistantMessageProps) {
   const { styles, cx } = useMessageStyles();
   const { mobile } = useResponsive();
+  const transitionMode = useSettingsStore((state) => state.transitionMode);
   const [lightboxImg, setLightboxImg] = useState<LightboxImage | null>(null);
 
   const { Above, Below } = getAssistantProtocolComponents(protocol);
@@ -173,7 +175,6 @@ export function AssistantMessage({
               {assistantBelowMessage}
             </>
           }
-          markdownProps={{ ...markdownProps, animated: isStreaming }}
           message={text}
           placement="left"
           renderMessage={(editableContent) => (
@@ -182,6 +183,7 @@ export function AssistantMessage({
           showTitle={false}
           showAvatar={false}
           variant="bubble"
+          markdownProps={{ ...markdownProps, animated: transitionMode === 'fadeIn' && isStreaming }}
         />
       ) : (
         <div className={styles.chatItem} style={{ paddingInline: '12px', paddingBlock: '24px 12px', boxSizing: 'border-box' }}>

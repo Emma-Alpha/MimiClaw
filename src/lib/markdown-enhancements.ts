@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { MarkdownProps } from '@lobehub/ui';
+import type { HighlighterProps, MarkdownProps, MermaidProps } from '@lobehub/ui';
 import { useSettingsStore } from '@/stores/settings';
 
 type MdastNode = {
@@ -93,6 +93,7 @@ export type EnhancedMarkdownProps = Pick<
 	| 'fullFeaturedCodeBlock'
 	| 'enableCustomFootnotes'
 	| 'enableGithubAlert'
+	| 'fontSize'
 	| 'streamSmoothingPreset'
 >;
 
@@ -122,6 +123,9 @@ export function useEnhancedMarkdownProps(
 	extra?: Pick<MarkdownProps, 'remarkPlugins' | 'componentProps'>,
 ): EnhancedMarkdownProps {
 	const theme = useSettingsStore((state) => state.theme);
+	const fontSize = useSettingsStore((state) => state.fontSize);
+	const highlighterTheme = useSettingsStore((state) => state.highlighterTheme);
+	const mermaidTheme = useSettingsStore((state) => state.mermaidTheme);
 	const prefersDarkMode = usePrefersDarkMode();
 
 	const resolvedTheme = theme === 'system'
@@ -129,9 +133,13 @@ export function useEnhancedMarkdownProps(
 		: theme;
 
 	return useMemo(() => {
-		const highlightTheme = resolvedTheme === 'dark'
-			? 'github-dark-default'
-			: 'github-light-default';
+		const fallbackHighlightTheme: NonNullable<HighlighterProps['theme']> =
+			resolvedTheme === 'dark' ? 'github-dark-default' : 'github-light-default';
+		const highlightTheme = (
+			highlighterTheme || fallbackHighlightTheme
+		) as NonNullable<HighlighterProps['theme']>;
+		const resolvedMermaidTheme: NonNullable<MermaidProps['theme']> =
+			(mermaidTheme || 'lobe-theme') as NonNullable<MermaidProps['theme']>;
 
 		const baseComponentProps: MarkdownComponentProps = {
 			highlight: {
@@ -141,6 +149,10 @@ export function useEnhancedMarkdownProps(
 				theme: highlightTheme,
 				variant: 'filled',
 				wrap: true,
+			},
+			mermaid: {
+				fullFeatured: false,
+				theme: resolvedMermaidTheme,
 			},
 			pre: {
 				allowChangeLanguage: true,
@@ -155,9 +167,10 @@ export function useEnhancedMarkdownProps(
 			componentProps: mergeMarkdownComponentProps(baseComponentProps, extra?.componentProps),
 			enableCustomFootnotes: true,
 			enableGithubAlert: true,
+			fontSize,
 			fullFeaturedCodeBlock: true,
 			remarkPlugins: [...baseRemarkPlugins, ...(extra?.remarkPlugins ?? [])],
 			streamSmoothingPreset: 'balanced',
 		};
-	}, [extra?.componentProps, extra?.remarkPlugins, resolvedTheme]);
+	}, [extra?.componentProps, extra?.remarkPlugins, fontSize, highlighterTheme, mermaidTheme, resolvedTheme]);
 }

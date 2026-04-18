@@ -3,7 +3,14 @@ import {
 	baseToken as themeSystemBaseToken,
 	createThemeConfig,
 	type CreateThemeConfigParams,
+	type NeutralColors,
+	type PrimaryColors,
 } from "@4399ywkf/theme-system";
+
+type MimiThemeConfigParams = CreateThemeConfigParams & {
+	neutralColor?: NeutralColors;
+	primaryColor?: PrimaryColors;
+};
 
 export const typographyTokenOverrides: Record<string, number> = {
 	fontSize: 14,
@@ -17,7 +24,7 @@ export const typographyTokenOverrides: Record<string, number> = {
 };
 
 
-export function createMimiThemeConfig(params: CreateThemeConfigParams): ThemeConfig {
+export function createMimiThemeConfig(params: MimiThemeConfigParams): ThemeConfig {
 	const themeConfig = createThemeConfig(params);
 	return {
 		...themeConfig,
