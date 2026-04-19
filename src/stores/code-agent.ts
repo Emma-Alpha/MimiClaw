@@ -6,6 +6,7 @@
  */
 import { create } from "zustand";
 import type { Descendant } from "slate";
+import { buildUnifiedPatch } from "@/lib/diff-utils";
 
 // ─── SDK message shape helpers ───────────────────────────────────────────────
 // We do not import the full Zod schemas here to keep the renderer bundle lean.
@@ -476,46 +477,6 @@ export function buildInputSummary(toolName: string, input: Record<string, unknow
 	if (name === "agent" || name === "task") return truncate(str(input.description) || str(input.prompt), 60);
 	const first = Object.values(input).find((v) => typeof v === "string" && (v as string).length > 0);
 	return first ? truncate(first as string) : "";
-}
-
-/** Generate unified diff patch string between two text buffers */
-function buildUnifiedPatch(
-	filePath: string,
-	oldContent: string,
-	newContent: string,
-): { patch: string; additions: number; deletions: number } {
-	const oldLines = oldContent.split("\n");
-	const newLines = newContent.split("\n");
-	let additions = 0;
-	let deletions = 0;
-
-	// Simple line-diff to produce unified output
-	// In practice the `diff` npm package should be used for robust output;
-	// this is a lightweight fallback so no extra dependency is required at
-	// compile time in the renderer. The DiffView component can also use
-	// the `diff` package directly if available.
-	const lines: string[] = [`--- a/${filePath}`, `+++ b/${filePath}`];
-	const maxLen = Math.max(oldLines.length, newLines.length);
-	for (let i = 0; i < maxLen; i++) {
-		if (i < oldLines.length && i < newLines.length) {
-			if (oldLines[i] !== newLines[i]) {
-				lines.push(`-${oldLines[i]}`);
-				lines.push(`+${newLines[i]}`);
-				deletions++;
-				additions++;
-			} else {
-				lines.push(` ${oldLines[i]}`);
-			}
-		} else if (i < newLines.length) {
-			lines.push(`+${newLines[i]}`);
-			additions++;
-		} else {
-			lines.push(`-${oldLines[i]}`);
-			deletions++;
-		}
-	}
-
-	return { patch: lines.join("\n"), additions, deletions };
 }
 
 /** Extract and add a diff item for file-edit/write tool uses */
