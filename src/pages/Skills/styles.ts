@@ -61,7 +61,7 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
     position: sticky;
     top: 0;
     z-index: 6;
-    padding-inline: var(--skills-inline-padding);
+    --setting-header-bleed: var(--skills-inline-padding);
     background: color-mix(in srgb, ${token.colorBgContainer} 78%, transparent);
     backdrop-filter: blur(12px) saturate(130%);
     -webkit-backdrop-filter: blur(12px) saturate(130%);

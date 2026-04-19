@@ -55,6 +55,7 @@ export const useSettingsStyles = createStyles(({ token, css }) => ({
   contentInner: css`
     max-width: 768px;
     padding: 40px 32px 64px;
+    --setting-header-bleed: 32px;
   `,
 
   // Section containers
