@@ -155,6 +155,12 @@ function getPosixShellArgs(shell: string): string[] {
 	return shellName === "sh" ? [] : ["-l"];
 }
 
+function getShellDisplayName(shell: string, fallback?: string): string {
+	const normalized = basename(shell.trim());
+	if (normalized) return normalized;
+	return fallback?.trim() || "shell";
+}
+
 function buildTerminalEnv(): Record<string, string> {
 	const envEntries = Object.entries(process.env).filter(
 		(entry): entry is [string, string] => typeof entry[1] === "string",
@@ -218,12 +224,13 @@ function listThreadTerminalShells(): ThreadTerminalShellOption[] {
 		const resolvedShell = candidate.shell === "/usr/bin/env"
 			? candidate.args[0] || candidate.label
 			: candidate.shell;
-		const optionId = resolvedShell.toLowerCase();
+		const optionLabel = getShellDisplayName(resolvedShell, candidate.label);
+		const optionId = optionLabel.toLowerCase();
 		if (seen.has(optionId)) continue;
 		seen.add(optionId);
 		options.push({
 			id: optionId,
-			label: candidate.label,
+			label: optionLabel,
 			shell: resolvedShell,
 		});
 	}

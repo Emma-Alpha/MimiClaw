@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import i18n from '@/i18n';
 import { hostApiFetch } from '@/lib/host-api';
+import { clampSidebarWidth, SIDEBAR_DEFAULT_WIDTH } from '@/lib/sidebar-layout';
 import { DEFAULT_CODE_AGENT_RUNTIME_CONFIG, type CodeAgentRuntimeConfig } from '../../shared/code-agent';
 import {
   clampChatFontSize,
@@ -251,7 +252,7 @@ const defaultSettings = {
     workspaceId: null,
   },
   sidebarBetaEnabled: false,
-  sidebarWidth: 268,
+  sidebarWidth: SIDEBAR_DEFAULT_WIDTH,
   sidebarProjects: [],
   sidebarProjectExpanded: {
     'system-inbox': true,
@@ -727,7 +728,10 @@ export const useSettingsStore = create<SettingsState>()(
       },
       setSidebarBetaEnabled: (sidebarBetaEnabled) => set({ sidebarBetaEnabled }),
       setSidebarWidth: (sidebarWidth) => set({
-        sidebarWidth: Math.max(220, Math.min(480, Math.round(sidebarWidth))),
+        sidebarWidth: clampSidebarWidth(
+          sidebarWidth,
+          typeof window === 'undefined' ? Number.POSITIVE_INFINITY : window.innerWidth,
+        ),
       }),
       addSidebarProject: (name) => {
         const trimmed = name.trim();

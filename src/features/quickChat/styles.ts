@@ -1179,12 +1179,12 @@ export const useMiniChatStyles = createStyles(
 		flex-direction: column;
 	`,
 	threadTerminalHeader: css`
-		height: 32px;
+		height: 36px;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 10px;
-		padding: 0 8px;
+		gap: 0;
+		padding-right: 6px;
 		border-bottom: 1px solid ${token.colorBorderSecondary};
 		background: ${token.colorBgContainer};
 	`,
@@ -1193,9 +1193,9 @@ export const useMiniChatStyles = createStyles(
 		min-width: 0;
 		display: flex;
 		align-items: center;
-		gap: 2px;
+		gap: 0;
 		overflow-x: auto;
-		padding: 3px 0;
+		padding: 0;
 
 		&::-webkit-scrollbar {
 			height: 0;
@@ -1205,28 +1205,24 @@ export const useMiniChatStyles = createStyles(
 		display: inline-flex;
 		align-items: center;
 		gap: 4px;
-		max-width: 156px;
-		padding: 0 4px 0 2px;
-		height: 24px;
-		border: 1px solid transparent;
-		border-radius: 6px;
+		max-width: 180px;
+		padding: 0 4px 0 8px;
+		height: 100%;
+		border-right: 1px solid ${token.colorBorderSecondary};
+		border-radius: 0;
 		background: transparent;
 		color: ${token.colorTextSecondary};
 		flex-shrink: 0;
-		transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
+		transition: background 0.14s ease, color 0.14s ease;
 	`,
 	threadTerminalTabActive: css`
-		border-color: ${token.colorBorderSecondary};
 		background: ${token.colorFillQuaternary};
 		color: ${token.colorText};
-	`,
-	threadTerminalTabVisible: css`
-		background: ${token.colorFillTertiary};
 	`,
 	threadTerminalTabButton: css`
 		display: inline-flex;
 		align-items: center;
-		gap: 5px;
+		gap: 0;
 		min-width: 0;
 		flex: 1;
 		height: 100%;
@@ -1237,8 +1233,8 @@ export const useMiniChatStyles = createStyles(
 		cursor: pointer;
 	`,
 	threadTerminalTabLabel: css`
-		font-size: 11px;
-		font-weight: 450;
+		font-size: 12px;
+		font-weight: 500;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -1264,36 +1260,12 @@ export const useMiniChatStyles = createStyles(
 			color: ${token.colorText};
 		}
 	`,
-	threadTerminalHeaderMeta: css`
-		flex: 0 1 280px;
-		min-width: 0;
-		display: inline-flex;
-		align-items: center;
-		gap: 8px;
-		justify-content: flex-end;
-		color: ${token.colorTextTertiary};
-	`,
-	threadTerminalHeaderMetaShell: css`
-		flex-shrink: 0;
-		font-size: 10px;
-		font-weight: 600;
-		font-family: ${token.fontFamilyCode};
-		color: ${token.colorTextSecondary};
-		text-transform: lowercase;
-	`,
-	threadTerminalHeaderMetaText: css`
-		min-width: 0;
-		font-size: 10px;
-		font-family: ${token.fontFamilyCode};
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	`,
 	threadTerminalHeaderRight: css`
 		display: inline-flex;
 		align-items: center;
-		gap: 4px;
+		gap: 2px;
 		min-width: 0;
+		padding-left: 8px;
 	`,
 	threadTerminalHeaderClose: css`
 		color: ${token.colorTextTertiary};
@@ -1310,53 +1282,13 @@ export const useMiniChatStyles = createStyles(
 			color: ${token.colorText} !important;
 		}
 	`,
-	threadTerminalActionButtonActive: css`
-		background: ${token.colorFillTertiary} !important;
-		color: ${token.colorText} !important;
-	`,
-	threadTerminalShellSelectWrap: css`
-		display: inline-flex;
-		align-items: center;
-		height: 24px;
-		padding: 0 6px;
-		border-radius: 6px;
-		background: transparent;
-	`,
-	threadTerminalShellSelect: css`
-		border: none;
-		background: transparent;
-		color: ${token.colorTextSecondary};
-		font-size: 10px;
-		font-weight: 500;
-		font-family: ${token.fontFamilyCode};
-		outline: none;
-		cursor: pointer;
-	`,
-	threadTerminalStatusDot: css`
-		width: 5px;
-		height: 5px;
-		border-radius: 999px;
-		flex-shrink: 0;
-	`,
-	threadTerminalStatusDotLive: css`
-		background: ${token.colorSuccess};
-	`,
-	threadTerminalStatusDotIdle: css`
-		background: ${token.colorTextQuaternary};
-	`,
-	threadTerminalStatusLabel: css`
-		font-size: 10px;
-		color: ${token.colorTextTertiary};
-		font-weight: 500;
-		letter-spacing: 0;
-	`,
 	threadTerminalBody: css`
 		position: relative;
 		flex: 1;
 		min-height: 0;
 		display: flex;
 		overflow: hidden;
-		padding: 8px 8px 8px;
+		padding: 0;
 		background: ${token.colorBgContainer};
 	`,
 	threadTerminalViewportStack: css`
@@ -1382,9 +1314,7 @@ export const useMiniChatStyles = createStyles(
 		visibility: hidden;
 	`,
 	threadTerminalViewFocused: css`
-		outline: 1px solid ${token.colorBorderSecondary};
-		outline-offset: -1px;
-		border-radius: 8px;
+		outline: none;
 	`,
 	threadTerminalViewport: css`
 		width: 100%;
@@ -1426,24 +1356,6 @@ export const useMiniChatStyles = createStyles(
 		.xterm-helper-textarea {
 			opacity: 0;
 		}
-	`,
-	threadTerminalSplitHandle: css`
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		width: 10px;
-		margin-left: -5px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		cursor: col-resize;
-		z-index: 2;
-	`,
-	threadTerminalSplitGrip: css`
-		width: 2px;
-		height: 44px;
-		border-radius: 999px;
-		background: ${token.colorBorder};
 	`,
 	messageMetaRow: css`
 		display: inline-flex;

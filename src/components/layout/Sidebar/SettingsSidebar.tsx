@@ -10,16 +10,22 @@ import { NavItem, SideBarHeaderLayout, SideBarLayout } from '@/features/NavPanel
 
 const useStyles = createStyles(({ token, css }) => ({
   aside: css`
+    --mimi-sidebar-surface: color-mix(in srgb, ${token.colorBgContainer} 97%, ${token.colorText} 3%);
+    --mimi-sidebar-border: color-mix(in srgb, ${token.colorText} 10%, transparent);
+
     display: flex;
-    width: 248px;
+    width: 100%;
+    min-width: 0;
     flex-shrink: 0;
     flex-direction: column;
     height: 100%;
     overflow: hidden;
-    border-right: 1px solid ${token.colorBorderSecondary};
-    background: ${token.colorBgLayout};
+    border-right: 1px solid var(--mimi-sidebar-border);
+    background: var(--mimi-sidebar-surface);
+    box-shadow: inset -1px 0 0 color-mix(in srgb, ${token.colorText} 4%, transparent);
   `,
   topBar: css`
+    container: sidebar-topbar / inline-size;
     height: ${window.electron?.platform === 'darwin' ? '40px' : '2.75rem'};
     width: 100%;
     flex-shrink: 0;

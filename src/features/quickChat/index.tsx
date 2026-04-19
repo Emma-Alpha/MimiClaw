@@ -12,7 +12,6 @@ import {
 	Check,
 	ChevronDown,
 	GitBranch,
-	Monitor,
 	Plus,
 	Search,
 	Shield,
