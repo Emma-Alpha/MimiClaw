@@ -36,10 +36,10 @@ export interface CloudLoginResult {
 	expiresAt?: number;
 }
 
-const DEV_LOGIN_USERNAME = "admin";
-const DEV_LOGIN_PASSWORD = "admin";
-const DEV_LOGIN_TOKEN = "mimiclaw-dev-admin-token";
-const DEV_LOGIN_EXPIRES_IN_MS = 24 * 60 * 60 * 1000;
+const LOCAL_LOGIN_USERNAME = "admin";
+const LOCAL_LOGIN_PASSWORD = "admin";
+const LOCAL_LOGIN_TOKEN = "mimiclaw-local-admin-token";
+const LOCAL_LOGIN_EXPIRES_IN_MS = 24 * 60 * 60 * 1000;
 
 export interface XiaojiuOAuthConfig {
 	authUrl: string;
@@ -255,24 +255,20 @@ function headersToRecord(headers?: HeadersInit): Record<string, string> {
 	return { ...(headers as Record<string, string>) };
 }
 
-export function isDevCloudLoginEnabled(): boolean {
-	try {
-		return Boolean(window.electron?.isDev);
-	} catch {
-		return false;
-	}
+export function isLocalCloudLoginCredential(username: string, password: string): boolean {
+	return username.trim() === LOCAL_LOGIN_USERNAME && password === LOCAL_LOGIN_PASSWORD;
 }
 
-export function isDevCloudLoginCredential(username: string, password: string): boolean {
-	return username.trim() === DEV_LOGIN_USERNAME && password === DEV_LOGIN_PASSWORD;
+export function isLocalCloudSession(session: CloudSession | null | undefined): boolean {
+	return session?.token === LOCAL_LOGIN_TOKEN;
 }
 
-function createDevCloudSession(): CloudSession {
+function createLocalCloudSession(): CloudSession {
 	return {
-		token: DEV_LOGIN_TOKEN,
-		userId: DEV_LOGIN_USERNAME,
-		workspaceId: DEV_LOGIN_USERNAME,
-		expiresAt: Date.now() + DEV_LOGIN_EXPIRES_IN_MS,
+		token: LOCAL_LOGIN_TOKEN,
+		userId: LOCAL_LOGIN_USERNAME,
+		workspaceId: LOCAL_LOGIN_USERNAME,
+		expiresAt: Date.now() + LOCAL_LOGIN_EXPIRES_IN_MS,
 	};
 }
 
@@ -282,15 +278,15 @@ function createDevCloudSession(): CloudSession {
 
 /**
  * Authenticate against the cloud API.
- * MVP uses admin/admin; the implementation supports any credentials the
- * backend chooses to accept.
+ * The reserved local admin/admin credential bypasses remote validation and
+ * only opens the desktop login gate.
  */
 export async function cloudLogin(
 	username: string,
 	password: string,
 ): Promise<CloudSession> {
-	if (isDevCloudLoginEnabled() && isDevCloudLoginCredential(username, password)) {
-		const session = createDevCloudSession();
+	if (isLocalCloudLoginCredential(username, password)) {
+		const session = createLocalCloudSession();
 		setCloudSession(session);
 		return session;
 	}
@@ -311,7 +307,11 @@ export async function cloudLogin(
 
 export async function cloudLogout(): Promise<void> {
 	try {
-		if (isCloudSessionValid()) {
+		const session = getCloudSession();
+		if (isLocalCloudSession(session)) {
+			return;
+		}
+		if (session) {
 			await cloudApiFetch("/api/auth/logout", { method: "POST" });
 		}
 	} catch {

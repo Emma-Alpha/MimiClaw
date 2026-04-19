@@ -25,8 +25,9 @@ import {
   cloudLogout,
   getCloudApiBase,
   getCloudSession,
-  setCloudSession,
   isCloudSessionValid,
+  isLocalCloudSession,
+  setCloudSession,
   type CloudSession,
 } from '@/lib/cloud-api';
 
@@ -848,6 +849,7 @@ export const useSettingsStore = create<SettingsState>()(
 
       loginCloud: async (username: string, password: string) => {
         const session = await cloudLogin(username, password);
+        const isLocalSession = isLocalCloudSession(session);
         set({
           cloudLoggedIn: true,
           cloudUserId: session.userId,
@@ -855,6 +857,7 @@ export const useSettingsStore = create<SettingsState>()(
         });
         // Persist cloud credentials to the main-process settings store so that
         // cloud-config-bridge.ts can use them for server-side API calls.
+        // The local admin/admin bypass intentionally keeps these empty.
         const cloudApiBase = (() => {
           try {
             const override = window.localStorage.getItem('mimiclaw:cloud-api-base');
@@ -865,8 +868,8 @@ export const useSettingsStore = create<SettingsState>()(
         void hostApiFetch('/api/settings', {
           method: 'PUT',
           body: JSON.stringify({
-            cloudApiUrl: cloudApiBase,
-            cloudApiToken: session.token,
+            cloudApiUrl: isLocalSession ? '' : cloudApiBase,
+            cloudApiToken: isLocalSession ? '' : session.token,
           }),
         }).catch(() => { });
       },
