@@ -65,6 +65,7 @@ export function SettingsSidebar() {
             left={t('title', { defaultValue: '设置' })}
             showBack
             backTo="/"
+            preferHistoryBack
             showTogglePanelButton={false}
           />
         }
@@ -76,7 +77,16 @@ export function SettingsSidebar() {
                 icon={icon}
                 title={label}
                 active={activeSection === key}
-                onClick={() => setSearchParams({ section: key })}
+                onClick={() =>
+                  setSearchParams(
+                    (prev) => {
+                      const next = new URLSearchParams(prev);
+                      next.set('section', key);
+                      return next;
+                    },
+                    { replace: true },
+                  )
+                }
               />
             ))}
           </Flexbox>

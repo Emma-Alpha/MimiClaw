@@ -44,6 +44,7 @@ interface SideBarHeaderLayoutProps {
   expand?: boolean;
   left?: ReactNode;
   onToggle?: () => void;
+  preferHistoryBack?: boolean;
   right?: ReactNode;
   showBack?: boolean;
   showTogglePanelButton?: boolean;
@@ -55,6 +56,7 @@ const SideBarHeaderLayout = memo<SideBarHeaderLayoutProps>(
     right,
     backTo = '/',
     showBack = true,
+    preferHistoryBack = false,
     breadcrumb = [],
     showTogglePanelButton = true,
     expand,
@@ -72,6 +74,7 @@ const SideBarHeaderLayout = memo<SideBarHeaderLayoutProps>(
       >
         {showBack && (
           <BackButton
+            preferHistoryBack={preferHistoryBack}
             to={backTo}
             size={{ blockSize: 32, size: 16 }}
           />
