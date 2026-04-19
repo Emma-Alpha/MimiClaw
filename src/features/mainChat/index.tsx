@@ -20,6 +20,7 @@ import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
 import { ChatToolbar } from './components/ChatToolbar';
 import { invokeIpc } from '@/lib/api-client';
+import { CHAT_HEADER_HEIGHT } from '@/lib/titlebar-safe-area';
 import { extractImages, extractText, extractThinking, extractToolUse } from './lib/message-utils';
 import { useMessageStyles } from './components/messages/styles';
 import { useTranslation } from 'react-i18next';
@@ -40,11 +41,10 @@ const useStyles = createStyles(({ token, css }) => ({
     background: ${token.colorBgContainer};
   `,
   toolbar: css`
-    height: 40px;
+    height: ${CHAT_HEADER_HEIGHT}px;
     display: flex;
-    align-items: center;
+    align-items: stretch;
     flex-shrink: 0;
-    padding: 10px 12px 8px;
     background: ${token.colorBgContainer};
     position: relative;
     overflow: visible;

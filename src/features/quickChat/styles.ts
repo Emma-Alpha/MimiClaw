@@ -1,11 +1,15 @@
 import { createStyles } from "antd-style";
+import { CHAT_HEADER_HEIGHT } from "@/lib/titlebar-safe-area";
 import {
 	CHAT_SESSION_META_FONT_SIZE,
 	CHAT_SESSION_TITLE_FONT_SIZE,
 } from "@/styles/typography-tokens";
 
 export const useMiniChatStyles = createStyles(
-	({ token, css }, props: { isCollapsed?: boolean } = {}) => ({
+	(
+		{ token, css },
+		props: { codexHeaderInsetEnd?: number; codexHeaderInsetStart?: number } = {},
+	) => ({
 		root: css`
 			--mini-chat-side-gap: 16px;
 			--mini-chat-input-width: min(800px, 100%);
@@ -71,12 +75,15 @@ export const useMiniChatStyles = createStyles(
 		z-index: 120;
 	`,
 		headerEmbeddedCodex: css`
-		height: 40px;
+		height: ${CHAT_HEADER_HEIGHT}px;
 		grid-template-columns: minmax(0, 1fr) auto;
 		column-gap: 16px;
-		padding: 10px 12px 8px;
-		margin-inline-start: ${window.electron?.platform === "darwin" && props.isCollapsed ? "128px" : "12px"};
-		transition: margin-inline-start 0.28s ease;
+		padding-block: 0;
+		padding-inline-end: ${props.codexHeaderInsetEnd ?? 12}px;
+		padding-inline-start: ${props.codexHeaderInsetStart ?? 12}px;
+		transition:
+			padding-inline-end 0.28s ease,
+			padding-inline-start 0.28s ease;
 		pointer-events: auto;
 		-webkit-app-region: drag;
 		border-bottom: none;

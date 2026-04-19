@@ -2,13 +2,16 @@
  * Chat Toolbar
  * Unified header style matching MiniChat embedded codex header.
  */
-import { useMemo, type CSSProperties } from 'react';
+import { useMemo } from 'react';
+import type { CSSProperties } from 'react';
 import { RefreshCw, Brain } from 'lucide-react';
 import { ActionIcon } from '@lobehub/ui';
 import { OpenClaw } from '@lobehub/icons';
 import { createStyles } from 'antd-style';
+import { useChatHeaderInsets } from '@/lib/titlebar-safe-area';
 import { useChatStore } from '@/stores/chat';
 import { useAgentsStore } from '@/stores/agents';
+import { useSettingsStore } from '@/stores/settings';
 import {
   CHAT_SESSION_HEADER_ICON_SIZE,
   CHAT_SESSION_META_FONT_SIZE,
@@ -21,13 +24,18 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     align-items: center;
     gap: 8px;
+    height: 100%;
     min-width: 0;
     flex: 1;
+    width: 100%;
+    transition:
+      padding-inline-end 0.28s ease,
+      padding-inline-start 0.28s ease;
   `,
   left: css`
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     flex: 1;
     min-width: 0;
     overflow: hidden;
@@ -41,6 +49,7 @@ const useStyles = createStyles(({ token, css }) => ({
   titleWrap: css`
     display: flex;
     flex-direction: column;
+    gap: 2px;
     min-width: 0;
   `,
   sessionTitle: css`
@@ -64,7 +73,7 @@ const useStyles = createStyles(({ token, css }) => ({
   right: css`
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 4px;
     flex-shrink: 0;
   `,
   thinkingActive: css`
@@ -76,9 +85,6 @@ const useStyles = createStyles(({ token, css }) => ({
 export function ChatToolbar() {
   const { t } = useTranslation('chat');
   const { styles, cx } = useStyles();
-  const toolbarDragStyle: CSSProperties & { WebkitAppRegion: 'no-drag' } = {
-    WebkitAppRegion: 'no-drag',
-  };
 
   const refresh = useChatStore((s) => s.refresh);
   const loading = useChatStore((s) => s.loading);
@@ -87,7 +93,18 @@ export function ChatToolbar() {
   const currentAgentId = useChatStore((s) => s.currentAgentId);
   const currentSessionKey = useChatStore((s) => s.currentSessionKey);
   const sessionLabels = useChatStore((s) => s.sessionLabels);
+  const sidebarCollapsed = useSettingsStore((s) => s.sidebarCollapsed);
   const agents = useAgentsStore((s) => s.agents);
+  const headerInsets = useChatHeaderInsets(sidebarCollapsed);
+
+  const toolbarDragStyle: CSSProperties & { WebkitAppRegion: 'no-drag' } = useMemo(
+    () => ({
+      WebkitAppRegion: 'no-drag',
+      paddingInlineEnd: `${headerInsets.end}px`,
+      paddingInlineStart: `${headerInsets.start}px`,
+    }),
+    [headerInsets.end, headerInsets.start],
+  );
 
   const currentAgentName = useMemo(
     () => (agents ?? []).find((agent) => agent.id === currentAgentId)?.name ?? currentAgentId,

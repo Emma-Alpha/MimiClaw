@@ -2,6 +2,7 @@ import { memo, useState, useEffect, useMemo } from "react";
 import { ActionIcon } from "@lobehub/ui";
 import { OpenClaw, ClaudeCode } from "@lobehub/icons";
 import { Dropdown } from "antd";
+import { useChatHeaderInsets } from "@/lib/titlebar-safe-area";
 import {
 	Expand,
 	X,
@@ -128,7 +129,11 @@ function MiniChatHeaderImpl({
 	onToggleTerminal,
 }: MiniChatHeaderProps) {
 	const sidebarCollapsed = useSettingsStore((state) => state.sidebarCollapsed);
-	const { styles, cx } = useMiniChatStyles({ isCollapsed: sidebarCollapsed });
+	const headerInsets = useChatHeaderInsets(sidebarCollapsed);
+	const { styles, cx } = useMiniChatStyles({
+		codexHeaderInsetEnd: headerInsets.end,
+		codexHeaderInsetStart: headerInsets.start,
+	});
 	const [dropdownOpen, setDropdownOpen] = useState(false);
 	const [sessionQuery, setSessionQuery] = useState("");
 	const isCodeMode = draftTarget === "code";
