@@ -1281,6 +1281,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 					showWindowActions={!embeddedCodeAssistant}
 					showTerminalToggle={embeddedCodeAssistant && draftTarget === "code"}
 					isTerminalVisible={showThreadTerminal}
+					isTerminalToggleDisabled={!codeWorkspaceRoot.trim()}
 					terminalShortcutLabel={terminalShortcutLabel}
 					onToggleTerminal={() => {
 						setShowThreadTerminal((previous) => !previous);

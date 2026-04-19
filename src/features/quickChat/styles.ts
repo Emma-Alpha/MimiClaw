@@ -184,6 +184,20 @@ export const useMiniChatStyles = createStyles(
 				border-color: ${token.colorBorder};
 				background: color-mix(in srgb, ${token.colorBgContainer} 92%, transparent);
 			}
+
+			&:disabled {
+				cursor: not-allowed;
+				color: ${token.colorTextQuaternary};
+				border-color: ${token.colorBorderSecondary};
+				background: color-mix(in srgb, ${token.colorFillQuaternary} 72%, transparent);
+				box-shadow: none;
+			}
+
+			&:disabled:hover {
+				color: ${token.colorTextQuaternary};
+				border-color: ${token.colorBorderSecondary};
+				background: color-mix(in srgb, ${token.colorFillQuaternary} 72%, transparent);
+			}
 		`,
 		embeddedToolbarButtonActive: css`
 			color: ${token.colorPrimary};
@@ -1315,6 +1329,27 @@ export const useMiniChatStyles = createStyles(
 		overflow: hidden;
 		padding: 0;
 		background: ${token.colorBgContainer};
+	`,
+	threadTerminalEmptyState: css`
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		padding: 24px;
+		text-align: center;
+	`,
+	threadTerminalEmptyTitle: css`
+		font-size: 13px;
+		font-weight: 600;
+		color: ${token.colorText};
+	`,
+	threadTerminalEmptyDescription: css`
+		max-width: 320px;
+		font-size: 12px;
+		line-height: 1.5;
+		color: ${token.colorTextTertiary};
 	`,
 	threadTerminalViewportStack: css`
 		position: relative;

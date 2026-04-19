@@ -437,6 +437,7 @@ export function ThreadTerminalPanel({
 	onClose,
 }: ThreadTerminalPanelProps) {
 	const { styles, cx } = useMiniChatStyles();
+	const hasWorkspaceRoot = workspaceRoot.trim().length > 0;
 	const [shellOptions, setShellOptions] = useState<ThreadTerminalShellOption[]>([]);
 	const [tabs, setTabs] = useState<TerminalTabDefinition[]>([]);
 	const [focusedTabId, setFocusedTabId] = useState("");
@@ -448,11 +449,14 @@ export function ThreadTerminalPanel({
 	const focusedTab = tabs.find((tab) => tab.id === focusedTabId) ?? tabs[0] ?? null;
 	const focusedMeta = focusedTab ? tabMeta[focusedTab.id] : null;
 	const activeTabId = focusedTab?.id || "";
-	const panelTitle = branchLabel?.trim()
-		? `git:${branchLabel.trim()}`
-		: compactPath(focusedMeta?.cwd || workspaceRoot);
+	const panelTitle = !hasWorkspaceRoot
+		? "先选择工作目录"
+		: branchLabel?.trim()
+			? `git:${branchLabel.trim()}`
+			: compactPath(focusedMeta?.cwd || workspaceRoot);
 
 	const createTab = useCallback((shellOverride?: string) => {
+		if (!hasWorkspaceRoot) return;
 		let createdTabId = "";
 		const preferredShell = shellOverride || focusedTab?.shell || shellOptions[0]?.shell || "";
 
@@ -468,9 +472,17 @@ export function ThreadTerminalPanel({
 		if (createdTabId) {
 			setFocusedTabId(createdTabId);
 		}
-	}, [focusedTab?.shell, shellOptions]);
+	}, [focusedTab?.shell, hasWorkspaceRoot, shellOptions]);
 
 	useEffect(() => {
+		if (!hasWorkspaceRoot) {
+			setShellOptions([]);
+			setTabs([]);
+			setFocusedTabId("");
+			setTabMeta({});
+			return;
+		}
+
 		let cancelled = false;
 
 		const loadShells = async () => {
@@ -500,7 +512,7 @@ export function ThreadTerminalPanel({
 		return () => {
 			cancelled = true;
 		};
-	}, [workspaceRoot]);
+	}, [hasWorkspaceRoot, workspaceRoot]);
 
 	useEffect(() => {
 		if (!isResizing) return;
@@ -659,15 +671,15 @@ export function ThreadTerminalPanel({
 						})}
 					</div>
 					<div className={styles.threadTerminalHeaderRight}>
-						<ActionIcon
-							icon={Plus}
-							size="small"
-							className={cx(
-								styles.threadTerminalActionButton,
-							)}
-							onClick={() => createTab()}
-							title="新建终端"
-						/>
+						{hasWorkspaceRoot ? (
+							<ActionIcon
+								icon={Plus}
+								size="small"
+								className={styles.threadTerminalActionButton}
+								onClick={() => createTab()}
+								title="新建终端"
+							/>
+						) : null}
 						{onClose ? (
 							<ActionIcon
 								icon={X}
@@ -680,22 +692,31 @@ export function ThreadTerminalPanel({
 					</div>
 				</div>
 				<div className={styles.threadTerminalBody}>
-					<div className={styles.threadTerminalViewportStack}>
-						{tabs.map((tab) => {
-							const visible = tab.id === activeTabId;
-							return (
-								<TerminalTabView
-									key={tab.id}
-									tab={tab}
-									workspaceRoot={workspaceRoot}
-									focused={tab.id === activeTabId}
-									visible={visible}
-									onMetaChange={handleTabMetaChange}
-									onRequestFocus={handleRequestFocus}
-								/>
-							);
-						})}
-					</div>
+					{hasWorkspaceRoot ? (
+						<div className={styles.threadTerminalViewportStack}>
+							{tabs.map((tab) => {
+								const visible = tab.id === activeTabId;
+								return (
+									<TerminalTabView
+										key={tab.id}
+										tab={tab}
+										workspaceRoot={workspaceRoot}
+										focused={tab.id === activeTabId}
+										visible={visible}
+										onMetaChange={handleTabMetaChange}
+										onRequestFocus={handleRequestFocus}
+									/>
+								);
+							})}
+						</div>
+					) : (
+						<div className={styles.threadTerminalEmptyState}>
+							<div className={styles.threadTerminalEmptyTitle}>先选择工作目录</div>
+							<div className={styles.threadTerminalEmptyDescription}>
+								选择工作目录后，这里会启动真实终端会话。
+							</div>
+						</div>
+					)}
 				</div>
 			</div>
 		</div>

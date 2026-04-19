@@ -60,6 +60,7 @@ type MiniChatHeaderProps = {
 	showWindowActions?: boolean;
 	showTerminalToggle?: boolean;
 	isTerminalVisible?: boolean;
+	isTerminalToggleDisabled?: boolean;
 	terminalShortcutLabel?: string;
 	onToggleTerminal?: () => void;
 };
@@ -125,6 +126,7 @@ function MiniChatHeaderImpl({
 	showWindowActions = true,
 	showTerminalToggle = false,
 	isTerminalVisible = false,
+	isTerminalToggleDisabled = false,
 	terminalShortcutLabel = "",
 	onToggleTerminal,
 }: MiniChatHeaderProps) {
@@ -201,9 +203,11 @@ function MiniChatHeaderImpl({
 	const embeddedHeaderTitle = viewModel.headerTitle || "新线程";
 	const embeddedHeaderTitleDisplay = truncateHeaderText(embeddedHeaderTitle, 20) || "新线程";
 	const embeddedStatusLabel = viewModel.status.label;
-	const terminalToggleTitle = terminalShortcutLabel
-		? `切换终端 ${terminalShortcutLabel}`
-		: "切换终端";
+	const terminalToggleTitle = isTerminalToggleDisabled
+		? "先选择工作目录"
+		: terminalShortcutLabel
+			? `切换终端 ${terminalShortcutLabel}`
+			: "切换终端";
 	const EmbeddedStatusIcon =
 		viewModel.status.kind === "generating"
 			? Clock
@@ -338,13 +342,14 @@ function MiniChatHeaderImpl({
 									styles.embeddedToolbarButton,
 									isTerminalVisible && styles.embeddedToolbarButtonActive,
 								)}
+								disabled={isTerminalToggleDisabled}
 								onClick={(event) => {
 									event.stopPropagation();
 									onToggleTerminal?.();
 								}}
 								title={terminalToggleTitle}
 								aria-label={terminalToggleTitle}
-								aria-pressed={isTerminalVisible}
+								aria-pressed={isTerminalToggleDisabled ? undefined : isTerminalVisible}
 							>
 								<SquareTerminal size={CHAT_SESSION_META_ICON_SIZE} />
 							</button>
