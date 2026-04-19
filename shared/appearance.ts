@@ -1,7 +1,7 @@
 export type AppThemeMode = 'light' | 'dark' | 'system';
 
 export const DEFAULT_APP_THEME_MODE: AppThemeMode = 'dark';
-export const DEFAULT_NEUTRAL_COLOR = 'sand';
+export const DEFAULT_NEUTRAL_COLOR = 'slate';
 
 export const MIN_CHAT_FONT_SIZE = 12;
 export const MAX_CHAT_FONT_SIZE = 18;

@@ -106,8 +106,8 @@ const NavItem = memo<NavItemProps>(
     slots,
     ...rest
   }) => {
-    const iconColor = active ? cssVar.colorText : cssVar.colorTextDescription;
-    const textColor = active ? cssVar.colorText : cssVar.colorTextSecondary;
+    const iconColor = active ? cssVar.colorText : cssVar.colorTextSecondary;
+    const textColor = cssVar.colorText;
     const variant = active ? 'filled' : 'borderless';
 
     const { titlePrefix, iconPostfix } = slots || {};

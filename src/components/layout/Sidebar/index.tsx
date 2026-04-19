@@ -103,9 +103,7 @@ const useStyles = createStyles(({ css, token }) => ({
   `,
 	footer: css`
     flex-shrink: 0;
-    padding: 4px 8px;
-    border-top: 1px solid var(--mimi-sidebar-border);
-    background: color-mix(in srgb, var(--mimi-sidebar-surface) 96%, ${token.colorText} 4%);
+    padding: 4px 8px 8px;
   `,
 	subItemLevel1: css`
     padding-inline-start: 20px !important;
@@ -144,7 +142,12 @@ const useStyles = createStyles(({ css, token }) => ({
     box-shadow: none;
     outline: none;
     text-align: left;
-    &:hover { background: ${cssVar.colorFillTertiary}; }
+    transition: color 0.14s ease;
+
+    &:hover {
+      background: none;
+      color: ${cssVar.colorTextSecondary};
+    }
   `,
 	sessionListToggleNested: css`
     padding-inline-start: 10px;
