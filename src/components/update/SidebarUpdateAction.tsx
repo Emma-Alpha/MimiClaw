@@ -43,12 +43,12 @@ const useStyles = createStyles(({ css, token }) => ({
         0 0 0 5px rgba(10, 132, 255, 0.3),
         0 14px 24px -16px rgba(10, 132, 255, 1);
     }
-  `,
-  icon: css`
-    display: inline-flex;
-    width: 12px;
-    height: 12px;
-    stroke-width: 2.3;
+
+    & svg {
+      width: 12px;
+      height: 12px;
+      stroke-width: 2.3;
+    }
   `,
 }));
 
@@ -70,7 +70,6 @@ export function SidebarUpdateAction() {
     <ActionIcon
       className={styles.button}
       icon={Download}
-      iconClassName={styles.icon}
       size={{ blockSize: 22, size: 12 }}
       aria-label={updateLabel}
       title={updateLabel}
