@@ -19,6 +19,7 @@ import { useSettingsStore } from '@/stores/settings';
 import {
   createMimiThemeConfig,
   getChatTypographyVars,
+  resolvePrimarySolidTextColor,
 } from '@/styles/typography-tokens';
 import { GlobalStyle } from '@/styles';
 import {
@@ -88,6 +89,10 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
     () => getChatTypographyVars(fontSize),
     [fontSize],
   );
+  const primarySolidTextColor = useMemo(
+    () => resolvePrimarySolidTextColor(resolvedAppearance, primaryColor as PrimaryColors | undefined),
+    [primaryColor, resolvedAppearance],
+  );
 
   // Sync data-theme attribute for antd CSS variable mode
   // and the .dark class for Tailwind CSS variables (darkMode: ['class'])
@@ -153,7 +158,16 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
         <LobeConfigProvider motion={motion}>
           <LobeUiCompatGlobalStyle />
           <GlobalStyle />
-          <AntdConfigProvider getPopupContainer={getPopupContainer}>
+          <AntdConfigProvider
+            getPopupContainer={getPopupContainer}
+            theme={{
+              components: {
+                Button: {
+                  primaryColor: primarySolidTextColor,
+                },
+              },
+            }}
+          >
             {/* Provide AppElementContext so @lobehub/ui DropdownMenu portals
                 render inside the theme container rather than document.body */}
             <div

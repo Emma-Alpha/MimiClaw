@@ -1,11 +1,6 @@
 import type { ThemeConfig } from 'antd';
-import {
-  baseToken as themeSystemBaseToken,
-  createThemeConfig,
-  type CreateThemeConfigParams,
-  type NeutralColors,
-  type PrimaryColors,
-} from '@4399ywkf/theme-system';
+import { baseToken as themeSystemBaseToken, colorScales, createThemeConfig, primary } from '@4399ywkf/theme-system';
+import type { CreateThemeConfigParams, NeutralColors, PrimaryColors } from '@4399ywkf/theme-system';
 import { clampChatFontSize, DEFAULT_CHAT_FONT_SIZE } from '../../shared/appearance';
 
 type MimiThemeConfigParams = CreateThemeConfigParams & {
@@ -13,6 +8,9 @@ type MimiThemeConfigParams = CreateThemeConfigParams & {
   neutralColor?: NeutralColors;
   primaryColor?: PrimaryColors;
 };
+
+const DARK_SOLID_TEXT_COLOR = '#111111';
+const LIGHT_SOLID_TEXT_COLOR = '#ffffff';
 
 export const APP_BUTTON_RADIUS = 12;
 export const APP_CARD_RADIUS = 16;
@@ -44,6 +42,68 @@ type ChatTypographyScale = {
   xs: number;
   xxs: number;
 };
+
+function normalizeHexColor(color: string): string | null {
+  const value = color.trim();
+
+  if (/^#[\da-f]{3}$/iu.test(value)) {
+    const [r, g, b] = value.slice(1).split('');
+
+    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+  }
+
+  if (/^#[\da-f]{6}$/iu.test(value)) {
+    return value.toLowerCase();
+  }
+
+  return null;
+}
+
+function getRelativeLuminance(color: string): number | null {
+  const normalizedColor = normalizeHexColor(color);
+
+  if (!normalizedColor) return null;
+
+  const channels = normalizedColor
+    .slice(1)
+    .match(/.{2}/gu)
+    ?.map((channel) => Number.parseInt(channel, 16) / 255);
+
+  if (!channels || channels.length !== 3) return null;
+
+  const linearChannels = channels.map((channel) =>
+    channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
+  );
+
+  const [red, green, blue] = linearChannels;
+
+  return red * 0.2126 + green * 0.7152 + blue * 0.0722;
+}
+
+function getContrastRatio(foregroundColor: string, backgroundColor: string): number {
+  const foregroundLuminance = getRelativeLuminance(foregroundColor);
+  const backgroundLuminance = getRelativeLuminance(backgroundColor);
+
+  if (foregroundLuminance === null || backgroundLuminance === null) return 0;
+
+  const lighterColor = Math.max(foregroundLuminance, backgroundLuminance);
+  const darkerColor = Math.min(foregroundLuminance, backgroundLuminance);
+
+  return (lighterColor + 0.05) / (darkerColor + 0.05);
+}
+
+export function resolvePrimarySolidTextColor(
+  appearance: CreateThemeConfigParams['appearance'],
+  primaryColor?: PrimaryColors,
+): string {
+  const primaryScale = primaryColor ? colorScales[primaryColor] : primary;
+  const primaryBackgroundColor = primaryScale[appearance][9];
+
+  return getContrastRatio(DARK_SOLID_TEXT_COLOR, primaryBackgroundColor) >=
+    getContrastRatio(LIGHT_SOLID_TEXT_COLOR, primaryBackgroundColor)
+    ? DARK_SOLID_TEXT_COLOR
+    : LIGHT_SOLID_TEXT_COLOR;
+}
 
 function createChatTypographyScale(fontSize = DEFAULT_CHAT_FONT_SIZE): ChatTypographyScale {
   const base = clampChatFontSize(fontSize);
@@ -96,9 +156,17 @@ export function getTypographyTokenOverrides(fontSize = DEFAULT_CHAT_FONT_SIZE): 
 export function createMimiThemeConfig(params: MimiThemeConfigParams): ThemeConfig {
   const { fontSize, ...rest } = params;
   const themeConfig = createThemeConfig(rest);
+  const primarySolidTextColor = resolvePrimarySolidTextColor(rest.appearance, rest.primaryColor);
 
   return {
     ...themeConfig,
+    components: {
+      ...(themeConfig.components ?? {}),
+      Button: {
+        ...(themeConfig.components?.Button ?? {}),
+        primaryColor: primarySolidTextColor,
+      },
+    },
     token: {
       ...(themeConfig.token ?? {}),
       ...getTypographyTokenOverrides(fontSize),
