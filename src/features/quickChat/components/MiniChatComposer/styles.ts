@@ -377,42 +377,6 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		line-height: 1;
 		font-variant-numeric: tabular-nums;
 	`,
-	screenshotTooltipTrigger: css`
-		display: inline-flex;
-		align-items: center;
-	`,
-	screenshotTooltipContent: css`
-		display: inline-flex;
-		align-items: center;
-		padding: 6px 10px;
-		border-radius: 8px;
-		border: 1px solid ${token.colorBorderSecondary};
-		background: ${token.colorBgElevated};
-		box-shadow: ${token.boxShadowSecondary};
-	`,
-	screenshotTooltipRow: css`
-		display: inline-flex;
-		align-items: center;
-		gap: 8px;
-		color: ${token.colorTextSecondary};
-		font-size: var(--mimi-font-size-xs);
-		font-weight: 500;
-		line-height: 1;
-	`,
-	screenshotTooltipKey: css`
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		padding: 0 6px;
-		height: 18px;
-		border-radius: 5px;
-		background: ${token.colorFillQuaternary};
-		border: 1px solid ${token.colorBorderSecondary};
-		color: ${token.colorTextTertiary};
-		font-size: var(--mimi-font-size-2xs);
-		line-height: 1;
-		font-variant-numeric: tabular-nums;
-	`,
 	micButton: css`
 		display: flex;
 		align-items: center;

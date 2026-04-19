@@ -1,7 +1,7 @@
 import { memo, useState, useEffect, useMemo } from "react";
 import { ActionIcon } from "@lobehub/ui";
 import { OpenClaw, ClaudeCode } from "@lobehub/icons";
-import { Dropdown, Tooltip } from "antd";
+import { Dropdown } from "antd";
 import {
 	Expand,
 	X,
@@ -12,6 +12,7 @@ import {
 	ShieldAlert,
 	SquareTerminal,
 } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useSettingsStore } from "@/stores/settings";
 import type { CodeAgentStatus } from "../../../../shared/code-agent";
 import type {

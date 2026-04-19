@@ -1,5 +1,6 @@
 import type {
 	ClipboardEvent as ReactClipboardEvent,
+	ReactNode,
 } from "react";
 import {
 	useState,
@@ -31,7 +32,6 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { invokeIpc } from "@/lib/api-client";
 import {
 	CHAT_ACTION_ICON_SIZE,
-	CHAT_ACTION_ICON_SIZE_COMPACT,
 	CHAT_CHIP_ICON_SIZE,
 	CHAT_PRIMARY_ACTION_ICON_SIZE,
 	CHAT_STOP_ICON_SIZE,
@@ -55,6 +55,30 @@ function extractDroppedPathsFromTransfer(
 ): UnifiedComposerPath[] {
 	return extractUnifiedDroppedPathsFromTransfer(dataTransfer);
 }
+
+function QuickActionTooltip({
+	children,
+	title,
+}: {
+	children: ReactNode;
+	title?: ReactNode;
+}) {
+	if (!title) return <>{children}</>;
+
+	return (
+		<Tooltip mouseEnterDelay={0.2} placement="top" title={title}>
+			<span
+				style={{
+					alignItems: "center",
+					display: "inline-flex",
+				}}
+			>
+				{children}
+			</span>
+		</Tooltip>
+	);
+}
+
 export function MiniChatComposer({
 	fusedWithTodo = false,
 	input,
@@ -379,11 +403,6 @@ export function MiniChatComposer({
 	const effortLabel = effortEnabled ? "超高" : "标准";
 	const modelShortcut = "⌘M";
 	const useFullComposerControls = !isMiniChatMode;
-	const showCodexExpandedControls = useCodexExpandedLayout;
-	const showStandaloneScreenshot =
-		isClaudeCodeCliMode
-		&& useFullComposerControls
-		&& (!showBottomControls || showCodexExpandedControls);
 	const screenshotShortcutLabel = useMemo(
 		() => (/(Mac|iPhone|iPad|iPod)/i.test(window.navigator.platform) ? "⌘⇧S" : "Ctrl+Shift+S"),
 		[],
@@ -412,9 +431,7 @@ export function MiniChatComposer({
 			onClick: onUploadFolder,
 			disabled,
 		},
-	];
-	if (!showStandaloneScreenshot) {
-		attachmentMenuItems.push({
+		{
 			key: "screenshot",
 			label: (
 				<span className={styles.attachmentMenuLabel}>
@@ -425,8 +442,8 @@ export function MiniChatComposer({
 			icon: <Camera style={{ width: 14, height: 14 }} />,
 			onClick: onScreenshot,
 			disabled,
-		});
-	}
+		},
+	];
 
 	const modelMenuItems = useMemo<NonNullable<MenuProps["items"]>>(
 		() =>
@@ -479,83 +496,65 @@ export function MiniChatComposer({
 	);
 
 	const renderModelControl = () => (
-		<StyledDropdown
-			menu={modelDropdownMenu}
-			placement="topLeft"
-			trigger={["click"]}
-		>
-			<button
-				type="button"
-				className={styles.codexControlChip}
-				title={`切换模型 (${modelShortcut})`}
+		<QuickActionTooltip title={`切换模型 (${modelShortcut})`}>
+			<StyledDropdown
+				menu={modelDropdownMenu}
+				placement="topLeft"
+				trigger={["click"]}
 			>
-				<span>{modelLabel}</span>
-				<ChevronDown size={12} />
-			</button>
-		</StyledDropdown>
+				<button
+					type="button"
+					className={styles.codexControlChip}
+					aria-label={`切换模型 (${modelShortcut})`}
+				>
+					<span>{modelLabel}</span>
+					<ChevronDown size={12} />
+				</button>
+			</StyledDropdown>
+		</QuickActionTooltip>
 	);
 
 	const renderEffortControl = () => (
-		<StyledDropdown
-			menu={effortDropdownMenu}
-			placement="topLeft"
-			trigger={["click"]}
-		>
-			<button
-				type="button"
-				className={styles.codexControlChip}
+		<QuickActionTooltip title="切换思考强度">
+			<StyledDropdown
+				menu={effortDropdownMenu}
+				placement="topLeft"
+				trigger={["click"]}
 			>
-				<span>{effortLabel}</span>
-				<ChevronDown size={12} />
-			</button>
-		</StyledDropdown>
+				<button
+					type="button"
+					className={styles.codexControlChip}
+					aria-label="切换思考强度"
+				>
+					<span>{effortLabel}</span>
+					<ChevronDown size={12} />
+				</button>
+			</StyledDropdown>
+		</QuickActionTooltip>
 	);
 
 	const renderPlusButton = () => (
-		<StyledDropdown
-			menu={{ items: attachmentMenuItems }}
-			placement="top"
-			trigger={["click"]}
-			disabled={disabled}
-			variant="default"
-		>
-			<button
-				type="button"
-				className={cx(
-					styles.plusButton,
-					useCodexExpandedLayout && styles.plusButtonCodex,
-				)}
+		<QuickActionTooltip title="添加附件">
+			<StyledDropdown
+				menu={{ items: attachmentMenuItems }}
+				placement="top"
+				trigger={["click"]}
 				disabled={disabled}
-				title="添加附件"
+				variant="default"
 			>
-				<Plus style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />
-			</button>
-		</StyledDropdown>
-	);
-
-	const renderScreenshotButton = () => (
-		<Tooltip
-			title={
-				<span className={styles.screenshotTooltipRow}>
-					<span>截屏</span>
-					<span className={styles.screenshotTooltipKey}>{screenshotShortcutLabel}</span>
-				</span>
-			}
-			placement="top"
-			overlayClassName={styles.screenshotTooltipContent}
-		>
-			<span className={styles.screenshotTooltipTrigger}>
 				<button
 					type="button"
-					className={styles.codexControlIconButton}
-					onClick={onScreenshot}
+					className={cx(
+						styles.plusButton,
+						useCodexExpandedLayout && styles.plusButtonCodex,
+					)}
 					disabled={disabled}
-					title="截图"
+					aria-label="添加附件"
 				>
-					<Camera size={CHAT_ACTION_ICON_SIZE_COMPACT} />
+					<Plus style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />
 				</button>
-			</span>
-		</Tooltip>
+			</StyledDropdown>
+		</QuickActionTooltip>
 	);
 
 	const renderActions = () => {
@@ -576,65 +575,73 @@ export function MiniChatComposer({
 
 		if (shouldShowVoiceDialogAction) {
 			return (
-				<button
-					type="button"
-					className={styles.voiceDialogButton}
-					onClick={handleOpenVoiceDialog}
-					disabled={disabled}
-					title="语音对话"
-				>
-					<span className={styles.voiceDialogGlyph} aria-hidden="true">
-						<span className={styles.voiceDialogBar} />
-						<span className={styles.voiceDialogBar} />
-						<span className={styles.voiceDialogBar} />
-						<span className={styles.voiceDialogBar} />
-					</span>
-				</button>
+				<QuickActionTooltip title="语音对话">
+					<button
+						type="button"
+						className={styles.voiceDialogButton}
+						onClick={handleOpenVoiceDialog}
+						disabled={disabled}
+						aria-label="语音对话"
+					>
+						<span className={styles.voiceDialogGlyph} aria-hidden="true">
+							<span className={styles.voiceDialogBar} />
+							<span className={styles.voiceDialogBar} />
+							<span className={styles.voiceDialogBar} />
+							<span className={styles.voiceDialogBar} />
+						</span>
+					</button>
+				</QuickActionTooltip>
 			);
 		}
 
 		if (isClaudeCodeCliMode) {
 			const micAction = (
-				<button
-					type="button"
-					className={cx(styles.micIconBtn, isRecording && styles.micButtonRecording)}
-					onClick={() => {
-						void handleToggleRecording();
-					}}
-					disabled={isTranscribing}
-					title={isRecording ? "停止录音" : "语音输入"}
-				>
-					<Mic style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />
-				</button>
+				<QuickActionTooltip title={isRecording ? "停止录音" : "语音输入"}>
+					<button
+						type="button"
+						className={cx(styles.micIconBtn, isRecording && styles.micButtonRecording)}
+						onClick={() => {
+							void handleToggleRecording();
+						}}
+						disabled={isTranscribing}
+						aria-label={isRecording ? "停止录音" : "语音输入"}
+					>
+						<Mic style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />
+					</button>
+				</QuickActionTooltip>
 			);
 
 			if (loading) {
 				return (
 					<>
 						{micAction}
-						<button
-							type="button"
-							className={loadingSendButtonClassName}
-							disabled={false}
-							onClick={onSend}
-							title="停止生成"
-						>
-							<Square style={{ width: CHAT_STOP_ICON_SIZE, height: CHAT_STOP_ICON_SIZE }} fill="currentColor" />
-						</button>
+						<QuickActionTooltip title="停止生成">
+							<button
+								type="button"
+								className={loadingSendButtonClassName}
+								disabled={false}
+								onClick={onSend}
+								aria-label="停止生成"
+							>
+								<Square style={{ width: CHAT_STOP_ICON_SIZE, height: CHAT_STOP_ICON_SIZE }} fill="currentColor" />
+							</button>
+						</QuickActionTooltip>
 					</>
 				);
 			}
 				return (
 					<>
 						{micAction}
-						<Button
-							htmlType="button"
-							className={baseSendButtonClassName}
-							disabled={sendDisabled || sendingDisabledByRecording}
-							onClick={onSend}
-							title={sendingDisabledByRecording ? (isTranscribing ? "正在转写" : "请先停止录音") : "发送"}
-							icon={<Send style={{ width: CHAT_PRIMARY_ACTION_ICON_SIZE, height: CHAT_PRIMARY_ACTION_ICON_SIZE, transform: "translateX(-0.4px) translateY(0.35px)" }} />}
-						/>
+						<QuickActionTooltip title={sendingDisabledByRecording ? (isTranscribing ? "正在转写" : "请先停止录音") : "发送"}>
+							<Button
+								htmlType="button"
+								className={baseSendButtonClassName}
+								disabled={sendDisabled || sendingDisabledByRecording}
+								onClick={onSend}
+								aria-label={sendingDisabledByRecording ? (isTranscribing ? "正在转写" : "请先停止录音") : "发送"}
+								icon={<Send style={{ width: CHAT_PRIMARY_ACTION_ICON_SIZE, height: CHAT_PRIMARY_ACTION_ICON_SIZE, transform: "translateX(-0.4px) translateY(0.35px)" }} />}
+							/>
+						</QuickActionTooltip>
 					</>
 				);
 			}
@@ -642,23 +649,27 @@ export function MiniChatComposer({
 		if (loading) {
 			return (
 				<>
-					<button
-						type="button"
-						className={cx(styles.micIconBtn, isRecording && styles.micButtonRecording)}
-						onClick={() => { void handleToggleRecording(); }}
-						disabled={isTranscribing}
-						title={isRecording ? '停止录音' : '语音输入'}
-					>
-						<Mic style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />
-					</button>
+					<QuickActionTooltip title={isRecording ? '停止录音' : '语音输入'}>
+						<button
+							type="button"
+							className={cx(styles.micIconBtn, isRecording && styles.micButtonRecording)}
+							onClick={() => { void handleToggleRecording(); }}
+							disabled={isTranscribing}
+							aria-label={isRecording ? '停止录音' : '语音输入'}
+						>
+							<Mic style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />
+						</button>
+					</QuickActionTooltip>
+					<QuickActionTooltip title="停止生成">
 						<Button
 							htmlType="button"
 							className={loadingSendButtonClassName}
-						disabled={false}
-						onClick={onSend}
-						title="停止生成"
-						icon={<Square style={{ width: CHAT_STOP_ICON_SIZE, height: CHAT_STOP_ICON_SIZE }} fill="currentColor" />}
-					/>
+							disabled={false}
+							onClick={onSend}
+							aria-label="停止生成"
+							icon={<Square style={{ width: CHAT_STOP_ICON_SIZE, height: CHAT_STOP_ICON_SIZE }} fill="currentColor" />}
+						/>
+					</QuickActionTooltip>
 				</>
 			);
 		}
@@ -666,37 +677,43 @@ export function MiniChatComposer({
 		if (hasInput) {
 			return (
 				<>
-					<button
-						type="button"
-						className={cx(styles.micIconBtn, isRecording && styles.micButtonRecording)}
-						onClick={() => { void handleToggleRecording(); }}
-						disabled={isTranscribing}
-						title={isRecording ? '停止录音' : '语音输入'}
-					>
-						<Mic style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />
-					</button>
+					<QuickActionTooltip title={isRecording ? '停止录音' : '语音输入'}>
+						<button
+							type="button"
+							className={cx(styles.micIconBtn, isRecording && styles.micButtonRecording)}
+							onClick={() => { void handleToggleRecording(); }}
+							disabled={isTranscribing}
+							aria-label={isRecording ? '停止录音' : '语音输入'}
+						>
+							<Mic style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />
+						</button>
+					</QuickActionTooltip>
+					<QuickActionTooltip title={sendingDisabledByRecording ? (isTranscribing ? '正在转写' : '请先停止录音') : '发送'}>
 						<Button
 							htmlType="button"
 							className={baseSendButtonClassName}
-						disabled={sendDisabled || sendingDisabledByRecording}
-						onClick={onSend}
-						title={sendingDisabledByRecording ? (isTranscribing ? '正在转写' : '请先停止录音') : '发送'}
-						icon={<Send style={{ width: CHAT_PRIMARY_ACTION_ICON_SIZE, height: CHAT_PRIMARY_ACTION_ICON_SIZE, transform: "translateX(-0.4px) translateY(0.35px)" }} />}
-					/>
+							disabled={sendDisabled || sendingDisabledByRecording}
+							onClick={onSend}
+							aria-label={sendingDisabledByRecording ? (isTranscribing ? '正在转写' : '请先停止录音') : '发送'}
+							icon={<Send style={{ width: CHAT_PRIMARY_ACTION_ICON_SIZE, height: CHAT_PRIMARY_ACTION_ICON_SIZE, transform: "translateX(-0.4px) translateY(0.35px)" }} />}
+						/>
+					</QuickActionTooltip>
 				</>
 			);
 		}
 
 		return (
-			<button
-				type="button"
-				className={cx(styles.micButton, !isRecording && styles.micButtonHighlighted, isRecording && styles.micButtonRecording)}
-				onClick={() => { void handleToggleRecording(); }}
-				disabled={isTranscribing}
-				title={isRecording ? '停止录音' : '语音输入'}
-			>
-				<Mic style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />
-			</button>
+			<QuickActionTooltip title={isRecording ? '停止录音' : '语音输入'}>
+				<button
+					type="button"
+					className={cx(styles.micButton, !isRecording && styles.micButtonHighlighted, isRecording && styles.micButtonRecording)}
+					onClick={() => { void handleToggleRecording(); }}
+					disabled={isTranscribing}
+					aria-label={isRecording ? '停止录音' : '语音输入'}
+				>
+					<Mic style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />
+				</button>
+			</QuickActionTooltip>
 		);
 	};
 
@@ -924,14 +941,16 @@ export function MiniChatComposer({
 						</>
 					)}
 					{isRecording && (
-						<button
-							type="button"
-							className={styles.recordingDiscardBtn}
-							onClick={cancelRecording}
-							title="取消录音"
-						>
-							<X style={{ width: 16, height: 16 }} />
-						</button>
+						<QuickActionTooltip title="取消录音">
+							<button
+								type="button"
+								className={styles.recordingDiscardBtn}
+								onClick={cancelRecording}
+								aria-label="取消录音"
+							>
+								<X style={{ width: 16, height: 16 }} />
+							</button>
+						</QuickActionTooltip>
 					)}
 				</div>
 			)}
@@ -982,7 +1001,6 @@ export function MiniChatComposer({
 								{renderPlusButton()}
 							</motion.div>
 						)}
-						{!showBottomControls && showStandaloneScreenshot ? renderScreenshotButton() : null}
 
 						<motion.div
 							layout={isMultiline ? "position" : false}
@@ -1067,7 +1085,6 @@ export function MiniChatComposer({
 									</motion.div>
 									{isClaudeCodeCliMode ? (
 										<div className={styles.codexControlCenter}>
-											{showBottomControls && showStandaloneScreenshot ? renderScreenshotButton() : null}
 											{renderModelControl()}
 											{renderEffortControl()}
 										</div>

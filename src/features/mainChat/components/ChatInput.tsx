@@ -30,8 +30,6 @@ import type { AgentSummary } from "@/types/agent";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
-	CHAT_ACTION_ICON_SIZE,
-	CHAT_CHIP_ICON_SIZE,
 	CHAT_STOP_ICON_SIZE,
 } from "@/styles/typography-tokens";
 
@@ -771,7 +769,7 @@ export function ChatInput({
 						{selectedTarget ? (
 							<ComposerChip
 								variant="desktop"
-								icon={<AtSign style={{ width: CHAT_CHIP_ICON_SIZE, height: CHAT_CHIP_ICON_SIZE }} />}
+								icon={<AtSign />}
 								onRemove={() => setTargetAgentId(null)}
 								removableTitle={t("composer.clearTarget")}
 								title={t("composer.clearTarget")}
@@ -782,7 +780,7 @@ export function ChatInput({
 
 						<ComposerIconButton
 							variant="desktop"
-							icon={<Paperclip style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />}
+							icon={<Paperclip />}
 							onClick={() => {
 								void pickFiles();
 							}}
@@ -792,7 +790,7 @@ export function ChatInput({
 
 						<ComposerIconButton
 							variant="desktop"
-							icon={<Camera style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />}
+							icon={<Camera />}
 							onClick={() => {
 								void captureScreenshot();
 							}}
@@ -804,7 +802,7 @@ export function ChatInput({
 							<div ref={pickerRef} style={{ position: "relative" }}>
 								<ComposerIconButton
 									variant="desktop"
-									icon={<AtSign style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />}
+									icon={<AtSign />}
 									onClick={() => setPickerOpen((open) => !open)}
 									disabled={disabled || sending}
 									title={t("composer.pickAgent")}
@@ -850,7 +848,7 @@ export function ChatInput({
 							<button
 								type="button"
 								onClick={toggleRecording}
-								title={t("composer.stopRecording", "停止录音")}
+								aria-label={t("composer.stopRecording", "停止录音")}
 								style={{
 									display: "inline-flex",
 									alignItems: "center",
@@ -871,7 +869,7 @@ export function ChatInput({
 					) : (
 						<ComposerIconButton
 							variant="desktop"
-							icon={<Mic style={{ width: CHAT_ACTION_ICON_SIZE, height: CHAT_ACTION_ICON_SIZE }} />}
+							icon={<Mic />}
 							onClick={toggleRecording}
 							disabled={disabled || sending}
 							title={t("composer.startRecording", "开始录音")}

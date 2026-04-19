@@ -1,10 +1,11 @@
 import type { NeutralColors, PrimaryColors } from '@4399ywkf/theme-system';
 import { createStyles, cssVar, cx } from 'antd-style';
-import { Center, Flexbox, Icon, Tooltip } from '@lobehub/ui';
+import { Center, Flexbox, Icon } from '@lobehub/ui';
 import { CheckIcon } from 'lucide-react';
 import { memo } from 'react';
 import { readableColor, rgba } from 'polished';
 import { useTranslation } from 'react-i18next';
+import { Tooltip } from '@/components/ui/tooltip';
 
 const PRIMARY_COLORS: Record<PrimaryColors, string> = {
   blue: '#3B82F6',

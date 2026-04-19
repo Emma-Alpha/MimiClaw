@@ -743,16 +743,16 @@ export function JizhiChat() {
             onDrop={handleComposerDrop}
             leftActions={(
               <>
-                <ComposerChip variant="desktop" icon={<Bot style={{ width: 14, height: 14 }} />}>
+                <ComposerChip variant="desktop" icon={<Bot />}>
                   {isLlmSession ? '模型模式' : '智能体模式'}
                 </ComposerChip>
                 {currentSession.model ? (
-                  <ComposerChip variant="desktop" icon={<Cpu style={{ width: 14, height: 14 }} />}>
+                  <ComposerChip variant="desktop" icon={<Cpu />}>
                     {currentSession.model}
                   </ComposerChip>
                 ) : null}
                 {isLlmSession ? (
-                  <ComposerChip variant="desktop" icon={<BrainCircuit style={{ width: 14, height: 14 }} />}>
+                  <ComposerChip variant="desktop" icon={<BrainCircuit />}>
                     思考模式
                   </ComposerChip>
                 ) : null}
@@ -761,7 +761,7 @@ export function JizhiChat() {
             rightActions={canRetry ? (
               <ComposerIconButton
                 variant="desktop"
-                icon={<RotateCcw style={{ width: 16, height: 16 }} />}
+                icon={<RotateCcw />}
                 onClick={() => { void handleRetry(); }}
                 disabled={!canRetry}
                 title="重新生成"

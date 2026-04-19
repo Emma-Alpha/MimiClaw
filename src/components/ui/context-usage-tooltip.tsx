@@ -1,5 +1,6 @@
-import { Progress, Tooltip, theme } from "antd";
+import { Progress } from "antd";
 import { createStyles } from "antd-style";
+import { Tooltip } from "@/components/ui/tooltip";
 
 type ContextUsageTooltipProps = {
 	usedPercentage: number;
@@ -51,7 +52,6 @@ export function ContextUsageTooltip({
 	size = 14,
 }: ContextUsageTooltipProps) {
 	const { styles } = useStyles();
-	const { token } = theme.useToken();
 	const clampedPercent = Math.max(0, Math.min(100, usedPercentage));
 	const clampedRemaining = Math.max(
 		0,
@@ -75,16 +75,6 @@ export function ContextUsageTooltip({
 			placement="top"
 			mouseEnterDelay={0.12}
 			arrow={false}
-			styles={{
-				container: {
-					background: token.colorBgContainer,
-					border: `1px solid ${token.colorBorderSecondary}`,
-					borderRadius: 12,
-					padding: "7px 10px",
-					boxShadow: "0 8px 24px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.05)",
-					color: token.colorTextSecondary,
-				},
-			}}
 			title={
 				<div className={styles.content}>
 					<div className={styles.title}>背景信息窗口：</div>

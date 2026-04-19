@@ -1,18 +1,26 @@
 import { createPortal } from "react-dom";
 import {
+	cloneElement,
+	isValidElement,
 	useEffect,
 	useMemo,
 	useState,
-	type CSSProperties,
-	type KeyboardEvent as ReactKeyboardEvent,
-	type ReactNode,
+} from "react";
+import type {
+	CSSProperties,
+	KeyboardEvent as ReactKeyboardEvent,
+	ReactElement,
+	ReactNode,
 } from "react";
 import { createStyles } from "antd-style";
 import { Button } from "antd";
+import { Tooltip } from "@/components/ui/tooltip";
 import { Loader2, Send, Square, X, FileText, Film, Music, FileArchive, File as FileIcon } from "lucide-react";
 import type { UnifiedComposerPath } from "@/lib/unified-composer";
 import {
 	CHAT_ACTION_BUTTON_SIZE,
+	CHAT_ACTION_ICON_SIZE,
+	CHAT_ACTION_ICON_SIZE_COMPACT,
 	CHAT_PRIMARY_ACTION_ICON_SIZE,
 	CHAT_STOP_ICON_SIZE,
 } from "@/styles/typography-tokens";
@@ -81,6 +89,9 @@ interface ComposerChipProps {
 	onRemove?: () => void;
 	removableTitle?: string;
 }
+
+const COMPOSER_TOOLTIP_ENTER_DELAY = 0.12;
+const COMPOSER_TOOLTIP_LEAVE_DELAY = 0.06;
 
 const useStyles = createStyles(({ token, css }) => ({
 	shell: css`
@@ -523,6 +534,7 @@ const useStyles = createStyles(({ token, css }) => ({
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
+		line-height: 0;
 	`,
 	truncate: css`
 		overflow: hidden;
@@ -530,6 +542,62 @@ const useStyles = createStyles(({ token, css }) => ({
 		white-space: nowrap;
 	`,
 }));
+
+function normalizeIconNode(icon: ReactNode, size: number) {
+	if (!isValidElement(icon)) return icon;
+
+	const element = icon as ReactElement<{
+		"aria-hidden"?: boolean;
+		size?: number;
+		style?: CSSProperties;
+	}>;
+	const style = {
+		...(element.props.style ?? {}),
+		height: size,
+		width: size,
+	};
+
+	if (typeof element.type === "string") {
+		return cloneElement(element, {
+			"aria-hidden": true,
+			style,
+		});
+	}
+
+	return cloneElement(element, {
+		"aria-hidden": true,
+		size,
+		style,
+	});
+}
+
+function ComposerTooltip({
+	children,
+	title,
+}: {
+	children: ReactNode;
+	title?: ReactNode;
+}) {
+	if (!title) return <>{children}</>;
+
+	return (
+		<Tooltip
+			mouseEnterDelay={COMPOSER_TOOLTIP_ENTER_DELAY}
+			mouseLeaveDelay={COMPOSER_TOOLTIP_LEAVE_DELAY}
+			title={title}
+		>
+			<span
+				style={{
+					alignItems: "center",
+					display: "inline-flex",
+					flexShrink: 0,
+				}}
+			>
+				{children}
+			</span>
+		</Tooltip>
+	);
+}
 
 function FileIconComp({
 	mimeType,
@@ -685,11 +753,15 @@ export function ComposerIconButton({
 	danger = false,
 }: ComposerIconButtonProps) {
 	const { styles, cx } = useStyles();
+	const resolvedIcon = normalizeIconNode(
+		icon,
+		variant === "compact" ? CHAT_ACTION_ICON_SIZE_COMPACT : CHAT_ACTION_ICON_SIZE,
+	);
 
-	return (
+	const button = (
 		<button
 			type="button"
-			title={title}
+			aria-label={title}
 			onClick={onClick}
 			disabled={disabled}
 			className={cx(
@@ -699,9 +771,11 @@ export function ComposerIconButton({
 				danger && styles.iconButtonDanger,
 			)}
 		>
-			<span className={styles.iconNode}>{icon}</span>
+			<span className={styles.iconNode}>{resolvedIcon}</span>
 		</button>
 	);
+
+	return <ComposerTooltip title={title}>{button}</ComposerTooltip>;
 }
 
 export function ComposerChip({
@@ -714,24 +788,25 @@ export function ComposerChip({
 	removableTitle,
 }: ComposerChipProps) {
 	const { styles, cx } = useStyles();
+	const resolvedIcon = icon ? normalizeIconNode(icon, CHAT_ACTION_ICON_SIZE) : null;
 	const body = (
 		<>
-			{icon ? <span className={styles.iconNode}>{icon}</span> : null}
+			{resolvedIcon ? <span className={styles.iconNode}>{resolvedIcon}</span> : null}
 			<span className={styles.chipLabel}>{children}</span>
 		</>
 	);
 
-	return (
+	const chip = (
 		<div
 			className={cx(
 				styles.chip,
 				variant === "compact" ? styles.chipCompact : styles.chipDesktop,
 				onClick && styles.chipButton,
 			)}
-			title={title}
 			onClick={onClick}
 			role={onClick ? "button" : undefined}
 			tabIndex={onClick ? 0 : undefined}
+			aria-label={onClick ? title : undefined}
 			onKeyDown={
 				onClick
 					? (event) => {
@@ -752,13 +827,15 @@ export function ComposerChip({
 						event.stopPropagation();
 						onRemove();
 					}}
-					title={removableTitle}
+					aria-label={removableTitle}
 				>
-					<X style={{ width: 10, height: 10 }} />
+					{normalizeIconNode(<X />, 10)}
 				</button>
 			) : null}
 		</div>
 	);
+
+	return <ComposerTooltip title={title}>{chip}</ComposerTooltip>;
 }
 
 export function ComposerBase({
@@ -837,6 +914,31 @@ export function ComposerBase({
 		}
 	};
 
+	const sendButton = (
+		<Button
+			htmlType="button"
+			className={cx(
+				styles.compactSendButton,
+				loading && styles.sendButtonSending,
+			)}
+			onClick={canStop ? onStop : onSend}
+			disabled={compactSendDisabled}
+			aria-label={sendButtonTitle}
+			icon={
+				canStop ? (
+					normalizeIconNode(<Square fill="currentColor" />, CHAT_STOP_ICON_SIZE)
+				) : loading ? (
+					<Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />
+				) : (
+					normalizeIconNode(
+						<Send style={{ transform: "translateX(-0.4px) translateY(0.35px)" }} />,
+						CHAT_PRIMARY_ACTION_ICON_SIZE,
+					)
+				)
+			}
+		/>
+	);
+
 	return (
 		<>
 			{/* biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop */}
@@ -904,31 +1006,7 @@ export function ComposerBase({
 					<div className={styles.leftActions}>{leftActions}</div>
 					<div className={styles.rightActions}>
 						{rightActions}
-						<Button
-							htmlType="button"
-							className={cx(
-								styles.compactSendButton,
-								loading && styles.sendButtonSending,
-							)}
-							onClick={canStop ? onStop : onSend}
-							disabled={compactSendDisabled}
-							title={sendButtonTitle}
-							icon={
-								canStop ? (
-									<Square style={{ width: CHAT_STOP_ICON_SIZE, height: CHAT_STOP_ICON_SIZE }} fill="currentColor" />
-								) : loading ? (
-									<Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />
-								) : (
-									<Send
-										style={{
-											width: CHAT_PRIMARY_ACTION_ICON_SIZE,
-											height: CHAT_PRIMARY_ACTION_ICON_SIZE,
-											transform: "translateX(-0.4px) translateY(0.35px)",
-										}}
-									/>
-								)
-							}
-						/>
+						<ComposerTooltip title={sendButtonTitle}>{sendButton}</ComposerTooltip>
 					</div>
 				</div>
 			</div>

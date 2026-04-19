@@ -1441,11 +1441,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 				{showEmbeddedComposerMeta ? (
 					<div className={styles.composerStatusRow}>
 						<div className={styles.composerStatusLeft}>
-							<span className={styles.composerStatusItem}>
-								<Monitor size={12} />
-								<span>本地</span>
-								<ChevronDown size={12} />
-							</span>
+							
 							<StyledDropdown
 								menu={permissionDropdownMenu}
 								placement="topLeft"
