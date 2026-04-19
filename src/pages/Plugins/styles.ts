@@ -33,6 +33,40 @@ export const usePluginsStyles = createStyles(({ token, css }) => ({
   pluginRow: css`
     cursor: default !important;
   `,
+  pluginImage: css`
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+  `,
+  maskedBrandIcon: css`
+    width: 28px;
+    height: 28px;
+    display: block;
+    mask-position: center;
+    mask-repeat: no-repeat;
+    mask-size: contain;
+    -webkit-mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-size: contain;
+  `,
+  generatedIcon: css`
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: ${token.colorWhite};
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+    overflow: hidden;
+  `,
+  generatedIconLabel: css`
+    font-size: 14px;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+  `,
   metaFooter: css`
     margin-top: 6px;
     display: flex;

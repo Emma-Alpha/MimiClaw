@@ -18,31 +18,106 @@ import wechatIcon from '@/assets/channels/wechat.svg';
 import wecomIcon from '@/assets/channels/wecom.svg';
 import { usePluginsStyles } from './styles';
 
-const PLUGIN_ICONS: Record<string, string> = {
-  dingtalk: dingtalkIcon,
-  wecom: wecomIcon,
-  'openclaw-lark': feishuIcon,
-  qqbot: qqIcon,
-  'openclaw-weixin': wechatIcon,
-};
+const IMAGE_ICON_RE = /^(https?:\/\/|data:image\/|blob:|file:\/\/|\/)/i;
 
-function renderPluginIcon(plugin: PluginSummary) {
-  const icon = PLUGIN_ICONS[plugin.key] || PLUGIN_ICONS[plugin.pluginId];
-  if (icon) {
+const PLUGIN_ICONS = {
+  dingtalk: {
+    colors: ['#1677ff', '#13c2c2'],
+    mask: dingtalkIcon,
+  },
+  wecom: {
+    colors: ['#34c759', '#1677ff'],
+    mask: wecomIcon,
+  },
+  'openclaw-lark': {
+    colors: ['#00c2ff', '#3370ff'],
+    mask: feishuIcon,
+  },
+  qqbot: {
+    colors: ['#ff7875', '#1677ff'],
+    mask: qqIcon,
+  },
+  'openclaw-weixin': {
+    colors: ['#34c759', '#95de64'],
+    mask: wechatIcon,
+  },
+} as const;
+
+const PLUGIN_ICON_PALETTES = [
+  ['#1677ff', '#13c2c2'],
+  ['#7c3aed', '#2563eb'],
+  ['#f59e0b', '#ef4444'],
+  ['#10b981', '#3b82f6'],
+  ['#ec4899', '#8b5cf6'],
+  ['#f97316', '#eab308'],
+] as const;
+
+type PluginStyleClasses = ReturnType<typeof usePluginsStyles>['styles'];
+
+function getPluginMonogram(plugin: PluginSummary) {
+  const label = `${plugin.name || ''} ${plugin.pluginId || ''}`.trim();
+  const matched = Array.from(label).find((char) => /[A-Za-z0-9\u4e00-\u9fff]/.test(char));
+
+  return matched?.toUpperCase() || 'P';
+}
+
+function getPluginPalette(plugin: PluginSummary) {
+  const seed = `${plugin.key}:${plugin.pluginId}:${plugin.name}`;
+  let hash = 0;
+
+  for (const char of seed) {
+    hash = (hash * 33 + char.charCodeAt(0)) >>> 0;
+  }
+
+  return PLUGIN_ICON_PALETTES[hash % PLUGIN_ICON_PALETTES.length];
+}
+
+function renderGeneratedPluginIcon(plugin: PluginSummary, styles: PluginStyleClasses) {
+  const [start, end] = getPluginPalette(plugin);
+
+  return (
+    <div
+      className={styles.generatedIcon}
+      style={{ background: `linear-gradient(135deg, ${start} 0%, ${end} 100%)` }}
+    >
+      {plugin.supportsMcp ? (
+        <Braces size={16} style={{ strokeWidth: 2.4 }} />
+      ) : (
+        <span className={styles.generatedIconLabel}>{getPluginMonogram(plugin)}</span>
+      )}
+    </div>
+  );
+}
+
+function renderPluginIcon(plugin: PluginSummary, styles: PluginStyleClasses) {
+  if (plugin.icon && IMAGE_ICON_RE.test(plugin.icon)) {
     return (
       <img
         alt={plugin.name}
-        src={icon}
-        style={{ width: 24, height: 24, objectFit: 'contain' }}
+        className={styles.pluginImage}
+        src={plugin.icon}
       />
     );
   }
 
-  if (plugin.supportsMcp) {
-    return <Braces size={22} />;
+  const knownIcon = PLUGIN_ICONS[plugin.key as keyof typeof PLUGIN_ICONS]
+    || PLUGIN_ICONS[plugin.pluginId as keyof typeof PLUGIN_ICONS];
+
+  if (knownIcon) {
+    return (
+      <span
+        aria-hidden="true"
+        className={styles.maskedBrandIcon}
+        style={{
+          background: `linear-gradient(135deg, ${knownIcon.colors[0]} 0%, ${knownIcon.colors[1]} 100%)`,
+          maskImage: `url(${knownIcon.mask})`,
+          WebkitMaskImage: `url(${knownIcon.mask})`,
+        }}
+      />
+    );
   }
 
-  return <Package size={22} />;
+  return renderGeneratedPluginIcon(plugin, styles);
 }
 
 function getSourceColor(source: PluginSummary['source']) {
@@ -209,7 +284,7 @@ export function Plugins() {
                   key={`${sectionKey}-${plugin.key}`}
                   className={skillCx(skillStyles.skillRow, styles.pluginRow)}
                 >
-                  <div className={skillStyles.skillIcon}>{renderPluginIcon(plugin)}</div>
+                  <div className={skillStyles.skillIcon}>{renderPluginIcon(plugin, styles)}</div>
 
                   <div className={skillStyles.skillMeta}>
                     <div className={skillStyles.skillNameRow}>
