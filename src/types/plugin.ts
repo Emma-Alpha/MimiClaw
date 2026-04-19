@@ -12,6 +12,7 @@ export interface PluginSummary {
   installable: boolean;
   supportsMcp: boolean;
   source: PluginSource;
+  icon?: string;
   packageName?: string;
   installPath?: string;
 }

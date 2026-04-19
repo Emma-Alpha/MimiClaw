@@ -2,6 +2,7 @@ import { constants } from 'fs';
 import { access, readdir, readFile, realpath } from 'fs/promises';
 import { homedir } from 'os';
 import { join, resolve } from 'path';
+import { pathToFileURL } from 'url';
 
 import { readOpenClawConfig } from './channel-config';
 import {
@@ -28,6 +29,7 @@ export interface PluginSummary {
   installable: boolean;
   supportsMcp: boolean;
   source: PluginSource;
+  icon?: string;
   packageName?: string;
   installPath?: string;
 }
@@ -64,14 +66,51 @@ interface KnownPluginDefinition {
 interface PluginManifestFile {
   description?: string;
   id?: string;
+  icon?: string;
   name?: string;
+}
+
+interface PluginPackageChannelFile {
+  icon?: string;
+  label?: string;
+}
+
+interface PluginPackageOpenClawFile {
+  channel?: PluginPackageChannelFile;
+  icon?: string;
 }
 
 interface PluginPackageFile {
   description?: string;
+  icon?: string;
   name?: string;
+  openclaw?: PluginPackageOpenClawFile;
   version?: string;
 }
+
+const DEFAULT_PLUGIN_ICON_FILES = [
+  'icon.svg',
+  'icon.png',
+  'icon.webp',
+  'icon.jpg',
+  'icon.jpeg',
+  'logo.svg',
+  'logo.png',
+  'logo.webp',
+  'logo.jpg',
+  'logo.jpeg',
+  'assets/icon.svg',
+  'assets/icon.png',
+  'assets/logo.svg',
+  'assets/logo.png',
+  'public/icon.svg',
+  'public/icon.png',
+  'public/logo.svg',
+  'public/logo.png',
+] as const;
+
+const DIRECT_ICON_RE = /^(https?:\/\/|data:image\/|blob:|file:\/\/)/i;
+const WINDOWS_ABS_PATH_RE = /^[a-zA-Z]:[\\/]/;
 
 const KNOWN_PLUGIN_DEFINITIONS = [
   {
@@ -171,6 +210,61 @@ async function readJsonFile<T>(filePath: string): Promise<T | null> {
   } catch {
     return null;
   }
+}
+
+function normalizeIconValue(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+
+  const markdownImageMatch = trimmed.match(/^!\[[^\]]*]\((.+)\)$/);
+  if (markdownImageMatch) {
+    const target = markdownImageMatch[1]?.trim();
+    return target || undefined;
+  }
+
+  return trimmed;
+}
+
+function toFileUrl(pathLike: string): string {
+  return pathToFileURL(pathLike).toString();
+}
+
+async function resolvePluginIconCandidate(
+  pluginPath: string,
+  iconValue: string | undefined,
+): Promise<string | undefined> {
+  const normalizedIcon = normalizeIconValue(iconValue);
+  if (!normalizedIcon) return undefined;
+  if (DIRECT_ICON_RE.test(normalizedIcon)) return normalizedIcon;
+
+  const resolvedIconPath =
+    WINDOWS_ABS_PATH_RE.test(normalizedIcon) || normalizedIcon.startsWith('/')
+      ? normalizedIcon
+      : resolve(pluginPath, normalizedIcon);
+
+  if (!(await fileExists(resolvedIconPath))) {
+    return undefined;
+  }
+
+  return toFileUrl(resolvedIconPath);
+}
+
+export async function resolvePluginIcon(
+  pluginPath: string,
+  iconCandidates: Array<string | undefined>,
+): Promise<string | undefined> {
+  for (const iconCandidate of iconCandidates) {
+    const resolvedIcon = await resolvePluginIconCandidate(pluginPath, iconCandidate);
+    if (resolvedIcon) return resolvedIcon;
+  }
+
+  for (const fileName of DEFAULT_PLUGIN_ICON_FILES) {
+    const resolvedIcon = await resolvePluginIconCandidate(pluginPath, fileName);
+    if (resolvedIcon) return resolvedIcon;
+  }
+
+  return undefined;
 }
 
 function humanizeName(value: string): string {
@@ -351,6 +445,12 @@ async function readPluginSummaryFromPath(
     || pkg?.description?.trim()
     || definition?.description
     || '';
+  const icon = await resolvePluginIcon(pluginPath, [
+    manifest?.icon,
+    pkg?.openclaw?.channel?.icon,
+    pkg?.openclaw?.icon,
+    pkg?.icon,
+  ]);
 
   return {
     key: definition?.key || normalizePluginKey(pluginId),
@@ -364,6 +464,7 @@ async function readPluginSummaryFromPath(
     installable: Boolean(definition),
     supportsMcp: definition?.supportsMcp ?? false,
     source: resolvePluginSource(pluginPath, definition, installs, normalizedLoadPaths),
+    icon,
     packageName: pkg?.name?.trim(),
     installPath: pluginPath,
   };
