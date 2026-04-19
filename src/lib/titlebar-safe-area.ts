@@ -22,7 +22,7 @@ interface NavigatorWithWindowControlsOverlay extends Navigator {
 const ZERO_INSETS = { left: 0, right: 0 } as const satisfies HeaderSafeInsets;
 const LEGACY_MAC_INSETS = { left: 84, right: 0 } as const satisfies HeaderSafeInsets;
 const MODERN_MAC_INSETS = { left: 94, right: 0 } as const satisfies HeaderSafeInsets;
-const DEFAULT_HEADER_SIDE_PADDING = 12;
+export const DEFAULT_HEADER_SIDE_PADDING = 12;
 const MAC_OS_VERSION_PATTERN = /mac os x (\d+)[_.](\d+)/i;
 
 const COLLAPSED_SIDEBAR_TOGGLE_RESERVE = {
@@ -71,7 +71,7 @@ function isFullscreenDisplayMode(): boolean {
   return window.matchMedia('(display-mode: fullscreen)').matches;
 }
 
-function getCollapsedSidebarToggleReserve(platform: string | undefined): number {
+export function getCollapsedSidebarToggleReserve(platform: string | undefined): number {
   switch (platform) {
     case 'darwin':
       return COLLAPSED_SIDEBAR_TOGGLE_RESERVE.darwin;
