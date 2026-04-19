@@ -3,7 +3,6 @@
  * Manages application update state
  */
 import { create } from 'zustand';
-import { useSettingsStore } from './settings';
 import { invokeIpc } from '@/lib/api-client';
 import {
   getUpdateReleaseTier,
@@ -223,20 +222,8 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
 
     set({ isInitialized: true });
 
-    // Apply persisted settings from the settings store
-    const { autoCheckUpdate, autoDownloadUpdate } = useSettingsStore.getState();
-
-    // Sync auto-download preference to the main process
-    if (autoDownloadUpdate) {
-      invokeIpc('update:setAutoDownload', true).catch(() => {});
-    }
-
-    // Auto-check for updates on startup (respects user toggle)
-    if (autoCheckUpdate) {
-      setTimeout(() => {
-        get().checkForUpdates().catch(() => {});
-      }, 10000);
-    }
+    // Startup update bootstrap is owned by the main process so it still runs
+    // before or without any particular renderer route being mounted.
   },
 
   applyRemoteUpdatePolicy: async () => {

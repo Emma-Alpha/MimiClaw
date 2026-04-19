@@ -32,8 +32,9 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     align-items: center;
     justify-content: flex-start;
+    gap: 8px;
     padding-inline: 8px;
-    padding-inline-start: ${window.electron?.platform === 'darwin' ? '72px' : '8px'};
+    padding-inline-start: ${window.electron?.platform === 'darwin' ? '116px' : '8px'};
   `,
 }));
 

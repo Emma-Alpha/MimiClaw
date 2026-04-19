@@ -69,6 +69,7 @@ import { isBenignDevWindowLoadRejection, loadWindowRoute, type WindowLoadRoute }
 
 const WINDOWS_APP_USER_MODEL_ID = 'com.jizhi.gz4399';
 const APP_PROTOCOL = 'jizhi';
+const STARTUP_UPDATE_CHECK_DELAY_MS = 10_000;
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? value as Record<string, unknown> : {};
@@ -792,8 +793,32 @@ async function initialize(): Promise<void> {
   // Register update handlers
   registerUpdateHandlers(appUpdater, window);
 
-  // Note: Auto-check for updates is driven by the renderer (update store init)
-  // so it respects the user's "Auto-check for updates" setting.
+  void (async () => {
+    try {
+      const [updateChannel, autoCheckUpdate, autoDownloadUpdate] = await Promise.all([
+        getSetting('updateChannel'),
+        getSetting('autoCheckUpdate'),
+        getSetting('autoDownloadUpdate'),
+      ]);
+
+      appUpdater.setChannel(updateChannel);
+      appUpdater.setAutoDownload(autoDownloadUpdate);
+
+      if (!autoCheckUpdate) return;
+      if (!app.isPackaged) {
+        logger.info('[Updater] Skip startup auto-check because app is not packaged');
+        return;
+      }
+
+      setTimeout(() => {
+        void appUpdater.checkForUpdates().catch((error) => {
+          logger.warn('[Updater] Startup auto-check failed:', error);
+        });
+      }, STARTUP_UPDATE_CHECK_DELAY_MS);
+    } catch (error) {
+      logger.warn('[Updater] Failed to bootstrap startup update settings:', error);
+    }
+  })();
 
   // Repair any bootstrap files that only contain MimiClaw markers (no OpenClaw
   // template content). This fixes a race condition where ensureMimiClawContext()

@@ -606,9 +606,27 @@ export const useSettingsStore = create<SettingsState>()(
           body: JSON.stringify({ codeAgent }),
         }).catch(() => { });
       },
-      setUpdateChannel: (updateChannel) => set({ updateChannel }),
-      setAutoCheckUpdate: (autoCheckUpdate) => set({ autoCheckUpdate }),
-      setAutoDownloadUpdate: (autoDownloadUpdate) => set({ autoDownloadUpdate }),
+      setUpdateChannel: (updateChannel) => {
+        set({ updateChannel });
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ updateChannel }),
+        }).catch(() => { });
+      },
+      setAutoCheckUpdate: (autoCheckUpdate) => {
+        set({ autoCheckUpdate });
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ autoCheckUpdate }),
+        }).catch(() => { });
+      },
+      setAutoDownloadUpdate: (autoDownloadUpdate) => {
+        set({ autoDownloadUpdate });
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ autoDownloadUpdate }),
+        }).catch(() => { });
+      },
       setSidebarCollapsed: (sidebarCollapsed) => {
         set({ sidebarCollapsed });
         void hostApiFetch('/api/settings', {

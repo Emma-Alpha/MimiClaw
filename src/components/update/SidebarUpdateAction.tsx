@@ -1,45 +1,54 @@
+import { ActionIcon } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import { Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-import { Button } from '@/components/ui/button';
 import { useUpdateStore } from '@/stores/update';
 
 const useStyles = createStyles(({ css, token }) => ({
   button: css`
-    height: 28px;
-    border-radius: 9999px;
-    padding-inline: 14px;
-    font-size: 12px;
-    font-weight: 600;
-    min-width: 0;
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    border-radius: 9999px !important;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, #5cb3ff 72%, white), #0a84ff) !important;
+    color: #fff !important;
+    box-shadow:
+      0 10px 20px -16px rgba(10, 132, 255, 0.92),
+      inset 0 1px 0 rgba(255, 255, 255, 0.24);
+    transition:
+      transform 0.16s ease,
+      box-shadow 0.16s ease,
+      filter 0.16s ease;
 
-    @container sidebar-topbar (width <= 280px) {
-      width: 28px;
-      min-width: 28px;
-      padding-inline: 0;
+    &:hover {
+      transform: translateY(-1px);
+      filter: saturate(1.04) brightness(1.02);
+      box-shadow:
+        0 14px 24px -16px rgba(10, 132, 255, 1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    }
+
+    &:active {
+      transform: translateY(0) scale(0.96);
+      box-shadow:
+        0 6px 14px -14px rgba(10, 132, 255, 0.8),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow:
+        0 0 0 2px ${token.colorBgContainer},
+        0 0 0 5px rgba(10, 132, 255, 0.3),
+        0 14px 24px -16px rgba(10, 132, 255, 1);
     }
   `,
   icon: css`
-    display: none;
-    width: 14px;
-    height: 14px;
-
-    @container sidebar-topbar (width <= 280px) {
-      display: inline-flex;
-    }
-  `,
-  label: css`
     display: inline-flex;
-
-    @container sidebar-topbar (width <= 280px) {
-      display: none;
-    }
-  `,
-  iconOnlyButton: css`
-    @container sidebar-topbar (width <= 280px) {
-      box-shadow: ${token.boxShadowSecondary};
-    }
+    width: 12px;
+    height: 12px;
+    stroke-width: 2.3;
   `,
 }));
 
@@ -58,15 +67,14 @@ export function SidebarUpdateAction() {
   const updateLabel = t('updates.title', { defaultValue: '更新' });
 
   return (
-    <Button
+    <ActionIcon
+      className={styles.button}
+      icon={Download}
+      iconClassName={styles.icon}
+      size={{ blockSize: 22, size: 12 }}
       aria-label={updateLabel}
       title={updateLabel}
-      className={`${styles.button} ${styles.iconOnlyButton}`}
-      type="primary"
       onClick={() => openUpdateAvailablePopup()}
-    >
-      <Download className={styles.icon} />
-      <span className={styles.label}>{updateLabel}</span>
-    </Button>
+    />
   );
 }
