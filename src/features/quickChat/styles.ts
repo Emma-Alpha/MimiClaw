@@ -11,23 +11,47 @@ export const useMiniChatStyles = createStyles(
 			--mini-chat-input-width: min(800px, 100%);
 			--mini-chat-content-width: min(800px, calc(100% - (var(--mini-chat-side-gap) * 2)));
 			--mini-chat-dock-inline-padding: 12px;
+			--mini-chat-surface-bg: color-mix(
+				in srgb,
+				${token.colorBgContainer} 94%,
+				${token.colorFillTertiary}
+			);
+			--mini-chat-header-bg: color-mix(
+				in srgb,
+				${token.colorBgContainer} 86%,
+				transparent
+			);
+			--mini-chat-header-title-color: color-mix(
+				in srgb,
+				${token.colorText} 78%,
+				${token.colorTextSecondary}
+			);
 			height: 100vh;
 			width: 100%;
 			display: flex;
-		flex-direction: column;
-		overflow: hidden;
-		background: ${token.colorBgBase};
-}
-	`,
-	rootEmbedded: css`
-		--mini-chat-side-gap: 16px;
-		--mini-chat-content-width: min(800px, calc(100% - (var(--mini-chat-side-gap) * 2)));
-		--mini-chat-dock-inline-padding: 12px;
-		height: 100%;
-		width: 100%;
-		box-sizing: border-box;
-		padding-top: 0;
-	`,
+			flex-direction: column;
+			overflow: hidden;
+			background:
+				radial-gradient(
+					circle at top,
+					color-mix(in srgb, ${token.colorPrimaryBg} 42%, transparent),
+					transparent 56%
+				),
+				linear-gradient(
+					180deg,
+					color-mix(in srgb, ${token.colorBgContainer} 96%, ${token.colorFillQuaternary}) 0%,
+					var(--mini-chat-surface-bg) 100%
+				);
+		`,
+		rootEmbedded: css`
+			--mini-chat-side-gap: 16px;
+			--mini-chat-content-width: min(800px, calc(100% - (var(--mini-chat-side-gap) * 2)));
+			--mini-chat-dock-inline-padding: 12px;
+			height: 100%;
+			width: 100%;
+			box-sizing: border-box;
+			padding-top: 0;
+		`,
 		header: css`
 		height: 48px;
 		display: grid;
@@ -56,7 +80,9 @@ export const useMiniChatStyles = createStyles(
 		pointer-events: auto;
 		-webkit-app-region: drag;
 		border-bottom: none;
-		background: ${token.colorBgContainer};
+		background: var(--mini-chat-header-bg);
+		backdrop-filter: saturate(160%) blur(18px);
+		-webkit-backdrop-filter: saturate(160%) blur(18px);
 		position: relative;
 		overflow: visible;
 		z-index: 10;
@@ -68,7 +94,7 @@ export const useMiniChatStyles = createStyles(
 			left: 0;
 			right: 0;
 			height: 32px;
-			background: linear-gradient(to bottom, ${token.colorBgContainer} 0%, transparent 100%);
+			background: linear-gradient(to bottom, var(--mini-chat-header-bg) 0%, transparent 100%);
 			backdrop-filter: blur(12px);
 			-webkit-backdrop-filter: blur(12px);
 			mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
@@ -109,15 +135,15 @@ export const useMiniChatStyles = createStyles(
 		flex-shrink: 0;
 	`,
 		embeddedThreadLabel: css`
-		font-size: ${CHAT_SESSION_TITLE_FONT_SIZE}px;
-		font-weight: 500;
-		line-height: 1.2;
-		color: ${token.colorText};
-		white-space: nowrap;
-		text-overflow: ellipsis;
-		overflow: hidden;
-		min-width: 0;
-	`,
+			font-size: ${CHAT_SESSION_TITLE_FONT_SIZE}px;
+			font-weight: 480;
+			line-height: 1.2;
+			color: var(--mini-chat-header-title-color);
+			white-space: nowrap;
+			text-overflow: ellipsis;
+			overflow: hidden;
+			min-width: 0;
+		`,
 		embeddedThreadChevron: css`
 		flex-shrink: 0;
 		color: ${token.colorTextSecondary};
@@ -130,41 +156,33 @@ export const useMiniChatStyles = createStyles(
 		min-width: 0;
 	`,
 		embeddedToolbarButton: css`
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		height: 22px;
-		padding: 0 8px;
-		border: 1px solid ${token.colorBorderSecondary};
-		border-radius: 999px;
-		background: ${token.colorBgElevated};
-		color: ${token.colorTextSecondary};
-		cursor: pointer;
-		font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
-		line-height: 1;
-		transition: all 0.18s ease;
-		box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 24px;
+			height: 24px;
+			padding: 0;
+			border: 1px solid ${token.colorBorderSecondary};
+			border-radius: 999px;
+			background: color-mix(in srgb, ${token.colorBgElevated} 86%, transparent);
+			color: ${token.colorTextSecondary};
+			cursor: pointer;
+			font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
+			line-height: 1;
+			transition: all 0.18s ease;
+			box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 
-		&:hover {
-			color: ${token.colorText};
-			border-color: ${token.colorBorder};
-			background: ${token.colorBgContainer};
-		}
-	`,
+			&:hover {
+				color: ${token.colorText};
+				border-color: ${token.colorBorder};
+				background: color-mix(in srgb, ${token.colorBgContainer} 92%, transparent);
+			}
+		`,
 		embeddedToolbarButtonActive: css`
-		color: ${token.colorPrimary};
-		border-color: ${token.colorPrimaryBorder};
-		background: ${token.colorPrimaryBg};
-	`,
-		embeddedToolbarButtonLabel: css`
-		white-space: nowrap;
-	`,
-		embeddedToolbarButtonShortcut: css`
-		font-family: ${token.fontFamilyCode};
-		font-size: 10px;
-		line-height: 1;
-		color: ${token.colorTextQuaternary};
-	`,
+			color: ${token.colorPrimary};
+			border-color: ${token.colorPrimaryBorder};
+			background: color-mix(in srgb, ${token.colorPrimaryBg} 86%, ${token.colorBgElevated});
+		`,
 		embeddedHeaderStatus: css`
 		display: flex;
 		align-items: center;

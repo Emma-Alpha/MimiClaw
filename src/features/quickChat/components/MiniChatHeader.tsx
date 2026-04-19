@@ -342,12 +342,6 @@ function MiniChatHeaderImpl({
 								aria-pressed={isTerminalVisible}
 							>
 								<SquareTerminal size={CHAT_SESSION_META_ICON_SIZE} />
-								<span className={styles.embeddedToolbarButtonLabel}>切换终端</span>
-								{terminalShortcutLabel ? (
-									<span className={styles.embeddedToolbarButtonShortcut}>
-										{terminalShortcutLabel}
-									</span>
-								) : null}
 							</button>
 						) : null}
 						{!isCodeMode ? (
