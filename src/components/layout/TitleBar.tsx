@@ -22,8 +22,20 @@ import {
 import { useTranslation } from "react-i18next";
 import { createStyles } from "antd-style";
 import { invokeIpc } from "@/lib/api-client";
+import {
+	CHAT_HEADER_HEIGHT,
+	DEFAULT_HEADER_SIDE_PADDING,
+	getCollapsedSidebarToggleReserve,
+	useTitlebarSafeInsets,
+} from "@/lib/titlebar-safe-area";
 import { useSettingsStore } from "@/stores/settings";
 void Ellipsis;
+
+const TITLEBAR_CONTROL_SIZE = 28;
+const TITLEBAR_CONTROL_TOP = Math.max(
+	0,
+	Math.round((CHAT_HEADER_HEIGHT - TITLEBAR_CONTROL_SIZE) / 2),
+);
 
 const useStyles = createStyles(({ token, css }) => ({
 	sidebarToggleBtn: css`
@@ -89,7 +101,7 @@ const useStyles = createStyles(({ token, css }) => ({
 	`,
 	// macOS title bar
 	macTitleBar: css`
-		height: 40px;
+		height: ${CHAT_HEADER_HEIGHT}px;
 		width: 100%;
 		flex-shrink: 0;
 		background: transparent;
@@ -101,18 +113,27 @@ const useStyles = createStyles(({ token, css }) => ({
 	`,
 	macSidebarToggleArea: css`
 		position: absolute;
-		left: 80px;
-		top: 10px;
 		pointer-events: auto;
+		z-index: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	`,
+	macFloatingSidebarToggle: css`
+		position: absolute;
+		pointer-events: auto;
+		z-index: 120;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	`,
 	macRightArea: css`
 		pointer-events: auto;
 		position: absolute;
-		right: 12px;
-		top: 10px;
 		display: flex;
 		align-items: center;
 		gap: 4px;
+		z-index: 1;
 	`,
 	// Linux title bar
 	linuxTitleBar: css`
@@ -347,10 +368,12 @@ export function TitleBar({
 	const { styles, cx } = useStyles();
 	const platform = window.electron?.platform;
 	const { t } = useTranslation("common");
+	const safeInsets = useTitlebarSafeInsets();
 	const sidebarCollapsed = useSettingsStore((state) => state.sidebarCollapsed);
 	const setSidebarCollapsed = useSettingsStore(
 		(state) => state.setSidebarCollapsed,
 	);
+	const sidebarToggleReserve = getCollapsedSidebarToggleReserve(platform);
 	const sidebarShortcutLabel = platform === "darwin" ? "⌘B" : "Ctrl+B";
 	const sidebarToggleTooltipLabel = t("sidebar.toggleSidebar", {
 		defaultValue: "切换边栏",
@@ -390,28 +413,51 @@ export function TitleBar({
 		/>
 	);
 
+	const macSidebarToggleAreaStyle = {
+		WebkitAppRegion: "no-drag",
+		height: TITLEBAR_CONTROL_SIZE,
+		left: `${safeInsets.left}px`,
+		top: `${TITLEBAR_CONTROL_TOP}px`,
+		width: `${sidebarToggleReserve}px`,
+	} as const;
+	const macRightAreaStyle = {
+		WebkitAppRegion: "no-drag",
+		right: `${Math.max(DEFAULT_HEADER_SIDE_PADDING, safeInsets.right + DEFAULT_HEADER_SIDE_PADDING)}px`,
+		top: `${TITLEBAR_CONTROL_TOP}px`,
+	} as const;
+
 	if (platform === "darwin") {
 		return (
-			<div
-				className={cx(styles.macTitleBar, className)}
-				style={{ WebkitAppRegion: 'drag', ...style } as any}
-			>
-				{hideSidebarToggle ? null : (
+			<>
+				<div
+					className={cx(styles.macTitleBar, className)}
+					style={{ WebkitAppRegion: 'drag', ...style } as any}
+				>
+					{hideSidebarToggle || sidebarCollapsed ? null : (
+						<div
+							className={styles.macSidebarToggleArea}
+							style={macSidebarToggleAreaStyle as React.CSSProperties}
+						>
+							{sidebarToggleControl}
+						</div>
+					)}
 					<div
-						className={styles.macSidebarToggleArea}
-						style={{ WebkitAppRegion: 'no-drag' } as any}
+						className={styles.macRightArea}
+						style={macRightAreaStyle as React.CSSProperties}
+					>
+						{rightContent}
+						{hideManagementMenu ? null : <ManagementMenu />}
+					</div>
+				</div>
+				{hideSidebarToggle || !sidebarCollapsed ? null : (
+					<div
+						className={styles.macFloatingSidebarToggle}
+						style={macSidebarToggleAreaStyle as React.CSSProperties}
 					>
 						{sidebarToggleControl}
 					</div>
 				)}
-				<div
-					className={styles.macRightArea}
-					style={{ WebkitAppRegion: 'no-drag' } as any}
-				>
-					{rightContent}
-					{hideManagementMenu ? null : <ManagementMenu />}
-				</div>
-			</div>
+			</>
 		);
 	}
 
