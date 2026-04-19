@@ -1,27 +1,51 @@
-import { type ActionIconProps } from '@lobehub/ui';
-import { ActionIcon } from '@lobehub/ui';
+import { ActionIcon, Text } from '@lobehub/ui';
+import type { ActionIconProps } from '@lobehub/ui';
+import { createStaticStyles } from 'antd-style';
 import { ChevronLeftIcon } from 'lucide-react';
-import { type MouseEvent, memo, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { type MouseEvent, type ReactNode, memo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const DESKTOP_HEADER_ICON_SIZE: ActionIconProps['size'] = { blockSize: 32, size: 20 };
 
 export const BACK_BUTTON_ID = 'mimi-back-button';
 
-interface BackButtonProps extends ActionIconProps {
+const styles = createStaticStyles(({ css, cssVar }) => ({
+  button: css`
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: ${cssVar.colorTextSecondary};
+    font: inherit;
+    text-align: left;
+
+    &:hover {
+      color: ${cssVar.colorText};
+    }
+  `,
+  label: css`
+    min-width: 0;
+  `,
+}));
+
+interface BackButtonProps extends Omit<ActionIconProps, 'onClick'> {
+  label?: ReactNode;
+  onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   preferHistoryBack?: boolean;
   to?: string;
 }
 
-type BackButtonClickEvent = Parameters<NonNullable<ActionIconProps['onClick']>>[0];
-
 const BackButton = memo<BackButtonProps>(
-  ({ preferHistoryBack = false, to = '/', onClick, ...rest }) => {
+  ({ label, preferHistoryBack = false, to = '/', onClick, ...rest }) => {
     const navigate = useNavigate();
 
     const handleClick = useCallback(
-      (event: MouseEvent<HTMLAnchorElement>) => {
-        onClick?.(event as unknown as BackButtonClickEvent);
+      (event: MouseEvent<HTMLButtonElement>) => {
+        onClick?.(event);
         if (event.defaultPrevented) return;
 
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
@@ -44,14 +68,22 @@ const BackButton = memo<BackButtonProps>(
     );
 
     return (
-      <Link to={to} onClick={handleClick}>
+      <button className={styles.button} id={BACK_BUTTON_ID} onClick={handleClick} type="button">
         <ActionIcon
           icon={ChevronLeftIcon}
-          id={BACK_BUTTON_ID}
           size={DESKTOP_HEADER_ICON_SIZE}
           {...rest}
         />
-      </Link>
+        {label && (
+          typeof label === 'string' ? (
+            <Text className={styles.label} ellipsis fontSize={16} weight={500}>
+              {label}
+            </Text>
+          ) : (
+            label
+          )
+        )}
+      </button>
     );
   },
 );

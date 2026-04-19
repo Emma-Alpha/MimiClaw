@@ -64,29 +64,33 @@ const SideBarHeaderLayout = memo<SideBarHeaderLayoutProps>(
   }) => {
     const navigate = useNavigate();
 
+    const leftNode = typeof left === 'string' ? (
+      <Text ellipsis fontSize={16} weight={500}>
+        {left}
+      </Text>
+    ) : (
+      left
+    );
+
     const leftContent = left ? (
-      <Flexbox
-        horizontal
-        align={'center'}
-        flex={1}
-        gap={2}
-        style={{ overflow: 'hidden' }}
-      >
-        {showBack && (
-          <BackButton
-            preferHistoryBack={preferHistoryBack}
-            to={backTo}
-            size={{ blockSize: 32, size: 16 }}
-          />
-        )}
-        {typeof left === 'string' ? (
-          <Text ellipsis fontSize={16} weight={500}>
-            {left}
-          </Text>
-        ) : (
-          left
-        )}
-      </Flexbox>
+      showBack ? (
+        <BackButton
+          label={leftNode}
+          preferHistoryBack={preferHistoryBack}
+          to={backTo}
+          size={{ blockSize: 32, size: 16 }}
+        />
+      ) : (
+        <Flexbox
+          horizontal
+          align={'center'}
+          flex={1}
+          gap={2}
+          style={{ overflow: 'hidden' }}
+        >
+          {leftNode}
+        </Flexbox>
+      )
     ) : (
       <Flexbox flex={1} paddingInline={6}>
         <Breadcrumb
