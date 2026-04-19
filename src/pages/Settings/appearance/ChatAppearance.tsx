@@ -1,14 +1,24 @@
 import { Center, Flexbox, Form, Highlighter, Markdown, Mermaid, SliderWithInput, highlighterThemes, mermaidThemes } from '@lobehub/ui';
 import { Segmented } from 'antd';
-import { memo, type CSSProperties } from 'react';
+import { memo, useEffect, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { HighlighterProps, MermaidProps } from '@lobehub/ui';
 
 import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import type { TransitionMode } from '@/stores/settings';
 import { useSettingsStore } from '@/stores/settings';
 
 const markdownSample = '这里是 LobeHub。从一句话开始，把目标说清楚就行';
+const transitionMarkdownSample = `
+### Features
+
+**Key Highlights**
+- Multi-model: GPT-4/Gemini/Ollama
+- Vision: \`gpt-4-vision\` integration
+- Plugins: Function Calling & real-time data
+`;
 
 const codeSample = `
 const person = { name: "Alice", age: 30 };
@@ -24,12 +34,92 @@ const mermaidSample = `sequenceDiagram
     Alice-)John: See you later!
 `;
 
-const transitionPreviewStyles = (mode: 'none' | 'fadeIn' | 'smooth') =>
+const STREAM_CHUNK_SIZE = 4;
+const STREAM_INTERVAL = 25;
+
+interface ChatTransitionPreviewProps {
+  mode: TransitionMode;
+}
+
+const transitionPreviewStyles = (mode: TransitionMode, isVisible: boolean) =>
   ({
-    opacity: mode === 'none' ? 1 : undefined,
-    transform: mode === 'smooth' ? 'translateY(0)' : undefined,
-    transition: mode === 'none' ? 'none' : mode === 'fadeIn' ? 'opacity 0.25s ease' : 'transform 0.3s ease, opacity 0.3s ease',
+    opacity: mode === 'none' || isVisible ? 1 : 0,
+    transform: mode === 'smooth' ? (isVisible ? 'translateY(0)' : 'translateY(8px)') : undefined,
+    transition:
+      mode === 'none'
+        ? 'none'
+        : mode === 'fadeIn'
+          ? 'opacity 0.25s ease'
+          : 'transform 0.3s ease, opacity 0.3s ease',
   }) satisfies CSSProperties;
+
+const ChatTransitionPreview = memo<ChatTransitionPreviewProps>(({ mode }) => {
+  const [streamedContent, setStreamedContent] = useState(
+    mode === 'none' ? transitionMarkdownSample : '',
+  );
+  const [isVisible, setIsVisible] = useState(mode === 'none');
+
+  useEffect(() => {
+    if (mode === 'none') return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      setIsVisible(true);
+    });
+
+    let currentPosition = 0;
+    const intervalId = window.setInterval(() => {
+      currentPosition += STREAM_CHUNK_SIZE;
+      const nextContent = transitionMarkdownSample.slice(0, currentPosition);
+      setStreamedContent(nextContent);
+
+      if (currentPosition >= transitionMarkdownSample.length) {
+        window.clearInterval(intervalId);
+      }
+    }, STREAM_INTERVAL);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearInterval(intervalId);
+    };
+  }, [mode]);
+
+  return (
+    <div style={{ padding: '0 16px 16px' }}>
+      <div
+        style={{
+          background: 'var(--ant-color-bg-container)',
+          border: '1px solid var(--ant-color-border-secondary)',
+          borderRadius: 16,
+          minHeight: 180,
+          padding: 20,
+          ...transitionPreviewStyles(mode, isVisible),
+        }}
+      >
+        <Markdown animated={mode === 'fadeIn'} variant={'chat'}>
+          {streamedContent || ' '}
+        </Markdown>
+      </div>
+    </div>
+  );
+});
+
+const HighlighterPreview = memo(({ theme }: { theme: NonNullable<HighlighterProps['theme']> }) => {
+  return (
+    <Highlighter copyable={false} language={'ts'} showLanguage={false} theme={theme}>
+      {codeSample}
+    </Highlighter>
+  );
+});
+
+const MermaidPreview = memo(({ theme }: { theme: NonNullable<MermaidProps['theme']> }) => {
+  return (
+    <Center style={{ minHeight: 280 }}>
+      <Flexbox width={480}>
+        <Mermaid theme={theme}>{mermaidSample}</Mermaid>
+      </Flexbox>
+    </Center>
+  );
+});
 
 const ChatAppearance = memo(() => {
   const { t } = useTranslation('settings');
@@ -59,29 +149,11 @@ const ChatAppearance = memo(() => {
               { label: t('appearance.chat.transitionMode.smooth'), value: 'smooth' },
             ]}
             value={transitionMode}
-            onChange={(value) => setTransitionMode(value as 'none' | 'fadeIn' | 'smooth')}
+            onChange={(value) => setTransitionMode(value as TransitionMode)}
           />
         }
       >
-        <div style={{ padding: '0 16px 16px' }}>
-          <div
-            style={{
-              background: 'var(--ant-color-bg-container)',
-              border: '1px solid var(--ant-color-border-secondary)',
-              borderRadius: 16,
-              padding: 20,
-              ...transitionPreviewStyles(transitionMode),
-            }}
-          >
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Features</div>
-            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Key Highlights</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14 }}>
-              <div>🌐 Multi-model: GPT-4/Gemini/Ollama</div>
-              <div>🖼️ Vision: <code>gpt-4-vision</code> integration</div>
-              <div>🛠️ Plugins: Function Calling & real-time data</div>
-            </div>
-          </div>
-        </div>
+        <ChatTransitionPreview key={transitionMode} mode={transitionMode} />
       </Form.Group>
 
       <Form.Group
@@ -154,14 +226,10 @@ const ChatAppearance = memo(() => {
         }
       >
         <div style={{ padding: '0 16px 16px' }}>
-          <Highlighter
-            copyable={false}
-            language={'ts'}
-            showLanguage={false}
+          <HighlighterPreview
+            key={highlighterTheme}
             theme={highlighterTheme as NonNullable<HighlighterProps['theme']>}
-          >
-            {codeSample}
-          </Highlighter>
+          />
         </div>
       </Form.Group>
 
@@ -182,13 +250,10 @@ const ChatAppearance = memo(() => {
         }
       >
         <div style={{ padding: '0 16px 16px' }}>
-          <Center style={{ minHeight: 280 }}>
-            <Flexbox width={480}>
-              <Mermaid theme={mermaidTheme as NonNullable<MermaidProps['theme']>}>
-                {mermaidSample}
-              </Mermaid>
-            </Flexbox>
-          </Center>
+          <MermaidPreview
+            key={mermaidTheme}
+            theme={mermaidTheme as NonNullable<MermaidProps['theme']>}
+          />
         </div>
       </Form.Group>
     </>

@@ -11,6 +11,9 @@ type MimiThemeConfigParams = CreateThemeConfigParams & {
 
 const DARK_SOLID_TEXT_COLOR = '#111111';
 const LIGHT_SOLID_TEXT_COLOR = '#ffffff';
+const DARK_SWITCH_HANDLE_EMPHASIS = 0.88;
+const DARK_SWITCH_TRACK_EMPHASIS = 0.42;
+const DARK_SWITCH_TRACK_HOVER_EMPHASIS = 0.5;
 
 export const APP_BUTTON_RADIUS = 12;
 export const APP_CARD_RADIUS = 16;
@@ -57,6 +60,44 @@ function normalizeHexColor(color: string): string | null {
   }
 
   return null;
+}
+
+function getHexChannels(color: string): [number, number, number] | null {
+  const normalizedColor = normalizeHexColor(color);
+
+  if (!normalizedColor) return null;
+
+  const channels = normalizedColor
+    .slice(1)
+    .match(/.{2}/gu)
+    ?.map((channel) => Number.parseInt(channel, 16));
+
+  if (!channels || channels.length !== 3) return null;
+
+  const [red, green, blue] = channels;
+
+  return [red, green, blue];
+}
+
+function mixHexColors(foregroundColor: string, backgroundColor: string, foregroundWeight: number): string | null {
+  const foregroundChannels = getHexChannels(foregroundColor);
+  const backgroundChannels = getHexChannels(backgroundColor);
+
+  if (!foregroundChannels || !backgroundChannels) return null;
+
+  const [foregroundRed, foregroundGreen, foregroundBlue] = foregroundChannels;
+  const [backgroundRed, backgroundGreen, backgroundBlue] = backgroundChannels;
+  const weight = Math.min(Math.max(foregroundWeight, 0), 1);
+  const mixChannel = (foreground: number, background: number) =>
+    Math.round(foreground * weight + background * (1 - weight));
+
+  return `#${[
+    mixChannel(foregroundRed, backgroundRed),
+    mixChannel(foregroundGreen, backgroundGreen),
+    mixChannel(foregroundBlue, backgroundBlue),
+  ]
+    .map((channel) => channel.toString(16).padStart(2, '0'))
+    .join('')}`;
 }
 
 function getRelativeLuminance(color: string): number | null {
@@ -157,6 +198,26 @@ export function createMimiThemeConfig(params: MimiThemeConfigParams): ThemeConfi
   const { fontSize, ...rest } = params;
   const themeConfig = createThemeConfig(rest);
   const primarySolidTextColor = resolvePrimarySolidTextColor(rest.appearance, rest.primaryColor);
+  const darkSwitchOverrides = rest.appearance === 'dark'
+    ? {
+        colorPrimary: mixHexColors(
+          themeConfig.token?.colorPrimary ?? '',
+          themeConfig.token?.colorBgContainer ?? '',
+          DARK_SWITCH_TRACK_EMPHASIS,
+        ) ?? themeConfig.token?.colorPrimary,
+        colorPrimaryHover: mixHexColors(
+          themeConfig.token?.colorPrimary ?? '',
+          themeConfig.token?.colorBgContainer ?? '',
+          DARK_SWITCH_TRACK_HOVER_EMPHASIS,
+        ) ?? themeConfig.token?.colorPrimaryHover ?? themeConfig.token?.colorPrimary,
+        handleBg: mixHexColors(
+          '#ffffff',
+          themeConfig.token?.colorBgElevated ?? themeConfig.token?.colorBgContainer ?? '',
+          DARK_SWITCH_HANDLE_EMPHASIS,
+        ) ?? '#f0f0f0',
+        handleShadow: '0 1px 3px rgba(0, 0, 0, 0.45)',
+      }
+    : undefined;
 
   return {
     ...themeConfig,
@@ -165,6 +226,10 @@ export function createMimiThemeConfig(params: MimiThemeConfigParams): ThemeConfi
       Button: {
         ...(themeConfig.components?.Button ?? {}),
         primaryColor: primarySolidTextColor,
+      },
+      Switch: {
+        ...(themeConfig.components?.Switch ?? {}),
+        ...(darkSwitchOverrides ?? {}),
       },
     },
     token: {
