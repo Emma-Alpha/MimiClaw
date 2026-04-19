@@ -30,7 +30,7 @@ export const useCronStyles = createStyles(({ css, token }) => ({
     position: sticky;
     top: 0;
     z-index: 6;
-    padding-inline: var(--cron-inline-padding);
+    --setting-header-bleed: var(--cron-inline-padding);
     background: color-mix(in srgb, ${token.colorBgContainer} 82%, transparent);
     backdrop-filter: blur(12px) saturate(130%);
     -webkit-backdrop-filter: blur(12px) saturate(130%);

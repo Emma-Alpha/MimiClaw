@@ -2,9 +2,10 @@
  * Main Layout Component
  * TitleBar at top, then sidebar + content below.
  */
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { createStyles } from 'antd-style';
+import { useChatHeaderInsets } from '@/lib/titlebar-safe-area';
 import { clampSidebarWidth } from '@/lib/sidebar-layout';
 import { useSettingsStore } from '@/stores/settings';
 import { Sidebar } from './Sidebar/index';
@@ -126,6 +127,7 @@ export function MainLayout() {
     rawSidebarWidth,
     typeof window === 'undefined' ? Number.POSITIVE_INFINITY : window.innerWidth,
   );
+  const headerInsets = useChatHeaderInsets(sidebarCollapsed);
   const fullBleed = FULL_BLEED_PATHS.has(pathname);
   const hideTitleBarManagementMenu = pathname === '/code-agent/quick-chat'
     || pathname === '/'
@@ -166,7 +168,14 @@ export function MainLayout() {
   useEffect(() => {
     if (!sidebarCollapsed) return;
     resizeStateRef.current = null;
-    setSidebarResizing(false);
+
+    const frameId = window.requestAnimationFrame(() => {
+      setSidebarResizing(false);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
   }, [sidebarCollapsed]);
 
   const finishSidebarResize = useCallback(
@@ -219,6 +228,14 @@ export function MainLayout() {
     },
     [finishSidebarResize],
   );
+  const contentSafeAreaStyle = useMemo(
+    () =>
+      ({
+        '--mimi-content-safe-end': `${headerInsets.end}px`,
+        '--mimi-content-safe-start': `${headerInsets.start}px`,
+      }) as CSSProperties,
+    [headerInsets.end, headerInsets.start],
+  );
 
   return (
     <div className={styles.root}>
@@ -254,7 +271,7 @@ export function MainLayout() {
             </div>
           </>
         )}
-        <main className={cx(styles.main, fullBleed && styles.mainFullBleed)}>
+        <main className={cx(styles.main, fullBleed && styles.mainFullBleed)} style={contentSafeAreaStyle}>
           <div className={styles.content}>
             <Outlet />
           </div>

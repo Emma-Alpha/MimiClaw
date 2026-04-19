@@ -10,7 +10,15 @@ interface SettingHeaderProps {
 
 export function SettingHeader({ title, extra, leading }: SettingHeaderProps) {
   return (
-    <div style={{ paddingTop: 12, marginBottom: 32 }}>
+    <div
+      style={{
+        marginBottom: 32,
+        marginInline: 'calc(var(--setting-header-bleed, 0px) * -1)',
+        paddingInlineEnd: 'max(var(--setting-header-bleed, 0px), var(--mimi-content-safe-end, 0px))',
+        paddingInlineStart: 'max(var(--setting-header-bleed, 0px), var(--mimi-content-safe-start, 0px))',
+        paddingTop: 12,
+      }}
+    >
       <div
         style={{
           display: 'flex',

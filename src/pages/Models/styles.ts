@@ -19,7 +19,9 @@ export const useModelsStyles = createStyles(({ token, css }) => ({
     display: flex;
     flex-direction: column;
     height: 100%;
-    padding: 40px 40px 40px 40px;
+    padding: 40px;
+    padding-inline-end: max(40px, var(--mimi-content-safe-end, 0px));
+    padding-inline-start: max(40px, var(--mimi-content-safe-start, 0px));
     padding-top: 64px;
   `,
 
