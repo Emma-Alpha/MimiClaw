@@ -82,7 +82,7 @@ const THREAD_WORKSPACE_MIGRATION_KEY = "mimiclaw:thread-workspaces-migrated-v1";
 
 const useStyles = createStyles(({ css, token }) => ({
 	aside: css`
-    ${getSidebarChromeCss(token)}
+    ${getSidebarChromeCss()}
 
     display: flex;
     width: 100%;

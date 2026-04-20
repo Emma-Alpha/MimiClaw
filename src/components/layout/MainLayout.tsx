@@ -104,6 +104,13 @@ const useStyles = createStyles(({ token, css }) => ({
     position: relative;
     background: ${token.colorBgContainer};
   `,
+  mainCodexChrome: css`
+    background: var(--mimi-sidebar-main-surface, ${token.colorBgContainer});
+
+    [data-theme='dark'] & {
+      background: var(--mimi-sidebar-main-background, ${token.colorBgContainer});
+    }
+  `,
   mainFullBleed: css`
     overflow: hidden;
     padding: 0;
@@ -283,7 +290,14 @@ export function MainLayout() {
             </div>
           </>
         )}
-        <main className={cx(styles.main, fullBleed && styles.mainFullBleed)} style={contentSafeAreaStyle}>
+        <main
+          className={cx(
+            styles.main,
+            translucentSidebar && styles.mainCodexChrome,
+            fullBleed && styles.mainFullBleed,
+          )}
+          style={contentSafeAreaStyle}
+        >
           <div className={styles.content}>
             <Outlet />
           </div>

@@ -9,9 +9,9 @@ import { useSettingsStore } from '@/stores/settings';
 import { NavItem, SideBarHeaderLayout, SideBarLayout } from '@/features/NavPanel';
 import { getSidebarChromeCss } from '@/components/layout/sidebar-chrome';
 
-const useStyles = createStyles(({ token, css }) => ({
+const useStyles = createStyles(({ css }) => ({
   aside: css`
-    ${getSidebarChromeCss(token)}
+    ${getSidebarChromeCss()}
 
     display: flex;
     width: 100%;

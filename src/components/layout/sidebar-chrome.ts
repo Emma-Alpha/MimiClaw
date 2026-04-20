@@ -1,42 +1,28 @@
-type SidebarChromeToken = {
-  colorBgContainer: string;
-  colorBgLayout: string;
-  colorBorderSecondary: string;
-  colorText: string;
-  colorWhite: string;
-};
+const CODEX_DARK_MAIN_BACKGROUND = '#111111';
+const CODEX_DARK_SIDEBAR_BACKGROUND = '#131313';
+const CODEX_DARK_SURFACE = '#181818';
+const CODEX_DARK_BORDER = 'rgba(255, 255, 255, 0.084)';
+const CODEX_DARK_EDGE_SHADOW = 'rgba(255, 255, 255, 0.03)';
+
+const CODEX_LIGHT_MAIN_BACKGROUND = '#ffffff';
+const CODEX_LIGHT_SIDEBAR_BACKGROUND = '#fcfcfc';
+const CODEX_LIGHT_SURFACE = '#ffffff';
+const CODEX_LIGHT_BORDER = 'rgba(26, 28, 31, 0.078)';
+const CODEX_LIGHT_EDGE_SHADOW = 'rgba(26, 28, 31, 0.025)';
 
 const SIDEBAR_GLASS_BACKDROP_SATURATION = 160;
-const SIDEBAR_LIGHT_BLUR = 18;
-const SIDEBAR_DARK_BLUR = 22;
-const SIDEBAR_LIGHT_SURFACE_MIX = 84;
-const SIDEBAR_DARK_SURFACE_MIX = 72;
-const SIDEBAR_LIGHT_SOLID_MIX = 96;
-const SIDEBAR_DARK_SOLID_MIX = 92;
+const SIDEBAR_LIGHT_BLUR = 20;
+const SIDEBAR_DARK_BLUR = 20;
+const SIDEBAR_TRANSLUCENT_ALPHA = 90;
 
-export function getSidebarChromeCss(token: SidebarChromeToken) {
+export function getSidebarChromeCss() {
   return `
-    --mimi-sidebar-surface: color-mix(in srgb, ${token.colorBgLayout} ${SIDEBAR_LIGHT_SURFACE_MIX}%, transparent);
-    --mimi-sidebar-surface-solid: color-mix(in srgb, ${token.colorBgLayout} ${SIDEBAR_LIGHT_SOLID_MIX}%, ${token.colorBgContainer});
-    --mimi-sidebar-border: color-mix(in srgb, ${token.colorBorderSecondary} 72%, transparent);
-    --mimi-sidebar-edge-shadow: color-mix(in srgb, ${token.colorText} 5%, transparent);
-    --mimi-sidebar-highlight-top: radial-gradient(
-      120% 52% at 0% 0%,
-      color-mix(in srgb, ${token.colorWhite} 12%, transparent) 0%,
-      transparent 62%
-    );
-    --mimi-sidebar-highlight-bottom: radial-gradient(
-      96% 40% at 0% 100%,
-      color-mix(in srgb, ${token.colorWhite} 7%, transparent) 0%,
-      transparent 64%
-    );
-    --mimi-sidebar-overlay: linear-gradient(
-      180deg,
-      color-mix(in srgb, ${token.colorWhite} 9%, transparent) 0%,
-      transparent 16%,
-      transparent 82%,
-      color-mix(in srgb, ${token.colorWhite} 4%, transparent) 100%
-    );
+    --mimi-sidebar-surface: color-mix(in oklab, ${CODEX_LIGHT_SIDEBAR_BACKGROUND} ${SIDEBAR_TRANSLUCENT_ALPHA}%, transparent);
+    --mimi-sidebar-surface-solid: ${CODEX_LIGHT_SIDEBAR_BACKGROUND};
+    --mimi-sidebar-main-surface: ${CODEX_LIGHT_SURFACE};
+    --mimi-sidebar-main-background: ${CODEX_LIGHT_MAIN_BACKGROUND};
+    --mimi-sidebar-border: ${CODEX_LIGHT_BORDER};
+    --mimi-sidebar-edge-shadow: ${CODEX_LIGHT_EDGE_SHADOW};
     --mimi-sidebar-backdrop-filter: blur(${SIDEBAR_LIGHT_BLUR}px) saturate(${SIDEBAR_GLASS_BACKDROP_SATURATION}%);
 
     position: relative;
@@ -51,44 +37,13 @@ export function getSidebarChromeCss(token: SidebarChromeToken) {
       backdrop-filter: var(--mimi-sidebar-backdrop-filter);
     }
 
-    &[data-translucent-sidebar='true']::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      background:
-        var(--mimi-sidebar-highlight-top),
-        var(--mimi-sidebar-highlight-bottom),
-        var(--mimi-sidebar-overlay);
-    }
-
-    &[data-translucent-sidebar='true'] > * {
-      position: relative;
-      z-index: 1;
-    }
-
     [data-theme='dark'] & {
-      --mimi-sidebar-surface: color-mix(in srgb, ${token.colorBgLayout} ${SIDEBAR_DARK_SURFACE_MIX}%, transparent);
-      --mimi-sidebar-surface-solid: color-mix(in srgb, ${token.colorBgLayout} ${SIDEBAR_DARK_SOLID_MIX}%, ${token.colorBgContainer});
-      --mimi-sidebar-border: color-mix(in srgb, ${token.colorBorderSecondary} 84%, transparent);
-      --mimi-sidebar-edge-shadow: color-mix(in srgb, ${token.colorText} 8%, transparent);
-      --mimi-sidebar-highlight-top: radial-gradient(
-        120% 56% at 0% 0%,
-        color-mix(in srgb, ${token.colorWhite} 10%, transparent) 0%,
-        transparent 60%
-      );
-      --mimi-sidebar-highlight-bottom: radial-gradient(
-        100% 44% at 0% 100%,
-        color-mix(in srgb, ${token.colorWhite} 6%, transparent) 0%,
-        transparent 66%
-      );
-      --mimi-sidebar-overlay: linear-gradient(
-        180deg,
-        color-mix(in srgb, ${token.colorWhite} 8%, transparent) 0%,
-        transparent 18%,
-        transparent 80%,
-        color-mix(in srgb, ${token.colorWhite} 3%, transparent) 100%
-      );
+      --mimi-sidebar-surface: color-mix(in oklab, ${CODEX_DARK_SIDEBAR_BACKGROUND} ${SIDEBAR_TRANSLUCENT_ALPHA}%, transparent);
+      --mimi-sidebar-surface-solid: ${CODEX_DARK_SIDEBAR_BACKGROUND};
+      --mimi-sidebar-main-surface: ${CODEX_DARK_SURFACE};
+      --mimi-sidebar-main-background: ${CODEX_DARK_MAIN_BACKGROUND};
+      --mimi-sidebar-border: ${CODEX_DARK_BORDER};
+      --mimi-sidebar-edge-shadow: ${CODEX_DARK_EDGE_SHADOW};
       --mimi-sidebar-backdrop-filter: blur(${SIDEBAR_DARK_BLUR}px) saturate(${SIDEBAR_GLASS_BACKDROP_SATURATION}%);
     }
   `;
