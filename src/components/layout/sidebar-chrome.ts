@@ -3,6 +3,7 @@ type SidebarChromeToken = {
   colorBgLayout: string;
   colorBorderSecondary: string;
   colorText: string;
+  colorWhite: string;
 };
 
 const SIDEBAR_GLASS_BACKDROP_SATURATION = 160;
@@ -19,12 +20,22 @@ export function getSidebarChromeCss(token: SidebarChromeToken) {
     --mimi-sidebar-surface-solid: color-mix(in srgb, ${token.colorBgLayout} ${SIDEBAR_LIGHT_SOLID_MIX}%, ${token.colorBgContainer});
     --mimi-sidebar-border: color-mix(in srgb, ${token.colorBorderSecondary} 72%, transparent);
     --mimi-sidebar-edge-shadow: color-mix(in srgb, ${token.colorText} 5%, transparent);
+    --mimi-sidebar-highlight-top: radial-gradient(
+      120% 52% at 0% 0%,
+      color-mix(in srgb, ${token.colorWhite} 12%, transparent) 0%,
+      transparent 62%
+    );
+    --mimi-sidebar-highlight-bottom: radial-gradient(
+      96% 40% at 0% 100%,
+      color-mix(in srgb, ${token.colorWhite} 7%, transparent) 0%,
+      transparent 64%
+    );
     --mimi-sidebar-overlay: linear-gradient(
       180deg,
-      color-mix(in srgb, ${token.colorBgContainer} 36%, transparent) 0%,
-      transparent 18%,
+      color-mix(in srgb, ${token.colorWhite} 9%, transparent) 0%,
+      transparent 16%,
       transparent 82%,
-      color-mix(in srgb, ${token.colorText} 3%, transparent) 100%
+      color-mix(in srgb, ${token.colorWhite} 4%, transparent) 100%
     );
     --mimi-sidebar-backdrop-filter: blur(${SIDEBAR_LIGHT_BLUR}px) saturate(${SIDEBAR_GLASS_BACKDROP_SATURATION}%);
 
@@ -45,7 +56,10 @@ export function getSidebarChromeCss(token: SidebarChromeToken) {
       position: absolute;
       inset: 0;
       pointer-events: none;
-      background: var(--mimi-sidebar-overlay);
+      background:
+        var(--mimi-sidebar-highlight-top),
+        var(--mimi-sidebar-highlight-bottom),
+        var(--mimi-sidebar-overlay);
     }
 
     &[data-translucent-sidebar='true'] > * {
@@ -58,12 +72,22 @@ export function getSidebarChromeCss(token: SidebarChromeToken) {
       --mimi-sidebar-surface-solid: color-mix(in srgb, ${token.colorBgLayout} ${SIDEBAR_DARK_SOLID_MIX}%, ${token.colorBgContainer});
       --mimi-sidebar-border: color-mix(in srgb, ${token.colorBorderSecondary} 84%, transparent);
       --mimi-sidebar-edge-shadow: color-mix(in srgb, ${token.colorText} 8%, transparent);
+      --mimi-sidebar-highlight-top: radial-gradient(
+        120% 56% at 0% 0%,
+        color-mix(in srgb, ${token.colorWhite} 10%, transparent) 0%,
+        transparent 60%
+      );
+      --mimi-sidebar-highlight-bottom: radial-gradient(
+        100% 44% at 0% 100%,
+        color-mix(in srgb, ${token.colorWhite} 6%, transparent) 0%,
+        transparent 66%
+      );
       --mimi-sidebar-overlay: linear-gradient(
         180deg,
-        color-mix(in srgb, ${token.colorBgContainer} 26%, transparent) 0%,
+        color-mix(in srgb, ${token.colorWhite} 8%, transparent) 0%,
         transparent 18%,
-        transparent 82%,
-        color-mix(in srgb, ${token.colorText} 5%, transparent) 100%
+        transparent 80%,
+        color-mix(in srgb, ${token.colorWhite} 3%, transparent) 100%
       );
       --mimi-sidebar-backdrop-filter: blur(${SIDEBAR_DARK_BLUR}px) saturate(${SIDEBAR_GLASS_BACKDROP_SATURATION}%);
     }
