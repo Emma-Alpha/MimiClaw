@@ -76,7 +76,7 @@ export const useMiniChatStyles = createStyles(
 	`,
 		headerEmbeddedCodex: css`
 		height: ${CHAT_HEADER_HEIGHT}px;
-		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
 		column-gap: 16px;
 		padding-block: 0;
 		padding-inline-end: ${props.codexHeaderInsetEnd ?? 12}px;
@@ -112,6 +112,7 @@ export const useMiniChatStyles = createStyles(
 		embeddedTopLeft: css`
 		display: flex;
 		align-items: center;
+		justify-content: flex-start;
 		min-width: 0;
 		overflow: visible;
 		pointer-events: auto;
@@ -119,14 +120,21 @@ export const useMiniChatStyles = createStyles(
 		font-size: ${CHAT_SESSION_TITLE_FONT_SIZE}px;
 		font-weight: 500;
 	`,
+		embeddedTopCenter: css`
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 0;
+	`,
 		embeddedThreadWrap: css`
 		position: relative;
-		max-width: 320px;
+		max-width: min(420px, 100%);
 		min-width: 0;
 	`,
 		embeddedThreadBtn: css`
 		display: inline-flex;
 		align-items: center;
+		justify-content: center;
 		gap: 6px;
 		max-width: 100%;
 		padding: 0;

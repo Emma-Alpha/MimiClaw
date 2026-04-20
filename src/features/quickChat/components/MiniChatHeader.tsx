@@ -335,6 +335,8 @@ function MiniChatHeaderImpl({
 								sidebarCollapsed={sidebarCollapsed}
 							/>
 						) : null}
+					</div>
+					<div className={styles.embeddedTopCenter}>
 						<div className={styles.embeddedThreadWrap}>
 							<div className={styles.embeddedThreadBtn}>
 								<span className={styles.embeddedThreadIcon}>
