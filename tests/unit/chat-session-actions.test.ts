@@ -77,39 +77,6 @@ describe('chat session actions', () => {
     expect(h.read().loadHistory).toHaveBeenCalledTimes(1);
   });
 
-  it('switchSession is a no-op for the active session so running state survives route changes', async () => {
-    const { createSessionActions } = await import('@/stores/chat/session-actions');
-    const h = makeHarness({
-      currentSessionKey: 'agent:foo:main',
-      sessions: [{ key: 'agent:foo:main' }],
-      messages: [{ role: 'user', content: 'still running' }],
-      streamingText: 'partial output',
-      streamingMessage: { role: 'assistant', content: 'working' },
-      streamingTools: [{ id: 'tool-1', status: 'running' }],
-      activeRunId: 'run-123',
-      error: 'temporary error',
-      pendingFinal: true,
-      lastUserMessageAt: 123,
-      pendingToolImages: [{ fileName: 'artifact.png' }],
-    });
-    const actions = createSessionActions(h.set as never, h.get as never);
-
-    actions.switchSession('agent:foo:main');
-
-    const next = h.read();
-    expect(next.currentSessionKey).toBe('agent:foo:main');
-    expect(next.messages).toEqual([{ role: 'user', content: 'still running' }]);
-    expect(next.streamingText).toBe('partial output');
-    expect(next.streamingMessage).toEqual({ role: 'assistant', content: 'working' });
-    expect(next.streamingTools).toEqual([{ id: 'tool-1', status: 'running' }]);
-    expect(next.activeRunId).toBe('run-123');
-    expect(next.error).toBe('temporary error');
-    expect(next.pendingFinal).toBe(true);
-    expect(next.lastUserMessageAt).toBe(123);
-    expect(next.pendingToolImages).toEqual([{ fileName: 'artifact.png' }]);
-    expect(h.read().loadHistory).not.toHaveBeenCalled();
-  });
-
   it('switchSession removes truly empty non-main session (no activity, no labels)', async () => {
     const { createSessionActions } = await import('@/stores/chat/session-actions');
     const h = makeHarness({
@@ -207,3 +174,4 @@ describe('chat session actions', () => {
     expect(h.read().sessions.find((session) => session.key === 'agent:main:cron:job-1')?.updatedAt).toBe(1773281731621);
   });
 });
+

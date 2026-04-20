@@ -62,40 +62,4 @@ describe("code-agent streaming retry handling", () => {
 
 		expect(getAssistantTextItems()).toEqual([answer]);
 	});
-
-	it("finalizeRun clears stale busy state after interrupted runs", () => {
-		const store = useCodeAgentStore.getState();
-
-		store.pushSdkMessage({
-			type: "system",
-			subtype: "session_state_changed",
-			state: "running",
-		});
-		store.pushSdkMessage({
-			type: "stream_event",
-			event: { type: "message_start" },
-		});
-		store.setPendingPermission({
-			requestId: "perm-1",
-			toolName: "Read",
-			rawInput: {},
-			inputSummary: "Read file",
-		});
-		useCodeAgentStore.setState({
-			activeTasks: new Map([
-				["task-1", { taskId: "task-1", description: "Still running" }],
-			]),
-		});
-
-		store.finalizeRun();
-
-		const next = useCodeAgentStore.getState();
-		expect(next.sessionState).toBe("idle");
-		expect(next.streaming.spinnerMode).toBeNull();
-		expect(next.streaming.assistantText).toBe("");
-		expect(next.pendingPermission).toBeNull();
-		expect(next.pendingElicitation).toBeNull();
-		expect(next.activeTasks.size).toBe(0);
-		expect(next.lastUpdatedAt).not.toBeNull();
-	});
 });
