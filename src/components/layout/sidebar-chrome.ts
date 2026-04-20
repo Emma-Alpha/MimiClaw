@@ -24,11 +24,15 @@ export function getSidebarChromeCss() {
     position: relative;
     isolation: isolate;
     border-right: 1px solid var(--mimi-sidebar-border);
-    background: var(--mimi-sidebar-surface-solid);
+    background: transparent;
     box-shadow: inset -1px 0 0 var(--mimi-sidebar-edge-shadow);
 
     &[data-translucent-sidebar='true'] {
       background: var(--mimi-sidebar-surface);
+    }
+
+    &[data-translucent-sidebar='false'] {
+      background: color-mix(in oklab, var(--mimi-sidebar-surface-solid) 96%, transparent);
     }
 
     [data-theme='dark'] & {

@@ -38,14 +38,14 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: var(--mimi-sidebar-canvas-background, ${token.colorBgContainer});
+    background: transparent;
   `,
   toolbar: css`
     height: ${CHAT_HEADER_HEIGHT}px;
     display: flex;
     align-items: stretch;
     flex-shrink: 0;
-    background: var(--mimi-sidebar-canvas-background, ${token.colorBgContainer});
+    background: transparent;
     position: relative;
     overflow: visible;
     z-index: 10;
@@ -57,11 +57,7 @@ const useStyles = createStyles(({ token, css }) => ({
       left: 0;
       right: 0;
       height: 32px;
-      background: linear-gradient(
-        to bottom,
-        var(--mimi-sidebar-canvas-background, ${token.colorBgContainer}) 0%,
-        transparent 100%
-      );
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.18) 0%, transparent 100%);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
