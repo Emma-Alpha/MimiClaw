@@ -70,6 +70,16 @@ function send(message) {
 // Pending permission requests keyed by requestId.
 // Resolved when the manager sends a run.approve RPC call.
 const pendingPermissions = new Map();
+let activeRunAbortController = null;
+
+function resolvePendingPermissions(decision = 'deny', feedback = 'Cancelled by user') {
+  if (pendingPermissions.size === 0) return;
+
+  for (const resolve of pendingPermissions.values()) {
+    resolve({ decision, feedback });
+  }
+  pendingPermissions.clear();
+}
 
 async function handleRequest(method, params) {
   if (method === 'health') {
@@ -88,97 +98,129 @@ async function handleRequest(method, params) {
     return { ok: true };
   }
 
+  if (method === 'run.cancel') {
+    if (!activeRunAbortController || activeRunAbortController.signal.aborted) {
+      return { cancelled: false };
+    }
+
+    resolvePendingPermissions();
+    activeRunAbortController.abort('user_cancelled');
+    return {
+      cancelled: true,
+      result: {
+        runId: randomUUID(),
+        status: 'cancelled',
+        output: '已停止生成',
+        summary: '已停止生成',
+      },
+    };
+  }
+
   if (method === 'run.start') {
     const workspaceRoot = typeof params?.workspaceRoot === 'string' ? params.workspaceRoot : '';
     const prompt = typeof params?.prompt === 'string' ? params.prompt : '';
     if (!workspaceRoot || !prompt) {
       throw new Error('run.start requires both workspaceRoot and prompt');
     }
+    if (activeRunAbortController && !activeRunAbortController.signal.aborted) {
+      throw new Error('A code agent run is already in progress');
+    }
 
     const descriptor = buildDescriptor(params?.config);
     const images = Array.isArray(params?.images) ? params.images : [];
-    const analysis = await runSnapshotAnalysis({
-      vendorPath: descriptor.vendorPath,
-      workspaceRoot,
-      prompt,
-      images,
-      bunAvailable: descriptor.bunAvailable,
-      config: params?.config,
-      sessionId: typeof params?.sessionId === 'string' ? params.sessionId : '',
-      allowedTools: Array.isArray(params?.allowedTools) ? params.allowedTools : [],
-      timeoutMs: typeof params?.timeoutMs === 'number' ? params.timeoutMs : 120_000,
-      onEvent: (payload) => {
-        send({
-          type: 'event',
-          event: 'code-agent:trace',
-          payload,
-        });
-        // Forward text deltas as a dedicated streaming token event so the renderer
-        // can display incremental output without waiting for the full result.
-        if (payload && payload.step === 'run:text-delta' && typeof payload.text === 'string' && payload.text) {
-          send({
-            type: 'event',
-            event: 'code-agent:token',
-            payload: { text: payload.text },
-          });
-        }
-        // Forward tool-use activity events so the renderer can render a Claude Code-style feed.
-        if (payload && payload.step === 'run:tool-activity' && typeof payload.toolName === 'string') {
-          send({
-            type: 'event',
-            event: 'code-agent:activity',
-            payload: {
-              toolId: payload.toolId || '',
-              toolName: payload.toolName,
-              inputSummary: typeof payload.inputSummary === 'string' ? payload.inputSummary : '',
-            },
-          });
-        }
-        // Forward tool result summaries so the renderer can annotate each activity row.
-        if (payload && payload.step === 'run:tool-result' && typeof payload.toolId === 'string' && payload.resultSummary) {
-          send({
-            type: 'event',
-            event: 'code-agent:tool-result',
-            payload: {
-              toolId: payload.toolId,
-              resultSummary: payload.resultSummary,
-            },
-          });
-        }
-        // Forward the raw SDK message so the renderer can power its full CLI UI
-        // without re-parsing or re-deriving information already in the protocol.
-        if (payload && payload.step === 'run:sdk-message' && payload.raw && typeof payload.raw.type === 'string') {
-          send({
-            type: 'event',
-            event: 'code-agent:sdk-message',
-            payload: payload.raw,
-          });
-        }
-      },
-      onPermissionRequest: async (request) => {
-        // Forward the permission request to the manager as a protocol-level request.
-        // The manager will IPC it to the renderer, collect user input, then call run.approve.
-        return new Promise((resolve) => {
-          pendingPermissions.set(request.requestId, resolve);
-          send({
-            type: 'request',
-            method: 'permission',
-            payload: request,
-          });
-        });
-      },
-    });
+    const abortController = new AbortController();
+    activeRunAbortController = abortController;
 
-    return {
-      ...analysis,
-      runId: analysis.runId || randomUUID(),
-      metadata: {
-        promptPreview: prompt.slice(0, 240),
-        vendorPresent: descriptor.vendorPresent,
+    try {
+      const analysis = await runSnapshotAnalysis({
+        vendorPath: descriptor.vendorPath,
         workspaceRoot,
-        ...(analysis.metadata || {}),
-      },
-    };
+        prompt,
+        images,
+        bunAvailable: descriptor.bunAvailable,
+        config: params?.config,
+        sessionId: typeof params?.sessionId === 'string' ? params.sessionId : '',
+        allowedTools: Array.isArray(params?.allowedTools) ? params.allowedTools : [],
+        timeoutMs: typeof params?.timeoutMs === 'number' ? params.timeoutMs : 120_000,
+        abortSignal: abortController.signal,
+        onEvent: (payload) => {
+          send({
+            type: 'event',
+            event: 'code-agent:trace',
+            payload,
+          });
+          // Forward text deltas as a dedicated streaming token event so the renderer
+          // can display incremental output without waiting for the full result.
+          if (payload && payload.step === 'run:text-delta' && typeof payload.text === 'string' && payload.text) {
+            send({
+              type: 'event',
+              event: 'code-agent:token',
+              payload: { text: payload.text },
+            });
+          }
+          // Forward tool-use activity events so the renderer can render a Claude Code-style feed.
+          if (payload && payload.step === 'run:tool-activity' && typeof payload.toolName === 'string') {
+            send({
+              type: 'event',
+              event: 'code-agent:activity',
+              payload: {
+                toolId: payload.toolId || '',
+                toolName: payload.toolName,
+                inputSummary: typeof payload.inputSummary === 'string' ? payload.inputSummary : '',
+              },
+            });
+          }
+          // Forward tool result summaries so the renderer can annotate each activity row.
+          if (payload && payload.step === 'run:tool-result' && typeof payload.toolId === 'string' && payload.resultSummary) {
+            send({
+              type: 'event',
+              event: 'code-agent:tool-result',
+              payload: {
+                toolId: payload.toolId,
+                resultSummary: payload.resultSummary,
+              },
+            });
+          }
+          // Forward the raw SDK message so the renderer can power its full CLI UI
+          // without re-parsing or re-deriving information already in the protocol.
+          if (payload && payload.step === 'run:sdk-message' && payload.raw && typeof payload.raw.type === 'string') {
+            send({
+              type: 'event',
+              event: 'code-agent:sdk-message',
+              payload: payload.raw,
+            });
+          }
+        },
+        onPermissionRequest: async (request) => {
+          // Forward the permission request to the manager as a protocol-level request.
+          // The manager will IPC it to the renderer, collect user input, then call run.approve.
+          return new Promise((resolve) => {
+            pendingPermissions.set(request.requestId, resolve);
+            send({
+              type: 'request',
+              method: 'permission',
+              payload: request,
+            });
+          });
+        },
+      });
+
+      return {
+        ...analysis,
+        runId: analysis.runId || randomUUID(),
+        metadata: {
+          promptPreview: prompt.slice(0, 240),
+          vendorPresent: descriptor.vendorPresent,
+          workspaceRoot,
+          ...(analysis.metadata || {}),
+        },
+      };
+    } finally {
+      if (activeRunAbortController === abortController) {
+        activeRunAbortController = null;
+      }
+      resolvePendingPermissions();
+    }
   }
 
   throw new Error(`Unknown sidecar method: ${method}`);

@@ -341,6 +341,22 @@ export class CodeAgentManager extends EventEmitter {
     return lastResult;
   }
 
+  async cancelActiveRun(): Promise<{ cancelled: boolean; result?: CodeAgentRunResult }> {
+    if (!this.process || this.status.state !== 'running') {
+      return { cancelled: false };
+    }
+
+    const result = await this.sendRequest<{
+      cancelled: boolean;
+      result?: CodeAgentRunResult;
+    }>('run.cancel', undefined, 10_000);
+
+    return {
+      cancelled: result?.cancelled === true,
+      result: result?.result,
+    };
+  }
+
   private async startInternal(): Promise<void> {
     await this.refreshRuntimeConfig();
     const descriptor = this.buildDescriptor();

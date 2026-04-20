@@ -84,6 +84,7 @@ export function MiniChatComposer({
 	input,
 	onInputChange,
 	onSend,
+	onStop,
 	loading,
 	disabled,
 	sendDisabled,
@@ -620,7 +621,7 @@ export function MiniChatComposer({
 								type="button"
 								className={loadingSendButtonClassName}
 								disabled={false}
-								onClick={onSend}
+								onClick={onStop}
 								aria-label="停止生成"
 							>
 								<Square style={{ width: CHAT_STOP_ICON_SIZE, height: CHAT_STOP_ICON_SIZE }} fill="currentColor" />
@@ -665,7 +666,7 @@ export function MiniChatComposer({
 							htmlType="button"
 							className={loadingSendButtonClassName}
 							disabled={false}
-							onClick={onSend}
+							onClick={onStop}
 							aria-label="停止生成"
 							icon={<Square style={{ width: CHAT_STOP_ICON_SIZE, height: CHAT_STOP_ICON_SIZE }} fill="currentColor" />}
 						/>

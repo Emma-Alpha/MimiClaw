@@ -23,6 +23,7 @@ import {
 import { ContextUsageTooltip } from "@/components/ui/context-usage-tooltip";
 import { StyledDropdown } from "@/components/ui/styled-dropdown";
 import {
+	cancelCodeAgentRun,
 	fetchClaudeCodeSkills,
 	fetchCodeAgentStatus,
 	fetchLatestCodeAgentRun,
@@ -44,6 +45,7 @@ import { useChatStore, type RawMessage } from "@/stores/chat";
 import { useGatewayStore } from "@/stores/gateway";
 import { useSettingsStore } from "@/stores/settings";
 import { useSkillsStore } from "@/stores/skills";
+import { toast } from "sonner";
 import type {
 	CodeAgentStatus,
 	CodeAgentPermissionMode,
@@ -174,6 +176,7 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 	const switchSession = useChatStore((state) => state.switchSession);
 	const newSession = useChatStore((state) => state.newSession);
 	const sendMessage = useChatStore((state) => state.sendMessage);
+	const abortRun = useChatStore((state) => state.abortRun);
 
 	const [input, setInput] = useState("");
 	const [attachments, setAttachments] = useState<FileAttachment[]>([]);
@@ -668,6 +671,20 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 		: selectedMode || persistentMode || draftIntent.target;
 	const isClaudeCodeCliMode = draftTarget === "code";
 	const terminalShortcutLabel = platform === "darwin" ? "⌘J" : "Ctrl+J";
+
+	const handleStop = useCallback(async () => {
+		try {
+			if (draftTarget === "code") {
+				await cancelCodeAgentRun();
+				return;
+			}
+
+			await abortRun();
+		} catch (error) {
+			console.error(error);
+			toast.error("停止生成失败");
+		}
+	}, [abortRun, draftTarget]);
 
 	useEffect(() => {
 		if (!embeddedCodeAssistant || draftTarget !== "code") return;
@@ -1368,6 +1385,9 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 						onInputChange={setInput}
 						onSend={() => {
 							void handleSend();
+						}}
+						onStop={() => {
+							void handleStop();
 						}}
 						loading={sending || codeSending}
 						disabled={disableComposer}

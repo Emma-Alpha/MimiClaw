@@ -323,6 +323,16 @@ export async function handleCodeAgentRoutes(
     return true;
   }
 
+  if (url.pathname === '/api/code-agent/runs/cancel' && req.method === 'POST') {
+    try {
+      const result = await ctx.codeAgentManager.cancelActiveRun();
+      sendJson(res, 200, { success: true, cancelled: result.cancelled, result: result.result });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
   if (url.pathname === '/api/code-agent/skills' && req.method === 'GET') {
     try {
       const workspaceRoot = url.searchParams.get('workspaceRoot')?.trim() || '';

@@ -663,6 +663,7 @@ async function runClaudeCliTask({
   sessionId,
   allowedTools,
   timeoutMs,
+  abortSignal,
   onEvent,
   onPermissionRequest,
 }) {
@@ -767,6 +768,7 @@ async function runClaudeCliTask({
 
   const startedAt = Date.now();
   let child;
+  let wasCancelled = abortSignal?.aborted === true;
 
   // Tracks whether we're currently awaiting a user permission decision.
   // While true, the stdout stream is paused so we don't process subsequent
@@ -878,7 +880,11 @@ async function runClaudeCliTask({
         'allow',
         normalized.rawInput,
       );
-      child?.stdin.write(response);
+      try {
+        child?.stdin.write(response);
+      } catch {
+        // ignore stdin write failures when the run is being cancelled
+      }
       return;
     }
     awaitingPermission = true;
@@ -892,7 +898,11 @@ async function runClaudeCliTask({
       const decision = typeof result === 'object' && result !== null ? result.decision : result;
       const feedback = typeof result === 'object' && result !== null ? result.feedback : undefined;
       const response = buildPermissionResponseLine(protocol, requestId, decision || 'deny', rawInput, feedback);
-      child?.stdin.write(response);
+      try {
+        child?.stdin.write(response);
+      } catch {
+        // ignore stdin write failures when the run is being cancelled
+      }
     } finally {
       awaitingPermission = false;
       child?.stdout.resume();
@@ -1063,25 +1073,30 @@ async function runClaudeCliTask({
   const result = await new Promise((resolvePromise) => {
     let settled = false;
     let killTimer = null;
+    let abortCleanup = null;
     const settle = (value) => {
       if (settled) return;
       settled = true;
       if (killTimer) {
         clearTimeout(killTimer);
       }
+      abortCleanup?.();
       resolvePromise(value);
     };
 
-    killTimer = setTimeout(() => {
-      timedOut = true;
-      emitTrace(onEvent, 'process:timeout', {
-        timeoutMs: effectiveTimeoutMs,
-      });
+    const terminateChild = () => {
+      try {
+        child.stdin.end();
+      } catch {
+        // ignore stdin close failures during cancellation
+      }
+
       try {
         child.kill('SIGTERM');
       } catch {
         // ignore termination failures
       }
+
       setTimeout(() => {
         if (!child.killed) {
           try {
@@ -1091,7 +1106,34 @@ async function runClaudeCliTask({
           }
         }
       }, 2_000);
+    };
+
+    killTimer = setTimeout(() => {
+      timedOut = true;
+      emitTrace(onEvent, 'process:timeout', {
+        timeoutMs: effectiveTimeoutMs,
+      });
+      terminateChild();
     }, effectiveTimeoutMs);
+
+    if (abortSignal) {
+      const onAbort = () => {
+        wasCancelled = true;
+        emitTrace(onEvent, 'process:abort', {
+          reason: typeof abortSignal.reason === 'string' ? abortSignal.reason : 'aborted',
+        });
+        terminateChild();
+      };
+
+      if (abortSignal.aborted) {
+        onAbort();
+      } else {
+        abortSignal.addEventListener('abort', onAbort, { once: true });
+        abortCleanup = () => {
+          abortSignal.removeEventListener('abort', onAbort);
+        };
+      }
+    }
 
     child.once('error', (error) => {
       spawnError = error;
@@ -1113,13 +1155,15 @@ async function runClaudeCliTask({
   const normalizedStderr = stderr.trim();
   const parsed = parseClaudeCliOutput(normalizedStdout);
   const output = extractCliOutput(parsed, stdout || stderr);
-  const isError = Boolean(spawnError) || timedOut || result.code !== 0 || parsed?.is_error === true;
+  const isCancelled = wasCancelled || abortSignal?.aborted === true;
+  const isError =
+    !isCancelled && (Boolean(spawnError) || timedOut || result.code !== 0 || parsed?.is_error === true);
   const diagnostics = [];
 
-  if (spawnError) {
+  if (spawnError && !isCancelled) {
     diagnostics.push(String(spawnError));
   }
-  if (result.signal) {
+  if (result.signal && !isCancelled) {
     diagnostics.push(`Claude CLI exited via signal ${result.signal}.`);
   }
   if (timedOut) {
@@ -1147,17 +1191,17 @@ async function runClaudeCliTask({
 
   emitTrace(onEvent, 'result:final', {
     runId,
-    status: isError ? 'failed' : 'completed',
-    summary: buildCliSummary(output, root, result.code ?? 0),
-    output,
+    status: isCancelled ? 'cancelled' : isError ? 'failed' : 'completed',
+    summary: isCancelled ? '已停止生成' : buildCliSummary(output, root, result.code ?? 0),
+    output: isCancelled ? '已停止生成' : output,
     diagnostics,
   });
 
   return {
     runId,
-    status: isError ? 'failed' : 'completed',
-    output: output || normalizedStderr || 'Claude CLI completed without text output.',
-    summary: buildCliSummary(output, root, result.code ?? 0),
+    status: isCancelled ? 'cancelled' : isError ? 'failed' : 'completed',
+    output: isCancelled ? '已停止生成' : output || normalizedStderr || 'Claude CLI completed without text output.',
+    summary: isCancelled ? '已停止生成' : buildCliSummary(output, root, result.code ?? 0),
     diagnostics: diagnostics.length > 0 ? diagnostics : undefined,
     metadata: {
       executionMode: 'cli',
@@ -1230,6 +1274,7 @@ export async function runSnapshotAnalysis({
   sessionId,
   allowedTools,
   timeoutMs,
+  abortSignal,
   onEvent,
   onPermissionRequest,
 }) {
@@ -1244,6 +1289,7 @@ export async function runSnapshotAnalysis({
       sessionId,
       allowedTools,
       timeoutMs,
+      abortSignal,
       onEvent,
       onPermissionRequest,
     });

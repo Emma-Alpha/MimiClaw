@@ -60,4 +60,33 @@ describe('handleCodeAgentRoutes', () => {
       { success: true, result: { runId: 'run-1', status: 'analysis_only', output: 'ok' } },
     );
   });
+
+  it('cancels an active code-agent task through the host api route', async () => {
+    const { handleCodeAgentRoutes } = await import('@electron/api/routes/code-agent');
+    const codeAgentManager = {
+      cancelActiveRun: vi.fn().mockResolvedValue({
+        cancelled: true,
+        result: { runId: 'run-2', status: 'cancelled', output: '已停止生成' },
+      }),
+    };
+
+    const handled = await handleCodeAgentRoutes(
+      { method: 'POST' } as IncomingMessage,
+      {} as ServerResponse,
+      new URL('http://127.0.0.1:3210/api/code-agent/runs/cancel'),
+      { codeAgentManager } as never,
+    );
+
+    expect(handled).toBe(true);
+    expect(codeAgentManager.cancelActiveRun).toHaveBeenCalledTimes(1);
+    expect(sendJsonMock).toHaveBeenCalledWith(
+      expect.anything(),
+      200,
+      {
+        success: true,
+        cancelled: true,
+        result: { runId: 'run-2', status: 'cancelled', output: '已停止生成' },
+      },
+    );
+  });
 });

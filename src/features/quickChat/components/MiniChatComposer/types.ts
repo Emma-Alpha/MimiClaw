@@ -16,6 +16,7 @@ export type MiniChatComposerProps = {
 	input: string;
 	onInputChange: (value: string) => void;
 	onSend: () => void;
+	onStop: () => void;
 	loading: boolean;
 	disabled: boolean;
 	sendDisabled: boolean;

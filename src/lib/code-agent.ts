@@ -77,6 +77,29 @@ export async function runCodeAgentTask(input: CodeAgentRunRequest): Promise<Code
   return response.result;
 }
 
+export async function cancelCodeAgentRun(): Promise<{
+  cancelled: boolean;
+  result?: CodeAgentRunResult;
+}> {
+  const response = await hostApiFetch<{
+    success: boolean;
+    cancelled: boolean;
+    result?: CodeAgentRunResult;
+    error?: string;
+  }>('/api/code-agent/runs/cancel', {
+    method: 'POST',
+  });
+
+  if (!response.success) {
+    throw new Error(response.error || 'Failed to cancel code agent run');
+  }
+
+  return {
+    cancelled: response.cancelled === true,
+    result: response.result,
+  };
+}
+
 export async function fetchLatestCodeAgentRun(): Promise<CodeAgentRunRecord | null> {
   const response = await hostApiFetch<{ success: boolean; run: CodeAgentRunRecord | null }>('/api/code-agent/runs/latest');
   return response.run;
