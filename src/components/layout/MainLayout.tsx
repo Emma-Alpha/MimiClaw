@@ -106,10 +106,6 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
   mainCodexChrome: css`
     background: var(--mimi-sidebar-main-surface, ${token.colorBgContainer});
-
-    [data-theme='dark'] & {
-      background: var(--mimi-sidebar-main-background, ${token.colorBgContainer});
-    }
   `,
   mainFullBleed: css`
     overflow: hidden;

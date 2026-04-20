@@ -38,14 +38,14 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: ${token.colorBgContainer};
+    background: var(--mimi-sidebar-main-surface, ${token.colorBgContainer});
   `,
   toolbar: css`
     height: ${CHAT_HEADER_HEIGHT}px;
     display: flex;
     align-items: stretch;
     flex-shrink: 0;
-    background: ${token.colorBgContainer};
+    background: var(--mimi-sidebar-main-surface, ${token.colorBgContainer});
     position: relative;
     overflow: visible;
     z-index: 10;
@@ -169,12 +169,12 @@ const useStyles = createStyles(({ token, css }) => ({
     font-size: 22px;
     font-weight: 600;
     color: ${token.colorText};
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     letter-spacing: -0.025em;
   `,
   welcomeSubtitle: css`
     font-size: 14px;
-    color: ${token.colorTextTertiary};
+    color: ${token.colorTextSecondary};
     margin-bottom: 40px;
     font-weight: 400;
   `,
@@ -189,20 +189,21 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
   welcomeChip: css`
     padding: 7px 14px;
-    border-radius: 8px;
-    border: 1px solid ${token.colorBorderSecondary};
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, ${token.colorText} 8%, transparent);
     font-size: 13px;
     font-weight: 450;
     color: ${token.colorTextSecondary};
-    background: ${token.colorBgContainer};
+    background: color-mix(in oklab, ${token.colorText} 2%, transparent);
     cursor: pointer;
-    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.12s;
     text-align: left;
 
     &:hover {
-      background: ${token.colorFillTertiary};
-      border-color: ${token.colorBorder};
+      background: color-mix(in oklab, ${token.colorText} 6%, transparent);
+      border-color: color-mix(in oklab, ${token.colorText} 12%, transparent);
       color: ${token.colorText};
+      transform: translateY(-1px);
     }
   `,
   interruptedHint: css`

@@ -111,15 +111,17 @@ const useStyles = createStyles(({ token, css }) => ({
 		min-height: 40px;
 		--composer-ring-color: var(--color-token-border, ${token.colorBorder});
 		--composer-ring-color-focus: var(--color-token-border-heavy, var(--color-token-border, ${token.colorBorder}));
-		background: ${token.colorBgContainer};
+		background: color-mix(in oklab, ${token.colorBgContainer} 88%, ${token.colorText} 12%);
 		border: 1px solid transparent;
-		box-shadow: 0 0 0 0.5px var(--composer-ring-color);
+		box-shadow:
+			0 0 0 0.5px var(--composer-ring-color),
+			0 18px 36px -24px rgba(0, 0, 0, 0.65);
 
 		&:focus-within {
 			border-color: transparent;
 			box-shadow:
 				0 0 0 0.5px var(--composer-ring-color-focus),
-				0 4px 8px -2px rgba(0, 0, 0, 0.1);
+				0 20px 42px -24px rgba(0, 0, 0, 0.72);
 		}
 	`,
 	shellCompact: css`

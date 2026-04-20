@@ -15,6 +15,12 @@ const styles = createStaticStyles(({ css }) => ({
     user-select: none;
     overflow: hidden;
     min-width: 32px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    transition:
+      background-color 0.16s ${cssVar.motionEaseOut},
+      border-color 0.16s ${cssVar.motionEaseOut},
+      box-shadow 0.16s ${cssVar.motionEaseOut};
 
     .${ACTION_CLASS_NAME} {
       width: 0;
@@ -52,6 +58,23 @@ const styles = createStaticStyles(({ css }) => ({
       .${ICON_HOVER_CLASS} {
         opacity: 1;
       }
+    }
+  `,
+  idle: css`
+    background: transparent;
+
+    &:hover {
+      background: color-mix(in oklab, ${cssVar.colorText} 6%, transparent);
+      border-color: color-mix(in oklab, ${cssVar.colorText} 4%, transparent);
+    }
+  `,
+  active: css`
+    background: color-mix(in oklab, ${cssVar.colorText} 10%, transparent);
+    border-color: color-mix(in oklab, ${cssVar.colorText} 6%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in oklab, white 6%, transparent);
+
+    &:hover {
+      background: color-mix(in oklab, ${cssVar.colorText} 12%, transparent);
     }
   `,
   iconWrap: css`
@@ -107,8 +130,7 @@ const NavItem = memo<NavItemProps>(
     ...rest
   }) => {
     const iconColor = active ? cssVar.colorText : cssVar.colorTextSecondary;
-    const textColor = cssVar.colorText;
-    const variant = active ? 'filled' : 'borderless';
+    const textColor = active ? cssVar.colorText : cssVar.colorTextSecondary;
 
     const { titlePrefix, iconPostfix } = slots || {};
 
@@ -124,12 +146,16 @@ const NavItem = memo<NavItemProps>(
       <Block
         horizontal
         align={'center'}
-        className={cx(styles.container, className)}
+        className={cx(
+          styles.container,
+          active ? styles.active : styles.idle,
+          className,
+        )}
         clickable={!disabled}
         gap={8}
         height={36}
-        paddingInline={4}
-        variant={variant}
+        paddingInline={6}
+        variant={'borderless'}
         onClick={(e) => {
           if (href && !(e.metaKey || e.ctrlKey)) {
             e.preventDefault();
