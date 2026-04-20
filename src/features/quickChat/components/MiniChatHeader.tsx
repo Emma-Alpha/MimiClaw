@@ -367,7 +367,7 @@ function MiniChatHeaderImpl({
 								aria-label={terminalToggleTitle}
 								aria-pressed={isTerminalToggleDisabled ? undefined : isTerminalVisible}
 							>
-								<SquareTerminal size={CHAT_SESSION_META_ICON_SIZE} />
+								<SquareTerminal size={CHAT_SESSION_META_ICON_SIZE + 2} />
 							</button>
 						) : null}
 						{!isCodeMode ? (
