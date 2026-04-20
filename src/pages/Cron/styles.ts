@@ -10,6 +10,9 @@ export const useCronStyles = createStyles(({ css, token }) => ({
     overflow: hidden;
     background: ${token.colorBgContainer};
     --cron-inline-padding: 32px;
+    --cron-extra-start: 12px;
+    --cron-safe-start: calc(var(--cron-inline-padding, 0px) + var(--cron-extra-start));
+    --mimi-content-safe-start: var(--cron-safe-start);
 
     @media (max-width: 992px) {
       --cron-inline-padding: 20px;
@@ -17,6 +20,7 @@ export const useCronStyles = createStyles(({ css, token }) => ({
 
     @media (max-width: 640px) {
       --cron-inline-padding: 12px;
+      --cron-extra-start: 8px;
     }
   `,
   pageInner: css`
@@ -45,6 +49,7 @@ export const useCronStyles = createStyles(({ css, token }) => ({
     width: min(880px, 100%);
     margin-inline: auto;
     padding-inline: var(--cron-inline-padding);
+    padding-inline-start: max(var(--cron-inline-padding, 0px), var(--cron-safe-start, 0px));
   `,
   loadingWrapper: css`
     display: flex;

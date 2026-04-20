@@ -47,6 +47,15 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
       --skills-inline-padding: 12px;
     }
   `,
+  skillsPageInsetRoot: css`
+    --skills-extra-start: 12px;
+    --skills-safe-start: calc(var(--skills-inline-padding, 0px) + var(--skills-extra-start));
+    --mimi-content-safe-start: var(--skills-safe-start);
+
+    @media (max-width: 640px) {
+      --skills-extra-start: 8px;
+    }
+  `,
   skillsPageInner: css`
     width: 100%;
     max-width: 100%;
@@ -81,6 +90,9 @@ export const useSkillsStyles = createStyles(({ token, css }) => ({
   `,
   skillsPageContentInner: css`
     padding-inline: var(--skills-inline-padding);
+  `,
+  skillsPageContentInset: css`
+    padding-inline-start: max(var(--skills-inline-padding, 0px), var(--skills-safe-start, 0px));
   `,
   loadingWrapper: css`
     display: flex;

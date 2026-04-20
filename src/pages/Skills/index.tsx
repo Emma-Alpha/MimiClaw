@@ -33,7 +33,7 @@ export function Skills() {
     setNodeRuntime,
   } = useSkillsStore();
   const { t } = useTranslation('skills');
-  const { styles } = useSkillsStyles();
+  const { styles, cx } = useSkillsStyles();
   const navigate = useNavigate();
   const [skillsDirPath, setSkillsDirPath] = useState('~/.openclaw/skills');
 
@@ -144,7 +144,7 @@ export function Skills() {
   }
 
   return (
-    <div className={styles.skillsPageRoot}>
+    <div className={cx(styles.skillsPageRoot, styles.skillsPageInsetRoot)}>
       <div className={styles.skillsPageInner}>
         <div className={styles.skillsPageContent}>
           <div className={styles.skillsPageHeader}>
@@ -158,7 +158,7 @@ export function Skills() {
             />
           </div>
 
-          <div className={styles.skillsPageContentInner}>
+          <div className={cx(styles.skillsPageContentInner, styles.skillsPageContentInset)}>
             {error && (
               <div className={styles.errorBanner}>
                 <AlertCircle style={{ width: 20, height: 20, flexShrink: 0 }} />
