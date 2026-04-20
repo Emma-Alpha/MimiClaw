@@ -28,6 +28,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Dropdown, type MenuProps } from "antd";
 import { useTranslation } from "react-i18next";
+import type { CodeAgentRunRecord } from "../../../../shared/code-agent";
 
 import {
 	useSettingsStore,
@@ -70,6 +71,7 @@ type CliSessionItem = { sessionId: string; title: string; updatedAt: number };
 type VoiceSessionItem = { id: string; label: string; updatedAt: number };
 type XiaojiuSessionItem = { id: string; label: string; updatedAt: number };
 type WorkspaceAvailability = { available: boolean; reason?: string };
+type RunningThreadSessionMap = Record<string, Record<string, true>>;
 
 const COLLAPSIBLE_SESSION_LIMIT = 5;
 const THREAD_WORKSPACE_MIGRATION_KEY = "mimiclaw:thread-workspaces-migrated-v1";
@@ -346,6 +348,8 @@ export function Sidebar() {
 	const [workspaceAvailabilityById, setWorkspaceAvailabilityById] = useState<
 		Record<string, WorkspaceAvailability>
 	>({});
+	const [runningThreadSessionsByWorkspaceId, setRunningThreadSessionsByWorkspaceId] =
+		useState<RunningThreadSessionMap>({});
 	const didRunMigrationRef = useRef(false);
 	const didInitialWorkspaceFetchRef = useRef(false);
 	const fetchedWorkspaceIdsRef = useRef<Set<string>>(new Set());
@@ -556,6 +560,47 @@ export function Sidebar() {
 		[t],
 	);
 
+	const resolveRunSessionTarget = useCallback(
+		(payload: CodeAgentRunRecord | unknown) => {
+			if (!payload || typeof payload !== "object") return null;
+			const request = (payload as { request?: unknown }).request;
+			if (!request || typeof request !== "object") return null;
+
+			const workspaceRoot =
+				typeof (request as { workspaceRoot?: unknown }).workspaceRoot === "string"
+					? (request as { workspaceRoot: string }).workspaceRoot.trim()
+					: "";
+			if (!workspaceRoot) return null;
+
+			const workspaceId =
+				workspaceIdByNormalizedRoot[normalizeWorkspacePath(workspaceRoot)];
+			if (!workspaceId) return null;
+
+			let sessionId =
+				typeof (request as { sessionId?: unknown }).sessionId === "string"
+					? (request as { sessionId: string }).sessionId.trim()
+					: "";
+
+			if (!sessionId) {
+				const result = (payload as { result?: unknown }).result;
+				const metadata =
+					result && typeof result === "object"
+						? (result as { metadata?: unknown }).metadata
+						: null;
+				sessionId =
+					metadata && typeof metadata === "object"
+						? typeof (metadata as { sessionId?: unknown }).sessionId === "string"
+							? (metadata as { sessionId: string }).sessionId.trim()
+							: ""
+						: "";
+			}
+
+			if (!sessionId) return null;
+			return { sessionId, workspaceId };
+		},
+		[workspaceIdByNormalizedRoot],
+	);
+
 	useEffect(() => {
 		if (didRunMigrationRef.current) return;
 		didRunMigrationRef.current = true;
@@ -616,7 +661,7 @@ export function Sidebar() {
 	}, [refreshWorkspaceSessions, threadWorkspaces]);
 
 	useEffect(() => {
-		const refresh = (payload: unknown) => {
+		const refreshWorkspaceFromRun = (payload: unknown) => {
 			if (!payload || typeof payload !== "object") return;
 			const request = (payload as { request?: unknown }).request;
 			if (!request || typeof request !== "object") return;
@@ -630,13 +675,65 @@ export function Sidebar() {
 			if (!workspace) return;
 			void refreshWorkspaceSessions(workspace);
 		};
-		const unsubA = subscribeHostEvent("code-agent:run-completed", refresh);
-		const unsubB = subscribeHostEvent("code-agent:run-failed", refresh);
-		return () => {
-			unsubA();
-			unsubB();
+
+		const markThreadSessionRunning = (payload: CodeAgentRunRecord) => {
+			const target = resolveRunSessionTarget(payload);
+			if (!target) return;
+			setRunningThreadSessionsByWorkspaceId((prev) => ({
+				...prev,
+				[target.workspaceId]: {
+					...(prev[target.workspaceId] ?? {}),
+					[target.sessionId]: true,
+				},
+			}));
 		};
-	}, [refreshWorkspaceSessions, workspaceById, workspaceIdByNormalizedRoot]);
+
+		const clearThreadSessionRunning = (payload: CodeAgentRunRecord) => {
+			const target = resolveRunSessionTarget(payload);
+			if (target) {
+				setRunningThreadSessionsByWorkspaceId((prev) => {
+					const currentWorkspaceSessions = prev[target.workspaceId];
+					if (!currentWorkspaceSessions?.[target.sessionId]) return prev;
+					const {
+						[target.sessionId]: _removed,
+						...remainingSessions
+					} = currentWorkspaceSessions;
+					if (Object.keys(remainingSessions).length === 0) {
+						const { [target.workspaceId]: _workspaceRemoved, ...rest } = prev;
+						return rest;
+					}
+					return {
+						...prev,
+						[target.workspaceId]: remainingSessions,
+					};
+				});
+			}
+			refreshWorkspaceFromRun(payload);
+		};
+
+		const unsubscribeRunStarted = subscribeHostEvent<CodeAgentRunRecord>(
+			"code-agent:run-started",
+			markThreadSessionRunning,
+		);
+		const unsubscribeRunCompleted = subscribeHostEvent<CodeAgentRunRecord>(
+			"code-agent:run-completed",
+			clearThreadSessionRunning,
+		);
+		const unsubscribeRunFailed = subscribeHostEvent<CodeAgentRunRecord>(
+			"code-agent:run-failed",
+			clearThreadSessionRunning,
+		);
+		return () => {
+			unsubscribeRunStarted();
+			unsubscribeRunCompleted();
+			unsubscribeRunFailed();
+		};
+	}, [
+		refreshWorkspaceSessions,
+		resolveRunSessionTarget,
+		workspaceById,
+		workspaceIdByNormalizedRoot,
+	]);
 
 	useEffect(() => {
 		if (pathname === "/" || pathname.startsWith("/chat/openclaw")) {
@@ -668,6 +765,7 @@ export function Sidebar() {
 		setWorkspaceLoadingById(clean);
 		setWorkspaceErrorById(clean);
 		setWorkspaceAvailabilityById(clean);
+		setRunningThreadSessionsByWorkspaceId(clean);
 	}, [threadWorkspaces]);
 
 	// ── handlers ─────────────────────────────────────────────────────────────
@@ -1153,6 +1251,10 @@ export function Sidebar() {
 												pathname.startsWith("/code-agent/quick-chat") &&
 												activeThreadWorkspaceIdFromRoute === workspace.id &&
 												routeSessionId === session.sessionId;
+											const isRunning =
+												runningThreadSessionsByWorkspaceId[workspace.id]?.[
+													session.sessionId
+												] === true;
 											return (
 												<NavItem
 													key={`${workspace.id}:${session.sessionId}`}
@@ -1166,6 +1268,24 @@ export function Sidebar() {
 																i18n.language,
 															)}
 														/>
+													}
+													slots={
+														isRunning
+															? {
+																	titlePrefix: (
+																		<span
+																			className={cx(
+																				styles.sessionMarker,
+																				styles.sessionMarkerSpinning,
+																			)}
+																		>
+																			<Loader2
+																				size={CHAT_SESSION_META_ICON_SIZE}
+																			/>
+																		</span>
+																	),
+																}
+															: undefined
 													}
 													onClick={() =>
 														handleThreadSession(workspace, session.sessionId)
