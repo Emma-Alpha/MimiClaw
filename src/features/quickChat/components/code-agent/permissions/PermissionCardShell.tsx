@@ -14,21 +14,54 @@ const useStyles = createStyles(({ css, token }) => ({
 	card: css`
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
-		padding: 10px 12px;
-		border-radius: 10px;
-		background: ${token.colorFillTertiary};
+		gap: 10px;
+		padding: 12px 12px 10px;
+		border-radius: 16px;
 		border: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorBgContainer};
+		box-shadow:
+			0 1px 2px rgba(15, 23, 42, 0.03),
+			0 8px 24px rgba(15, 23, 42, 0.04);
 	`,
 	header: css`
 		display: flex;
 		align-items: center;
 		gap: 6px;
-		font-size: ${token.fontSizeSM}px;
+	`,
+	headerIcon: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 14px;
+		height: 14px;
+		flex-shrink: 0;
+		color: ${token.colorWarning};
+	`,
+	headerText: css`
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		min-width: 0;
+	`,
+	eyebrow: css`
+		display: none;
+		font-size: calc(${token.fontSizeSM}px - 1px);
+		line-height: 1.35;
 		font-weight: 600;
 		color: ${token.colorWarning};
 	`,
-	content: css``,
+	title: css`
+		font-size: ${token.fontSizeSM}px;
+		line-height: 1.35;
+		font-weight: 600;
+		color: ${token.colorWarning};
+	`,
+	content: css`
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		min-width: 0;
+	`,
 	optionList: css`
 		display: flex;
 		flex-direction: column;
@@ -38,8 +71,9 @@ const useStyles = createStyles(({ css, token }) => ({
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		padding: 5px 8px;
-		border-radius: 6px;
+		min-height: 34px;
+		padding: 6px 8px;
+		border-radius: 8px;
 		font-size: ${token.fontSizeSM}px;
 		cursor: pointer;
 		border: 1px solid transparent;
@@ -47,25 +81,34 @@ const useStyles = createStyles(({ css, token }) => ({
 		color: ${token.colorText};
 		text-align: left;
 		width: 100%;
-		transition: background 0.12s;
+		transition:
+			background 0.16s ease,
+			border-color 0.16s ease;
 		&:hover {
-			background: ${token.colorFillSecondary};
+			background: ${token.colorFillTertiary};
 		}
 	`,
 	optionActive: css`
-		background: ${token.colorFillSecondary};
+		background: ${token.colorFillTertiary};
 		color: ${token.colorText};
 		border-color: ${token.colorBorderSecondary};
 		font-weight: 600;
 		&:hover {
-			background: ${token.colorFillSecondary};
+			background: ${token.colorFillTertiary};
 		}
 	`,
 	optionIndex: css`
-		min-width: 16px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 18px;
+		height: 18px;
+		flex-shrink: 0;
 		text-align: center;
 		font-weight: 600;
-		opacity: 0.7;
+		font-variant-numeric: tabular-nums;
+		color: ${token.colorTextSecondary};
+		border-radius: 5px;
 	`,
 	optionLabel: css`
 		flex: 1;
@@ -75,15 +118,20 @@ const useStyles = createStyles(({ css, token }) => ({
 	`,
 	feedbackInput: css`
 		width: 100%;
-		padding: 5px 8px;
-		border-radius: 6px;
+		height: 30px;
+		padding: 0 8px;
+		border-radius: 8px;
 		font-size: ${token.fontSizeSM}px;
 		border: 1px solid ${token.colorBorderSecondary};
-		background: ${token.colorBgContainer};
+		background: transparent;
 		color: ${token.colorText};
 		outline: none;
+		transition:
+			border-color 0.16s ease,
+			box-shadow 0.16s ease;
 		&:focus {
-			border-color: ${token.colorPrimary};
+			border-color: ${token.colorPrimaryBorder};
+			box-shadow: 0 0 0 2px color-mix(in srgb, ${token.colorPrimaryBg} 60%, transparent);
 		}
 		&::placeholder {
 			color: ${token.colorTextQuaternary};
@@ -92,7 +140,7 @@ const useStyles = createStyles(({ css, token }) => ({
 	hint: css`
 		font-size: calc(${token.fontSizeSM}px - 1px);
 		color: ${token.colorTextQuaternary};
-		margin-top: 2px;
+		margin-top: 0;
 	`,
 }));
 
@@ -155,8 +203,13 @@ export function PermissionCardShell({ toolDisplayName, children, onDecision }: P
 	return (
 		<div className={styles.card}>
 			<div className={styles.header}>
-				<ShieldAlert size={13} />
-				<span>允许 {toolDisplayName} 操作？</span>
+				<span className={styles.headerIcon}>
+					<ShieldAlert size={13} />
+				</span>
+				<div className={styles.headerText}>
+					<span className={styles.eyebrow}>权限确认</span>
+					<span className={styles.title}>允许 {toolDisplayName} 操作？</span>
+				</div>
 			</div>
 			<div className={styles.content}>{children}</div>
 			<div className={styles.optionList}>
@@ -186,7 +239,7 @@ export function PermissionCardShell({ toolDisplayName, children, onDecision }: P
 					onChange={(e) => setFeedback(e.target.value)}
 				/>
 			</div>
-			<div className={styles.hint}>Esc 取消</div>
+			<div className={styles.hint}>按 1/2/3 选择，Enter 提交，Esc 拒绝</div>
 		</div>
 	);
 }

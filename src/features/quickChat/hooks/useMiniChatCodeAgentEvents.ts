@@ -38,7 +38,6 @@ export function useMiniChatCodeAgentEvents({
 	pendingCompletionActivitiesRef,
 }: Params) {
 	useEffect(() => {
-		const finalizeCodeAgentRun = useCodeAgentStore.getState().finalizeRun;
 		const unsubscribeStatus = subscribeHostEvent<CodeAgentStatus>(
 			"code-agent:status",
 			(payload) => {
@@ -105,7 +104,7 @@ export function useMiniChatCodeAgentEvents({
 				setCodeRunActive(false);
 				pendingCompletionActivitiesRef.current = [...codeActivitiesRef.current];
 				codeActivitiesRef.current = [];
-				finalizeCodeAgentRun();
+				resetCodeAgentStreaming();
 			},
 		);
 
@@ -115,7 +114,7 @@ export function useMiniChatCodeAgentEvents({
 				setCodeRunActive(false);
 				pendingCompletionActivitiesRef.current = [...codeActivitiesRef.current];
 				codeActivitiesRef.current = [];
-				finalizeCodeAgentRun();
+				resetCodeAgentStreaming();
 			},
 		);
 

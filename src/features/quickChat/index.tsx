@@ -1325,60 +1325,62 @@ export function MiniChat({ embeddedCodeAssistant = false }: MiniChatProps) {
 
 			<div className={styles.bottomDock}>
 				<div className={cx(styles.inputDock, embeddedCodeAssistant && styles.inputDockEmbedded)}>
-				{/* New SDK-driven permission dispatcher (tool-specific UI) */}
-				{codeAgentPendingPermission && (
-					<PermissionDispatcher
-						permission={codeAgentPendingPermission}
-						onDecision={(requestId, decision, feedback) => {
-							if (decision === "allow-session") {
-								addSessionAllowedTool(codeAgentPendingPermission.toolName);
-							}
-							const ipcDecision = decision === "allow-session" ? "allow" : decision;
-							resolveCodeAgentPermission(requestId, ipcDecision);
-							void handlePermissionDecision(requestId, ipcDecision, feedback);
-						}}
-					/>
-				)}
-				{/* MCP Elicitation form */}
-				{pendingElicitation && (
-					<div className={styles.elicitationPopup}>
-						<ElicitationForm
-							elicitation={pendingElicitation}
-							onClose={() => {
-								resolveElicitation("decline");
-								void invokeIpc("code-agent:respond-elicitation", {
-									elicitationId: pendingElicitation.elicitationId,
-									action: "decline",
-								}).catch(() => {});
-							}}
-							onSubmit={(action, content) => {
-								resolveElicitation(action, content);
-								void invokeIpc("code-agent:respond-elicitation", {
-									elicitationId: pendingElicitation.elicitationId,
-									action,
-									content,
-								}).catch(() => {});
-							}}
-						/>
-					</div>
-				)}
-				{floatingTodoTool ? (
-					<div
-						ref={floatingTodoRef}
-						className={cx(
-							styles.todoDock,
-							styles.todoDockInset,
-							styles.todoDockFloating,
-							styles.todoDockFused,
-						)}
-					>
-						<TodoListCard
-							tool={floatingTodoTool}
-							variant="dock"
-							fusedWithComposer
-						/>
-					</div>
-				) : null}
+					{/* New SDK-driven permission dispatcher (tool-specific UI) */}
+					{codeAgentPendingPermission && (
+						<div className={styles.permissionDock}>
+							<PermissionDispatcher
+								permission={codeAgentPendingPermission}
+								onDecision={(requestId, decision, feedback) => {
+									if (decision === "allow-session") {
+										addSessionAllowedTool(codeAgentPendingPermission.toolName);
+									}
+									const ipcDecision = decision === "allow-session" ? "allow" : decision;
+									resolveCodeAgentPermission(requestId, ipcDecision);
+									void handlePermissionDecision(requestId, ipcDecision, feedback);
+								}}
+							/>
+						</div>
+					)}
+					{/* MCP Elicitation form */}
+					{pendingElicitation && (
+						<div className={styles.elicitationPopup}>
+							<ElicitationForm
+								elicitation={pendingElicitation}
+								onClose={() => {
+									resolveElicitation("decline");
+									void invokeIpc("code-agent:respond-elicitation", {
+										elicitationId: pendingElicitation.elicitationId,
+										action: "decline",
+									}).catch(() => {});
+								}}
+								onSubmit={(action, content) => {
+									resolveElicitation(action, content);
+									void invokeIpc("code-agent:respond-elicitation", {
+										elicitationId: pendingElicitation.elicitationId,
+										action,
+										content,
+									}).catch(() => {});
+								}}
+							/>
+						</div>
+					)}
+					{floatingTodoTool ? (
+						<div
+							ref={floatingTodoRef}
+							className={cx(
+								styles.todoDock,
+								styles.todoDockInset,
+								styles.todoDockFloating,
+								styles.todoDockFused,
+							)}
+						>
+							<TodoListCard
+								tool={floatingTodoTool}
+								variant="dock"
+								fusedWithComposer
+							/>
+						</div>
+					) : null}
 					<MiniChatComposer
 						fusedWithTodo={Boolean(floatingTodoTool)}
 						input={input}

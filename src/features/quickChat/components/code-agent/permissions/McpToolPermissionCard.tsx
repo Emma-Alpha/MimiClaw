@@ -1,6 +1,6 @@
-import { createStyles } from "antd-style";
 import { PermissionCardShell } from "./PermissionCardShell";
 import type { PermissionDecision } from "./PermissionCardShell";
+import { formatPreviewJson, truncateText, usePermissionContentStyles } from "./shared";
 
 interface Props {
 	toolName: string;
@@ -10,40 +10,37 @@ interface Props {
 	onDecision: (decision: PermissionDecision, feedback?: string) => void;
 }
 
-const useStyles = createStyles(({ css, token }) => ({
-	meta: css`
-		font-size: calc(${token.fontSizeSM}px - 1px);
-		color: ${token.colorTextTertiary};
-		margin-bottom: 4px;
-	`,
-	input: css`
-		font-size: calc(${token.fontSizeSM}px - 1px);
-		font-family: ${token.fontFamilyCode};
-		background: ${token.colorFillSecondary};
-		border: 1px solid ${token.colorBorderSecondary};
-		border-radius: 6px;
-		padding: 6px 8px;
-		white-space: pre-wrap;
-		word-break: break-all;
-		color: ${token.colorTextSecondary};
-		max-height: 100px;
-		overflow-y: auto;
-	`,
-}));
-
 export function McpToolPermissionCard({ toolName, rawInput, title, description, onDecision }: Props) {
-	const { styles } = useStyles();
+	const { styles, cx } = usePermissionContentStyles();
 	const parts = toolName.split("__");
 	const serverName = parts.length > 1 ? parts[0] : "";
 	const shortToolName = parts.length > 1 ? parts.slice(1).join("__") : toolName;
+	const detailText = title || description || "";
 
 	return (
-		<PermissionCardShell toolDisplayName={`MCP: ${shortToolName}`} onDecision={onDecision}>
-			{serverName && <div className={styles.meta}>🔌 Server: {serverName}</div>}
-			{(title || description) && (
-				<div className={styles.meta}>{title || description}</div>
-			)}
-			<div className={styles.input}>{JSON.stringify(rawInput, null, 2).slice(0, 300)}</div>
+		<PermissionCardShell toolDisplayName={`MCP: ${toolName}`} onDecision={onDecision}>
+			<div className={styles.stack}>
+				<div className={styles.metaStack}>
+					{serverName && (
+						<div className={styles.metaLine}>
+							<span className={styles.metaLabel}>Server: </span>
+							<span className={cx(styles.metaValue, styles.codeValue)}>{serverName}</span>
+						</div>
+					)}
+					<div className={styles.metaLine}>
+						<span className={styles.metaLabel}>Tool: </span>
+						<span className={cx(styles.metaValue, styles.codeValue)}>{shortToolName}</span>
+					</div>
+				</div>
+				{detailText && (
+					<div className={`${styles.block} ${styles.blockText}`}>
+						{truncateText(detailText, 220)}
+					</div>
+				)}
+				<div className={cx(styles.block, styles.blockCode)}>
+					{formatPreviewJson(rawInput, 560)}
+				</div>
+			</div>
 		</PermissionCardShell>
 	);
 }

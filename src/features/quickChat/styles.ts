@@ -1569,23 +1569,30 @@ export const useMiniChatStyles = createStyles(
 		z-index: 2;
 	`,
 	todoDockInset: css`
-		width: calc(100% - 48px);
-		max-width: calc(var(--mini-chat-content-width, 800px) - 48px);
+		width: calc(100% - 34px);
+		max-width: calc(var(--mini-chat-content-width, 800px) - 34px);
 
 		@media (max-width: 640px) {
-			width: calc(100% - 26px);
-			max-width: calc(var(--mini-chat-content-width, 800px) - 26px);
+			width: calc(100% - 18px);
+			max-width: calc(var(--mini-chat-content-width, 800px) - 18px);
 		}
 	`,
 	todoDockFloating: css`
 		position: absolute;
 		left: 50%;
-		bottom: calc(100% - 8px);
+		bottom: calc(100% - 2px);
 		transform: translateX(-50%);
 		pointer-events: auto;
 	`,
 	todoDockFused: css`
 		margin-bottom: 0;
+	`,
+	permissionDock: css`
+		max-width: var(--mini-chat-input-width, 800px);
+		margin: 0 auto 6px;
+		width: 100%;
+		position: relative;
+		z-index: 3;
 	`,
 	composerStatusRow: css`
 		display: flex;

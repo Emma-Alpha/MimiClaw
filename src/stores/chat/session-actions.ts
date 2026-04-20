@@ -154,7 +154,6 @@ export function createSessionActions(
 
     switchSession: (key: string) => {
       const { currentSessionKey, messages, sessionLastActivity, sessionLabels } = get();
-      if (key === currentSessionKey) return;
       // 仅将没有任何历史记录且无活动时间的会话视为空会话。
       // 单纯依赖 messages.length 是不可靠的，因为 switchSession 会在真正调用 loadHistory 前抢先清空当前 messages，
       // 造成竞争条件，使得带有真实历史的会话被判定为空并从侧边栏移除。

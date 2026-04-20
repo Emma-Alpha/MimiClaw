@@ -421,8 +421,6 @@ export interface CodeAgentStore {
 	reset: () => void;
 	/** Light reset — clears only streaming state, keeps items for persistent timeline */
 	resetStreaming: () => void;
-	/** Finalize the current run and clear transient busy state after complete/fail */
-	finalizeRun: () => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -1318,18 +1316,6 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 		});
 	},
 
-	finalizeRun: () => {
-		clearQueuedStreamingDeltas();
-		set({
-			sessionState: "idle",
-			streaming: initialStreaming(),
-			pendingPermission: null,
-			pendingElicitation: null,
-			activeTasks: new Map(),
-			lastUpdatedAt: Date.now(),
-		});
-	},
-
 	appendStreamingText: (text) => {
 		if (!text) return;
 		queueAssistantStreamingDelta(text);
@@ -1939,7 +1925,7 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 				const totalCostUsd = Number(msg.total_cost_usd ?? 0);
 			const durationMs = Number(msg.duration_ms ?? 0);
 			addItem({ kind: "result", id: uid(), isError, numTurns, totalCostUsd, durationMs });
-			get().finalizeRun();
+			set({ sessionState: "idle", streaming: initialStreaming(), lastUpdatedAt: Date.now() });
 				return;
 			}
 
