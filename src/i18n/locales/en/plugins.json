@@ -3,18 +3,31 @@
   "notice": "This page currently focuses on two things: installing plugins and surfacing MCP-capable plugins. Broader plugin management can come later.",
   "descriptionFallback": "No description available",
   "tabs": {
-    "pencil": "Pencil MCP",
+    "publicMcp": "Public MCP",
     "openclaw": "OpenClaw Plugins"
   },
-  "pencil": {
-    "title": "Connect Pencil to Claude/Codex MCP from here",
-    "description": "Copy the MCP configuration from Pencil settings, then paste it into this project's .mcp.json (or your ~/.claude/settings.json).",
-    "hint": "Pencil exposes an MCP server config. OpenClaw plugins in this page are a separate mechanism.",
-    "templateTitle": "Template (replace placeholders with the real command / args copied from Pencil)",
-    "steps": {
-      "open": "Open Pencil → Settings → MCP",
-      "copy": "Click Copy MCP config",
-      "paste": "Paste it into .mcp.json or ~/.claude/settings.json"
+  "publicMcp": {
+    "title": "Public MCP Integrations",
+    "description": "Pick a service card first, then use one-click setup from the detail page.",
+    "hint": "One-click setup copies a ready-to-use template. Paste it into project .mcp.json or ~/.claude/settings.json.",
+    "cardAction": "View setup details",
+    "back": "Back to cards",
+    "connectNow": "One-click setup",
+    "copyTemplate": "Copy template",
+    "templateTitle": "Template (ready to copy)",
+    "tools": {
+      "pencil": {
+        "name": "Pencil",
+        "badge": "Recommended",
+        "summary": "Design-to-code MCP integration for turning UI ideas into runnable code faster.",
+        "detailTitle": "Pencil MCP quick setup",
+        "detailDescription": "Click one-click setup to copy the template, then complete the final paste step.",
+        "steps": {
+          "open": "Open Pencil → Settings → MCP",
+          "copy": "Click Copy MCP config (or use the template below)",
+          "paste": "Paste into .mcp.json or ~/.claude/settings.json"
+        }
+      }
     }
   },
   "actions": {
@@ -59,6 +72,10 @@
     "installFailed": "Failed to install {{name}}: {{error}}",
     "installed": "{{name}} installed",
     "copiedTemplate": "MCP template copied",
-    "failedCopyTemplate": "Failed to copy MCP template: {{error}}"
+    "failedCopyTemplate": "Failed to copy MCP template: {{error}}",
+    "connectedByCopy": "One-click setup complete: template copied, paste it as instructed",
+    "clipboardMcpInvalid": "No valid MCP config found in clipboard. Please click Copy MCP config first.",
+    "connectedReady": "Connected: {{server}} was written to {{filePath}}",
+    "connectedFailed": "One-click setup failed: {{error}}"
   }
 }

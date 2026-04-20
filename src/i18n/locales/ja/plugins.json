@@ -3,18 +3,31 @@
   "notice": "このページでは当面、プラグインのインストールと MCP 対応プラグインの確認に絞っています。より広い管理機能は後続で追加します。",
   "descriptionFallback": "説明はまだありません",
   "tabs": {
-    "pencil": "Pencil MCP",
+    "publicMcp": "Public MCP",
     "openclaw": "OpenClaw プラグイン"
   },
-  "pencil": {
-    "title": "ここから Pencil を Claude/Codex MCP に接続",
-    "description": "Pencil の設定画面で MCP 設定をコピーし、このプロジェクトの .mcp.json（または ~/.claude/settings.json）へ貼り付けます。",
-    "hint": "Pencil は MCP サーバー設定を提供します。このページの OpenClaw プラグインとは別の仕組みです。",
-    "templateTitle": "テンプレート（Pencil からコピーした実際の command / args で置き換えてください）",
-    "steps": {
-      "open": "Pencil → Settings → MCP を開く",
-      "copy": "Copy MCP config をクリック",
-      "paste": ".mcp.json または ~/.claude/settings.json に貼り付け"
+  "publicMcp": {
+    "title": "Public MCP 連携センター",
+    "description": "まずサービスカードを選び、詳細ページからワンクリック接続します。",
+    "hint": "ワンクリック接続でテンプレートがコピーされます。project .mcp.json または ~/.claude/settings.json に貼り付けてください。",
+    "cardAction": "接続手順を見る",
+    "back": "カード一覧に戻る",
+    "connectNow": "ワンクリック接続",
+    "copyTemplate": "テンプレートをコピー",
+    "templateTitle": "テンプレート（そのままコピー可能）",
+    "tools": {
+      "pencil": {
+        "name": "Pencil",
+        "badge": "おすすめ",
+        "summary": "デザインから実行可能なコードまでを高速化する MCP 連携です。",
+        "detailTitle": "Pencil MCP クイック接続",
+        "detailDescription": "ワンクリック接続でテンプレートをコピーし、最後に貼り付ければ完了です。",
+        "steps": {
+          "open": "Pencil → Settings → MCP を開く",
+          "copy": "Copy MCP config をクリック（または下のテンプレートを利用）",
+          "paste": ".mcp.json または ~/.claude/settings.json に貼り付け"
+        }
+      }
     }
   },
   "actions": {
@@ -59,6 +72,10 @@
     "installFailed": "{{name}} のインストールに失敗しました: {{error}}",
     "installed": "{{name}} をインストールしました",
     "copiedTemplate": "MCP テンプレートをコピーしました",
-    "failedCopyTemplate": "MCP テンプレートのコピーに失敗しました: {{error}}"
+    "failedCopyTemplate": "MCP テンプレートのコピーに失敗しました: {{error}}",
+    "connectedByCopy": "ワンクリック接続が完了しました。テンプレートを貼り付けてください",
+    "clipboardMcpInvalid": "クリップボードに有効な MCP 設定がありません。先に Copy MCP config を実行してください。",
+    "connectedReady": "接続完了: {{server}} を {{filePath}} に書き込みました",
+    "connectedFailed": "ワンクリック接続に失敗しました: {{error}}"
   }
 }
