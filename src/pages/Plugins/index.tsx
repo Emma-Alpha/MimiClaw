@@ -1,15 +1,17 @@
 import { Tag } from '@lobehub/ui';
 import {
   AlertCircle,
+  ArrowLeft,
   Braces,
   Check,
   Copy,
   FolderOpen,
   Package,
+  Plus,
   RefreshCw,
   Sparkles,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
@@ -18,6 +20,7 @@ import { invokeIpc } from '@/lib/api-client';
 import { hostApiFetch } from '@/lib/host-api';
 import { SettingHeader } from '@/pages/Settings/components/SettingHeader';
 import { useSkillsStyles } from '@/pages/Skills/styles';
+import { useSettingsStore } from '@/stores/settings';
 import type { PluginsSnapshot, PluginSummary } from '@/types/plugin';
 
 import dingtalkIcon from '@/assets/channels/dingtalk.svg';
@@ -62,7 +65,9 @@ const PLUGIN_ICON_PALETTES = [
 ] as const;
 
 type PluginStyleClasses = ReturnType<typeof usePluginsStyles>['styles'];
-type PluginsTabKey = 'openclaw' | 'pencil';
+type PublicMcpId = 'pencil';
+type PluginsTabKey = 'openclaw' | 'publicMcp';
+
 const PENCIL_MCP_TEMPLATE = `{
   "mcpServers": {
     "pencil": {
@@ -73,6 +78,63 @@ const PENCIL_MCP_TEMPLATE = `{
     }
   }
 }`;
+
+const PUBLIC_MCP_OPTIONS = [
+  {
+    id: 'pencil',
+    template: PENCIL_MCP_TEMPLATE,
+  },
+] as const satisfies ReadonlyArray<{ id: PublicMcpId; template: string }>;
+
+type ParsedMcpServer = {
+  serverConfig: Record<string, unknown>;
+  serverName: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parseClipboardMcpServer(rawText: string, preferredServerName: string): ParsedMcpServer | null {
+  if (!rawText.trim()) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch {
+    return null;
+  }
+
+  if (!isRecord(parsed)) return null;
+
+  const mcpServers = isRecord(parsed.mcpServers) ? parsed.mcpServers : null;
+  if (mcpServers) {
+    const preferred = mcpServers[preferredServerName];
+    if (isRecord(preferred)) {
+      return { serverName: preferredServerName, serverConfig: preferred };
+    }
+    for (const [name, config] of Object.entries(mcpServers)) {
+      if (isRecord(config)) {
+        return { serverName: String(name), serverConfig: config };
+      }
+    }
+  }
+
+  if (isRecord(parsed[preferredServerName])) {
+    return {
+      serverName: preferredServerName,
+      serverConfig: parsed[preferredServerName] as Record<string, unknown>,
+    };
+  }
+
+  if (typeof parsed.command === 'string' || typeof parsed.url === 'string') {
+    return {
+      serverName: preferredServerName,
+      serverConfig: parsed,
+    };
+  }
+
+  return null;
+}
 
 function getPluginMonogram(plugin: PluginSummary) {
   const label = `${plugin.name || ''} ${plugin.pluginId || ''}`.trim();
@@ -157,7 +219,10 @@ export function Plugins() {
   const { t } = useTranslation('plugins');
   const { styles: skillStyles, cx: skillCx } = useSkillsStyles();
   const { styles, cx } = usePluginsStyles();
-  const [activeTab, setActiveTab] = useState<PluginsTabKey>('pencil');
+  const sidebarActiveContext = useSettingsStore((state) => state.sidebarActiveContext);
+  const sidebarThreadWorkspaces = useSettingsStore((state) => state.sidebarThreadWorkspaces);
+  const [activeTab, setActiveTab] = useState<PluginsTabKey>('publicMcp');
+  const [selectedPublicMcpId, setSelectedPublicMcpId] = useState<PublicMcpId | null>(null);
   const [plugins, setPlugins] = useState<PluginSummary[]>([]);
   const [mcpPlugins, setMcpPlugins] = useState<PluginSummary[]>([]);
   const [extensionsDir, setExtensionsDir] = useState('~/.openclaw/extensions');
@@ -259,14 +324,67 @@ export function Plugins() {
     }
   }, [extensionsDir, openPath, t]);
 
-  const handleCopyPencilTemplate = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(PENCIL_MCP_TEMPLATE);
-      toast.success(t('toast.copiedTemplate'));
-    } catch (copyError) {
-      toast.error(t('toast.failedCopyTemplate', { error: String(copyError) }));
+  const selectedPublicMcp = selectedPublicMcpId
+    ? PUBLIC_MCP_OPTIONS.find((option) => option.id === selectedPublicMcpId) ?? null
+    : null;
+  const selectedWorkspaceRoot = useMemo(() => {
+    if (sidebarActiveContext.kind === 'thread' && sidebarActiveContext.workspaceId) {
+      const matched = sidebarThreadWorkspaces.find(
+        (workspace) => workspace.id === sidebarActiveContext.workspaceId,
+      );
+      if (matched?.rootPath?.trim()) return matched.rootPath.trim();
     }
-  }, [t]);
+    const latestWorkspace = [...sidebarThreadWorkspaces]
+      .sort((left, right) => (right.lastUsedAt || 0) - (left.lastUsedAt || 0))[0];
+    return latestWorkspace?.rootPath?.trim() || '';
+  }, [sidebarActiveContext, sidebarThreadWorkspaces]);
+
+  const handleCopyTemplate = useCallback(
+    async (template: string) => {
+      try {
+        await navigator.clipboard.writeText(template);
+        toast.success(t('toast.copiedTemplate'));
+      } catch (copyError) {
+        toast.error(t('toast.failedCopyTemplate', { error: String(copyError) }));
+      }
+    },
+    [t],
+  );
+
+  const handleConnectPublicMcp = useCallback(
+    async (preferredServerName: string, template: string) => {
+      try {
+        const clipboardText = await navigator.clipboard.readText();
+        const parsedServer = parseClipboardMcpServer(clipboardText, preferredServerName);
+
+        if (!parsedServer) {
+          await handleCopyTemplate(template);
+          toast.error(t('toast.clipboardMcpInvalid'));
+          return;
+        }
+
+        const result = await hostApiFetch<{
+          existed: boolean;
+          filePath: string;
+          serverName: string;
+          success: boolean;
+          workspaceRoot: string;
+        }>('/api/plugins/public-mcp/connect', {
+          method: 'POST',
+          body: JSON.stringify({
+            workspaceRoot: selectedWorkspaceRoot,
+            serverConfig: parsedServer.serverConfig,
+            serverName: parsedServer.serverName,
+          }),
+        });
+
+        toast.success(t('toast.connectedReady', { filePath: result.filePath, server: result.serverName }));
+      } catch (copyError) {
+        toast.error(t('toast.connectedFailed', { error: String(copyError) }));
+      }
+    },
+    [handleCopyTemplate, selectedWorkspaceRoot, t],
+  );
 
   if (loading) {
     return (
@@ -415,18 +533,30 @@ export function Plugins() {
                         {t('actions.openExtensionsFolder')}
                       </button>
                     </>
-                  ) : (
-                    <button
-                      type="button"
-                      className={styles.headerButton}
-                      onClick={() => {
-                        void handleCopyPencilTemplate();
-                      }}
-                    >
-                      <Copy style={{ width: 14, height: 14 }} />
-                      {t('actions.copyMcpTemplate')}
-                    </button>
-                  )}
+                  ) : selectedPublicMcp ? (
+                    <>
+                      <button
+                        type="button"
+                        className={cx(styles.headerButton, styles.headerButtonPrimary)}
+                        onClick={() => {
+                          void handleConnectPublicMcp(selectedPublicMcp.id, selectedPublicMcp.template);
+                        }}
+                      >
+                        <Plus style={{ width: 14, height: 14 }} />
+                        {t('publicMcp.connectNow')}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.headerButton}
+                        onClick={() => {
+                          void handleCopyTemplate(selectedPublicMcp.template);
+                        }}
+                      >
+                        <Copy style={{ width: 14, height: 14 }} />
+                        {t('publicMcp.copyTemplate')}
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               }
             />
@@ -435,14 +565,15 @@ export function Plugins() {
           <div className={skillCx(skillStyles.skillsPageContentInner, styles.contentInnerInset)}>
             <div className={styles.tabsShell}>
               <button
-                className={cx(styles.tabButton, activeTab === 'pencil' && styles.tabButtonActive)}
+                className={cx(styles.tabButton, activeTab === 'publicMcp' && styles.tabButtonActive)}
                 onClick={() => {
-                  setActiveTab('pencil');
+                  setActiveTab('publicMcp');
+                  setSelectedPublicMcpId(null);
                 }}
                 type="button"
               >
                 <Sparkles size={15} />
-                <span>{t('tabs.pencil')}</span>
+                <span>{t('tabs.publicMcp')}</span>
               </button>
               <button
                 className={cx(styles.tabButton, activeTab === 'openclaw' && styles.tabButtonActive)}
@@ -463,45 +594,97 @@ export function Plugins() {
               </div>
             ) : null}
 
-            {activeTab === 'pencil' ? (
-              <section className={styles.pencilPanel}>
-                <div className={styles.pencilIntro}>
-                  <div className={styles.pencilIntroIcon}>
-                    <Sparkles size={16} />
+            {activeTab === 'publicMcp' ? (
+              selectedPublicMcp ? (
+                <section className={styles.pencilPanel}>
+                  <div className={styles.mcpBackRow}>
+                    <button
+                      className={styles.backButton}
+                      onClick={() => {
+                        setSelectedPublicMcpId(null);
+                      }}
+                      type="button"
+                    >
+                      <ArrowLeft size={14} />
+                      {t('publicMcp.back')}
+                    </button>
                   </div>
-                  <div>
-                    <p className={styles.pencilTitle}>{t('pencil.title')}</p>
-                    <p className={styles.pencilDescription}>{t('pencil.description')}</p>
-                  </div>
-                </div>
 
-                <div className={styles.noticeBanner}>
-                  <AlertCircle className={styles.noticeIcon} style={{ width: 18, height: 18 }} />
-                  <span>{t('pencil.hint')}</span>
-                </div>
+                  <div className={styles.pencilIntro}>
+                    <div className={styles.pencilIntroIcon}>
+                      <Sparkles size={16} />
+                    </div>
+                    <div>
+                      <p className={styles.pencilTitle}>{t(`publicMcp.tools.${selectedPublicMcp.id}.detailTitle`)}</p>
+                      <p className={styles.pencilDescription}>{t(`publicMcp.tools.${selectedPublicMcp.id}.detailDescription`)}</p>
+                    </div>
+                  </div>
 
-                <div className={styles.pencilSteps}>
-                  <div className={styles.pencilStepItem}>
-                    <span className={styles.pencilStepIndex}>1</span>
-                    <span>{t('pencil.steps.open')}</span>
+                  <div className={styles.noticeBanner}>
+                    <AlertCircle className={styles.noticeIcon} style={{ width: 18, height: 18 }} />
+                    <span>{t('publicMcp.hint')}</span>
                   </div>
-                  <div className={styles.pencilStepItem}>
-                    <span className={styles.pencilStepIndex}>2</span>
-                    <span>{t('pencil.steps.copy')}</span>
-                  </div>
-                  <div className={styles.pencilStepItem}>
-                    <span className={styles.pencilStepIndex}>3</span>
-                    <span>{t('pencil.steps.paste')}</span>
-                  </div>
-                </div>
 
-                <div className={styles.codeCard}>
-                  <p className={styles.codeCardTitle}>{t('pencil.templateTitle')}</p>
-                  <pre className={styles.templateCode}>
-                    <code>{PENCIL_MCP_TEMPLATE}</code>
-                  </pre>
-                </div>
-              </section>
+                  <div className={styles.pencilSteps}>
+                    <div className={styles.pencilStepItem}>
+                      <span className={styles.pencilStepIndex}>1</span>
+                      <span>{t(`publicMcp.tools.${selectedPublicMcp.id}.steps.open`)}</span>
+                    </div>
+                    <div className={styles.pencilStepItem}>
+                      <span className={styles.pencilStepIndex}>2</span>
+                      <span>{t(`publicMcp.tools.${selectedPublicMcp.id}.steps.copy`)}</span>
+                    </div>
+                    <div className={styles.pencilStepItem}>
+                      <span className={styles.pencilStepIndex}>3</span>
+                      <span>{t(`publicMcp.tools.${selectedPublicMcp.id}.steps.paste`)}</span>
+                    </div>
+                  </div>
+
+                  <div className={styles.codeCard}>
+                    <p className={styles.codeCardTitle}>{t('publicMcp.templateTitle')}</p>
+                    <pre className={styles.templateCode}>
+                      <code>{selectedPublicMcp.template}</code>
+                    </pre>
+                  </div>
+                </section>
+              ) : (
+                <section className={styles.mcpCatalogPanel}>
+                  <div className={styles.pencilIntro}>
+                    <div className={styles.pencilIntroIcon}>
+                      <Sparkles size={16} />
+                    </div>
+                    <div>
+                      <p className={styles.pencilTitle}>{t('publicMcp.title')}</p>
+                      <p className={styles.pencilDescription}>{t('publicMcp.description')}</p>
+                    </div>
+                  </div>
+
+                  <div className={styles.mcpCardGrid}>
+                    {PUBLIC_MCP_OPTIONS.map((option) => (
+                      <button
+                        className={styles.mcpCard}
+                        key={option.id}
+                        onClick={() => {
+                          setSelectedPublicMcpId(option.id);
+                        }}
+                        type="button"
+                      >
+                        <div className={styles.mcpCardHeader}>
+                          <div className={styles.mcpCardIconWrap}>
+                            <Sparkles size={15} />
+                          </div>
+                          <span className={styles.mcpCardBadge}>{t(`publicMcp.tools.${option.id}.badge`)}</span>
+                        </div>
+                        <p className={styles.mcpCardTitle}>{t(`publicMcp.tools.${option.id}.name`)}</p>
+                        <p className={styles.mcpCardDescription}>{t(`publicMcp.tools.${option.id}.summary`)}</p>
+                        <span className={styles.mcpCardAction}>
+                          {t('publicMcp.cardAction')}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )
             ) : (
               <>
                 <div className={styles.noticeBanner}>
