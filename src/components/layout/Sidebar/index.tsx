@@ -110,28 +110,22 @@ const useStyles = createStyles(({ css, token }) => ({
   `,
 	subItemLevel1: css`
     padding-inline-start: 20px !important;
+    min-height: 32px !important;
   `,
 	workspaceChildren: css`
     position: relative;
     margin: 2px 0 6px 28px;
     padding-inline-start: 12px;
-
-    &::before {
-      position: absolute;
-      inset-block: 6px 8px;
-      inset-inline-start: 0;
-      width: 1px;
-      background: ${token.colorBorderSecondary};
-      content: "";
-    }
   `,
 	subItemLevel2: css`
     padding-inline-start: 10px !important;
   `,
 	timeLabel: css`
-    font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
-    color: ${cssVar.colorTextQuaternary};
+    font-size: 12px;
+    color: ${cssVar.colorTextSecondary};
+    font-weight: 500;
     flex-shrink: 0;
+    opacity: 0.9;
   `,
   sessionListToggle: css`
     width: 100%;
@@ -1018,6 +1012,7 @@ export function Sidebar() {
 			<NavItem
 				icon={SquarePen}
 				iconSize={CHAT_NAV_ICON_SIZE}
+				inactiveTone="title"
 				title={t("sidebar.newThread", { defaultValue: "新线程" })}
 				onClick={handleGlobalNewThread}
 			/>
@@ -1026,6 +1021,7 @@ export function Sidebar() {
 			<NavItem
 				icon={Hexagon}
 				iconSize={CHAT_NAV_ICON_SIZE}
+				inactiveTone="title"
 				title={t("sidebar.skills", { defaultValue: "技能" })}
 				active={pathname === "/skills" || pathname.startsWith("/skills/")}
 				onClick={() => navigate("/skills")}
@@ -1035,6 +1031,7 @@ export function Sidebar() {
 			<NavItem
 				icon={Blocks}
 				iconSize={CHAT_NAV_ICON_SIZE}
+				inactiveTone="title"
 				title={t("sidebar.plugins", { defaultValue: "Plugins" })}
 				active={pathname === "/plugins" || pathname.startsWith("/plugins/")}
 				onClick={() => navigate("/plugins")}
@@ -1044,6 +1041,7 @@ export function Sidebar() {
 			<NavItem
 				icon={Clock}
 				iconSize={CHAT_NAV_ICON_SIZE}
+				inactiveTone="title"
 				title={t("sidebar.cronTasks", { defaultValue: "自动化" })}
 				active={pathname === "/cron"}
 				onClick={() => navigate("/cron")}
@@ -1053,6 +1051,7 @@ export function Sidebar() {
 			<NavItem
 				icon={Globe}
 				iconSize={CHAT_NAV_ICON_SIZE}
+				inactiveTone="title"
 				title="极智"
 				active={pathname.startsWith("/webview/jizhi")}
 				onClick={() => navigate("/webview/jizhi")}
@@ -1061,6 +1060,7 @@ export function Sidebar() {
 			<NavItem
 				icon={Palette}
 				iconSize={CHAT_NAV_ICON_SIZE}
+				inactiveTone="title"
 				title="智绘"
 				active={pathname.startsWith("/webview/zhihui")}
 				onClick={() => navigate("/webview/zhihui")}
@@ -1074,6 +1074,7 @@ export function Sidebar() {
 			<NavItem
 				icon={FolderOpen}
 				iconSize={CHAT_NAV_ICON_SIZE}
+				inactiveTone="title"
 				iconHover={isFolderExpanded("thread") ? ChevronDown : ChevronRight}
 				title={t("sidebar.folder.thread", { defaultValue: "线程" })}
 				active={false}
@@ -1338,6 +1339,7 @@ export function Sidebar() {
 			<NavItem
 				icon={MessageSquare}
 				iconSize={CHAT_NAV_ICON_SIZE}
+				inactiveTone="title"
 				iconHover={isFolderExpanded("openclaw") ? ChevronDown : ChevronRight}
 				title={t("sidebar.folder.openClaw", { defaultValue: "OpenClaw" })}
 				active={
@@ -1438,6 +1440,7 @@ export function Sidebar() {
 					<NavItem
 						icon={MessageCircle}
 						iconSize={CHAT_NAV_ICON_SIZE}
+						inactiveTone="title"
 						iconHover={isFolderExpanded("xiaojiu") ? ChevronDown : ChevronRight}
 						title={t("sidebar.folder.xiaojiu", { defaultValue: "小九" })}
 						active={pathname.startsWith("/chat/xiaojiu")}
@@ -1510,6 +1513,7 @@ export function Sidebar() {
 			<NavItem
 				icon={Mic}
 				iconSize={CHAT_NAV_ICON_SIZE}
+				inactiveTone="title"
 				iconHover={
 					isFolderExpanded("realtimeVoice") ? ChevronDown : ChevronRight
 				}
@@ -1596,6 +1600,7 @@ export function Sidebar() {
 				<NavItem
 					icon={SettingsIcon}
 					iconSize={CHAT_NAV_ICON_SIZE}
+					inactiveTone="title"
 					title={t("sidebar.settings", { defaultValue: "设置" })}
 					active={pathname === "/settings"}
 					onClick={() => navigate("/settings")}

@@ -106,6 +106,7 @@ export interface NavItemProps extends Omit<BlockProps, 'children' | 'title'> {
    */
   iconHover?: IconProps['icon'];
   iconSize?: number;
+  inactiveTone?: 'muted' | 'title';
   loading?: boolean;
   slots?: NavItemSlots;
   title: ReactNode;
@@ -121,6 +122,7 @@ const NavItem = memo<NavItemProps>(
     icon,
     iconHover,
     iconSize = 18,
+    inactiveTone = 'muted',
     title,
     onClick,
     disabled,
@@ -129,8 +131,9 @@ const NavItem = memo<NavItemProps>(
     slots,
     ...rest
   }) => {
-    const iconColor = active ? cssVar.colorText : cssVar.colorTextSecondary;
-    const textColor = active ? cssVar.colorText : cssVar.colorTextSecondary;
+    const inactiveColor = inactiveTone === 'title' ? cssVar.colorText : cssVar.colorTextSecondary;
+    const iconColor = active ? cssVar.colorText : inactiveColor;
+    const textColor = active ? cssVar.colorText : inactiveColor;
 
     const { titlePrefix, iconPostfix } = slots || {};
 
@@ -153,7 +156,7 @@ const NavItem = memo<NavItemProps>(
         )}
         clickable={!disabled}
         gap={8}
-        height={36}
+        height={34}
         paddingInline={6}
         variant={'borderless'}
         onClick={(e) => {

@@ -77,6 +77,7 @@ export function SettingsSidebar() {
               <NavItem
                 key={key}
                 icon={icon}
+                inactiveTone="title"
                 title={label}
                 active={activeSection === key}
                 onClick={() =>

@@ -24,7 +24,7 @@ export function getSidebarChromeCss() {
     position: relative;
     isolation: isolate;
     border-right: 1px solid var(--mimi-sidebar-border);
-    background: transparent;
+    background: var(--mimi-sidebar-surface);
     box-shadow: inset -1px 0 0 var(--mimi-sidebar-edge-shadow);
 
     &[data-translucent-sidebar='true'] {
