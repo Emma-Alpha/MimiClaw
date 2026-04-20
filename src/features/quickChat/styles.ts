@@ -169,43 +169,43 @@ export const useMiniChatStyles = createStyles(
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
-			width: 24px;
-			height: 24px;
+			width: 20px;
+			height: 20px;
 			padding: 0;
-			border: 1px solid ${token.colorBorderSecondary};
+			border: none;
 			border-radius: 999px;
-			background: color-mix(in srgb, ${token.colorBgElevated} 86%, transparent);
+			background: transparent;
 			color: ${token.colorTextSecondary};
 			cursor: pointer;
 			font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
 			line-height: 1;
-			transition: all 0.18s ease;
-			box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+			transition: background 0.18s ease, color 0.18s ease, opacity 0.18s ease;
 
 			&:hover {
 				color: ${token.colorText};
-				border-color: ${token.colorBorder};
-				background: color-mix(in srgb, ${token.colorBgContainer} 92%, transparent);
+				background: color-mix(in srgb, ${token.colorText} 7%, transparent);
 			}
 
 			&:disabled {
 				cursor: not-allowed;
 				color: ${token.colorTextQuaternary};
-				border-color: ${token.colorBorderSecondary};
-				background: color-mix(in srgb, ${token.colorFillQuaternary} 72%, transparent);
-				box-shadow: none;
+				background: transparent;
+				opacity: 0.78;
 			}
 
 			&:disabled:hover {
 				color: ${token.colorTextQuaternary};
-				border-color: ${token.colorBorderSecondary};
-				background: color-mix(in srgb, ${token.colorFillQuaternary} 72%, transparent);
+				background: transparent;
+			}
+
+			&:focus-visible {
+				outline: none;
+				box-shadow: 0 0 0 2px color-mix(in srgb, ${token.colorPrimary} 20%, transparent);
 			}
 		`,
 		embeddedToolbarButtonActive: css`
 			color: ${token.colorPrimary};
-			border-color: ${token.colorPrimaryBorder};
-			background: color-mix(in srgb, ${token.colorPrimaryBg} 86%, ${token.colorBgElevated});
+			background: color-mix(in srgb, ${token.colorPrimaryBg} 72%, transparent);
 		`,
 		embeddedHeaderStatus: css`
 		display: flex;
