@@ -80,6 +80,7 @@ function DiffFileCard({
 			<LobePatchDiff
 				fileName={displayPath}
 				maxBodyHeight={expanded ? undefined : PREVIEW_BODY_HEIGHT}
+				onHeaderClick={needsExpand ? () => setExpanded((v) => !v) : undefined}
 				patch={file.patch}
 			/>
 

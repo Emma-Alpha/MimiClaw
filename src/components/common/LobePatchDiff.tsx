@@ -1,3 +1,4 @@
+import { createStyles } from 'antd-style';
 import { useEffect, useMemo, useState } from 'react';
 import { PatchDiff } from '@lobehub/ui';
 import type { PatchDiffProps } from '@lobehub/ui';
@@ -7,7 +8,20 @@ type ResolvedAppearance = 'light' | 'dark';
 
 interface LobePatchDiffProps extends Pick<PatchDiffProps, 'fileName' | 'patch' | 'showHeader' | 'variant'> {
 	maxBodyHeight?: number;
+	onHeaderClick?: () => void;
 }
+
+const useStyles = createStyles(({ css, token }) => ({
+	clickableHeader: css`
+		cursor: pointer;
+		user-select: none;
+		transition: background-color 0.15s ease;
+
+		&:hover {
+			background: ${token.colorFillSecondary};
+		}
+	`,
+}));
 
 function usePrefersDarkMode(): boolean {
 	const [prefersDark, setPrefersDark] = useState(() => {
@@ -49,10 +63,12 @@ function resolveDiffTheme(
 export function LobePatchDiff({
 	fileName,
 	maxBodyHeight,
+	onHeaderClick,
 	patch,
 	showHeader = true,
 	variant = 'filled',
 }: LobePatchDiffProps) {
+	const { styles: componentStyles } = useStyles();
 	const theme = useSettingsStore((state) => state.theme);
 	const highlighterTheme = useSettingsStore((state) => state.highlighterTheme);
 	const prefersDarkMode = usePrefersDarkMode();
@@ -66,9 +82,11 @@ export function LobePatchDiff({
 		() => (maxBodyHeight ? { body: { maxHeight: maxBodyHeight } } : undefined),
 		[maxBodyHeight],
 	);
+	const clickableHeaderClassName = onHeaderClick ? componentStyles.clickableHeader : undefined;
 
 	return (
 		<PatchDiff
+			classNames={clickableHeaderClassName ? { header: clickableHeaderClassName } : undefined}
 			diffOptions={{
 				diffStyle: 'unified',
 				disableVirtualizationBuffers: true,
@@ -77,6 +95,15 @@ export function LobePatchDiff({
 				themeType: resolvedAppearance,
 			}}
 			fileName={fileName}
+			onClickCapture={
+				clickableHeaderClassName
+					? (event) => {
+						if (!(event.target instanceof Element)) return;
+						if (!event.target.closest(`.${clickableHeaderClassName}`)) return;
+						onHeaderClick?.();
+					}
+					: undefined
+			}
 			patch={patch}
 			showHeader={showHeader}
 			styles={styles}
