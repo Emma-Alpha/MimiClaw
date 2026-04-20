@@ -28,6 +28,10 @@
       "title": "中性色",
       "desc": "不同色彩倾向的灰阶自定义"
     },
+    "translucentSidebar": {
+      "title": "半透明侧边栏",
+      "desc": "为侧边栏启用基于系统材质的毛玻璃效果"
+    },
     "animationMode": {
       "title": "响应动画",
       "desc": "调整应用程序的操作响应动画速度",

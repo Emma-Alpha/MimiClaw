@@ -35,6 +35,7 @@ export interface AppSettings {
   language: string;
   primaryColor?: string;
   neutralColor?: string;
+  translucentSidebar: boolean;
   fontSize: number;
   highlighterTheme: string;
   mermaidTheme: string;
@@ -120,6 +121,7 @@ function createDefaultSettings(): AppSettings {
     theme: DEFAULT_APP_THEME_MODE,
     language: resolveSupportedLanguage(getSystemLocale()),
     neutralColor: DEFAULT_NEUTRAL_COLOR,
+    translucentSidebar: false,
     fontSize: DEFAULT_CHAT_FONT_SIZE,
     highlighterTheme: 'lobe-theme',
     mermaidTheme: 'lobe-theme',

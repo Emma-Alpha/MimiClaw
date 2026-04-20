@@ -28,6 +28,10 @@
       "title": "Neutral Color",
       "desc": "Custom grayscale with different color tendencies"
     },
+    "translucentSidebar": {
+      "title": "Translucent Sidebar",
+      "desc": "Enable a token-driven frosted sidebar surface that works with system materials"
+    },
     "animationMode": {
       "title": "Response Animation",
       "desc": "Adjust the animation intensity used across the application",

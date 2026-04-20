@@ -76,6 +76,7 @@ interface SettingsState extends CloudAuthState {
   language: string;
   primaryColor?: string;
   neutralColor?: string;
+  translucentSidebar: boolean;
   fontSize: number;
   highlighterTheme: string;
   mermaidTheme: string;
@@ -138,6 +139,7 @@ interface SettingsState extends CloudAuthState {
   setLanguage: (language: string) => void;
   setPrimaryColor: (value?: string) => void;
   setNeutralColor: (value?: string) => void;
+  setTranslucentSidebar: (value: boolean) => void;
   setFontSize: (value: number) => void;
   setHighlighterTheme: (value: string) => void;
   setMermaidTheme: (value: string) => void;
@@ -203,6 +205,7 @@ const defaultSettings = {
   language: resolveSupportedLanguage(typeof navigator !== 'undefined' ? navigator.language : undefined),
   primaryColor: undefined as string | undefined,
   neutralColor: DEFAULT_NEUTRAL_COLOR as string | undefined,
+  translucentSidebar: false,
   fontSize: DEFAULT_CHAT_FONT_SIZE,
   highlighterTheme: 'lobe-theme',
   mermaidTheme: 'lobe-theme',
@@ -275,6 +278,7 @@ const MAIN_PROCESS_SETTINGS_KEYS = [
   'language',
   'primaryColor',
   'neutralColor',
+  'translucentSidebar',
   'fontSize',
   'highlighterTheme',
   'mermaidTheme',
@@ -451,6 +455,13 @@ export const useSettingsStore = create<SettingsState>()(
         void hostApiFetch('/api/settings', {
           method: 'PUT',
           body: JSON.stringify({ neutralColor: neutralColor ?? null }),
+        }).catch(() => { });
+      },
+      setTranslucentSidebar: (translucentSidebar) => {
+        set({ translucentSidebar });
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ translucentSidebar }),
         }).catch(() => { });
       },
       setFontSize: (fontSize) => {

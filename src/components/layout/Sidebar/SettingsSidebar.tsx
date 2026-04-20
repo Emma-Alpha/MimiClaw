@@ -7,11 +7,11 @@ import { useSearchParams } from 'react-router-dom';
 import { SidebarUpdateAction } from '@/components/update/SidebarUpdateAction';
 import { useSettingsStore } from '@/stores/settings';
 import { NavItem, SideBarHeaderLayout, SideBarLayout } from '@/features/NavPanel';
+import { getSidebarChromeCss } from '@/components/layout/sidebar-chrome';
 
 const useStyles = createStyles(({ token, css }) => ({
   aside: css`
-    --mimi-sidebar-surface: color-mix(in srgb, ${token.colorBgContainer} 97%, ${token.colorText} 3%);
-    --mimi-sidebar-border: color-mix(in srgb, ${token.colorText} 10%, transparent);
+    ${getSidebarChromeCss(token)}
 
     display: flex;
     width: 100%;
@@ -20,9 +20,6 @@ const useStyles = createStyles(({ token, css }) => ({
     flex-direction: column;
     height: 100%;
     overflow: hidden;
-    border-right: 1px solid var(--mimi-sidebar-border);
-    background: var(--mimi-sidebar-surface);
-    box-shadow: inset -1px 0 0 color-mix(in srgb, ${token.colorText} 4%, transparent);
   `,
   topBar: css`
     container: sidebar-topbar / inline-size;
@@ -43,6 +40,7 @@ export function SettingsSidebar() {
   const { t } = useTranslation('settings');
   const [searchParams, setSearchParams] = useSearchParams();
   const devModeUnlocked = useSettingsStore((s) => s.devModeUnlocked);
+  const translucentSidebar = useSettingsStore((s) => s.translucentSidebar);
 
   const activeSection = searchParams.get('section') ?? 'appearance';
 
@@ -56,7 +54,10 @@ export function SettingsSidebar() {
   ];
 
   return (
-    <aside className={styles.aside}>
+    <aside
+      className={styles.aside}
+      data-translucent-sidebar={translucentSidebar ? 'true' : 'false'}
+    >
       <div className={styles.topBar}>
         <SidebarUpdateAction />
       </div>

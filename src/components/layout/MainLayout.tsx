@@ -29,12 +29,18 @@ const useStyles = createStyles(({ token, css }) => ({
     position: relative;
     background: ${token.colorBgLayout};
   `,
+  rootTranslucent: css`
+    background: transparent;
+  `,
   body: css`
     display: flex;
     height: 100%;
     flex: 1;
     overflow: hidden;
     position: relative;
+  `,
+  bodyTranslucent: css`
+    background: transparent;
   `,
   sidebarPane: css`
     display: flex;
@@ -119,6 +125,7 @@ export function MainLayout() {
   const { styles, cx } = useStyles();
   const { pathname } = useLocation();
   const sidebarCollapsed = useSettingsStore((state) => state.sidebarCollapsed);
+  const translucentSidebar = useSettingsStore((state) => state.translucentSidebar);
   const rawSidebarWidth = useSettingsStore((state) => state.sidebarWidth);
   const setSidebarWidth = useSettingsStore((state) => state.setSidebarWidth);
   const [sidebarResizing, setSidebarResizing] = useState(false);
@@ -242,7 +249,7 @@ export function MainLayout() {
   );
 
   return (
-    <div className={styles.root}>
+    <div className={cx(styles.root, translucentSidebar && styles.rootTranslucent)}>
       <JizhiSessionBridge />
       <RemoteMessengerSessionBridge />
       <VoiceChatSessionBridge />
@@ -251,7 +258,7 @@ export function MainLayout() {
         hideManagementMenu={hideTitleBarManagementMenu}
         hideSidebarToggle={usesInlineCollapsedSidebarToggle && sidebarCollapsed}
       />
-      <div className={styles.body}>
+      <div className={cx(styles.body, translucentSidebar && styles.bodyTranslucent)}>
         {!sidebarCollapsed && (
           <>
             <div className={styles.sidebarPane} style={{ width: sidebarWidth }}>
