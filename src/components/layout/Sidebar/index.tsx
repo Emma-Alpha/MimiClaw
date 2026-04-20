@@ -941,6 +941,23 @@ export function Sidebar() {
 				active={pathname === "/cron"}
 				onClick={() => navigate("/cron")}
 			/>
+
+			{/* ── 远程应用（WebView） ─────────────────────────────────────────── */}
+			<NavItem
+				icon={Globe}
+				iconSize={CHAT_NAV_ICON_SIZE}
+				title="极智"
+				active={pathname.startsWith("/webview/jizhi")}
+				onClick={() => navigate("/webview/jizhi")}
+			/>
+
+			<NavItem
+				icon={Palette}
+				iconSize={CHAT_NAV_ICON_SIZE}
+				title="智绘"
+				active={pathname.startsWith("/webview/zhihui")}
+				onClick={() => navigate("/webview/zhihui")}
+			/>
 		</Flexbox>
 	);
 
@@ -1358,24 +1375,6 @@ export function Sidebar() {
 					)}
 				</>
 			)}
-
-			{/* ── 远程应用（WebView） ─────────────────────────────────────────── */}
-			<NavItem
-				icon={Globe}
-				iconSize={CHAT_NAV_ICON_SIZE}
-				title="极智"
-				active={pathname.startsWith("/webview/jizhi")}
-				style={{ marginTop: 6 }}
-				onClick={() => navigate("/webview/jizhi")}
-			/>
-
-			<NavItem
-				icon={Palette}
-				iconSize={CHAT_NAV_ICON_SIZE}
-				title="智绘"
-				active={pathname.startsWith("/webview/zhihui")}
-				onClick={() => navigate("/webview/zhihui")}
-			/>
 
 			{/* ── 实时语音 ────────────────────────────────────────────────────── */}
 			<NavItem
