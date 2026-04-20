@@ -11,11 +11,13 @@ import {
 	Clock,
 	Ellipsis,
 	FolderOpen,
+	Globe,
 	Hexagon,
 	Loader2,
 	MessageCircle,
 	MessageSquare,
 	Mic,
+	Palette,
 	Pin,
 	Plus,
 	Settings as SettingsIcon,
@@ -1356,6 +1358,24 @@ export function Sidebar() {
 					)}
 				</>
 			)}
+
+			{/* ── 远程应用（WebView） ─────────────────────────────────────────── */}
+			<NavItem
+				icon={Globe}
+				iconSize={CHAT_NAV_ICON_SIZE}
+				title="极智"
+				active={pathname.startsWith("/webview/jizhi")}
+				style={{ marginTop: 6 }}
+				onClick={() => navigate("/webview/jizhi")}
+			/>
+
+			<NavItem
+				icon={Palette}
+				iconSize={CHAT_NAV_ICON_SIZE}
+				title="智绘"
+				active={pathname.startsWith("/webview/zhihui")}
+				onClick={() => navigate("/webview/zhihui")}
+			/>
 
 			{/* ── 实时语音 ────────────────────────────────────────────────────── */}
 			<NavItem

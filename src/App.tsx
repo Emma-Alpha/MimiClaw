@@ -26,6 +26,7 @@ import { VoiceDialog } from "./pages/VoiceDialog";
 import { TrayRuntime } from "./pages/TrayRuntime";
 import { Setup } from "./pages/Setup";
 import { Login } from "./pages/Login";
+import { RemoteWebviewPage } from "./pages/RemoteWebviewPage";
 import { useSettingsStore } from "./stores/settings";
 import { useGatewayStore } from "./stores/gateway";
 import { useChatStore, chatStreamingSelectors } from "./stores/chat";
@@ -347,6 +348,7 @@ function App() {
 							/>
 							<Route path="/code-agent" element={<CodeAgent />} />
 							<Route path="/settings/*" element={<Settings />} />
+							<Route path="/webview/:site" element={<RemoteWebviewPage />} />
 						</Route>
 					</Routes>
 
