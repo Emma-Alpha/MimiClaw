@@ -3,31 +3,18 @@
   "notice": "当前页面先聚焦两件事：安装插件，以及查看带有 MCP 能力的插件。更完整的插件管理能力后续再补。",
   "descriptionFallback": "暂无描述",
   "tabs": {
-    "publicMcp": "公共 MCP",
+    "pencil": "Pencil MCP",
     "openclaw": "OpenClaw 插件"
   },
-  "publicMcp": {
-    "title": "公共 MCP 集成中心",
-    "description": "先选服务卡片，再进入详情页一键接入，减少手动配置成本。",
-    "hint": "一键接入会自动复制可用模板，你只需要粘贴到项目 .mcp.json 或 ~/.claude/settings.json。",
-    "cardAction": "查看接入详情",
-    "back": "返回卡片列表",
-    "connectNow": "一键接入",
-    "copyTemplate": "复制模板",
-    "templateTitle": "模板（已可直接复制）",
-    "tools": {
-      "pencil": {
-        "name": "Pencil",
-        "badge": "推荐",
-        "summary": "设计到代码一体化 MCP，适合把 UI 稿快速转换成可执行工程。",
-        "detailTitle": "Pencil MCP 快速接入",
-        "detailDescription": "点击“一键接入”后会复制模板，然后按三步完成粘贴即可。",
-        "steps": {
-          "open": "打开 Pencil → Settings → MCP",
-          "copy": "点击 Copy MCP config（或直接使用下方模板）",
-          "paste": "粘贴到 .mcp.json 或 ~/.claude/settings.json"
-        }
-      }
+  "pencil": {
+    "title": "在这里接入 Pencil 到 Claude/Codex MCP",
+    "description": "在 Pencil 的设置页复制 MCP 配置，然后粘贴到当前项目的 .mcp.json（或你的 ~/.claude/settings.json）即可生效。",
+    "hint": "Pencil 提供的是 MCP Server 配置；这里的 OpenClaw 插件是另一套机制，不互相替代。",
+    "templateTitle": "模板（将占位符替换为 Pencil 复制出来的真实 command / args）",
+    "steps": {
+      "open": "打开 Pencil → Settings → MCP",
+      "copy": "点击 Copy MCP config",
+      "paste": "将内容粘贴到 .mcp.json 或 ~/.claude/settings.json"
     }
   },
   "actions": {
@@ -72,10 +59,6 @@
     "installFailed": "安装 {{name}} 失败：{{error}}",
     "installed": "{{name}} 安装完成",
     "copiedTemplate": "MCP 模板已复制",
-    "failedCopyTemplate": "复制 MCP 模板失败：{{error}}",
-    "connectedByCopy": "已完成一键接入：模板已复制，按提示粘贴即可",
-    "clipboardMcpInvalid": "剪贴板里没有可识别的 MCP 配置，请先在服务端点“Copy MCP config”",
-    "connectedReady": "接入成功：{{server}} 已写入 {{filePath}}",
-    "connectedFailed": "一键接入失败：{{error}}"
+    "failedCopyTemplate": "复制 MCP 模板失败：{{error}}"
   }
 }

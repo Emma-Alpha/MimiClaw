@@ -103,111 +103,6 @@ export const usePluginsStyles = createStyles(({ token, css }) => ({
     flex-direction: column;
     gap: 14px;
   `,
-  mcpCatalogPanel: css`
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  `,
-  mcpCardGrid: css`
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-
-    @media (max-width: 860px) {
-      grid-template-columns: 1fr;
-    }
-  `,
-  mcpCard: css`
-    text-align: left;
-    border: 1px solid ${token.colorBorderSecondary};
-    background: ${token.colorBgContainer};
-    border-radius: ${token.borderRadiusLG}px;
-    padding: 14px;
-    cursor: pointer;
-    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
-
-    &:hover {
-      border-color: ${token.colorPrimaryBorder};
-      box-shadow: 0 10px 18px rgba(15, 23, 42, 0.08);
-      transform: translateY(-1px);
-    }
-  `,
-  mcpCardHeader: css`
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  `,
-  mcpCardIconWrap: css`
-    width: 26px;
-    height: 26px;
-    border-radius: 9px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: ${token.colorPrimaryBg};
-    color: ${token.colorPrimary};
-  `,
-  mcpCardBadge: css`
-    height: 22px;
-    padding: 0 8px;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    color: ${token.colorPrimary};
-    border: 1px solid ${token.colorPrimaryBorder};
-    background: ${token.colorPrimaryBg};
-  `,
-  mcpCardTitle: css`
-    margin-top: 12px;
-    font-size: 15px;
-    font-weight: 700;
-    color: ${token.colorText};
-  `,
-  mcpCardDescription: css`
-    margin-top: 6px;
-    font-size: 13px;
-    line-height: 1.7;
-    color: ${token.colorTextSecondary};
-  `,
-  mcpCardAction: css`
-    margin-top: 12px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 30px;
-    padding: 0 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    color: ${token.colorPrimary};
-    background: ${token.colorPrimaryBg};
-  `,
-  mcpBackRow: css`
-    display: flex;
-    align-items: center;
-  `,
-  backButton: css`
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    height: 30px;
-    padding: 0 10px;
-    border-radius: 999px;
-    border: 1px solid ${token.colorBorderSecondary};
-    background: transparent;
-    color: ${token.colorTextSecondary};
-    font-size: 12px;
-    cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-
-    &:hover {
-      color: ${token.colorText};
-      border-color: ${token.colorBorder};
-      background: ${token.colorFillTertiary};
-    }
-  `,
   pencilIntro: css`
     position: relative;
     overflow: hidden;
@@ -439,17 +334,6 @@ export const usePluginsStyles = createStyles(({ token, css }) => ({
     &:disabled {
       cursor: not-allowed;
       opacity: 0.55;
-    }
-  `,
-  headerButtonPrimary: css`
-    border-color: ${token.colorPrimaryBorder};
-    background: ${token.colorPrimary};
-    color: ${token.colorTextLightSolid};
-
-    &:hover {
-      border-color: ${token.colorPrimaryHover};
-      background: ${token.colorPrimaryHover};
-      color: ${token.colorTextLightSolid};
     }
   `,
 }));
