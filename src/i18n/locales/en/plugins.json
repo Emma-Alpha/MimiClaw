@@ -9,7 +9,7 @@
   "publicMcp": {
     "title": "Public MCP Integrations",
     "description": "Pick a service card first, then use one-click setup from the detail page.",
-    "hint": "One-click setup copies a ready-to-use template. Paste it into project .mcp.json or ~/.claude/settings.json.",
+    "hint": "One-click setup writes the selected MCP into the current workspace when possible. If a service exposes Copy MCP config, you can also copy it first and then import it.",
     "cardAction": "View setup details",
     "cardActionConnected": "View connection status",
     "back": "Back to cards",
@@ -34,13 +34,13 @@
       "figma": {
         "name": "Figma",
         "badge": "Official",
-        "summary": "Official Dev Mode MCP for bringing Figma files, nodes, and layout context straight into your coding workflow.",
-        "detailTitle": "Figma MCP quick setup",
-        "detailDescription": "One-click setup writes the official remote MCP config into the current workspace. You can finish Figma auth the first time the tool runs.",
+        "summary": "Local Figma Desktop MCP for bringing files, nodes, and layout context into your coding workflow without a remote auth flow.",
+        "detailTitle": "Figma local MCP quick setup",
+        "detailDescription": "One-click setup writes the local MCP endpoint into the current workspace. You just need to enable the Dev Mode MCP Server in Figma Desktop and keep it running.",
         "steps": {
-          "open": "Click One-click setup to add figma to the current workspace .mcp.json",
-          "copy": "Complete the Figma OAuth flow the first time an MCP tool call is made",
-          "paste": "Share a Figma file, page, or node link in chat to start pulling design context"
+          "open": "Open Figma Desktop and enable the MCP Server in Dev Mode settings",
+          "copy": "Click One-click setup to add figma-desktop to the current workspace .mcp.json",
+          "paste": "Keep Figma Desktop running, then share a file, page, or node link in chat to pull design context"
         }
       },
       "pencil": {

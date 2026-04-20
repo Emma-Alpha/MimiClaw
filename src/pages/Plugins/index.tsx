@@ -345,7 +345,12 @@ export function Plugins() {
         });
 
         await refreshPublicMcpConnection();
-        toast.success(t('toast.connectedReady', { filePath: result.filePath, server: result.serverName }));
+        toast.success(
+          t('toast.connectedReady', {
+            filePath: result.filePath,
+            server: t(`publicMcp.tools.${option.id}.name`),
+          }),
+        );
       } catch (copyError) {
         toast.error(t('toast.connectedFailed', { error: String(copyError) }));
       }
@@ -354,7 +359,11 @@ export function Plugins() {
   );
 
   const getPublicMcpLinked = useCallback(
-    (publicMcpId: PublicMcpId) => Boolean(publicMcpConnection?.statuses[publicMcpId]),
+    (publicMcpId: PublicMcpId) => {
+      const option = PUBLIC_MCP_OPTIONS.find((item) => item.id === publicMcpId);
+      if (!option) return false;
+      return Boolean(publicMcpConnection?.statuses[option.serverName]);
+    },
     [publicMcpConnection],
   );
 
@@ -632,9 +641,9 @@ export function Plugins() {
                         {checkingPublicMcp
                           ? t('publicMcp.status.checking')
                           : selectedPublicMcpLinked
-                            ? t('publicMcp.status.detected', { server: selectedPublicMcp.id })
+                            ? t('publicMcp.status.detected', { server: selectedPublicMcp.serverName })
                             : publicMcpConnection?.workspaceResolved
-                              ? t('publicMcp.status.notDetected', { server: selectedPublicMcp.id })
+                              ? t('publicMcp.status.notDetected', { server: selectedPublicMcp.serverName })
                               : t('publicMcp.status.workspaceMissing')}
                       </span>
                     </div>

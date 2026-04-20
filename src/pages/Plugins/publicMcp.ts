@@ -9,6 +9,7 @@ export interface ParsedMcpServer {
 
 type ClipboardBasedPublicMcpOption = {
   id: PublicMcpId;
+  serverName: string;
   setupMode: 'clipboard';
   template: string;
 };
@@ -16,6 +17,7 @@ type ClipboardBasedPublicMcpOption = {
 type TemplateBasedPublicMcpOption = {
   id: PublicMcpId;
   serverConfig: McpServerConfig;
+  serverName: string;
   setupMode: 'template';
   template: string;
 };
@@ -24,7 +26,7 @@ export type PublicMcpOption = ClipboardBasedPublicMcpOption | TemplateBasedPubli
 
 const FIGMA_MCP_CONFIG = {
   type: 'http',
-  url: 'https://mcp.figma.com/mcp',
+  url: 'http://127.0.0.1:3845/mcp',
 } satisfies McpServerConfig;
 
 const PENCIL_MCP_TEMPLATE = `{
@@ -53,18 +55,20 @@ function buildMcpTemplate(serverName: string, serverConfig: McpServerConfig): st
 export const PUBLIC_MCP_OPTIONS = [
   {
     id: 'figma',
+    serverName: 'figma-desktop',
     serverConfig: FIGMA_MCP_CONFIG,
     setupMode: 'template',
-    template: buildMcpTemplate('figma', FIGMA_MCP_CONFIG),
+    template: buildMcpTemplate('figma-desktop', FIGMA_MCP_CONFIG),
   },
   {
     id: 'pencil',
+    serverName: 'pencil',
     setupMode: 'clipboard',
     template: PENCIL_MCP_TEMPLATE,
   },
 ] as const satisfies ReadonlyArray<PublicMcpOption>;
 
-export const PUBLIC_MCP_SERVER_NAMES = PUBLIC_MCP_OPTIONS.map(({ id }) => id);
+export const PUBLIC_MCP_SERVER_NAMES = PUBLIC_MCP_OPTIONS.map(({ serverName }) => serverName);
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -114,10 +118,10 @@ export function parseClipboardMcpServer(rawText: string, preferredServerName: st
 export function resolvePublicMcpServer(option: PublicMcpOption, rawClipboardText: string): ParsedMcpServer | null {
   if (option.setupMode === 'template') {
     return {
-      serverName: option.id,
+      serverName: option.serverName,
       serverConfig: option.serverConfig,
     };
   }
 
-  return parseClipboardMcpServer(rawClipboardText, option.id);
+  return parseClipboardMcpServer(rawClipboardText, option.serverName);
 }

@@ -9,7 +9,7 @@
   "publicMcp": {
     "title": "公共 MCP 集成中心",
     "description": "先选服务卡片，再进入详情页一键接入，减少手动配置成本。",
-    "hint": "一键接入会自动复制可用模板，你只需要粘贴到项目 .mcp.json 或 ~/.claude/settings.json。",
+    "hint": "一键接入会优先把所选 MCP 写入当前工作区；如果服务端提供 Copy MCP config，也可以先复制配置后再导入。",
     "cardAction": "查看接入详情",
     "cardActionConnected": "查看链接状态",
     "back": "返回卡片列表",
@@ -34,13 +34,13 @@
       "figma": {
         "name": "Figma",
         "badge": "官方",
-        "summary": "官方 Dev Mode MCP，适合把设计稿、节点与布局信息直接带进代码工作流。",
-        "detailTitle": "Figma MCP 快速接入",
-        "detailDescription": "点击“一键接入”后会把官方 remote MCP 配置写入当前工作区，首次使用时再完成 Figma 授权即可。",
+        "summary": "Figma Desktop 本地 MCP，适合在不走远程授权的前提下把设计稿、节点与布局信息带进代码工作流。",
+        "detailTitle": "Figma 本地 MCP 快速接入",
+        "detailDescription": "点击“一键接入”后会把本地 MCP 地址写入当前工作区；你只需要在 Figma Desktop 里开启 Dev Mode MCP Server 并保持运行。",
         "steps": {
-          "open": "点击“一键接入”，把 figma 写入当前工作区 .mcp.json",
-          "copy": "首次调用 Figma MCP 工具时，按提示完成 Figma OAuth 授权",
-          "paste": "在对话里提供 Figma 文件、页面或节点链接，开始读取设计上下文"
+          "open": "打开 Figma Desktop，在 Dev Mode 设置里开启 MCP Server",
+          "copy": "点击“一键接入”，把 figma-desktop 写入当前工作区 .mcp.json",
+          "paste": "保持 Figma Desktop 运行后，在对话里提供文件、页面或节点链接开始读取设计上下文"
         }
       },
       "pencil": {

@@ -7,16 +7,16 @@ import {
 } from '@/pages/Plugins/publicMcp';
 
 describe('publicMcp helpers', () => {
-  it('uses the built-in Figma remote config without clipboard input', () => {
+  it('uses the built-in Figma local config without clipboard input', () => {
     const figmaOption = PUBLIC_MCP_OPTIONS.find(({ id }) => id === 'figma');
 
     expect(figmaOption).toBeDefined();
     expect(resolvePublicMcpServer(figmaOption!, '')).toEqual({
       serverConfig: {
         type: 'http',
-        url: 'https://mcp.figma.com/mcp',
+        url: 'http://127.0.0.1:3845/mcp',
       },
-      serverName: 'figma',
+      serverName: 'figma-desktop',
     });
   });
 

@@ -9,7 +9,7 @@
   "publicMcp": {
     "title": "Public MCP 連携センター",
     "description": "まずサービスカードを選び、詳細ページからワンクリック接続します。",
-    "hint": "ワンクリック接続でテンプレートがコピーされます。project .mcp.json または ~/.claude/settings.json に貼り付けてください。",
+    "hint": "可能な場合、ワンクリック接続は選択した MCP を現在のワークスペースへ直接書き込みます。サービス側に Copy MCP config がある場合は、先にコピーしてから取り込むこともできます。",
     "cardAction": "接続手順を見る",
     "cardActionConnected": "接続状態を見る",
     "back": "カード一覧に戻る",
@@ -34,13 +34,13 @@
       "figma": {
         "name": "Figma",
         "badge": "公式",
-        "summary": "公式 Dev Mode MCP で、Figma のファイルやノード、レイアウト情報をそのままコード作業へ持ち込めます。",
-        "detailTitle": "Figma MCP クイック接続",
-        "detailDescription": "ワンクリック接続で公式 remote MCP 設定を現在のワークスペースへ書き込みます。初回利用時に Figma 認証を完了してください。",
+        "summary": "リモート認証を使わずに、Figma Desktop のローカル MCP でファイルやノード、レイアウト情報をコード作業へ持ち込めます。",
+        "detailTitle": "Figma ローカル MCP クイック接続",
+        "detailDescription": "ワンクリック接続でローカル MCP エンドポイントを現在のワークスペースへ書き込みます。Figma Desktop で Dev Mode MCP Server を有効にして起動したままにしてください。",
         "steps": {
-          "open": "ワンクリック接続を押して、現在のワークスペースの .mcp.json に figma を追加",
-          "copy": "最初の MCP ツール呼び出し時に Figma OAuth 認証を完了",
-          "paste": "Figma のファイル、ページ、またはノードリンクをチャットに貼ってデザイン文脈を読み込む"
+          "open": "Figma Desktop を開き、Dev Mode 設定で MCP Server を有効化",
+          "copy": "ワンクリック接続を押して、現在のワークスペースの .mcp.json に figma-desktop を追加",
+          "paste": "Figma Desktop を起動したまま、ファイル・ページ・ノードのリンクをチャットに貼ってデザイン文脈を読み込む"
         }
       },
       "pencil": {
