@@ -2,28 +2,12 @@
   "title": "Plugins",
   "notice": "このページでは当面、プラグインのインストールと MCP 対応プラグインの確認に絞っています。より広い管理機能は後続で追加します。",
   "descriptionFallback": "説明はまだありません",
-  "tabs": {
-    "pencil": "Pencil MCP",
-    "openclaw": "OpenClaw プラグイン"
-  },
-  "pencil": {
-    "title": "ここから Pencil を Claude/Codex MCP に接続",
-    "description": "Pencil の設定画面で MCP 設定をコピーし、このプロジェクトの .mcp.json（または ~/.claude/settings.json）へ貼り付けます。",
-    "hint": "Pencil は MCP サーバー設定を提供します。このページの OpenClaw プラグインとは別の仕組みです。",
-    "templateTitle": "テンプレート（Pencil からコピーした実際の command / args で置き換えてください）",
-    "steps": {
-      "open": "Pencil → Settings → MCP を開く",
-      "copy": "Copy MCP config をクリック",
-      "paste": ".mcp.json または ~/.claude/settings.json に貼り付け"
-    }
-  },
   "actions": {
     "install": "インストール",
     "installing": "インストール中",
     "openExtensionsFolder": "プラグインフォルダーを開く",
     "openFolder": "フォルダーを開く",
-    "refresh": "更新",
-    "copyMcpTemplate": "MCP テンプレートをコピー"
+    "refresh": "更新"
   },
   "section": {
     "catalog": {
@@ -57,8 +41,6 @@
     "failedOpenFolder": "プラグインフォルダーを開けませんでした: {{error}}",
     "failedRefresh": "プラグイン一覧の更新に失敗しました",
     "installFailed": "{{name}} のインストールに失敗しました: {{error}}",
-    "installed": "{{name}} をインストールしました",
-    "copiedTemplate": "MCP テンプレートをコピーしました",
-    "failedCopyTemplate": "MCP テンプレートのコピーに失敗しました: {{error}}"
+    "installed": "{{name}} をインストールしました"
   }
 }
