@@ -64,17 +64,17 @@ const styles = createStaticStyles(({ css }) => ({
     background: transparent;
 
     &:hover {
-      background: color-mix(in oklab, ${cssVar.colorText} 6%, transparent);
-      border-color: color-mix(in oklab, ${cssVar.colorText} 4%, transparent);
+      background: color-mix(in oklab, ${cssVar.colorText} 5%, transparent);
+      border-color: transparent;
     }
   `,
   active: css`
     background: color-mix(in oklab, ${cssVar.colorText} 10%, transparent);
-    border-color: color-mix(in oklab, ${cssVar.colorText} 6%, transparent);
-    box-shadow: inset 0 1px 0 color-mix(in oklab, white 6%, transparent);
+    border-color: transparent;
+    box-shadow: none;
 
     &:hover {
-      background: color-mix(in oklab, ${cssVar.colorText} 12%, transparent);
+      background: color-mix(in oklab, ${cssVar.colorText} 10%, transparent);
     }
   `,
   iconWrap: css`
