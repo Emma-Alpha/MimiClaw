@@ -35,6 +35,7 @@ import {
 	type SidebarThreadWorkspace,
 } from "@/stores/settings";
 import { useChatStore } from "@/stores/chat";
+import { useCodeAgentStore } from "@/stores/code-agent";
 import { useGatewayStore } from "@/stores/gateway";
 import { useRemoteMessengerStore } from "@/stores/remote-messenger";
 import { useVoiceChatSessionsStore } from "@/stores/voice-chat-sessions";
@@ -293,6 +294,8 @@ export function Sidebar() {
 	const loadSessions = useChatStore((s) => s.loadSessions);
 	const loadHistory = useChatStore((s) => s.loadHistory);
 	const chatSending = useChatStore((s) => s.sending);
+	const codeAgentSessionId = useCodeAgentStore((s) => s.sessionId);
+	const codeAgentSessionState = useCodeAgentStore((s) => s.sessionState);
 
 	// ── gateway / remote / voice stores ───────────────────────────────────────
 	const gatewayStatus = useGatewayStore((s) => s.status);
@@ -458,10 +461,18 @@ export function Sidebar() {
 	const routeWorkspaceRoot =
 		routeSearchParams.get("workspaceRoot")?.trim() || "";
 	const routeSessionId = routeSearchParams.get("sessionId")?.trim() || "";
+	const activeThreadSessionId =
+		routeSessionId || codeAgentSessionId?.trim() || "";
 	const activeThreadWorkspaceIdFromRoute =
 		(pathname.startsWith("/code-agent/quick-chat") && routeWorkspaceRoot
 			? workspaceIdByNormalizedRoot[normalizeWorkspacePath(routeWorkspaceRoot)]
 			: undefined) ?? null;
+	const isThreadSessionGenerating =
+		pathname.startsWith("/code-agent/quick-chat")
+		&& (
+			codeAgentSessionState === "running"
+			|| codeAgentSessionState === "requires_action"
+		);
 
 	const normalizedQuery = searchQuery.trim().toLowerCase();
 	const hasSearchQuery = normalizedQuery.length > 0;
@@ -1250,11 +1261,12 @@ export function Sidebar() {
 											const isActive =
 												pathname.startsWith("/code-agent/quick-chat") &&
 												activeThreadWorkspaceIdFromRoute === workspace.id &&
-												routeSessionId === session.sessionId;
+												activeThreadSessionId === session.sessionId;
 											const isRunning =
 												runningThreadSessionsByWorkspaceId[workspace.id]?.[
 													session.sessionId
-												] === true;
+												] === true
+												|| (isActive && isThreadSessionGenerating);
 											return (
 												<NavItem
 													key={`${workspace.id}:${session.sessionId}`}
