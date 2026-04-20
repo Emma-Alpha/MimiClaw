@@ -11,10 +11,25 @@
     "description": "先选服务卡片，再进入详情页一键接入，减少手动配置成本。",
     "hint": "一键接入会自动复制可用模板，你只需要粘贴到项目 .mcp.json 或 ~/.claude/settings.json。",
     "cardAction": "查看接入详情",
+    "cardActionConnected": "查看链接状态",
     "back": "返回卡片列表",
     "connectNow": "一键接入",
+    "refreshStatus": "刷新状态",
     "copyTemplate": "复制模板",
     "templateTitle": "模板（已可直接复制）",
+    "status": {
+      "checking": "正在检查当前项目的 MCP 配置…",
+      "connected": "已链接",
+      "detected": "已在当前项目中检测到 {{server}} 配置。",
+      "disconnected": "未链接",
+      "fileLabel": "配置文件",
+      "fileMissing": "尚未生成 .mcp.json",
+      "notDetected": "当前项目里还没有检测到 {{server}} 配置。",
+      "verificationHint": "这里校验的是当前工作区 .mcp.json 是否已接入，并不是远端服务实时握手状态。",
+      "workspaceHint": "请先打开一个线程工作区，再验证项目级 MCP 是否接入。",
+      "workspaceLabel": "工作区",
+      "workspaceMissing": "当前还没有可用于验证的工作区。"
+    },
     "tools": {
       "pencil": {
         "name": "Pencil",

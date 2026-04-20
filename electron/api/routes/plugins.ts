@@ -13,9 +13,22 @@ type ConnectPublicMcpBody = {
   workspaceRoot?: unknown;
 };
 
+type PublicMcpStatusBody = {
+  serverNames?: unknown;
+  workspaceRoot?: unknown;
+};
+
 type McpServerConfig = Record<string, unknown>;
 type McpConfigFile = Record<string, unknown> & {
   mcpServers?: Record<string, McpServerConfig>;
+};
+
+type PublicMcpConnectionSnapshot = {
+  fileExists: boolean;
+  filePath: string;
+  statuses: Record<string, boolean>;
+  workspaceResolved: boolean;
+  workspaceRoot: string;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -26,6 +39,15 @@ async function pathIsDirectory(pathLike: string): Promise<boolean> {
   try {
     const directoryStat = await stat(pathLike);
     return directoryStat.isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+async function pathIsFile(pathLike: string): Promise<boolean> {
+  try {
+    const fileStat = await stat(pathLike);
+    return fileStat.isFile();
   } catch {
     return false;
   }
@@ -109,6 +131,71 @@ function normalizeConnectBody(body: ConnectPublicMcpBody): {
   };
 }
 
+function normalizeStatusBody(body: PublicMcpStatusBody): {
+  serverNames: string[];
+  workspaceRoot: string;
+} {
+  const serverNames = Array.isArray(body.serverNames)
+    ? body.serverNames
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0)
+    : [];
+
+  if (serverNames.length === 0) {
+    throw new Error('serverNames is required');
+  }
+
+  return {
+    serverNames,
+    workspaceRoot: normalizeWorkspaceRootCandidate(body.workspaceRoot),
+  };
+}
+
+function createEmptyPublicMcpConnectionSnapshot(serverNames: string[]): PublicMcpConnectionSnapshot {
+  return {
+    fileExists: false,
+    filePath: '',
+    statuses: Object.fromEntries(serverNames.map((serverName) => [serverName, false])),
+    workspaceResolved: false,
+    workspaceRoot: '',
+  };
+}
+
+async function readPublicMcpConnectionSnapshot(
+  body: ReturnType<typeof normalizeStatusBody>,
+  settings: Awaited<ReturnType<typeof getAllSettings>>,
+): Promise<PublicMcpConnectionSnapshot> {
+  let workspaceRoot = '';
+
+  try {
+    workspaceRoot = resolveWorkspaceRoot(body.workspaceRoot, settings);
+  } catch {
+    return createEmptyPublicMcpConnectionSnapshot(body.serverNames);
+  }
+
+  if (!(await pathIsDirectory(workspaceRoot))) {
+    return createEmptyPublicMcpConnectionSnapshot(body.serverNames);
+  }
+
+  const mcpConfigPath = join(workspaceRoot, '.mcp.json');
+  const fileExists = await pathIsFile(mcpConfigPath);
+  const config = await readMcpConfig(mcpConfigPath);
+  const existingServers = isRecord(config.mcpServers)
+    ? config.mcpServers as Record<string, McpServerConfig>
+    : {};
+
+  return {
+    fileExists,
+    filePath: mcpConfigPath,
+    statuses: Object.fromEntries(
+      body.serverNames.map((serverName) => [serverName, isRecord(existingServers[serverName])]),
+    ),
+    workspaceResolved: true,
+    workspaceRoot,
+  };
+}
+
 function scheduleGatewayReload(ctx: HostApiContext): void {
   if (ctx.gatewayManager.getStatus().state === 'stopped') return;
   ctx.gatewayManager.debouncedReload();
@@ -170,6 +257,18 @@ export async function handlePluginRoutes(
         serverName: body.serverName,
         workspaceRoot,
       });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
+  if (url.pathname === '/api/plugins/public-mcp/status' && req.method === 'POST') {
+    try {
+      const body = normalizeStatusBody(await parseJsonBody<PublicMcpStatusBody>(req));
+      const settings = await getAllSettings();
+      const snapshot = await readPublicMcpConnectionSnapshot(body, settings);
+      sendJson(res, 200, { success: true, ...snapshot });
     } catch (error) {
       sendJson(res, 500, { success: false, error: String(error) });
     }

@@ -159,6 +159,11 @@ export const usePluginsStyles = createStyles(({ token, css }) => ({
     border: 1px solid ${token.colorPrimaryBorder};
     background: ${token.colorPrimaryBg};
   `,
+  mcpCardBadgeConnected: css`
+    color: ${token.colorSuccess};
+    border-color: ${token.colorSuccessBorder};
+    background: ${token.colorSuccessBg};
+  `,
   mcpCardTitle: css`
     margin-top: 12px;
     font-size: 15px;
@@ -182,6 +187,10 @@ export const usePluginsStyles = createStyles(({ token, css }) => ({
     font-size: 12px;
     color: ${token.colorPrimary};
     background: ${token.colorPrimaryBg};
+  `,
+  mcpCardActionConnected: css`
+    color: ${token.colorSuccess};
+    background: ${token.colorSuccessBg};
   `,
   mcpBackRow: css`
     display: flex;
@@ -239,10 +248,91 @@ export const usePluginsStyles = createStyles(({ token, css }) => ({
     letter-spacing: -0.01em;
     color: ${token.colorText};
   `,
+  pencilTitleRow: css`
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  `,
   pencilDescription: css`
     margin-top: 6px;
     font-size: 13px;
     line-height: 1.65;
+    color: ${token.colorTextSecondary};
+  `,
+  connectionBadge: css`
+    height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid ${token.colorBorderSecondary};
+  `,
+  connectionBadgeConnected: css`
+    color: ${token.colorSuccess};
+    border-color: ${token.colorSuccessBorder};
+    background: ${token.colorSuccessBg};
+  `,
+  connectionBadgePending: css`
+    color: ${token.colorWarning};
+    border-color: ${token.colorWarningBorder};
+    background: ${token.colorWarningBg};
+  `,
+  connectionPanel: css`
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: ${token.borderRadiusLG}px;
+    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorBgContainer};
+  `,
+  connectionPanelConnected: css`
+    border-color: ${token.colorSuccessBorder};
+    background: linear-gradient(180deg, ${token.colorSuccessBg} 0%, ${token.colorBgContainer} 100%);
+  `,
+  connectionPanelPending: css`
+    border-color: ${token.colorWarningBorder};
+    background: linear-gradient(180deg, ${token.colorWarningBg} 0%, ${token.colorBgContainer} 100%);
+  `,
+  connectionPanelHeader: css`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  `,
+  connectionPanelTitle: css`
+    font-size: 13px;
+    font-weight: 600;
+    color: ${token.colorText};
+  `,
+  connectionMetaList: css`
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  `,
+  connectionMetaItem: css`
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+
+    @media (max-width: 640px) {
+      flex-direction: column;
+      gap: 4px;
+    }
+  `,
+  connectionMetaLabel: css`
+    min-width: 56px;
+    font-size: 12px;
+    color: ${token.colorTextSecondary};
+  `,
+  connectionHint: css`
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.6;
     color: ${token.colorTextSecondary};
   `,
   pencilSteps: css`

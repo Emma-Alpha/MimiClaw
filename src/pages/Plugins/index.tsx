@@ -21,7 +21,7 @@ import { hostApiFetch } from '@/lib/host-api';
 import { SettingHeader } from '@/pages/Settings/components/SettingHeader';
 import { useSkillsStyles } from '@/pages/Skills/styles';
 import { useSettingsStore } from '@/stores/settings';
-import type { PluginsSnapshot, PluginSummary } from '@/types/plugin';
+import type { PluginsSnapshot, PluginSummary, PublicMcpConnectionSnapshot } from '@/types/plugin';
 
 import dingtalkIcon from '@/assets/channels/dingtalk.svg';
 import feishuIcon from '@/assets/channels/feishu.svg';
@@ -85,6 +85,8 @@ const PUBLIC_MCP_OPTIONS = [
     template: PENCIL_MCP_TEMPLATE,
   },
 ] as const satisfies ReadonlyArray<{ id: PublicMcpId; template: string }>;
+
+const PUBLIC_MCP_SERVER_NAMES = PUBLIC_MCP_OPTIONS.map(({ id }) => id);
 
 type ParsedMcpServer = {
   serverConfig: Record<string, unknown>;
@@ -225,6 +227,8 @@ export function Plugins() {
   const [selectedPublicMcpId, setSelectedPublicMcpId] = useState<PublicMcpId | null>(null);
   const [plugins, setPlugins] = useState<PluginSummary[]>([]);
   const [mcpPlugins, setMcpPlugins] = useState<PluginSummary[]>([]);
+  const [publicMcpConnection, setPublicMcpConnection] = useState<PublicMcpConnectionSnapshot | null>(null);
+  const [checkingPublicMcp, setCheckingPublicMcp] = useState(false);
   const [extensionsDir, setExtensionsDir] = useState('~/.openclaw/extensions');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -339,6 +343,31 @@ export function Plugins() {
     return latestWorkspace?.rootPath?.trim() || '';
   }, [sidebarActiveContext, sidebarThreadWorkspaces]);
 
+  const refreshPublicMcpConnection = useCallback(async () => {
+    try {
+      setCheckingPublicMcp(true);
+      const snapshot = await hostApiFetch<PublicMcpConnectionSnapshot & { success?: boolean }>(
+        '/api/plugins/public-mcp/status',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            serverNames: PUBLIC_MCP_SERVER_NAMES,
+            workspaceRoot: selectedWorkspaceRoot,
+          }),
+        },
+      );
+      setPublicMcpConnection(snapshot);
+    } catch {
+      setPublicMcpConnection(null);
+    } finally {
+      setCheckingPublicMcp(false);
+    }
+  }, [selectedWorkspaceRoot]);
+
+  useEffect(() => {
+    void refreshPublicMcpConnection();
+  }, [refreshPublicMcpConnection]);
+
   const handleCopyTemplate = useCallback(
     async (template: string) => {
       try {
@@ -378,13 +407,21 @@ export function Plugins() {
           }),
         });
 
+        await refreshPublicMcpConnection();
         toast.success(t('toast.connectedReady', { filePath: result.filePath, server: result.serverName }));
       } catch (copyError) {
         toast.error(t('toast.connectedFailed', { error: String(copyError) }));
       }
     },
-    [handleCopyTemplate, selectedWorkspaceRoot, t],
+    [handleCopyTemplate, refreshPublicMcpConnection, selectedWorkspaceRoot, t],
   );
+
+  const getPublicMcpLinked = useCallback(
+    (publicMcpId: PublicMcpId) => Boolean(publicMcpConnection?.statuses[publicMcpId]),
+    [publicMcpConnection],
+  );
+
+  const selectedPublicMcpLinked = selectedPublicMcp ? getPublicMcpLinked(selectedPublicMcp.id) : false;
 
   if (loading) {
     return (
@@ -537,6 +574,17 @@ export function Plugins() {
                     <>
                       <button
                         type="button"
+                        className={styles.headerButton}
+                        disabled={checkingPublicMcp}
+                        onClick={() => {
+                          void refreshPublicMcpConnection();
+                        }}
+                      >
+                        <RefreshCw style={{ width: 14, height: 14 }} />
+                        {t('publicMcp.refreshStatus')}
+                      </button>
+                      <button
+                        type="button"
                         className={cx(styles.headerButton, styles.headerButtonPrimary)}
                         onClick={() => {
                           void handleConnectPublicMcp(selectedPublicMcp.id, selectedPublicMcp.template);
@@ -615,9 +663,61 @@ export function Plugins() {
                       <Sparkles size={16} />
                     </div>
                     <div>
-                      <p className={styles.pencilTitle}>{t(`publicMcp.tools.${selectedPublicMcp.id}.detailTitle`)}</p>
+                      <div className={styles.pencilTitleRow}>
+                        <p className={styles.pencilTitle}>{t(`publicMcp.tools.${selectedPublicMcp.id}.detailTitle`)}</p>
+                        <span
+                          className={cx(
+                            styles.connectionBadge,
+                            selectedPublicMcpLinked
+                              ? styles.connectionBadgeConnected
+                              : styles.connectionBadgePending,
+                          )}
+                        >
+                          {selectedPublicMcpLinked
+                            ? t('publicMcp.status.connected')
+                            : t('publicMcp.status.disconnected')}
+                        </span>
+                      </div>
                       <p className={styles.pencilDescription}>{t(`publicMcp.tools.${selectedPublicMcp.id}.detailDescription`)}</p>
                     </div>
+                  </div>
+
+                  <div
+                    className={cx(
+                      styles.connectionPanel,
+                      selectedPublicMcpLinked
+                        ? styles.connectionPanelConnected
+                        : styles.connectionPanelPending,
+                    )}
+                  >
+                    <div className={styles.connectionPanelHeader}>
+                      <span className={styles.connectionPanelTitle}>
+                        {checkingPublicMcp
+                          ? t('publicMcp.status.checking')
+                          : selectedPublicMcpLinked
+                            ? t('publicMcp.status.detected', { server: selectedPublicMcp.id })
+                            : publicMcpConnection?.workspaceResolved
+                              ? t('publicMcp.status.notDetected', { server: selectedPublicMcp.id })
+                              : t('publicMcp.status.workspaceMissing')}
+                      </span>
+                    </div>
+                    {publicMcpConnection?.workspaceResolved ? (
+                      <div className={styles.connectionMetaList}>
+                        <div className={styles.connectionMetaItem}>
+                          <span className={styles.connectionMetaLabel}>{t('publicMcp.status.workspaceLabel')}</span>
+                          <span className={styles.pathText}>{publicMcpConnection.workspaceRoot}</span>
+                        </div>
+                        <div className={styles.connectionMetaItem}>
+                          <span className={styles.connectionMetaLabel}>{t('publicMcp.status.fileLabel')}</span>
+                          <span className={styles.pathText}>
+                            {publicMcpConnection.filePath || t('publicMcp.status.fileMissing')}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className={styles.connectionHint}>{t('publicMcp.status.workspaceHint')}</p>
+                    )}
+                    <p className={styles.connectionHint}>{t('publicMcp.status.verificationHint')}</p>
                   </div>
 
                   <div className={styles.noticeBanner}>
@@ -660,28 +760,44 @@ export function Plugins() {
                   </div>
 
                   <div className={styles.mcpCardGrid}>
-                    {PUBLIC_MCP_OPTIONS.map((option) => (
-                      <button
-                        className={styles.mcpCard}
-                        key={option.id}
-                        onClick={() => {
-                          setSelectedPublicMcpId(option.id);
-                        }}
-                        type="button"
-                      >
-                        <div className={styles.mcpCardHeader}>
-                          <div className={styles.mcpCardIconWrap}>
-                            <Sparkles size={15} />
+                    {PUBLIC_MCP_OPTIONS.map((option) => {
+                      const isLinked = getPublicMcpLinked(option.id);
+
+                      return (
+                        <button
+                          className={styles.mcpCard}
+                          key={option.id}
+                          onClick={() => {
+                            setSelectedPublicMcpId(option.id);
+                          }}
+                          type="button"
+                        >
+                          <div className={styles.mcpCardHeader}>
+                            <div className={styles.mcpCardIconWrap}>
+                              <Sparkles size={15} />
+                            </div>
+                            <span
+                              className={cx(
+                                styles.mcpCardBadge,
+                                isLinked && styles.mcpCardBadgeConnected,
+                              )}
+                            >
+                              {isLinked ? t('publicMcp.status.connected') : t(`publicMcp.tools.${option.id}.badge`)}
+                            </span>
                           </div>
-                          <span className={styles.mcpCardBadge}>{t(`publicMcp.tools.${option.id}.badge`)}</span>
-                        </div>
-                        <p className={styles.mcpCardTitle}>{t(`publicMcp.tools.${option.id}.name`)}</p>
-                        <p className={styles.mcpCardDescription}>{t(`publicMcp.tools.${option.id}.summary`)}</p>
-                        <span className={styles.mcpCardAction}>
-                          {t('publicMcp.cardAction')}
-                        </span>
-                      </button>
-                    ))}
+                          <p className={styles.mcpCardTitle}>{t(`publicMcp.tools.${option.id}.name`)}</p>
+                          <p className={styles.mcpCardDescription}>{t(`publicMcp.tools.${option.id}.summary`)}</p>
+                          <span
+                            className={cx(
+                              styles.mcpCardAction,
+                              isLinked && styles.mcpCardActionConnected,
+                            )}
+                          >
+                            {isLinked ? t('publicMcp.cardActionConnected') : t('publicMcp.cardAction')}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </section>
               )

@@ -11,10 +11,25 @@
     "description": "Pick a service card first, then use one-click setup from the detail page.",
     "hint": "One-click setup copies a ready-to-use template. Paste it into project .mcp.json or ~/.claude/settings.json.",
     "cardAction": "View setup details",
+    "cardActionConnected": "View connection status",
     "back": "Back to cards",
     "connectNow": "One-click setup",
+    "refreshStatus": "Refresh status",
     "copyTemplate": "Copy template",
     "templateTitle": "Template (ready to copy)",
+    "status": {
+      "checking": "Checking MCP config for the current project...",
+      "connected": "Connected",
+      "detected": "{{server}} was detected in the current project.",
+      "disconnected": "Not connected",
+      "fileLabel": "Config file",
+      "fileMissing": ".mcp.json has not been created yet",
+      "notDetected": "{{server}} was not detected in the current project yet.",
+      "verificationHint": "This checks whether the current workspace .mcp.json is wired up, not a live remote handshake.",
+      "workspaceHint": "Open a thread workspace first to verify project-level MCP setup.",
+      "workspaceLabel": "Workspace",
+      "workspaceMissing": "No workspace is currently available for verification."
+    },
     "tools": {
       "pencil": {
         "name": "Pencil",

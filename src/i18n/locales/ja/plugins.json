@@ -11,10 +11,25 @@
     "description": "まずサービスカードを選び、詳細ページからワンクリック接続します。",
     "hint": "ワンクリック接続でテンプレートがコピーされます。project .mcp.json または ~/.claude/settings.json に貼り付けてください。",
     "cardAction": "接続手順を見る",
+    "cardActionConnected": "接続状態を見る",
     "back": "カード一覧に戻る",
     "connectNow": "ワンクリック接続",
+    "refreshStatus": "状態を更新",
     "copyTemplate": "テンプレートをコピー",
     "templateTitle": "テンプレート（そのままコピー可能）",
+    "status": {
+      "checking": "現在のプロジェクトの MCP 設定を確認中...",
+      "connected": "接続済み",
+      "detected": "現在のプロジェクトで {{server}} 設定を検出しました。",
+      "disconnected": "未接続",
+      "fileLabel": "設定ファイル",
+      "fileMissing": ".mcp.json はまだ作成されていません",
+      "notDetected": "現在のプロジェクトではまだ {{server}} 設定が見つかっていません。",
+      "verificationHint": "ここで確認しているのは現在のワークスペースの .mcp.json 接続状況であり、リモートサービスのライブ接続確認ではありません。",
+      "workspaceHint": "プロジェクト単位の MCP 接続を確認するには、先にスレッドのワークスペースを開いてください。",
+      "workspaceLabel": "ワークスペース",
+      "workspaceMissing": "確認に使えるワークスペースがまだありません。"
+    },
     "tools": {
       "pencil": {
         "name": "Pencil",
