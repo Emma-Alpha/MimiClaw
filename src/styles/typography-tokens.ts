@@ -15,6 +15,40 @@ const DARK_SWITCH_HANDLE_EMPHASIS = 0.88;
 const DARK_SWITCH_TRACK_EMPHASIS = 0.42;
 const DARK_SWITCH_TRACK_HOVER_EMPHASIS = 0.5;
 
+const CODEX_DARK_TOKEN_OVERRIDES = {
+  boxShadowSecondary: '0 24px 48px rgba(0, 0, 0, 0.28)',
+  colorBgContainer: '#181818',
+  colorBgElevated: '#2d2d2d',
+  colorBgLayout: '#131313',
+  colorBorder: 'rgba(255, 255, 255, 0.12)',
+  colorBorderSecondary: 'rgba(255, 255, 255, 0.084)',
+  colorFill: 'rgba(255, 255, 255, 0.08)',
+  colorFillQuaternary: 'rgba(255, 255, 255, 0.03)',
+  colorFillSecondary: 'rgba(255, 255, 255, 0.05)',
+  colorFillTertiary: 'rgba(255, 255, 255, 0.1)',
+  colorText: '#fcfcfc',
+  colorTextQuaternary: 'rgba(252, 252, 252, 0.45)',
+  colorTextSecondary: '#8f8f8f',
+  colorTextTertiary: '#666666',
+} as const;
+
+const CODEX_LIGHT_TOKEN_OVERRIDES = {
+  boxShadowSecondary: '0 20px 40px rgba(15, 23, 42, 0.08)',
+  colorBgContainer: '#ffffff',
+  colorBgElevated: '#ffffff',
+  colorBgLayout: '#fcfcfc',
+  colorBorder: 'rgba(13, 13, 13, 0.12)',
+  colorBorderSecondary: 'rgba(13, 13, 13, 0.078)',
+  colorFill: 'rgba(13, 13, 13, 0.08)',
+  colorFillQuaternary: 'rgba(13, 13, 13, 0.03)',
+  colorFillSecondary: 'rgba(13, 13, 13, 0.05)',
+  colorFillTertiary: 'rgba(13, 13, 13, 0.1)',
+  colorText: '#0d0d0d',
+  colorTextQuaternary: 'rgba(13, 13, 13, 0.4)',
+  colorTextSecondary: '#666666',
+  colorTextTertiary: '#8f8f8f',
+} as const;
+
 export const APP_BUTTON_RADIUS = 12;
 export const APP_CARD_RADIUS = 16;
 export const APP_STATUS_BADGE_RADIUS = 10;
@@ -218,6 +252,9 @@ export function createMimiThemeConfig(params: MimiThemeConfigParams): ThemeConfi
         handleShadow: '0 1px 3px rgba(0, 0, 0, 0.45)',
       }
     : undefined;
+  const codexTokenOverrides = rest.appearance === 'dark'
+    ? CODEX_DARK_TOKEN_OVERRIDES
+    : CODEX_LIGHT_TOKEN_OVERRIDES;
 
   return {
     ...themeConfig,
@@ -234,6 +271,7 @@ export function createMimiThemeConfig(params: MimiThemeConfigParams): ThemeConfi
     },
     token: {
       ...(themeConfig.token ?? {}),
+      ...codexTokenOverrides,
       ...getTypographyTokenOverrides(fontSize),
       fontFamily: themeConfig.token?.fontFamily ?? themeSystemBaseToken.fontFamily,
       fontFamilyCode: themeConfig.token?.fontFamilyCode ?? themeSystemBaseToken.fontFamilyCode,

@@ -111,7 +111,7 @@ const useStyles = createStyles(({ token, css }) => ({
 		min-height: 40px;
 		--composer-ring-color: var(--color-token-border, ${token.colorBorder});
 		--composer-ring-color-focus: var(--color-token-border-heavy, var(--color-token-border, ${token.colorBorder}));
-		background: color-mix(in oklab, ${token.colorBgContainer} 88%, ${token.colorText} 12%);
+		background: ${token.colorBgElevated};
 		border: 1px solid transparent;
 		box-shadow:
 			0 0 0 0.5px var(--composer-ring-color),
