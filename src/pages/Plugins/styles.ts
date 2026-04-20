@@ -1,6 +1,18 @@
 import { createStyles } from 'antd-style';
 
 export const usePluginsStyles = createStyles(({ token, css }) => ({
+  pageRootInset: css`
+    --plugins-extra-start: 12px;
+    --plugins-safe-start: calc(var(--skills-inline-padding, 0px) + var(--plugins-extra-start));
+    --mimi-content-safe-start: var(--plugins-safe-start);
+
+    @media (max-width: 640px) {
+      --plugins-extra-start: 8px;
+    }
+  `,
+  contentInnerInset: css`
+    padding-inline-start: max(var(--skills-inline-padding, 0px), var(--plugins-safe-start, 0px));
+  `,
   noticeBanner: css`
     margin-bottom: 24px;
     display: flex;

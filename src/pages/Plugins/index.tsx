@@ -353,7 +353,7 @@ export function Plugins() {
   );
 
   return (
-    <div className={skillStyles.skillsPageRoot}>
+    <div className={skillCx(skillStyles.skillsPageRoot, styles.pageRootInset)}>
       <div className={skillStyles.skillsPageInner}>
         <div className={skillStyles.skillsPageContent}>
           <div className={skillStyles.skillsPageHeader}>
@@ -387,7 +387,7 @@ export function Plugins() {
             />
           </div>
 
-          <div className={skillStyles.skillsPageContentInner}>
+          <div className={skillCx(skillStyles.skillsPageContentInner, styles.contentInnerInset)}>
             <div className={styles.noticeBanner}>
               <AlertCircle className={styles.noticeIcon} style={{ width: 18, height: 18 }} />
               <span>{t('notice')}</span>
