@@ -81,7 +81,7 @@
 
 - 本地执行中心：目录报告、批量重命名预览、下载目录整理、命令执行
 - Skills 系统：内置 `pdf` / `xlsx` / `docx` / `pptx` 等常用能力；技能商店通过 `npx skills`（[skills.sh](https://skills.sh)）搜索安装，首次使用可在需要时自动准备 Node 运行时（`~/.mimiclaw/runtime/node`）
-- Plugins 页面：当前聚焦 OpenClaw 插件安装与 MCP 插件展示，便于统一查看扩展能力
+- Plugins 页面：当前聚焦 OpenClaw 插件安装与 MCP 插件展示，便于统一查看扩展能力；公共 MCP 现内置 Pencil 与 Figma 快速接入
 - 定时任务：通过 Cron 自动化执行重复工作
 - 兜底配置包：可在设置页直接输入口令并导出语音对话、ASR、Gateway 关键配置为本地加密文件；也支持在打包时将 `default-fallback-profile.json` 放入 `resources/fallback/` 进行内置，首次初始化输入口令即可自动预填
 

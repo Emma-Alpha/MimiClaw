@@ -31,6 +31,18 @@
       "workspaceMissing": "当前还没有可用于验证的工作区。"
     },
     "tools": {
+      "figma": {
+        "name": "Figma",
+        "badge": "官方",
+        "summary": "官方 Dev Mode MCP，适合把设计稿、节点与布局信息直接带进代码工作流。",
+        "detailTitle": "Figma MCP 快速接入",
+        "detailDescription": "点击“一键接入”后会把官方 remote MCP 配置写入当前工作区，首次使用时再完成 Figma 授权即可。",
+        "steps": {
+          "open": "点击“一键接入”，把 figma 写入当前工作区 .mcp.json",
+          "copy": "首次调用 Figma MCP 工具时，按提示完成 Figma OAuth 授权",
+          "paste": "在对话里提供 Figma 文件、页面或节点链接，开始读取设计上下文"
+        }
+      },
       "pencil": {
         "name": "Pencil",
         "badge": "推荐",

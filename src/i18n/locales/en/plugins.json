@@ -31,6 +31,18 @@
       "workspaceMissing": "No workspace is currently available for verification."
     },
     "tools": {
+      "figma": {
+        "name": "Figma",
+        "badge": "Official",
+        "summary": "Official Dev Mode MCP for bringing Figma files, nodes, and layout context straight into your coding workflow.",
+        "detailTitle": "Figma MCP quick setup",
+        "detailDescription": "One-click setup writes the official remote MCP config into the current workspace. You can finish Figma auth the first time the tool runs.",
+        "steps": {
+          "open": "Click One-click setup to add figma to the current workspace .mcp.json",
+          "copy": "Complete the Figma OAuth flow the first time an MCP tool call is made",
+          "paste": "Share a Figma file, page, or node link in chat to start pulling design context"
+        }
+      },
       "pencil": {
         "name": "Pencil",
         "badge": "Recommended",

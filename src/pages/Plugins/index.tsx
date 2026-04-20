@@ -28,6 +28,12 @@ import feishuIcon from '@/assets/channels/feishu.svg';
 import qqIcon from '@/assets/channels/qq.svg';
 import wechatIcon from '@/assets/channels/wechat.svg';
 import wecomIcon from '@/assets/channels/wecom.svg';
+import type { PublicMcpId } from './publicMcp';
+import {
+  PUBLIC_MCP_OPTIONS,
+  PUBLIC_MCP_SERVER_NAMES,
+  resolvePublicMcpServer,
+} from './publicMcp';
 import { usePluginsStyles } from './styles';
 
 const IMAGE_ICON_RE = /^(https?:\/\/|data:image\/|blob:|file:\/\/|\/)/i;
@@ -65,78 +71,7 @@ const PLUGIN_ICON_PALETTES = [
 ] as const;
 
 type PluginStyleClasses = ReturnType<typeof usePluginsStyles>['styles'];
-type PublicMcpId = 'pencil';
 type PluginsTabKey = 'openclaw' | 'publicMcp';
-
-const PENCIL_MCP_TEMPLATE = `{
-  "mcpServers": {
-    "pencil": {
-      "command": "REPLACE_WITH_PENCIL_COMMAND",
-      "args": [
-        "REPLACE_WITH_PENCIL_ARGS"
-      ]
-    }
-  }
-}`;
-
-const PUBLIC_MCP_OPTIONS = [
-  {
-    id: 'pencil',
-    template: PENCIL_MCP_TEMPLATE,
-  },
-] as const satisfies ReadonlyArray<{ id: PublicMcpId; template: string }>;
-
-const PUBLIC_MCP_SERVER_NAMES = PUBLIC_MCP_OPTIONS.map(({ id }) => id);
-
-type ParsedMcpServer = {
-  serverConfig: Record<string, unknown>;
-  serverName: string;
-};
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function parseClipboardMcpServer(rawText: string, preferredServerName: string): ParsedMcpServer | null {
-  if (!rawText.trim()) return null;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(rawText);
-  } catch {
-    return null;
-  }
-
-  if (!isRecord(parsed)) return null;
-
-  const mcpServers = isRecord(parsed.mcpServers) ? parsed.mcpServers : null;
-  if (mcpServers) {
-    const preferred = mcpServers[preferredServerName];
-    if (isRecord(preferred)) {
-      return { serverName: preferredServerName, serverConfig: preferred };
-    }
-    for (const [name, config] of Object.entries(mcpServers)) {
-      if (isRecord(config)) {
-        return { serverName: String(name), serverConfig: config };
-      }
-    }
-  }
-
-  if (isRecord(parsed[preferredServerName])) {
-    return {
-      serverName: preferredServerName,
-      serverConfig: parsed[preferredServerName] as Record<string, unknown>,
-    };
-  }
-
-  if (typeof parsed.command === 'string' || typeof parsed.url === 'string') {
-    return {
-      serverName: preferredServerName,
-      serverConfig: parsed,
-    };
-  }
-
-  return null;
-}
 
 function getPluginMonogram(plugin: PluginSummary) {
   const label = `${plugin.name || ''} ${plugin.pluginId || ''}`.trim();
@@ -381,13 +316,15 @@ export function Plugins() {
   );
 
   const handleConnectPublicMcp = useCallback(
-    async (preferredServerName: string, template: string) => {
+    async (option: (typeof PUBLIC_MCP_OPTIONS)[number]) => {
       try {
-        const clipboardText = await navigator.clipboard.readText();
-        const parsedServer = parseClipboardMcpServer(clipboardText, preferredServerName);
+        const clipboardText = option.setupMode === 'clipboard'
+          ? await navigator.clipboard.readText()
+          : '';
+        const parsedServer = resolvePublicMcpServer(option, clipboardText);
 
         if (!parsedServer) {
-          await handleCopyTemplate(template);
+          await handleCopyTemplate(option.template);
           toast.error(t('toast.clipboardMcpInvalid'));
           return;
         }
@@ -587,7 +524,7 @@ export function Plugins() {
                         type="button"
                         className={cx(styles.headerButton, styles.headerButtonPrimary)}
                         onClick={() => {
-                          void handleConnectPublicMcp(selectedPublicMcp.id, selectedPublicMcp.template);
+                          void handleConnectPublicMcp(selectedPublicMcp);
                         }}
                       >
                         <Plus style={{ width: 14, height: 14 }} />

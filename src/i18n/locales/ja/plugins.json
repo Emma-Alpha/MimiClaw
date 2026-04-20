@@ -31,6 +31,18 @@
       "workspaceMissing": "確認に使えるワークスペースがまだありません。"
     },
     "tools": {
+      "figma": {
+        "name": "Figma",
+        "badge": "公式",
+        "summary": "公式 Dev Mode MCP で、Figma のファイルやノード、レイアウト情報をそのままコード作業へ持ち込めます。",
+        "detailTitle": "Figma MCP クイック接続",
+        "detailDescription": "ワンクリック接続で公式 remote MCP 設定を現在のワークスペースへ書き込みます。初回利用時に Figma 認証を完了してください。",
+        "steps": {
+          "open": "ワンクリック接続を押して、現在のワークスペースの .mcp.json に figma を追加",
+          "copy": "最初の MCP ツール呼び出し時に Figma OAuth 認証を完了",
+          "paste": "Figma のファイル、ページ、またはノードリンクをチャットに貼ってデザイン文脈を読み込む"
+        }
+      },
       "pencil": {
         "name": "Pencil",
         "badge": "おすすめ",
