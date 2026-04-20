@@ -11,8 +11,6 @@ import {
 	Square,
 	X,
 	Copy,
-	PanelLeft,
-	PanelLeftClose,
 	Ellipsis,
 	Cpu,
 	Blocks,
@@ -22,6 +20,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { createStyles } from "antd-style";
 import { invokeIpc } from "@/lib/api-client";
+import { SidebarToggleButton } from "@/components/layout/SidebarToggleButton";
 import {
 	CHAT_HEADER_HEIGHT,
 	DEFAULT_HEADER_SIDE_PADDING,
@@ -38,25 +37,6 @@ const TITLEBAR_CONTROL_TOP = Math.max(
 );
 
 const useStyles = createStyles(({ token, css }) => ({
-	sidebarToggleBtn: css`
-		pointer-events: auto;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 28px;
-		height: 28px;
-		border-radius: ${token.borderRadiusSM}px;
-		border: none;
-		background: transparent;
-		color: ${token.colorTextSecondary};
-		cursor: pointer;
-		transition: background 0.15s ease, color 0.15s ease;
-
-		&:hover {
-			background: rgba(0, 0, 0, 0.07);
-			color: ${token.colorText};
-		}
-	`,
 	managementMenuWrap: css`
 		position: relative;
 	`,
@@ -225,14 +205,6 @@ type TitleBarProps = {
 	rightContent?: ReactNode;
 };
 
-type SidebarToggleButtonProps = {
-	sidebarCollapsed: boolean;
-	onToggle: () => void;
-	ariaLabel: string;
-	tooltipLabel: string;
-	shortcutLabel: string;
-};
-
 function isEditableTarget(target: EventTarget | null): boolean {
 	if (!(target instanceof HTMLElement)) {
 		return false;
@@ -245,34 +217,6 @@ function isEditableTarget(target: EventTarget | null): boolean {
 		return true;
 	}
 	return target.getAttribute("role") === "textbox";
-}
-
-function SidebarToggleButton({
-	sidebarCollapsed,
-	onToggle,
-	ariaLabel,
-}: SidebarToggleButtonProps) {
-	const { styles } = useStyles();
-	return (
-		<button
-			type="button"
-			onClick={(e) => {
-				e.preventDefault();
-				e.stopPropagation();
-				onToggle();
-			}}
-			style={{ WebkitAppRegion: 'no-drag' } as any}
-			className={styles.sidebarToggleBtn}
-			aria-label={ariaLabel}
-			title={ariaLabel}
-		>
-			{sidebarCollapsed ? (
-				<PanelLeft style={{ width: 16, height: 16 }} />
-			) : (
-				<PanelLeftClose style={{ width: 16, height: 16 }} />
-			)}
-		</button>
-	);
 }
 
 function ManagementMenu({
@@ -374,10 +318,6 @@ export function TitleBar({
 		(state) => state.setSidebarCollapsed,
 	);
 	const sidebarToggleReserve = getCollapsedSidebarToggleReserve(platform);
-	const sidebarShortcutLabel = platform === "darwin" ? "⌘B" : "Ctrl+B";
-	const sidebarToggleTooltipLabel = t("sidebar.toggleSidebar", {
-		defaultValue: "切换边栏",
-	});
 	const sidebarToggleAriaLabel = sidebarCollapsed
 		? t("sidebar.expandSidebar", { defaultValue: "展开侧边栏" })
 		: t("sidebar.collapseSidebar", { defaultValue: "收起侧边栏" });
@@ -408,8 +348,6 @@ export function TitleBar({
 			sidebarCollapsed={sidebarCollapsed}
 			onToggle={toggleSidebar}
 			ariaLabel={sidebarToggleAriaLabel}
-			tooltipLabel={sidebarToggleTooltipLabel}
-			shortcutLabel={sidebarShortcutLabel}
 		/>
 	);
 
@@ -489,8 +427,6 @@ export function TitleBar({
 			sidebarCollapsed={sidebarCollapsed}
 			onToggleSidebar={toggleSidebar}
 			sidebarToggleAriaLabel={sidebarToggleAriaLabel}
-			sidebarToggleTooltipLabel={sidebarToggleTooltipLabel}
-			sidebarShortcutLabel={sidebarShortcutLabel}
 			hideManagementMenu={hideManagementMenu}
 			hideSidebarToggle={hideSidebarToggle}
 			rightContent={rightContent}
@@ -503,8 +439,6 @@ function WindowsTitleBar({
 	sidebarCollapsed,
 	onToggleSidebar,
 	sidebarToggleAriaLabel,
-	sidebarToggleTooltipLabel,
-	sidebarShortcutLabel,
 	hideManagementMenu,
 	hideSidebarToggle,
 	rightContent,
@@ -512,8 +446,6 @@ function WindowsTitleBar({
 	sidebarCollapsed: boolean;
 	onToggleSidebar: () => void;
 	sidebarToggleAriaLabel: string;
-	sidebarToggleTooltipLabel: string;
-	sidebarShortcutLabel: string;
 	hideManagementMenu: boolean;
 	hideSidebarToggle?: boolean;
 }) {
@@ -553,8 +485,6 @@ function WindowsTitleBar({
 						sidebarCollapsed={sidebarCollapsed}
 						onToggle={onToggleSidebar}
 						ariaLabel={sidebarToggleAriaLabel}
-						tooltipLabel={sidebarToggleTooltipLabel}
-						shortcutLabel={sidebarShortcutLabel}
 					/>
 				)}
 			</div>

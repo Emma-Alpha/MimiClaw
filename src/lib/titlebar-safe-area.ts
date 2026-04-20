@@ -34,6 +34,10 @@ const COLLAPSED_SIDEBAR_TOGGLE_RESERVE = {
 
 export const CHAT_HEADER_HEIGHT = 46;
 
+interface UseChatHeaderInsetsOptions {
+  sidebarToggleLocation?: 'global' | 'inline';
+}
+
 function getNavigator(): NavigatorWithWindowControlsOverlay | null {
   if (typeof navigator === 'undefined') return null;
 
@@ -155,13 +159,19 @@ export function useTitlebarSafeInsets(): HeaderSafeInsets {
   );
 }
 
-export function useChatHeaderInsets(sidebarCollapsed: boolean) {
+export function useChatHeaderInsets(
+  sidebarCollapsed: boolean,
+  options: UseChatHeaderInsetsOptions = {},
+) {
   const platform = typeof window === 'undefined' ? undefined : window.electron?.platform;
   const safeInsets = useTitlebarSafeInsets();
+  const sidebarToggleLocation = options.sidebarToggleLocation ?? 'global';
 
   return useMemo(() => {
     const startInset = sidebarCollapsed
-      ? safeInsets.left + getCollapsedSidebarToggleReserve(platform)
+      ? sidebarToggleLocation === 'inline'
+        ? safeInsets.left + DEFAULT_HEADER_SIDE_PADDING
+        : safeInsets.left + getCollapsedSidebarToggleReserve(platform)
       : DEFAULT_HEADER_SIDE_PADDING;
     const endInset = safeInsets.right + DEFAULT_HEADER_SIDE_PADDING;
 
@@ -169,5 +179,5 @@ export function useChatHeaderInsets(sidebarCollapsed: boolean) {
       end: Math.max(DEFAULT_HEADER_SIDE_PADDING, endInset),
       start: Math.max(DEFAULT_HEADER_SIDE_PADDING, startInset),
     };
-  }, [platform, safeInsets.left, safeInsets.right, sidebarCollapsed]);
+  }, [platform, safeInsets.left, safeInsets.right, sidebarCollapsed, sidebarToggleLocation]);
 }

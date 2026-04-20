@@ -8,6 +8,7 @@ import { RefreshCw, Brain } from 'lucide-react';
 import { ActionIcon } from '@lobehub/ui';
 import { OpenClaw } from '@lobehub/icons';
 import { createStyles } from 'antd-style';
+import { SidebarToggleButton } from '@/components/layout/SidebarToggleButton';
 import { useChatHeaderInsets } from '@/lib/titlebar-safe-area';
 import { useChatStore } from '@/stores/chat';
 import { useAgentsStore } from '@/stores/agents';
@@ -83,7 +84,7 @@ const useStyles = createStyles(({ token, css }) => ({
 }));
 
 export function ChatToolbar() {
-  const { t } = useTranslation('chat');
+  const { t } = useTranslation(['chat', 'common']);
   const { styles, cx } = useStyles();
 
   const refresh = useChatStore((s) => s.refresh);
@@ -94,8 +95,11 @@ export function ChatToolbar() {
   const currentSessionKey = useChatStore((s) => s.currentSessionKey);
   const sessionLabels = useChatStore((s) => s.sessionLabels);
   const sidebarCollapsed = useSettingsStore((s) => s.sidebarCollapsed);
+  const setSidebarCollapsed = useSettingsStore((s) => s.setSidebarCollapsed);
   const agents = useAgentsStore((s) => s.agents);
-  const headerInsets = useChatHeaderInsets(sidebarCollapsed);
+  const headerInsets = useChatHeaderInsets(sidebarCollapsed, {
+    sidebarToggleLocation: sidebarCollapsed ? 'inline' : 'global',
+  });
 
   const toolbarDragStyle: CSSProperties & { WebkitAppRegion: 'no-drag' } = useMemo(
     () => ({
@@ -111,12 +115,22 @@ export function ChatToolbar() {
     [agents, currentAgentId],
   );
 
+  const sidebarToggleAriaLabel = sidebarCollapsed
+    ? t('sidebar.expandSidebar', { defaultValue: '展开侧边栏', ns: 'common' })
+    : t('sidebar.collapseSidebar', { defaultValue: '收起侧边栏', ns: 'common' });
   const sessionTitle = currentSessionKey ? (sessionLabels[currentSessionKey] ?? '') : '';
 
   return (
     <div className={styles.toolbar} style={toolbarDragStyle}>
       {/* Left: icon + title stack */}
       <div className={styles.left}>
+        {sidebarCollapsed ? (
+          <SidebarToggleButton
+            ariaLabel={sidebarToggleAriaLabel}
+            onToggle={() => setSidebarCollapsed(false)}
+            sidebarCollapsed={sidebarCollapsed}
+          />
+        ) : null}
         <span className={styles.icon}>
           <OpenClaw.Color size={CHAT_SESSION_HEADER_ICON_SIZE} />
         </span>

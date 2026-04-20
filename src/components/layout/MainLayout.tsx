@@ -129,6 +129,10 @@ export function MainLayout() {
   );
   const headerInsets = useChatHeaderInsets(sidebarCollapsed);
   const fullBleed = FULL_BLEED_PATHS.has(pathname);
+  const usesInlineCollapsedSidebarToggle = pathname === '/code-agent/quick-chat'
+    || pathname === '/'
+    || pathname === '/chat'
+    || pathname.startsWith('/chat/');
   const hideTitleBarManagementMenu = pathname === '/code-agent/quick-chat'
     || pathname === '/'
     || pathname === '/chat'
@@ -245,6 +249,7 @@ export function MainLayout() {
       {/* Global Title Bar for dragging */}
       <TitleBar
         hideManagementMenu={hideTitleBarManagementMenu}
+        hideSidebarToggle={usesInlineCollapsedSidebarToggle && sidebarCollapsed}
       />
       <div className={styles.body}>
         {!sidebarCollapsed && (

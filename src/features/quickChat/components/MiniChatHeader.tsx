@@ -2,6 +2,7 @@ import { memo, useState, useEffect, useMemo } from "react";
 import { ActionIcon } from "@lobehub/ui";
 import { OpenClaw, ClaudeCode } from "@lobehub/icons";
 import { Dropdown } from "antd";
+import { SidebarToggleButton } from "@/components/layout/SidebarToggleButton";
 import { useChatHeaderInsets } from "@/lib/titlebar-safe-area";
 import {
 	Expand,
@@ -28,6 +29,7 @@ import {
 } from "@/styles/typography-tokens";
 import type { MiniChatTarget } from "../types";
 import { useMiniChatStyles } from "../styles";
+import { useTranslation } from "react-i18next";
 import {
 	buildMiniChatHeaderViewModel,
 	type HeaderStatusKind,
@@ -130,8 +132,12 @@ function MiniChatHeaderImpl({
 	terminalShortcutLabel = "",
 	onToggleTerminal,
 }: MiniChatHeaderProps) {
+	const { t } = useTranslation("common");
 	const sidebarCollapsed = useSettingsStore((state) => state.sidebarCollapsed);
-	const headerInsets = useChatHeaderInsets(sidebarCollapsed);
+	const setSidebarCollapsed = useSettingsStore((state) => state.setSidebarCollapsed);
+	const headerInsets = useChatHeaderInsets(sidebarCollapsed, {
+		sidebarToggleLocation: sidebarCollapsed ? "inline" : "global",
+	});
 	const { styles, cx } = useMiniChatStyles({
 		codexHeaderInsetEnd: headerInsets.end,
 		codexHeaderInsetStart: headerInsets.start,
@@ -203,6 +209,9 @@ function MiniChatHeaderImpl({
 	const embeddedHeaderTitle = viewModel.headerTitle || "新线程";
 	const embeddedHeaderTitleDisplay = truncateHeaderText(embeddedHeaderTitle, 20) || "新线程";
 	const embeddedStatusLabel = viewModel.status.label;
+	const sidebarToggleAriaLabel = sidebarCollapsed
+		? t("sidebar.expandSidebar", { defaultValue: "展开侧边栏" })
+		: t("sidebar.collapseSidebar", { defaultValue: "收起侧边栏" });
 	const terminalToggleTitle = isTerminalToggleDisabled
 		? "先选择工作目录"
 		: terminalShortcutLabel
@@ -319,6 +328,13 @@ function MiniChatHeaderImpl({
 			{useCodexHeader ? (
 				<>
 					<div className={styles.embeddedTopLeft}>
+						{sidebarCollapsed ? (
+							<SidebarToggleButton
+								ariaLabel={sidebarToggleAriaLabel}
+								onToggle={() => setSidebarCollapsed(false)}
+								sidebarCollapsed={sidebarCollapsed}
+							/>
+						) : null}
 						<div className={styles.embeddedThreadWrap}>
 							<div className={styles.embeddedThreadBtn}>
 								<span className={styles.embeddedThreadIcon}>
