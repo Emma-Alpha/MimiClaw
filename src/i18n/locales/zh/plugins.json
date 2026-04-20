@@ -2,12 +2,28 @@
   "title": "Plugins",
   "notice": "当前页面先聚焦两件事：安装插件，以及查看带有 MCP 能力的插件。更完整的插件管理能力后续再补。",
   "descriptionFallback": "暂无描述",
+  "tabs": {
+    "pencil": "Pencil MCP",
+    "openclaw": "OpenClaw 插件"
+  },
+  "pencil": {
+    "title": "在这里接入 Pencil 到 Claude/Codex MCP",
+    "description": "在 Pencil 的设置页复制 MCP 配置，然后粘贴到当前项目的 .mcp.json（或你的 ~/.claude/settings.json）即可生效。",
+    "hint": "Pencil 提供的是 MCP Server 配置；这里的 OpenClaw 插件是另一套机制，不互相替代。",
+    "templateTitle": "模板（将占位符替换为 Pencil 复制出来的真实 command / args）",
+    "steps": {
+      "open": "打开 Pencil → Settings → MCP",
+      "copy": "点击 Copy MCP config",
+      "paste": "将内容粘贴到 .mcp.json 或 ~/.claude/settings.json"
+    }
+  },
   "actions": {
     "install": "安装",
     "installing": "安装中",
     "openExtensionsFolder": "打开插件目录",
     "openFolder": "打开文件夹",
-    "refresh": "刷新"
+    "refresh": "刷新",
+    "copyMcpTemplate": "复制 MCP 模板"
   },
   "section": {
     "catalog": {
@@ -41,6 +57,8 @@
     "failedOpenFolder": "打开插件目录失败：{{error}}",
     "failedRefresh": "刷新插件列表失败",
     "installFailed": "安装 {{name}} 失败：{{error}}",
-    "installed": "{{name}} 安装完成"
+    "installed": "{{name}} 安装完成",
+    "copiedTemplate": "MCP 模板已复制",
+    "failedCopyTemplate": "复制 MCP 模板失败：{{error}}"
   }
 }

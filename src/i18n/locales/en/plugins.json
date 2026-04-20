@@ -2,12 +2,28 @@
   "title": "Plugins",
   "notice": "This page currently focuses on two things: installing plugins and surfacing MCP-capable plugins. Broader plugin management can come later.",
   "descriptionFallback": "No description available",
+  "tabs": {
+    "pencil": "Pencil MCP",
+    "openclaw": "OpenClaw Plugins"
+  },
+  "pencil": {
+    "title": "Connect Pencil to Claude/Codex MCP from here",
+    "description": "Copy the MCP configuration from Pencil settings, then paste it into this project's .mcp.json (or your ~/.claude/settings.json).",
+    "hint": "Pencil exposes an MCP server config. OpenClaw plugins in this page are a separate mechanism.",
+    "templateTitle": "Template (replace placeholders with the real command / args copied from Pencil)",
+    "steps": {
+      "open": "Open Pencil → Settings → MCP",
+      "copy": "Click Copy MCP config",
+      "paste": "Paste it into .mcp.json or ~/.claude/settings.json"
+    }
+  },
   "actions": {
     "install": "Install",
     "installing": "Installing",
     "openExtensionsFolder": "Open Plugins Folder",
     "openFolder": "Open Folder",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "copyMcpTemplate": "Copy MCP Template"
   },
   "section": {
     "catalog": {
@@ -41,6 +57,8 @@
     "failedOpenFolder": "Failed to open plugin folder: {{error}}",
     "failedRefresh": "Failed to refresh plugin list",
     "installFailed": "Failed to install {{name}}: {{error}}",
-    "installed": "{{name}} installed"
+    "installed": "{{name}} installed",
+    "copiedTemplate": "MCP template copied",
+    "failedCopyTemplate": "Failed to copy MCP template: {{error}}"
   }
 }

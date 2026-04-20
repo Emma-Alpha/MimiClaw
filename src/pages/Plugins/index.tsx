@@ -1,5 +1,14 @@
 import { Tag } from '@lobehub/ui';
-import { AlertCircle, Braces, Check, FolderOpen, Package, RefreshCw } from 'lucide-react';
+import {
+  AlertCircle,
+  Braces,
+  Check,
+  Copy,
+  FolderOpen,
+  Package,
+  RefreshCw,
+  Sparkles,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -53,6 +62,17 @@ const PLUGIN_ICON_PALETTES = [
 ] as const;
 
 type PluginStyleClasses = ReturnType<typeof usePluginsStyles>['styles'];
+type PluginsTabKey = 'openclaw' | 'pencil';
+const PENCIL_MCP_TEMPLATE = `{
+  "mcpServers": {
+    "pencil": {
+      "command": "REPLACE_WITH_PENCIL_COMMAND",
+      "args": [
+        "REPLACE_WITH_PENCIL_ARGS"
+      ]
+    }
+  }
+}`;
 
 function getPluginMonogram(plugin: PluginSummary) {
   const label = `${plugin.name || ''} ${plugin.pluginId || ''}`.trim();
@@ -137,6 +157,7 @@ export function Plugins() {
   const { t } = useTranslation('plugins');
   const { styles: skillStyles, cx: skillCx } = useSkillsStyles();
   const { styles, cx } = usePluginsStyles();
+  const [activeTab, setActiveTab] = useState<PluginsTabKey>('pencil');
   const [plugins, setPlugins] = useState<PluginSummary[]>([]);
   const [mcpPlugins, setMcpPlugins] = useState<PluginSummary[]>([]);
   const [extensionsDir, setExtensionsDir] = useState('~/.openclaw/extensions');
@@ -237,6 +258,15 @@ export function Plugins() {
       toast.error(t('toast.failedOpenFolder', { error: String(openError) }));
     }
   }, [extensionsDir, openPath, t]);
+
+  const handleCopyPencilTemplate = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(PENCIL_MCP_TEMPLATE);
+      toast.success(t('toast.copiedTemplate'));
+    } catch (copyError) {
+      toast.error(t('toast.failedCopyTemplate', { error: String(copyError) }));
+    }
+  }, [t]);
 
   if (loading) {
     return (
@@ -361,36 +391,69 @@ export function Plugins() {
               title={t('title')}
               extra={
                 <div className={styles.headerActions}>
-                  <button
-                    type="button"
-                    className={styles.headerButton}
-                    disabled={refreshing}
-                    onClick={() => {
-                      void fetchSnapshot(false);
-                    }}
-                  >
-                    <RefreshCw style={{ width: 14, height: 14 }} />
-                    {t('actions.refresh')}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.headerButton}
-                    onClick={() => {
-                      void handleOpenExtensionsDir();
-                    }}
-                  >
-                    <FolderOpen style={{ width: 14, height: 14 }} />
-                    {t('actions.openExtensionsFolder')}
-                  </button>
+                  {activeTab === 'openclaw' ? (
+                    <>
+                      <button
+                        type="button"
+                        className={styles.headerButton}
+                        disabled={refreshing}
+                        onClick={() => {
+                          void fetchSnapshot(false);
+                        }}
+                      >
+                        <RefreshCw style={{ width: 14, height: 14 }} />
+                        {t('actions.refresh')}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.headerButton}
+                        onClick={() => {
+                          void handleOpenExtensionsDir();
+                        }}
+                      >
+                        <FolderOpen style={{ width: 14, height: 14 }} />
+                        {t('actions.openExtensionsFolder')}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.headerButton}
+                      onClick={() => {
+                        void handleCopyPencilTemplate();
+                      }}
+                    >
+                      <Copy style={{ width: 14, height: 14 }} />
+                      {t('actions.copyMcpTemplate')}
+                    </button>
+                  )}
                 </div>
               }
             />
           </div>
 
           <div className={skillCx(skillStyles.skillsPageContentInner, styles.contentInnerInset)}>
-            <div className={styles.noticeBanner}>
-              <AlertCircle className={styles.noticeIcon} style={{ width: 18, height: 18 }} />
-              <span>{t('notice')}</span>
+            <div className={styles.tabsShell}>
+              <button
+                className={cx(styles.tabButton, activeTab === 'pencil' && styles.tabButtonActive)}
+                onClick={() => {
+                  setActiveTab('pencil');
+                }}
+                type="button"
+              >
+                <Sparkles size={15} />
+                <span>{t('tabs.pencil')}</span>
+              </button>
+              <button
+                className={cx(styles.tabButton, activeTab === 'openclaw' && styles.tabButtonActive)}
+                onClick={() => {
+                  setActiveTab('openclaw');
+                }}
+                type="button"
+              >
+                <Package size={15} />
+                <span>{t('tabs.openclaw')}</span>
+              </button>
             </div>
 
             {error ? (
@@ -400,8 +463,56 @@ export function Plugins() {
               </div>
             ) : null}
 
-            {renderSection(plugins, 'catalog', Package)}
-            {renderSection(mcpPlugins, 'mcp', Braces)}
+            {activeTab === 'pencil' ? (
+              <section className={styles.pencilPanel}>
+                <div className={styles.pencilIntro}>
+                  <div className={styles.pencilIntroIcon}>
+                    <Sparkles size={16} />
+                  </div>
+                  <div>
+                    <p className={styles.pencilTitle}>{t('pencil.title')}</p>
+                    <p className={styles.pencilDescription}>{t('pencil.description')}</p>
+                  </div>
+                </div>
+
+                <div className={styles.noticeBanner}>
+                  <AlertCircle className={styles.noticeIcon} style={{ width: 18, height: 18 }} />
+                  <span>{t('pencil.hint')}</span>
+                </div>
+
+                <div className={styles.pencilSteps}>
+                  <div className={styles.pencilStepItem}>
+                    <span className={styles.pencilStepIndex}>1</span>
+                    <span>{t('pencil.steps.open')}</span>
+                  </div>
+                  <div className={styles.pencilStepItem}>
+                    <span className={styles.pencilStepIndex}>2</span>
+                    <span>{t('pencil.steps.copy')}</span>
+                  </div>
+                  <div className={styles.pencilStepItem}>
+                    <span className={styles.pencilStepIndex}>3</span>
+                    <span>{t('pencil.steps.paste')}</span>
+                  </div>
+                </div>
+
+                <div className={styles.codeCard}>
+                  <p className={styles.codeCardTitle}>{t('pencil.templateTitle')}</p>
+                  <pre className={styles.templateCode}>
+                    <code>{PENCIL_MCP_TEMPLATE}</code>
+                  </pre>
+                </div>
+              </section>
+            ) : (
+              <>
+                <div className={styles.noticeBanner}>
+                  <AlertCircle className={styles.noticeIcon} style={{ width: 18, height: 18 }} />
+                  <span>{t('notice')}</span>
+                </div>
+
+                {renderSection(plugins, 'catalog', Package)}
+                {renderSection(mcpPlugins, 'mcp', Braces)}
+              </>
+            )}
           </div>
         </div>
       </div>
