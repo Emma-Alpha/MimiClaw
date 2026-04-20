@@ -352,23 +352,25 @@ function MiniChatHeaderImpl({
 					</div>
 					<div className={cx("no-drag", styles.embeddedTopRight)}>
 						{showTerminalToggle ? (
-							<button
-								type="button"
-								className={cx(
-									styles.embeddedToolbarButton,
-									isTerminalVisible && styles.embeddedToolbarButtonActive,
-								)}
-								disabled={isTerminalToggleDisabled}
-								onClick={(event) => {
-									event.stopPropagation();
-									onToggleTerminal?.();
-								}}
-								title={terminalToggleTitle}
-								aria-label={terminalToggleTitle}
-								aria-pressed={isTerminalToggleDisabled ? undefined : isTerminalVisible}
-							>
-								<SquareTerminal size={CHAT_SESSION_META_ICON_SIZE} />
-							</button>
+							<Tooltip placement="bottom" title={terminalToggleTitle}>
+								<span className={styles.tooltipTrigger}>
+									<ActionIcon
+										aria-label={terminalToggleTitle}
+										aria-pressed={isTerminalToggleDisabled ? undefined : isTerminalVisible}
+										className={cx(
+											styles.embeddedToolbarButton,
+											isTerminalVisible && styles.embeddedToolbarButtonActive,
+										)}
+										disabled={isTerminalToggleDisabled}
+										icon={SquareTerminal}
+										onClick={(event) => {
+											event.stopPropagation();
+											onToggleTerminal?.();
+										}}
+										size="small"
+									/>
+								</span>
+							</Tooltip>
 						) : null}
 						{!isCodeMode ? (
 							<Tooltip placement="bottom" title={embeddedStatusLabel}>

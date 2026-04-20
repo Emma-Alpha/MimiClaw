@@ -165,47 +165,54 @@ export const useMiniChatStyles = createStyles(
 		gap: 8px;
 		min-width: 0;
 	`,
-		embeddedToolbarButton: css`
+		tooltipTrigger: css`
 			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			width: 24px;
-			height: 24px;
-			padding: 0;
-			border: 1px solid ${token.colorBorderSecondary};
-			border-radius: 999px;
-			background: color-mix(in srgb, ${token.colorBgElevated} 86%, transparent);
-			color: ${token.colorTextSecondary};
-			cursor: pointer;
+		`,
+		embeddedToolbarButton: css`
+			width: 28px !important;
+			min-width: 28px !important;
+			height: 28px !important;
+			padding: 0 !important;
+			border: none !important;
+			border-radius: ${token.borderRadiusSM}px !important;
+			background: transparent !important;
+			box-shadow: none !important;
+			color: ${token.colorTextSecondary} !important;
 			font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
 			line-height: 1;
-			transition: all 0.18s ease;
-			box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+			transition:
+				color 0.18s ease,
+				background-color 0.18s ease,
+				transform 0.18s ease;
 
-			&:hover {
-				color: ${token.colorText};
-				border-color: ${token.colorBorder};
-				background: color-mix(in srgb, ${token.colorBgContainer} 92%, transparent);
+			&:hover:not(:disabled),
+			&:focus-visible:not(:disabled) {
+				color: ${token.colorText} !important;
+				background: color-mix(in srgb, ${token.colorText} 8%, transparent) !important;
+				transform: translateY(-1px);
+			}
+
+			&:active:not(:disabled) {
+				background: color-mix(in srgb, ${token.colorText} 12%, transparent) !important;
+				transform: translateY(0);
 			}
 
 			&:disabled {
 				cursor: not-allowed;
-				color: ${token.colorTextQuaternary};
-				border-color: ${token.colorBorderSecondary};
-				background: color-mix(in srgb, ${token.colorFillQuaternary} 72%, transparent);
-				box-shadow: none;
-			}
-
-			&:disabled:hover {
-				color: ${token.colorTextQuaternary};
-				border-color: ${token.colorBorderSecondary};
-				background: color-mix(in srgb, ${token.colorFillQuaternary} 72%, transparent);
+				color: ${token.colorTextQuaternary} !important;
+				background: transparent !important;
+				opacity: 0.72;
 			}
 		`,
 		embeddedToolbarButtonActive: css`
-			color: ${token.colorPrimary};
-			border-color: ${token.colorPrimaryBorder};
-			background: color-mix(in srgb, ${token.colorPrimaryBg} 86%, ${token.colorBgElevated});
+			color: ${token.colorPrimary} !important;
+			background: color-mix(in srgb, ${token.colorPrimary} 12%, transparent) !important;
+
+			&:hover:not(:disabled),
+			&:focus-visible:not(:disabled) {
+				color: ${token.colorPrimary} !important;
+				background: color-mix(in srgb, ${token.colorPrimary} 16%, transparent) !important;
+			}
 		`,
 		embeddedHeaderStatus: css`
 		display: flex;
