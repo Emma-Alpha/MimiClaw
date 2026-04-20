@@ -101,9 +101,9 @@ export function ChatToolbar() {
     sidebarToggleLocation: sidebarCollapsed ? 'inline' : 'global',
   });
 
-  const toolbarDragStyle: CSSProperties & { WebkitAppRegion: 'no-drag' } = useMemo(
+  const toolbarRegionStyle: CSSProperties & { WebkitAppRegion: 'drag' } = useMemo(
     () => ({
-      WebkitAppRegion: 'no-drag',
+      WebkitAppRegion: 'drag',
       paddingInlineEnd: `${headerInsets.end}px`,
       paddingInlineStart: `${headerInsets.start}px`,
     }),
@@ -121,7 +121,7 @@ export function ChatToolbar() {
   const sessionTitle = currentSessionKey ? (sessionLabels[currentSessionKey] ?? '') : '';
 
   return (
-    <div className={styles.toolbar} style={toolbarDragStyle}>
+    <div className={styles.toolbar} style={toolbarRegionStyle}>
       {/* Left: icon + title stack */}
       <div className={styles.left}>
         {sidebarCollapsed ? (
@@ -153,7 +153,7 @@ export function ChatToolbar() {
       </div>
 
       {/* Right: action icons */}
-      <div className={styles.right}>
+      <div className={styles.right} style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
         <ActionIcon
           icon={RefreshCw}
           title={t('toolbar.refresh')}
