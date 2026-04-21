@@ -4,7 +4,6 @@ import {
 	useMemo,
 	useRef,
 	useState,
-	type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useLocation } from "react-router-dom";
 import type { MenuProps } from "antd";
@@ -17,10 +16,16 @@ import {
 	Shield,
 	ShieldAlert,
 } from "lucide-react";
-import {
-	type FileAttachment,
+import type { ISlashOption } from "@lobehub/editor";
+import { ActionIcon, Tag } from "@lobehub/ui";
+import { Camera, Mic, MicOff, Paperclip } from "lucide-react";
+import { useVolcengineAsr } from "@/hooks/useVolcengineAsr";
+import { labPreferSelectors } from "@/stores/settings";
+import type {
+	FileAttachment,
 } from "@/features/mainChat/lib/composer-helpers";
-import { CodeAssistantInput } from "@/features/mainChat/components/CodeAssistantInput";
+import { ChatInput } from "@/features/mainChat/ChatInput";
+import type { ChatInputEditorApi, ChatInputSendPayload, MentionItem } from "@/features/mainChat/ChatInput/types";
 import { ContextUsageTooltip } from "@/components/ui/context-usage-tooltip";
 import { StyledDropdown } from "@/components/ui/styled-dropdown";
 import {
@@ -34,13 +39,14 @@ import {
 	readStoredCodeAgentWorkspaceRoot,
 	writeStoredCodeAgentWorkspaceRoot,
 	type ClaudeCodeSkillEntry,
+	type ProjectMentionEntry,
 } from "@/lib/code-agent";
 import { invokeIpc } from "@/lib/api-client";
 import { useCodeAgentStore, type StreamingToolUse } from "@/stores/code-agent";
 import {
+	extractComposerPathsFromTransfer,
 	type ComposerPath,
 } from "@/lib/unified-composer";
-import type { UnifiedComposerInputHandle } from "@/features/mainChat/components/unified-composer-input";
 import i18n from "@/i18n";
 import { useChatStore, type RawMessage } from "@/stores/chat";
 import { useGatewayStore } from "@/stores/gateway";
@@ -64,15 +70,12 @@ import { useCodeChatAttachmentActions } from "./hooks/useCodeChatAttachmentActio
 import { useCodeChatCodeAgentControls } from "./hooks/useCodeChatCodeAgentControls";
 import { useCodeChatClaudeSessions } from "./hooks/useCodeChatClaudeSessions";
 import { useCodeChatCodeAgentEvents } from "./hooks/useCodeChatCodeAgentEvents";
-import { useCodeChatMentionsAndSlash } from "./hooks/useCodeChatMentionsAndSlash";
-import { useCodeChatMode } from "./hooks/useCodeChatMode";
 import { useCodeChatSeedAndAutoSend } from "./hooks/useCodeChatSeedAndAutoSend";
 import { useCodeChatSessionActions } from "./hooks/useCodeChatSessionActions";
 import { useCodeChatSubmissionActions } from "./hooks/useCodeChatSubmissionActions";
 import { getChatSessionTitle } from "./session-title";
 import { useCodeChatStyles } from "./styles";
 import type {
-	MentionOption,
 	CodeChatTarget,
 	SlashOption,
 	TimelineItem,
@@ -80,8 +83,6 @@ import type {
 } from "./types";
 import {
 	extractText,
-	getMentionDraft,
-	getSlashDraft,
 	isVisibleMessage,
 	normalizeTimestampMs,
 	parseSubmissionIntent,
@@ -152,11 +153,11 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 	const { styles, cx } = useCodeChatStyles();
 	const location = useLocation();
 	const platform = window.electron?.platform;
-	const isCodeChatMode = useCodeChatMode();
 	const initSettings = useSettingsStore((state) => state.init);
 	const language = useSettingsStore((state) => state.language);
 	const codeAgentConfig = useSettingsStore((state) => state.codeAgent);
 	const setCodeAgentConfig = useSettingsStore((state) => state.setCodeAgent);
+	const isSttEnabled = useSettingsStore(labPreferSelectors.enabled('stt'));
 	const initGateway = useGatewayStore((state) => state.init);
 	const gatewayStatus = useGatewayStore((state) => state.status);
 	const skills = useSkillsStore((state) => state.skills);
@@ -185,15 +186,6 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 	const [persistentMode, setPersistentMode] = useState<CodeChatTarget | null>(
 		embeddedCodeAssistant ? "code" : null,
 	);
-	const [isComposing, setIsComposing] = useState(false);
-	const [isInputFocused, setIsInputFocused] = useState(false);
-	const [caretIndex, setCaretIndex] = useState(0);
-	const [activeMentionIndex, setActiveMentionIndex] = useState(0);
-	const [activeSlashIndex, setActiveSlashIndex] = useState(0);
-	const [projectMentionEntries, setProjectMentionEntries] = useState<MentionOption[]>([]);
-	const [projectMentionStatus, setProjectMentionStatus] = useState<
-		"idle" | "loading" | "ready" | "error"
-	>("idle");
 	const [codeSending, setCodeSending] = useState(false);
 	const [codeRunActive, setCodeRunActive] = useState(false);
 	// Ref keeps the latest activities accessible in callbacks without dep-array churn
@@ -238,10 +230,6 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 	const [branchSearchValue, setBranchSearchValue] = useState("");
 	const [showThreadTerminal, setShowThreadTerminal] = useState(false);
 	const branchSearchInputRef = useRef<HTMLInputElement>(null);
-	const [claudeCodeSkills, setClaudeCodeSkills] = useState<{
-		global: ClaudeCodeSkillEntry[];
-		project: ClaudeCodeSkillEntry[];
-	}>({ global: [], project: [] });
 	const requestedWorkspaceRoot = useMemo(() => {
 		if (!embeddedCodeAssistant) return "";
 		const raw = new URLSearchParams(location.search).get("workspaceRoot");
@@ -257,9 +245,24 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		const raw = new URLSearchParams(location.search).get("newThread");
 		return raw?.trim() ?? "";
 	}, [embeddedCodeAssistant, location.search]);
-	const composerInputRef = useRef<UnifiedComposerInputHandle>(null);
+	const chatInputEditorRef = useRef<ChatInputEditorApi | null>(null);
 	const activeSkillsRef = useRef<SlashOption[]>([]);
 	const richContentRef = useRef<import("slate").Descendant[] | undefined>(undefined);
+
+	// --- @ mention (project files) ---
+	const [projectMentionEntries, setProjectMentionEntries] = useState<ProjectMentionEntry[]>([]);
+
+	// --- / skills (claude code skills) ---
+	const [claudeCodeSkills, setClaudeCodeSkills] = useState<{ global: ClaudeCodeSkillEntry[]; project: ClaudeCodeSkillEntry[] }>({ global: [], project: [] });
+	const [activeSkillTags, setActiveSkillTags] = useState<SlashOption[]>([]);
+
+	// --- STT (voice recording) ---
+	const { cancelRecording: cancelSttRecording, isRecording: isSttRecording, isTranscribing: isSttTranscribing, toggleRecording: toggleSttRecording } = useVolcengineAsr({
+		onTranscriptReady: (text) => {
+			if (!text.trim()) return;
+			chatInputEditorRef.current?.insertTextAtCursor(text);
+		},
+	});
 
 	const pendingAutoSend = useRef<PetCodeChatSeed | null>(null);
 	const floatingTodoRef = useRef<HTMLDivElement | null>(null);
@@ -271,8 +274,6 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 	const chatSeenCounterRef = useRef(0);
 	const prevCodeSendingRef = useRef(codeSending);
 	const prevTodoSessionKeyRef = useRef("");
-	const inputRef = useRef(input);
-	const caretIndexRef = useRef(caretIndex);
 	const lastHydratedClaudeSessionRef = useRef("");
 	const lastRequestedClaudeSessionRef = useRef("");
 	const lastRequestedNewThreadTokenRef = useRef("");
@@ -298,13 +299,6 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		return () => window.clearTimeout(timer);
 	}, [branchDropdownOpen]);
 
-	useEffect(() => {
-		inputRef.current = input;
-	}, [input]);
-
-	useEffect(() => {
-		caretIndexRef.current = caretIndex;
-	}, [caretIndex]);
 
 	useEffect(() => {
 		void loadSessions();
@@ -347,38 +341,6 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		chatSeenCounterRef.current = 0;
 	}, []);
 
-	useEffect(() => {
-		const workspaceRoot = codeWorkspaceRoot.trim();
-		if (!workspaceRoot) {
-			setProjectMentionEntries([]);
-			setProjectMentionStatus("idle");
-			return;
-		}
-		let cancelled = false;
-		setProjectMentionStatus("loading");
-		void fetchProjectMentionEntries(workspaceRoot)
-			.then((entries) => {
-				if (cancelled) return;
-				setProjectMentionEntries(
-					entries.map((entry) => ({
-						id: entry.relativePath,
-						label: entry.name,
-						relativePath: entry.relativePath,
-						absolutePath: entry.absolutePath,
-						isDirectory: entry.isDirectory,
-					})),
-				);
-				setProjectMentionStatus("ready");
-			})
-			.catch(() => {
-				if (cancelled) return;
-				setProjectMentionEntries([]);
-				setProjectMentionStatus("error");
-			});
-		return () => {
-			cancelled = true;
-		};
-	}, [codeWorkspaceRoot]);
 
 	const {
 		claudeSessions,
@@ -401,6 +363,7 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		void loadClaudeSessions();
 	}, [loadClaudeSessions]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional trigger on workspace change
 	useEffect(() => {
 		lastHydratedClaudeSessionRef.current = "";
 		lastRequestedClaudeSessionRef.current = "";
@@ -509,12 +472,6 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		writeStoredCodeAgentWorkspaceRoot(codeWorkspaceRoot.trim());
 	}, [codeWorkspaceRoot]);
 
-	useEffect(() => {
-		const ws = codeWorkspaceRoot.trim();
-		fetchClaudeCodeSkills(ws)
-			.then(setClaudeCodeSkills)
-			.catch(() => setClaudeCodeSkills({ global: [], project: [] }));
-	}, [codeWorkspaceRoot]);
 
 	useEffect(() => {
 		const ws = codeWorkspaceRoot.trim();
@@ -534,35 +491,108 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		setDroppedPaths([]);
 		activeSkillsRef.current = [];
 		richContentRef.current = undefined;
+		setActiveSkillTags([]);
+		chatInputEditorRef.current?.clearContent();
+		cancelSttRecording();
+	}, [cancelSttRecording]);
+
+	const setInputAndEditor = useCallback((value: import("react").SetStateAction<string>) => {
+		if (typeof value === 'function') {
+			setInput((current) => {
+				const next = value(current);
+				requestAnimationFrame(() => {
+					chatInputEditorRef.current?.setMarkdownContent(next);
+				});
+				return next;
+			});
+		} else {
+			setInput(value);
+			requestAnimationFrame(() => {
+				chatInputEditorRef.current?.setMarkdownContent(value);
+			});
+		}
 	}, []);
-	const {
-		applyDroppedPaths,
-		handleUploadFile,
-		handleUploadFolder,
-		stageBufferFiles,
-		handleScreenshot,
-	} = useCodeChatAttachmentActions({
+
+		const { applyDroppedPaths, handleUploadFile, handleScreenshot } = useCodeChatAttachmentActions({
 		setAttachments,
 		setDroppedPaths,
 	});
 
-	const {
-		effortEnabled,
-		thinkingEnabled,
-		fastModeEnabled,
-		modelOptions,
-		selectedModel,
-		modelLabel,
-		handleSelectModel,
-		handleCycleModel,
-		handleToggleEffort,
-		handleToggleThinking,
-		handleToggleFastMode,
-	} = useCodeChatCodeAgentControls({
+	// Fetch project mention entries whenever workspace root changes
+	useEffect(() => {
+		if (!codeWorkspaceRoot) {
+			setProjectMentionEntries([]);
+			return;
+		}
+		fetchProjectMentionEntries(codeWorkspaceRoot)
+			.then((entries) => {
+				setProjectMentionEntries(entries);
+			})
+			.catch(() => {});
+	}, [codeWorkspaceRoot]);
+
+	// Fetch claude code skills whenever workspace root changes
+	useEffect(() => {
+		if (!codeWorkspaceRoot) {
+			setClaudeCodeSkills({ global: [], project: [] });
+			return;
+		}
+		fetchClaudeCodeSkills(codeWorkspaceRoot)
+			.then((result) => setClaudeCodeSkills(result))
+			.catch(() => {});
+	}, [codeWorkspaceRoot]);
+
+	// Map project mention entries to MentionItem[]
+	const mentionItems = useMemo<MentionItem[]>(
+		() =>
+			projectMentionEntries.map((entry) => ({
+				description: entry.relativePath,
+				id: entry.absolutePath,
+				label: entry.name,
+				onSelect: () => {
+					// Register the path so it is included in the submission's paths list
+					applyDroppedPaths([{
+						absolutePath: entry.absolutePath,
+						isDirectory: entry.isDirectory,
+						name: entry.name,
+					}]);
+				},
+			})),
+		[applyDroppedPaths, projectMentionEntries],
+	);
+
+	// Map claudeCodeSkills to ISlashOption[] for the editor slash menu
+	const extraSlashItems = useMemo<ISlashOption[]>(() => {
+		const toSlashItem = (entry: ClaudeCodeSkillEntry): ISlashOption => ({
+			desc: entry.description,
+			key: `${entry.scope}:${entry.name}`,
+			label: entry.command,
+			onSelect: () => {
+				const skill: SlashOption = {
+					id: `${entry.scope}:${entry.name}`,
+					command: entry.command,
+					title: entry.name,
+					description: entry.description,
+					keywords: [entry.name.toLowerCase()],
+					scope: entry.scope,
+					source: entry.source,
+					skillContent: entry.skillContent,
+				};
+				activeSkillsRef.current = [...activeSkillsRef.current, skill];
+				setActiveSkillTags((prev) => [...prev, skill]);
+			},
+		});
+		return [
+			...claudeCodeSkills.project.map(toSlashItem),
+			...claudeCodeSkills.global.map(toSlashItem),
+		];
+	}, [claudeCodeSkills]);
+
+	useCodeChatCodeAgentControls({
 		codeAgentConfig,
 		setCodeAgentConfig,
 	});
-	const { submitPrompt, allComposerAttachmentsReady, handleSend } =
+	const { submitPrompt } =
 		useCodeChatSubmissionActions({
 			input,
 			attachments,
@@ -590,6 +620,17 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 			forceFreshSessionOnNextSubmitRef,
 		});
 
+	const handleCodeAssistantSend = useCallback(
+		async ({ getMarkdownContent }: ChatInputSendPayload) => {
+			const content = getMarkdownContent().trim();
+			if (!content && attachments.length === 0 && droppedPaths.length === 0) return;
+			if (sending || codeSending) return;
+			await submitPrompt(content);
+			// clearComposer (called inside submitPrompt) also calls chatInputEditorRef.current?.clearContent()
+		},
+		[attachments.length, codeSending, droppedPaths.length, sending, submitPrompt],
+	);
+
 	const handlePermissionModeChange = useCallback(
 		(mode: CodeAgentPermissionMode) => {
 			const latestConfig = useSettingsStore.getState().codeAgent;
@@ -608,8 +649,8 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		setPersistentMode,
 		setSelectedMode,
 		setAttachments,
-		setInput,
-		setCaretIndex,
+		setInput: setInputAndEditor,
+		setCaretIndex: () => {},
 		submitPrompt,
 		sending,
 		codeSending,
@@ -655,7 +696,6 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 	const draftTarget = embeddedCodeAssistant
 		? "code"
 		: selectedMode || persistentMode || draftIntent.target;
-	const isClaudeCodeCliMode = draftTarget === "code";
 	const terminalShortcutLabel = platform === "darwin" ? "⌘J" : "Ctrl+J";
 
 	const handleStop = useCallback(async () => {
@@ -697,9 +737,6 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 	const {
 		handleNewConversation,
 		handleSwitchSession,
-		handleRewindConversation,
-		handleOpenAccountUsage,
-		handlePickWorkspaceClick,
 	} = useCodeChatSessionActions({
 		draftTarget,
 		activeClaudeSessionId,
@@ -732,6 +769,7 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		hydrateClaudeSessionHistory,
 	]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: forceFreshSessionOnNextSubmitRef is a ref, intentional
 	useEffect(() => {
 		if (!embeddedCodeAssistant) return;
 		if (!requestedNewThreadToken) return;
@@ -791,208 +829,7 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		[setCodeAgentPendingPermission],
 	);
 
-	const {
-		mentionDraft,
-		slashDraft,
-		mentionOptions,
-		mentionEmptyState,
-		filteredSlashOptions,
-		showMentionPanel,
-		showMentionPicker,
-		showSlashPicker,
-	} = useCodeChatMentionsAndSlash({
-		input,
-		caretIndex,
-		isInputFocused,
-		isClaudeCodeCliMode,
-		projectMentionEntries,
-		projectMentionStatus,
-		codeWorkspaceRoot,
-		claudeCodeSkills,
-	});
 
-	const applyMention = useCallback(
-		(option: MentionOption) => {
-			const liveInput = inputRef.current;
-			const liveCaret = caretIndexRef.current;
-			const resolvedDraft = mentionDraft ?? getMentionDraft(liveInput, liveCaret);
-			if (!resolvedDraft) return;
-
-			setActiveMentionIndex(0);
-			composerInputRef.current?.insertMention(
-				{
-					absolutePath: option.absolutePath,
-					name: option.label,
-					isDirectory: option.isDirectory,
-				},
-				{ start: resolvedDraft.start, end: resolvedDraft.end },
-			);
-			requestAnimationFrame(() => {
-				composerInputRef.current?.focus();
-				setIsInputFocused(true);
-			});
-		},
-		[mentionDraft],
-	);
-
-	const applySlashOption = useCallback(
-		(option: SlashOption) => {
-			const liveInput = inputRef.current;
-			const liveCaret = caretIndexRef.current;
-			const liveDraft = getSlashDraft(liveInput, liveCaret);
-			const resolvedDraft = liveDraft ?? slashDraft;
-
-			setActiveSlashIndex(0);
-			const already = activeSkillsRef.current.some((s) => s.command === option.command);
-			if (!already) {
-				activeSkillsRef.current = [...activeSkillsRef.current, option];
-			}
-			if (resolvedDraft) {
-				composerInputRef.current?.insertSkill(option.command, {
-					start: resolvedDraft.start,
-					end: resolvedDraft.end,
-				});
-				return;
-			}
-			composerInputRef.current?.insertSkill(option.command);
-		},
-		[slashDraft],
-	);
-
-	const handleKeyDown = useCallback(
-		(event: ReactKeyboardEvent<HTMLElement>) => {
-			if (isComposing) return;
-
-			if (showSlashPicker && event.key === "ArrowDown") {
-				event.preventDefault();
-				setActiveSlashIndex((previous) =>
-					filteredSlashOptions.length === 0
-						? 0
-						: (previous + 1) % filteredSlashOptions.length,
-				);
-				return;
-			}
-
-			if (showSlashPicker && event.key === "ArrowUp") {
-				event.preventDefault();
-				setActiveSlashIndex((previous) =>
-					filteredSlashOptions.length === 0
-						? 0
-						: (previous - 1 + filteredSlashOptions.length) % filteredSlashOptions.length,
-				);
-				return;
-			}
-
-			if (showSlashPicker && (event.key === "Enter" || event.key === "Tab")) {
-				event.preventDefault();
-				applySlashOption(
-					filteredSlashOptions[activeSlashIndex] ?? filteredSlashOptions[0],
-				);
-				return;
-			}
-
-			if (showSlashPicker && event.key === "Escape") {
-				event.preventDefault();
-				setCaretIndex(-1);
-				setActiveSlashIndex(0);
-				return;
-			}
-
-			if (showMentionPicker && event.key === "ArrowDown") {
-				event.preventDefault();
-				setActiveMentionIndex(
-					(previous) =>
-						mentionOptions.length === 0
-							? 0
-							: (previous + 1) % mentionOptions.length,
-				);
-				return;
-			}
-
-			if (showMentionPicker && event.key === "ArrowUp") {
-				event.preventDefault();
-				setActiveMentionIndex(
-					(previous) =>
-						mentionOptions.length === 0
-							? 0
-							: (previous - 1 + mentionOptions.length) % mentionOptions.length,
-				);
-				return;
-			}
-
-			if (showMentionPicker && (event.key === "Enter" || event.key === "Tab")) {
-				event.preventDefault();
-				const option = mentionOptions[activeMentionIndex] ?? mentionOptions[0];
-				if (!option) {
-					setActiveMentionIndex(0);
-					setCaretIndex(-1);
-					return;
-				}
-				applyMention(option);
-				return;
-			}
-
-			if (showMentionPanel && event.key === "Escape") {
-				event.preventDefault();
-				setCaretIndex(-1);
-				setActiveMentionIndex(0);
-				return;
-			}
-		},
-		[
-			activeMentionIndex,
-			activeSlashIndex,
-			applyMention,
-			applySlashOption,
-			filteredSlashOptions,
-			isComposing,
-			mentionOptions,
-			showMentionPanel,
-			showMentionPicker,
-			showSlashPicker,
-		],
-	);
-
-	const handlePressEnter = useCallback(
-		(event: ReactKeyboardEvent<HTMLElement>) => {
-			if (showSlashPicker) {
-				event.preventDefault();
-				applySlashOption(
-					filteredSlashOptions[activeSlashIndex] ?? filteredSlashOptions[0],
-				);
-				return;
-			}
-
-			if (showMentionPicker) {
-				event.preventDefault();
-				const option = mentionOptions[activeMentionIndex] ?? mentionOptions[0];
-				if (!option) {
-					setActiveMentionIndex(0);
-					setCaretIndex(-1);
-					return;
-				}
-				applyMention(option);
-				return;
-			}
-
-			if (!event.shiftKey && !isComposing) {
-				event.preventDefault();
-				void handleSend();
-			}
-		},
-		[
-			activeMentionIndex,
-			activeSlashIndex,
-			applyMention,
-			applySlashOption,
-			filteredSlashOptions,
-			handleSend,
-			isComposing,
-			mentionOptions,
-			showMentionPicker,
-			showSlashPicker,
-		],
-	);
 
 	const visibleMessages = useMemo(
 		() => messages.filter(isVisibleMessage),
@@ -1021,23 +858,6 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		draftTarget === "chat"
 			? isConnecting || isError || sending || isCodeTurnInProgress
 			: sending || isCodeTurnInProgress;
-	const composerPlaceholder =
-		draftTarget === "code"
-			? codeWorkspaceRoot.trim()
-				? "写脚本、改文件、整理目录…"
-				: "先选择工作目录，再描述你要完成的编程小任务"
-			: isConnecting
-				? "连接中…"
-				: isError
-					? "连接断开"
-					: "输入消息… 输入 @ 呼唤智能助手";
-
-	const sendDisabled =
-		(!input.trim() && attachments.length === 0 && droppedPaths.length === 0) ||
-		!allComposerAttachmentsReady ||
-		disableComposer ||
-		showMentionPicker ||
-		(draftTarget === "code" && !codeWorkspaceRoot.trim());
 	const headerSessions =
 		draftTarget === "code" ? claudeSessions : chatSessions;
 	const headerSessionKey =
@@ -1367,85 +1187,86 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 							/>
 						</div>
 					) : null}
-					<CodeAssistantInput
-						fusedWithTodo={Boolean(floatingTodoTool)}
-						input={input}
-						onInputChange={setInput}
-						onSend={() => {
-							void handleSend();
-						}}
-						onStop={() => {
-							void handleStop();
-						}}
-						loading={sending || codeSending}
-						disabled={disableComposer}
-						sendDisabled={sendDisabled}
-						isClaudeCodeCliMode={draftTarget === "code"}
-						isCodeChatMode={isCodeChatMode}
-						placeholder={composerPlaceholder}
-						attachments={attachments}
-						droppedPaths={droppedPaths}
-					onRemoveAttachment={(id) => {
-						setAttachments((previous) =>
-							previous.filter((attachment) => attachment.id !== id),
-						);
-					}}
-					onPathsChange={setDroppedPaths}
-					onUploadFile={() => {
-						void handleUploadFile();
-					}}
-					onUploadFolder={() => {
-						void handleUploadFolder();
-					}}
-					onScreenshot={() => {
-						void handleScreenshot();
-					}}
-					stageBufferFiles={stageBufferFiles}
-					onDropPaths={(paths) => {
-						applyDroppedPaths(paths);
-					}}
-					showMentionPanel={showMentionPanel}
-					showMentionPicker={showMentionPicker}
-					mentionOptions={mentionOptions}
-					mentionEmptyState={mentionEmptyState}
-					activeMentionIndex={activeMentionIndex}
-					onActiveMentionIndexChange={setActiveMentionIndex}
-					onApplyMention={applyMention}
-					onPickWorkspace={handlePickWorkspaceClick}
-					showSlashPicker={showSlashPicker}
-					slashOptions={filteredSlashOptions}
-					claudeCodeSkills={claudeCodeSkills}
-					activeSlashIndex={activeSlashIndex}
-					onActiveSlashIndexChange={setActiveSlashIndex}
-					onApplySlashOption={applySlashOption}
-					composerInputRef={composerInputRef}
-					onSkillsChange={(skills) => {
-						activeSkillsRef.current = activeSkillsRef.current.filter(
-							(opt) => skills.includes(opt.command),
-						);
-					}}
-					onRichContentChange={(content) => { richContentRef.current = content; }}
-					onCaretChange={setCaretIndex}
-					onKeyDown={handleKeyDown}
-					onPressEnter={handlePressEnter}
-					modelOptions={modelOptions}
-					modelValue={selectedModel}
-					modelLabel={modelLabel}
-					onSelectModel={handleSelectModel}
-					onCycleModel={handleCycleModel}
-					effortEnabled={effortEnabled}
-					thinkingEnabled={thinkingEnabled}
-					fastModeEnabled={fastModeEnabled}
-					onToggleEffort={handleToggleEffort}
-					onToggleThinking={handleToggleThinking}
-					onToggleFastMode={handleToggleFastMode}
-					onOpenAccountUsage={handleOpenAccountUsage}
-					onRewind={handleRewindConversation}
-					onClearConversation={handleNewConversation}
-					onCompositionStart={() => setIsComposing(true)}
-					onCompositionEnd={() => setIsComposing(false)}
-					onFocusChange={setIsInputFocused}
-				/>
+			{/* Drag-drop wrapper: dropping files/folders adds them as path tags */}
+			{/* biome-ignore lint/a11y/noStaticElementInteractions: drag-drop zone, no keyboard equivalent needed */}
+			<div
+				onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+				onDrop={(e) => {
+					e.preventDefault();
+					const paths = extractComposerPathsFromTransfer(e.dataTransfer);
+					if (paths.length > 0) applyDroppedPaths(paths);
+				}}
+			>
+			<ChatInput
+				agentId={currentSessionKey ?? ''}
+				allowExpand={false}
+				chatInputEditorRef={chatInputEditorRef}
+				disabled={disableComposer || sending || codeSending}
+				extraRightContent={isSttEnabled ? (
+					<ActionIcon
+						active={isSttRecording}
+						icon={isSttRecording || isSttTranscribing ? MicOff : Mic}
+						loading={isSttTranscribing}
+						size={{ blockSize: 28, size: 14 }}
+						title={isSttRecording ? '停止录音' : '语音输入'}
+						onClick={() => { void toggleSttRecording(); }}
+					/>
+				) : undefined}
+				extraSlashItems={extraSlashItems}
+				leftActions={[]}
+				leftContent={
+					<div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 2, padding: '0 2px' }}>
+						<ActionIcon
+							icon={Paperclip}
+							size={{ blockSize: 28, size: 14 }}
+							title="上传文件"
+							onClick={() => { void handleUploadFile(); }}
+						/>
+						{platform === 'darwin' && (
+							<ActionIcon
+								icon={Camera}
+								size={{ blockSize: 28, size: 14 }}
+								title="截图"
+								onClick={() => { void handleScreenshot(); }}
+							/>
+						)}
+						{(activeSkillTags.length > 0 || droppedPaths.length > 0) && (
+							<div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 4, marginLeft: 4 }}>
+								{activeSkillTags.map((skill) => (
+									<Tag
+										closable
+										key={skill.id}
+										onClose={() => {
+											activeSkillsRef.current = activeSkillsRef.current.filter((s) => s.id !== skill.id);
+											setActiveSkillTags((prev) => prev.filter((s) => s.id !== skill.id));
+										}}
+									>
+										{skill.command}
+									</Tag>
+								))}
+								{droppedPaths.map((p) => (
+									<Tag
+										closable
+										key={p.absolutePath}
+										onClose={() => setDroppedPaths((prev) => prev.filter((d) => d.absolutePath !== p.absolutePath))}
+									>
+										{p.name}
+									</Tag>
+								))}
+							</div>
+						)}
+					</div>
+				}
+				mentionItems={mentionItems}
+				onMarkdownContentChange={setInput}
+				onSend={handleCodeAssistantSend}
+				onStop={() => { void handleStop(); }}
+				rightActions={[]}
+				runtimeLeftLabel={draftTarget === 'code' ? embeddedPermissionLabel : undefined}
+				runtimeRightLabel={draftTarget === 'code' ? embeddedBranchLabel : undefined}
+				sending={sending || codeSending}
+			/>
+			</div>
 				{showEmbeddedComposerMeta ? (
 					<div className={styles.composerStatusRow}>
 						<div className={styles.composerStatusLeft}>
@@ -1504,12 +1325,14 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 										setBranchSearchValue("");
 									}
 								}}
-								dropdownRender={() => (
-									<div
-										className={styles.branchDropdownPanel}
-										onMouseDown={(event) => event.stopPropagation()}
-										onClick={(event) => event.stopPropagation()}
-									>
+							dropdownRender={() => (
+								// biome-ignore lint/a11y/useKeyWithClickEvents: dropdown panel stops propagation
+								// biome-ignore lint/a11y/noStaticElementInteractions: dropdown panel stops propagation
+								<div
+									className={styles.branchDropdownPanel}
+									onMouseDown={(event) => event.stopPropagation()}
+									onClick={(event) => event.stopPropagation()}
+								>
 										<div className={styles.branchDropdownSearchRow}>
 											<Search size={12} className={styles.branchDropdownSearchIcon} />
 											<input

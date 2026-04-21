@@ -11,6 +11,7 @@ import {
   Search,
   Settings2,
   Sparkles,
+  SpellCheck2,
   Wand2,
   Wrench,
 } from 'lucide-react';
@@ -38,5 +39,5 @@ export const ACTION_META_MAP: Partial<Record<ChatInputActionKey, ActionMeta>> = 
   search: { icon: Search, title: 'Search' },
   stt: { icon: Mic, title: 'Speech to text' },
   tools: { icon: Wrench, title: 'Tools' },
-  typo: { icon: Sparkles, title: 'Typo' },
+  typo: { icon: SpellCheck2, title: 'Typo' },
 };

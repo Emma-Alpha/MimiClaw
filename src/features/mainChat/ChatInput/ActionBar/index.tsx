@@ -1,6 +1,8 @@
-import { ActionIcon, Flexbox, Tag } from '@lobehub/ui';
+import { ChatInputActions, type ChatInputActionItem } from '@lobehub/editor/react';
+import { ActionIcon, Tag } from '@lobehub/ui';
 import { Dropdown, type MenuProps } from 'antd';
 import { X } from 'lucide-react';
+import type React from 'react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useVolcengineAsr } from '@/hooks/useVolcengineAsr';
@@ -282,90 +284,137 @@ export function ChatInputActionBar() {
     }
   }, [actionContext]);
 
-  return (
-    <Flexbox align="center" gap={8} horizontal wrap="wrap">
-      {orderedActions.map((action) => {
-        const config = ACTION_META_MAP[action];
-        if (!config) return null;
-        const { icon, title } = config;
-        const enabled = IMPLEMENTED_ACTIONS.has(action);
-        const active = action === 'agentMode'
+  const items = useMemo<ChatInputActionItem[]>(() => {
+    const result: ChatInputActionItem[] = orderedActions.flatMap((action) => {
+      const config = ACTION_META_MAP[action];
+      if (!config) return [];
+      const { icon, title } = config;
+      const enabled = IMPLEMENTED_ACTIONS.has(action);
+      const active =
+        action === 'agentMode'
           ? mode === 'agent'
           : action === 'history'
             ? historyCount > 0
-          : action === 'params'
-            ? modelParams.label !== 'Balanced'
-            : action === 'memory'
-              ? memoryTurnEnabled
-              : action === 'search'
-                ? searchEnabled
-                : action === 'stt'
-                  ? isSttRecording || isSttTranscribing
-                  : action === 'tools'
-                    ? enabledSkillIds.length > 0
-                    : false;
-        const disabled = action === 'promptTransform'
+            : action === 'params'
+              ? modelParams.label !== 'Balanced'
+              : action === 'memory'
+                ? memoryTurnEnabled
+                : action === 'search'
+                  ? searchEnabled
+                  : action === 'stt'
+                    ? isSttRecording || isSttTranscribing
+                    : action === 'tools'
+                      ? enabledSkillIds.length > 0
+                      : false;
+      const isDisabled =
+        action === 'promptTransform'
           ? !promptTransformEnabled
           : action === 'memory'
             ? !memoryEnabled
-          : action === 'model'
-            ? enabledModels.length === 0
-            : action === 'params'
-              ? !isDevMode
-            : action === 'search'
-              ? !supportsSearch
-              : action === 'stt'
-                ? !isSttEnabled || isSttTranscribing
-              : !enabled;
+            : action === 'model'
+              ? enabledModels.length === 0
+              : action === 'params'
+                ? !isDevMode
+                : action === 'search'
+                  ? !supportsSearch
+                  : action === 'stt'
+                    ? !isSttEnabled || isSttTranscribing
+                    : !enabled;
 
-        const iconNode = (
-          <ActionIcon
-            active={active}
-            disabled={disabled}
-            icon={icon}
-            key={action}
-            loading={action === 'stt' ? isSttTranscribing : false}
-            onClick={enabled && action !== 'tools' ? () => void handleAction(action) : undefined}
-            title={disabled ? `${title} (coming soon)` : title}
-          />
-        );
+      const iconNode = (
+        <ActionIcon
+          active={active}
+          disabled={isDisabled}
+          icon={icon}
+          key={action}
+          loading={action === 'stt' ? isSttTranscribing : false}
+          onClick={enabled && action !== 'tools' ? () => void handleAction(action) : undefined}
+          title={isDisabled ? `${title} (coming soon)` : title}
+        />
+      );
 
-        if (action === 'tools' && enabled) {
-          return (
-            <Dropdown
-              key={action}
-              menu={toolsMenu}
-              onOpenChange={(open) => {
-                if (!open || skills.length > 0 || skillsLoading) return;
-                void fetchSkills();
-              }}
-              placement="topLeft"
-              trigger={['click']}
-            >
-              <span>{iconNode}</span>
-            </Dropdown>
-          );
-        }
+      const item: ChatInputActionItem = {
+        alwaysDisplay: action === 'mainToken',
+        children: iconNode,
+        key: action,
+        wrapper:
+          action === 'tools' && enabled
+            ? (dom) => (
+                <Dropdown
+                  menu={toolsMenu}
+                  onOpenChange={(open) => {
+                    if (!open || skills.length > 0 || skillsLoading) return;
+                    void fetchSkills();
+                  }}
+                  placement="topLeft"
+                  trigger={['click']}
+                >
+                  <span>{dom}</span>
+                </Dropdown>
+              )
+            : undefined,
+      };
+      return [item];
+    });
 
-        return iconNode;
-      })}
-      {searchEnabled ? <Tag>Search On</Tag> : null}
-      {memoryTurnEnabled ? <Tag>Memory On</Tag> : null}
-      {historyCount > 0 ? <Tag>{`History ${historyCount}`}</Tag> : null}
-      {isDevMode ? <Tag>{modelParams.label}</Tag> : null}
-      {attachments.map((attachment) => (
-        <Tag
-          key={attachment.id}
-          closable
-          onClose={(event) => {
-            event?.preventDefault?.();
-            removeAttachment(attachment.id);
-          }}
-        >
-          {attachment.fileName}
-        </Tag>
-      ))}
-      {attachments.length > 0 ? <ActionIcon icon={X} onClick={clearAttachments} title="Clear files" /> : null}
-    </Flexbox>
+    const tagItems: ChatInputActionItem[] = [
+      ...(searchEnabled ? [{ alwaysDisplay: true as const, children: <Tag>Search On</Tag>, key: 'tag-search' }] : []),
+      ...(memoryTurnEnabled ? [{ alwaysDisplay: true as const, children: <Tag>Memory On</Tag>, key: 'tag-memory' }] : []),
+      ...(historyCount > 0 ? [{ alwaysDisplay: true as const, children: <Tag>{`History ${historyCount}`}</Tag>, key: 'tag-history' }] : []),
+      ...(isDevMode ? [{ alwaysDisplay: true as const, children: <Tag>{modelParams.label}</Tag>, key: 'tag-params' }] : []),
+      ...attachments.map((attachment) => ({
+        alwaysDisplay: true as const,
+        children: (
+          <Tag
+            closable
+            key={attachment.id}
+            onClose={(event: React.MouseEvent) => {
+              event?.preventDefault?.();
+              removeAttachment(attachment.id);
+            }}
+          >
+            {attachment.fileName}
+          </Tag>
+        ),
+        key: `attachment-${attachment.id}`,
+      })),
+      ...(attachments.length > 0
+        ? [{ alwaysDisplay: true as const, children: <ActionIcon icon={X} onClick={clearAttachments} title="Clear files" />, key: 'clear-attachments' }]
+        : []),
+    ];
+
+    return [...result, ...tagItems];
+  }, [
+    attachments,
+    clearAttachments,
+    enabledModels.length,
+    enabledSkillIds.length,
+    fetchSkills,
+    handleAction,
+    historyCount,
+    isDevMode,
+    isSttEnabled,
+    isSttRecording,
+    isSttTranscribing,
+    memoryEnabled,
+    memoryTurnEnabled,
+    modelParams.label,
+    mode,
+    orderedActions,
+    promptTransformEnabled,
+    removeAttachment,
+    searchEnabled,
+    skills.length,
+    skillsLoading,
+    supportsSearch,
+    toolsMenu,
+  ]);
+
+  return (
+    <ChatInputActions
+      collapseOffset={80}
+      defaultGroupCollapse
+      items={items}
+    />
   );
 }

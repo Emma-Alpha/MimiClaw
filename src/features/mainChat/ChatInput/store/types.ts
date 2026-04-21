@@ -17,6 +17,16 @@ export interface ChatInputStoreState {
   modelParams: ChatInputModelParams;
   mentionItems: MentionItem[];
   rightActions: ChatInputActionKey[];
+  /**
+   * Override label shown on the left side of RuntimeConfig.
+   * When undefined, falls back to the default Local/Cloud label.
+   */
+  runtimeLeftLabel?: string;
+  /**
+   * Override label shown on the right side of RuntimeConfig.
+   * When undefined, falls back to the default auto-approve label.
+   */
+  runtimeRightLabel?: string;
   searchEnabled: boolean;
   showTypoBar: boolean;
   slashPlacement: 'top' | 'bottom';
@@ -26,6 +36,7 @@ export interface ChatInputStoreAction {
   setHistoryCount: (count: number) => void;
   setMemoryTurnEnabled: (enabled: boolean) => void;
   setModelParams: (params: ChatInputModelParams) => void;
+  setRuntimeLabels: (left: string | undefined, right: string | undefined) => void;
   setSearchEnabled: (enabled: boolean) => void;
   reset: () => void;
   setActionConfig: (left: ChatInputActionKey[], right: ChatInputActionKey[]) => void;

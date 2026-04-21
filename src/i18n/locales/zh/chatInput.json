@@ -1,6 +1,6 @@
 {
   "input": {
-    "placeholder": "发送消息...",
+    "placeholder": "提问、创建或发起任务。输入 @ 可将任务分配给其他助理。",
     "slash": {
       "clear": {
         "description": "清空输入与附件",

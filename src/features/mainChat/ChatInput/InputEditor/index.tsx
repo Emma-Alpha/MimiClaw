@@ -1,34 +1,21 @@
-import { createStyles } from 'antd-style';
 import { INSERT_MENTION_COMMAND, type IEditor, type ISlashOption } from '@lobehub/editor';
-import { ChatInput as LobeEditorChatInput, Editor, type EditorProps, useEditor } from '@lobehub/editor/react';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Editor, type EditorProps, useEditor } from '@lobehub/editor/react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { preferenceSelectors, useSettingsStore } from '@/stores/settings';
 import { useChatInputContext } from '../ChatInputProvider';
 import { fromEditorMarkdown, toEditorMarkdown } from '../hooks/useChatInputEditor';
 
-const useStyles = createStyles(({ token, css }) => ({
-  shell: css`
-    width: 100%;
-  `,
-  editor: css`
-    border: 1px solid ${token.colorBorderSecondary};
-    border-radius: ${token.borderRadiusLG}px;
-    box-shadow: none;
-    background: ${token.colorBgContainer};
-  `,
-}));
-
 type PressEnterPayload = Parameters<NonNullable<EditorProps['onPressEnter']>>[0];
 
 export function InputEditor() {
-  const { styles } = useStyles();
   const { t } = useTranslation('chatInput');
   const {
     attachments,
     clearAttachments,
     disabled,
     editor,
+    extraSlashItems = [],
     markdown,
     mentionItems = [],
     onSend,
@@ -41,7 +28,6 @@ export function InputEditor() {
   } = useChatInputContext();
   const useCmdEnterToSend = useSettingsStore(preferenceSelectors.useCmdEnterToSend);
   const editorInstance = useEditor();
-  const popupContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => () => setEditor(null), [setEditor]);
 
@@ -97,11 +83,12 @@ export function InputEditor() {
           },
           label,
         });
+        item.onSelect?.();
       },
     };
   }), [mentionItems]);
 
-  const slashOptions = useMemo<ISlashOption[]>(() => ([
+  const builtinSlashOptions = useMemo<ISlashOption[]>(() => ([
     {
       description: t('input.slash.send.description', { defaultValue: 'Send current message' }),
       key: 'send-message',
@@ -130,6 +117,11 @@ export function InputEditor() {
     },
   ]), [clearAttachments, editor, handleSend, pickFiles, sending, t]);
 
+  const slashOptions = useMemo<ISlashOption[]>(
+    () => [...builtinSlashOptions, ...extraSlashItems],
+    [builtinSlashOptions, extraSlashItems],
+  );
+
   const handleEditorInit = useCallback((activeEditor: IEditor) => {
     setEditor(activeEditor);
     if (markdown.trim().length === 0) return;
@@ -137,30 +129,20 @@ export function InputEditor() {
   }, [markdown, setEditor]);
 
   return (
-    <div className={styles.shell} data-chat-input-editor="true" ref={popupContainerRef}>
-      <LobeEditorChatInput
-        className={styles.editor}
-        maxHeight={320}
-        minHeight={88}
-        resize={false}
-      >
-        <Editor
-          autoFocus
-          content={''}
-          editable={!disabled}
-          editor={editorInstance}
-          getPopupContainer={() => popupContainerRef.current}
-          lineEmptyPlaceholder={t('input.placeholder', { defaultValue: 'Send a message...' })}
-          mentionOption={mentionOptions.length > 0 ? { items: mentionOptions } : undefined}
-          onInit={handleEditorInit}
-          onPressEnter={handlePressEnter}
-          onTextChange={handleTextChange}
-          slashOption={{ items: slashOptions }}
-          slashPlacement={slashPlacement}
-          type="text"
-          variant="chat"
-        />
-      </LobeEditorChatInput>
-    </div>
+    <Editor
+      autoFocus
+      content={''}
+      editable={!disabled}
+      editor={editorInstance}
+      lineEmptyPlaceholder={t('input.placeholder', { defaultValue: 'Send a message...' })}
+      mentionOption={mentionOptions.length > 0 ? { items: mentionOptions } : undefined}
+      onInit={handleEditorInit}
+      onPressEnter={handlePressEnter}
+      onTextChange={handleTextChange}
+      slashOption={{ items: slashOptions }}
+      slashPlacement={slashPlacement}
+      type="text"
+      variant="chat"
+    />
   );
 }

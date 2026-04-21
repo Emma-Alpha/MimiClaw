@@ -20,6 +20,8 @@ export interface MentionItem {
   id: string;
   label: string;
   description?: string;
+  /** Called when the user confirms this mention in the editor */
+  onSelect?: () => void;
 }
 
 export interface ChatInputAttachment {

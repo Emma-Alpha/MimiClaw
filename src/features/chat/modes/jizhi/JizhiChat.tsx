@@ -1,32 +1,22 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChatItem } from '@lobehub/ui/chat';
 import {
-  Bot,
-  BrainCircuit,
   Check,
   Copy,
-  Cpu,
   Loader2,
   MessageSquare,
   RefreshCw,
-  RotateCcw,
 } from 'lucide-react';
-import { ComposerBase, ComposerChip, ComposerIconButton } from '@/features/mainChat/components/composer';
 import { Button } from '@/components/ui/button';
 import { JizhiMessageContent } from '@/features/jizhi/components/JizhiMessageContent';
+import { ChatInput } from '@/features/mainChat/ChatInput';
+import type { ChatInputSendPayload } from '@/features/mainChat/ChatInput/types';
 import { cn } from '@/lib/utils';
 import {
   CHAT_SESSION_CARD_ICON_SIZE,
   CHAT_SESSION_EMPTY_ICON_SIZE,
 } from '@/styles/typography-tokens';
 import { useStyles } from './JizhiChat.styles';
-import {
-  extractComposerPathsFromTransfer,
-  isPathDrag,
-  mergeComposerPaths,
-  toJizhiSubmission,
-  type ComposerPath,
-} from '@/lib/unified-composer';
 import {
   activeHostJizhiMessage,
   retryHostJizhiMessage,
@@ -122,21 +112,6 @@ function getActiveAssistantMessage(group: HostJizhiGroupMessages): HostJizhiAssi
   return group.messages.find((item) => item.isActive) ?? group.messages[0] ?? null;
 }
 
-function getLatestAssistantMessage(messages: HostJizhiChatMessage[]): HostJizhiAssistantMessageItem | null {
-  for (let messageIndex = messages.length - 1; messageIndex >= 0; messageIndex -= 1) {
-    const chatMessage = messages[messageIndex];
-    const groupMessages = chatMessage.assistantMessage?.groupMessages ?? [];
-
-    for (let groupIndex = groupMessages.length - 1; groupIndex >= 0; groupIndex -= 1) {
-      const activeMessage = getActiveAssistantMessage(groupMessages[groupIndex]);
-      if (activeMessage) {
-        return activeMessage;
-      }
-    }
-  }
-
-  return null;
-}
 
 function UserBubble({ message, styles }: { message: HostJizhiUserMessage; styles: Record<string, string> }) {
   return (
@@ -335,9 +310,6 @@ function MessageRow({
 
 export function JizhiChat() {
   const { styles } = useStyles();
-  const [draft, setDraft] = useState('');
-  const [droppedPaths, setDroppedPaths] = useState<ComposerPath[]>([]);
-  const [dragOver, setDragOver] = useState(false);
   const [sending, setSending] = useState(false);
   const [copiedMessageUUID, setCopiedMessageUUID] = useState<string | null>(null);
   const [switchingMessageUUID, setSwitchingMessageUUID] = useState<string | null>(null);
@@ -364,7 +336,6 @@ export function JizhiChat() {
     () => sessions.find((session) => session.id === activeSessionId) ?? null,
     [activeSessionId, sessions],
   );
-  const isLlmSession = currentSession?.category?.toLowerCase().includes('llm') ?? false;
   const messages = useMemo(
     () => {
       if (!activeSessionId) return [];
@@ -395,19 +366,6 @@ export function JizhiChat() {
 
     return null;
   }, [activeSessionId, pendingMessagesBySession]);
-  const latestAssistantMessage = useMemo(() => {
-    return getLatestAssistantMessage(messages);
-  }, [messages]);
-
-  const canRetry = Boolean(
-    activeSessionId
-    && currentSession?.category
-    && latestAssistantMessage?.messageUUID
-    && latestAssistantMessage?.model
-    && !activeStreamingMessageUUID
-    && !sending,
-  );
-
   const handleStop = async () => {
     if (!activeSessionId || !activeStreamingMessageUUID) return;
 
@@ -433,7 +391,7 @@ export function JizhiChat() {
     if (!node) return;
     node.scrollTop = node.scrollHeight;
     shouldScrollToBottomRef.current = false;
-  }, [messages, loading]);
+  });
 
 
 
@@ -443,13 +401,10 @@ export function JizhiChat() {
     }
   }, []);
 
-  const handleSend = async () => {
+  const handleSend = async ({ clearContent, getMarkdownContent }: ChatInputSendPayload) => {
     if (!activeSessionId || !currentSession) return;
 
-    const prompt = toJizhiSubmission({
-      text: draft,
-      paths: droppedPaths,
-    }).prompt;
+    const prompt = getMarkdownContent().trim();
     if (!prompt) return;
     if (!currentSession.category) {
       setChatSyncError('当前极智会话缺少 category，暂时无法发送消息。');
@@ -468,8 +423,7 @@ export function JizhiChat() {
         modelName: currentSession.model,
       });
       shouldScrollToBottomRef.current = true;
-      setDraft('');
-      setDroppedPaths([]);
+      clearContent();
       await sendHostJizhiMessage({
         sessionId: activeSessionId,
         prompt,
@@ -488,37 +442,6 @@ export function JizhiChat() {
     } finally {
       setSending(false);
     }
-  };
-
-  const handleComposerDragOver = (event: DragEvent<HTMLDivElement>) => {
-    if (!isPathDrag(event.dataTransfer ?? null)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    setDragOver(true);
-  };
-
-  const handleComposerDragLeave = (event: DragEvent<HTMLDivElement>) => {
-    if (!isPathDrag(event.dataTransfer ?? null)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    setDragOver(false);
-  };
-
-  const handleComposerDrop = (event: DragEvent<HTMLDivElement>) => {
-    if (!isPathDrag(event.dataTransfer ?? null)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    setDragOver(false);
-    const dropped = extractComposerPathsFromTransfer(event.dataTransfer ?? null);
-    if (!dropped.length) return;
-    setDroppedPaths((current) => mergeComposerPaths(current, dropped));
-  };
-
-  const handleRetry = async () => {
-    if (!latestAssistantMessage) {
-      return;
-    }
-    await retryAssistantMessage(latestAssistantMessage);
   };
 
   const retryAssistantMessage = async (assistantMessage: HostJizhiAssistantMessageItem) => {
@@ -721,58 +644,14 @@ export function JizhiChat() {
 
       <div className={styles.composerWrap}>
         <div className={styles.composerInner}>
-          <ComposerBase
-            variant="desktop"
-            className={styles.composerShell}
-            value={draft}
-            onInput={setDraft}
-            paths={droppedPaths}
-            onPathsChange={setDroppedPaths}
-            onSend={() => {
-              void handleSend();
-            }}
-            onStop={() => {
-              void handleStop();
-            }}
-            loading={sending || Boolean(activeStreamingMessageUUID)}
+          <ChatInput
+            agentId={activeSessionId ?? ''}
             disabled={!activeSessionId || sending}
-            sendDisabled={!activeSessionId || sending}
-            placeholder="输入你想让极智继续处理的内容..."
-            dragOver={dragOver}
-            onDragOver={handleComposerDragOver}
-            onDragLeave={handleComposerDragLeave}
-            onDrop={handleComposerDrop}
-            leftActions={(
-              <>
-                <ComposerChip variant="desktop" icon={<Bot />}>
-                  {isLlmSession ? '模型模式' : '智能体模式'}
-                </ComposerChip>
-                {currentSession.model ? (
-                  <ComposerChip variant="desktop" icon={<Cpu />}>
-                    {currentSession.model}
-                  </ComposerChip>
-                ) : null}
-                {isLlmSession ? (
-                  <ComposerChip variant="desktop" icon={<BrainCircuit />}>
-                    思考模式
-                  </ComposerChip>
-                ) : null}
-              </>
-            )}
-            rightActions={canRetry ? (
-              <ComposerIconButton
-                variant="desktop"
-                icon={<RotateCcw />}
-                onClick={() => { void handleRetry(); }}
-                disabled={!canRetry}
-                title="重新生成"
-              />
-            ) : null}
-            sendTexts={{
-              send: '发送',
-              stop: '停止',
-              warp: 'Shift + Enter',
-            }}
+            leftActions={[]}
+            rightActions={[]}
+            sending={sending || Boolean(activeStreamingMessageUUID)}
+            onSend={handleSend}
+            onStop={() => { void handleStop(); }}
           />
         </div>
       </div>

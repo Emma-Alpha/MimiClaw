@@ -1,15 +1,6 @@
 import { createStyles } from 'antd-style';
 import { CHAT_HEADER_HEIGHT } from '@/lib/titlebar-safe-area';
 import {
-  CODEX_COMPOSER_BOTTOM_PADDING,
-  CODEX_COMPOSER_HIGHLIGHT,
-  CODEX_COMPOSER_HORIZONTAL_PADDING,
-  CODEX_COMPOSER_MIN_HEIGHT,
-  CODEX_COMPOSER_RADIUS,
-  CODEX_COMPOSER_SUPERELLIPSE_RADIUS,
-  CODEX_COMPOSER_TOP_PADDING,
-} from '@/features/mainChat/lib/composer-shell';
-import {
   CHAT_SESSION_META_FONT_SIZE,
   CHAT_SESSION_TITLE_FONT_SIZE,
 } from '@/styles/typography-tokens';
@@ -249,32 +240,6 @@ export const useStyles = createStyles(({ css, token }) => ({
     flex-direction: column;
     gap: 6px;
   `,
-  composerShell: css`
-    border-radius: ${CODEX_COMPOSER_RADIUS}px !important;
-    padding: ${CODEX_COMPOSER_TOP_PADDING}px ${CODEX_COMPOSER_HORIZONTAL_PADDING}px ${CODEX_COMPOSER_BOTTOM_PADDING}px !important;
-    min-height: ${CODEX_COMPOSER_MIN_HEIGHT}px !important;
-    background: ${token.colorBgContainer} !important;
-    border-color: transparent !important;
-    box-shadow:
-      ${CODEX_COMPOSER_HIGHLIGHT},
-      0 0 0 0.5px var(--composer-ring-color, ${token.colorBorder}) !important;
-
-    @supports (corner-shape: superellipse(1.5)) {
-      border-radius: ${CODEX_COMPOSER_SUPERELLIPSE_RADIUS}px !important;
-      corner-shape: superellipse(1.5);
-    }
-
-    &:focus-within {
-      border-color: transparent !important;
-      box-shadow:
-        ${CODEX_COMPOSER_HIGHLIGHT},
-        0 0 0 0.5px var(
-          --composer-ring-color-focus,
-          var(--composer-ring-color, ${token.colorBorder})
-        ) !important;
-    }
-  `,
-
   /* ---- UserBubble ---- */
   userAvatarText: css`
     display: flex;

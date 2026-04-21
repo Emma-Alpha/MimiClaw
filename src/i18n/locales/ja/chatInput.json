@@ -1,6 +1,6 @@
 {
   "input": {
-    "placeholder": "メッセージを送信...",
+    "placeholder": "質問、作成、またはタスクを開始。@ を入力して他のアシスタントにタスクを割り当てます。",
     "slash": {
       "clear": {
         "description": "入力と添付をクリア",

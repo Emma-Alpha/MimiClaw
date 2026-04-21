@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type PropsWithChildren, type RefObject } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type PropsWithChildren, type ReactNode, type RefObject } from 'react';
+import type { ISlashOption } from '@lobehub/editor';
 import { invokeIpc } from '@/lib/api-client';
 import { useFileStore } from '@/stores/file';
 import { chatInputStoreSelectors, useChatInputStore } from './store';
@@ -7,6 +8,10 @@ import type { ChatInputActionKey, ChatInputAttachment, ChatInputEditorApi, ChatI
 
 export interface ChatInputProviderProps extends PropsWithChildren {
   agentId: string;
+  /** Custom ReactNode to replace the default left action bar */
+  leftContent?: ReactNode;
+  /** Extra content rendered in the right side of the action bar, between expand button and send button */
+  extraRightContent?: ReactNode;
   leftActions?: ChatInputActionKey[];
   rightActions?: ChatInputActionKey[];
   sendMenu?: React.ReactNode;
@@ -14,6 +19,8 @@ export interface ChatInputProviderProps extends PropsWithChildren {
     shape?: 'default' | 'round';
   };
   mentionItems?: MentionItem[];
+  /** Additional slash command items appended to the built-in slash menu */
+  extraSlashItems?: ISlashOption[];
   getMessages?: () => unknown[];
   slashPlacement?: 'top' | 'bottom';
   chatInputEditorRef?: RefObject<ChatInputEditorApi | null>;
@@ -23,9 +30,16 @@ export interface ChatInputProviderProps extends PropsWithChildren {
   disabled?: boolean;
   sending?: boolean;
   onStop?: () => void | Promise<void>;
+  /** Override the left Runtime label (default: Local/Cloud) */
+  runtimeLeftLabel?: string;
+  /** Override the right Runtime label (default: Auto Approve On/Off) */
+  runtimeRightLabel?: string;
 }
 
-interface ChatInputContextValue extends Omit<ChatInputProviderProps, 'children'> {
+interface ChatInputContextValue extends Omit<ChatInputProviderProps, 'children' | 'leftContent' | 'extraSlashItems' | 'extraRightContent'> {
+  leftContent?: ReactNode;
+  extraRightContent?: ReactNode;
+  extraSlashItems?: ISlashOption[];
   expanded: boolean;
   setExpanded: (next: boolean) => void;
   markdown: string;
@@ -54,6 +68,7 @@ export function ChatInputProvider({ children, ...props }: ChatInputProviderProps
   const setMentionItemsStore = useChatInputStore((s) => s.setMentionItems);
   const setSlashPlacementStore = useChatInputStore((s) => s.setSlashPlacement);
   const setStoreEditor = useChatInputStore((s) => s.setEditor);
+  const setRuntimeLabelsStore = useChatInputStore((s) => s.setRuntimeLabels);
   const resetStore = useChatInputStore((s) => s.reset);
   const attachments = useFileStore((s) => s.chatUploadFileList) as ChatInputAttachment[];
   const clearChatUploadFiles = useFileStore((s) => s.clearChatUploadFiles);
@@ -64,13 +79,18 @@ export function ChatInputProvider({ children, ...props }: ChatInputProviderProps
     allowExpand,
     chatInputEditorRef,
     disabled,
+    extraRightContent,
+    extraSlashItems,
     getMessages,
     leftActions: propLeftActions,
+    leftContent,
     mentionItems: propMentionItems,
     onMarkdownContentChange,
     onSend,
     onStop,
     rightActions: propRightActions,
+    runtimeLeftLabel,
+    runtimeRightLabel,
     sendButtonProps,
     sendMenu,
     sending,
@@ -118,6 +138,10 @@ export function ChatInputProvider({ children, ...props }: ChatInputProviderProps
     setSlashPlacementStore(propSlashPlacement ?? 'top');
   }, [propSlashPlacement, setSlashPlacementStore]);
 
+  useEffect(() => {
+    setRuntimeLabelsStore(runtimeLeftLabel, runtimeRightLabel);
+  }, [runtimeLeftLabel, runtimeRightLabel, setRuntimeLabelsStore]);
+
   useEffect(() => () => {
     resetStore();
   }, [resetStore]);
@@ -145,30 +169,35 @@ export function ChatInputProvider({ children, ...props }: ChatInputProviderProps
   const value = useMemo<ChatInputContextValue>(() => ({
     agentId,
     allowExpand,
+    attachments,
     chatInputEditorRef,
+    clearAttachments,
     disabled,
+    editor,
+    expanded,
+    extraRightContent,
+    extraSlashItems,
     getMessages,
     leftActions: storeLeftActions,
+    leftContent,
+    markdown,
     mentionItems: storeMentionItems,
     onMarkdownContentChange,
     onSend,
     onStop,
+    pickFiles,
+    removeAttachment,
     rightActions: storeRightActions,
+    runtimeLeftLabel,
+    runtimeRightLabel,
     sendButtonProps,
     sendMenu,
     sending,
-    slashPlacement: storeSlashPlacement,
-    expanded,
-    setExpanded: setExpandedStore,
-    markdown,
-    setMarkdown,
-    editor,
     setEditor,
-    attachments,
-    clearAttachments,
-    removeAttachment,
-    pickFiles,
-  }), [agentId, allowExpand, attachments, chatInputEditorRef, clearAttachments, disabled, editor, expanded, getMessages, markdown, onMarkdownContentChange, onSend, onStop, pickFiles, removeAttachment, sendButtonProps, sendMenu, sending, setEditor, setExpandedStore, setMarkdown, storeLeftActions, storeMentionItems, storeRightActions, storeSlashPlacement]);
+    setExpanded: setExpandedStore,
+    setMarkdown,
+    slashPlacement: storeSlashPlacement,
+  }), [agentId, allowExpand, attachments, chatInputEditorRef, clearAttachments, disabled, editor, expanded, extraRightContent, extraSlashItems, getMessages, leftContent, markdown, onMarkdownContentChange, onSend, onStop, pickFiles, removeAttachment, runtimeLeftLabel, runtimeRightLabel, sendButtonProps, sendMenu, sending, setEditor, setExpandedStore, setMarkdown, storeLeftActions, storeMentionItems, storeRightActions, storeSlashPlacement]);
 
   return <ChatInputContext.Provider value={value}>{children}</ChatInputContext.Provider>;
 }

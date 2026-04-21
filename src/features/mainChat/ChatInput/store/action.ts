@@ -55,6 +55,10 @@ export class ChatInputStoreActionImpl {
     this.#set({ mentionItems });
   };
 
+  setRuntimeLabels: ChatInputStoreAction['setRuntimeLabels'] = (runtimeLeftLabel, runtimeRightLabel) => {
+    this.#set({ runtimeLeftLabel, runtimeRightLabel });
+  };
+
   setSlashPlacement: ChatInputStoreAction['setSlashPlacement'] = (slashPlacement) => {
     this.#set({ slashPlacement });
   };

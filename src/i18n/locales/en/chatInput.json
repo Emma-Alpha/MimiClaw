@@ -1,6 +1,6 @@
 {
   "input": {
-    "placeholder": "Send a message...",
+    "placeholder": "Ask, create, or start a task. Type @ to assign tasks to other assistants.",
     "slash": {
       "clear": {
         "description": "Clear input and attachments",
