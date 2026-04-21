@@ -19,9 +19,10 @@ import {
   setLastChatEventAt,
   upsertImageCacheEntry,
   upsertToolStatuses,
-} from './helpers';
-import type { ChatGet, ChatSet } from './store-api';
-import type { AttachedFileMeta, ChatSendAttachment, ChatSendPayload, RawMessage } from './types';
+} from '../../helpers';
+import type { ChatGet, ChatSet } from '../../store-api';
+import type { ChatSendAttachment, ChatSendPayload, RawMessage } from '../../types';
+import type { AttachedFileMeta } from '../../types';
 
 export class ChatRuntimeActionImpl {
   readonly #get: ChatGet;
@@ -526,3 +527,8 @@ export class ChatRuntimeActionImpl {
     }
   }
 }
+
+export type ChatRuntimeAction = Pick<ChatRuntimeActionImpl, keyof ChatRuntimeActionImpl>;
+
+export const createChatRuntimeSlice = (set: ChatSet, get: ChatGet, api?: unknown) =>
+  new ChatRuntimeActionImpl(set, get, api);

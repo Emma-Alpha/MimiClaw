@@ -146,6 +146,7 @@ export function InputEditor() {
       >
         <Editor
           autoFocus
+          content={''}
           editable={!disabled}
           editor={editorInstance}
           getPopupContainer={() => popupContainerRef.current}
@@ -156,7 +157,7 @@ export function InputEditor() {
           onTextChange={handleTextChange}
           slashOption={{ items: slashOptions }}
           slashPlacement={slashPlacement}
-          type="markdown"
+          type="text"
           variant="chat"
         />
       </LobeEditorChatInput>

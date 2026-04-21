@@ -1,5 +1,6 @@
 import { Alert, Flexbox } from '@lobehub/ui';
 import { useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useGatewayStore } from '@/stores/gateway';
 import { useChatStore } from '@/stores/chat';
 import { useSkillsStore } from '@/stores/skills';
@@ -17,7 +18,7 @@ export function ConversationChatInput() {
   const memoryTurnEnabled = useChatInputStore(chatInputStoreSelectors.memoryTurnEnabled);
   const historyCount = useChatInputStore(chatInputStoreSelectors.historyCount);
   const modelParams = useChatInputStore(chatInputStoreSelectors.modelParams);
-  const enabledSkills = useSkillsStore((s) => s.skills.filter((skill) => skill.enabled).map((skill) => skill.id));
+  const enabledSkills = useSkillsStore(useShallow((s) => s.skills.filter((skill) => skill.enabled).map((skill) => skill.id)));
   const editorRef = useRef<ChatInputEditorApi | null>(null);
 
   return (

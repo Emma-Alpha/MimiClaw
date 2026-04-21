@@ -2,6 +2,7 @@ import { ActionIcon, Flexbox, Tag } from '@lobehub/ui';
 import { Dropdown, type MenuProps } from 'antd';
 import { X } from 'lucide-react';
 import { useCallback, useEffect, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useVolcengineAsr } from '@/hooks/useVolcengineAsr';
 import { useChatStore, topicSelectors } from '@/stores/chat';
 import { aiModelSelectors, useProviderStore } from '@/stores/providers';
@@ -70,7 +71,7 @@ export function ChatInputActionBar() {
   const currentTopicTokens = useChatStore(topicSelectors.currentTopicTokens);
   const mode = useChatStore((s) => s.mode);
   const setChatMode = useChatStore((s) => s.setChatMode);
-  const enabledModels = useProviderStore((s) => s.accounts.filter((account) => account.enabled));
+  const enabledModels = useProviderStore(useShallow((s) => s.accounts.filter((account) => account.enabled)));
   const defaultAccountId = useProviderStore((s) => s.defaultAccountId);
   const setDefaultAccount = useProviderStore((s) => s.setDefaultAccount);
   const supportsSearch = useProviderStore(
@@ -226,7 +227,7 @@ export function ChatInputActionBar() {
     toggleSkillEnabled,
   ]);
 
-  const handleAction = async (action: ChatInputActionKey) => {
+  const handleAction = useCallback(async (action: ChatInputActionKey) => {
     switch (action) {
       case 'agentMode':
         handleAgentModeAction(actionContext);
@@ -279,7 +280,7 @@ export function ChatInputActionBar() {
       default:
         return;
     }
-  };
+  }, [actionContext]);
 
   return (
     <Flexbox align="center" gap={8} horizontal wrap="wrap">

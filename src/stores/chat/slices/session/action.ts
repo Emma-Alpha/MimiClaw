@@ -10,15 +10,15 @@ import {
   isToolResultRole,
   loadMissingPreviews,
   toMs,
-} from './helpers';
-import { buildCronSessionHistoryPath, isCronSessionKey } from './cron-session-utils';
-import type { ChatGet, ChatSet } from './store-api';
+} from '../../helpers';
+import { buildCronSessionHistoryPath, isCronSessionKey } from '../../cron-session-utils';
+import type { ChatGet, ChatSet } from '../../store-api';
 import {
   DEFAULT_CANONICAL_PREFIX,
   DEFAULT_SESSION_KEY,
   type ChatSession,
   type RawMessage,
-} from './types';
+} from '../../types';
 
 function getAgentIdFromSessionKey(sessionKey: string): string {
   if (!sessionKey.startsWith('agent:')) return 'main';
@@ -440,3 +440,8 @@ export class ChatSessionActionImpl {
     }
   };
 }
+
+export type ChatSessionHistoryAction = Pick<ChatSessionActionImpl, keyof ChatSessionActionImpl>;
+
+export const createChatSessionHistorySlice = (set: ChatSet, get: ChatGet, api?: unknown) =>
+  new ChatSessionActionImpl(set, get, api);
