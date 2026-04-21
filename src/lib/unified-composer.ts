@@ -680,7 +680,7 @@ export function toOpenClawSubmission(
 	};
 }
 
-export function toMiniChatSubmission(
+export function toCodeChatSubmission(
 	draft: UnifiedComposerDraft,
 ): { prompt: string; attachments: FileAttachment[] } {
 	return {

@@ -121,7 +121,7 @@
   },
   "speech": {
     "title": "Volcengine ASR",
-    "description": "フローティングペットがマイク音声を Volcengine のリアルタイム ASR に送信し、認識テキストを Mini Chat へ直接送ります。",
+    "description": "フローティングペットがマイク音声を Volcengine のリアルタイム ASR に送信し、認識テキストを Code Chat へ直接送ります。",
     "loading": "読み込み中",
     "configured": "設定済み",
     "missing": "未設定",

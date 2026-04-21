@@ -60,7 +60,7 @@ const ACTION_META = {
 		icon: MessagesSquare,
 		imgSrc: IconChat,
 		zh: "迷你对话",
-		en: "Mini Chat",
+		en: "Code Chat",
 		ja: "ミニチャット",
 		bgClassName: "bg-sky-500",
 	},

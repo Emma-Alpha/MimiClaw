@@ -1,4 +1,5 @@
 import { createStyles } from 'antd-style';
+import { CHAT_HEADER_HEIGHT } from '@/lib/titlebar-safe-area';
 import {
   CHAT_SESSION_META_FONT_SIZE,
   CHAT_SESSION_TITLE_FONT_SIZE,
@@ -48,43 +49,85 @@ export const useStyles = createStyles(({ css, token }) => ({
     color: rgba(0, 0, 0, 0.45);
   `,
   root: css`
+    --xiaojiu-header-bg: color-mix(
+      in srgb,
+      ${token.colorBgContainer} 86%,
+      transparent
+    );
+    --xiaojiu-header-title-color: color-mix(
+      in srgb,
+      ${token.colorText} 78%,
+      ${token.colorTextSecondary}
+    );
     display: flex;
     height: 100%;
     min-height: 0;
     flex: 1;
     flex-direction: column;
-    background: linear-gradient(180deg, #fbfcfe 0%, #f6f8fc 100%);
+    background:
+      radial-gradient(circle at top, ${token.colorPrimaryBg} 0%, transparent 48%),
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, ${token.colorBgContainer} 96%, ${token.colorFillQuaternary}) 0%,
+        color-mix(in srgb, ${token.colorBgContainer} 92%, ${token.colorFillTertiary}) 100%
+      );
   `,
   header: css`
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    padding: 16px 24px;
+    background: var(--xiaojiu-header-bg);
+    backdrop-filter: saturate(160%) blur(18px);
+    -webkit-backdrop-filter: saturate(160%) blur(18px);
+    position: relative;
+    overflow: visible;
+    z-index: 10;
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      height: 32px;
+      background: linear-gradient(to bottom, var(--xiaojiu-header-bg) 0%, transparent 100%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+      pointer-events: none;
+    }
   `,
   headerInner: css`
     margin: 0 auto;
     display: flex;
     width: 100%;
+    min-height: ${CHAT_HEADER_HEIGHT}px;
     max-width: 1024px;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
+    padding: 0 16px;
   `,
   avatar: css`
-    height: 44px;
-    width: 44px;
-    border-radius: 16px;
+    height: 32px;
+    width: 32px;
+    border-radius: 12px;
     object-fit: cover;
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
     flex-shrink: 0;
   `,
   avatarFallback: css`
     display: flex;
-    height: 44px;
-    width: 44px;
+    height: 32px;
+    width: 32px;
     align-items: center;
     justify-content: center;
-    border-radius: 16px;
-    background: #e8f2ff;
+    border-radius: 12px;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, ${token.colorPrimaryBg} 88%, white) 0%,
+      color-mix(in srgb, ${token.colorPrimaryBg} 72%, ${token.colorFillSecondary}) 100%
+    );
     color: #2667d8;
     flex-shrink: 0;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
   `,
   headerContent: css`
     min-width: 0;
@@ -100,21 +143,22 @@ export const useStyles = createStyles(({ css, token }) => ({
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: ${CHAT_SESSION_TITLE_FONT_SIZE}px;
-    font-weight: 600;
-    color: ${token.colorText};
+    font-weight: 480;
+    line-height: 1.1;
+    color: var(--xiaojiu-header-title-color);
   `,
   headerBadge: css`
     border-radius: 9999px;
-    background: #e8f2ff;
-    padding: 2px 8px;
+    background: color-mix(in srgb, ${token.colorPrimary} 12%, transparent);
+    padding: 3px 8px;
     font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
     font-weight: 500;
     color: #2667d8;
   `,
   unreadBadge: css`
     border-radius: 9999px;
-    background: #fef2f2;
-    padding: 2px 8px;
+    background: color-mix(in srgb, ${token.colorError} 12%, transparent);
+    padding: 3px 8px;
     font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
     font-weight: 500;
     color: #d92d20;
@@ -122,12 +166,26 @@ export const useStyles = createStyles(({ css, token }) => ({
   headerMeta: css`
     margin-top: 4px;
     font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
-    color: rgba(0, 0, 0, 0.45);
+    color: ${token.colorTextSecondary};
+  `,
+  headerActionButton: css`
+    border-radius: 9999px !important;
+    gap: 8px;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    color: ${token.colorTextSecondary} !important;
+
+    &:hover:not(:disabled),
+    &:focus-visible:not(:disabled) {
+      color: ${token.colorText} !important;
+      background: color-mix(in srgb, ${token.colorText} 8%, transparent) !important;
+    }
   `,
   syncErrorBar: css`
     border-bottom: 1px solid #f5c2c7;
     background: #fff1f3;
-    padding: 8px 24px;
+    padding: 8px 16px;
     font-size: ${token.fontSizeSM}px;
     color: #b42318;
   `,
@@ -139,7 +197,7 @@ export const useStyles = createStyles(({ css, token }) => ({
     min-height: 0;
     flex: 1;
     overflow-y: auto;
-    padding: 24px;
+    padding: 24px 16px;
   `,
   messageListInner: css`
     margin: 0 auto;

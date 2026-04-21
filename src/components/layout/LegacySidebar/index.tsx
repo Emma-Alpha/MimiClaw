@@ -277,7 +277,7 @@ function buildCodeAgentRoute(workspaceRoot: string, sessionId?: string, newThrea
 	if (newThreadToken) {
 		params.set("newThread", newThreadToken);
 	}
-	return `/code-agent/quick-chat?${params.toString()}`;
+	return `/chat/code?${params.toString()}`;
 }
 
 export function LegacySidebar() {
@@ -445,7 +445,7 @@ export function LegacySidebar() {
 	const routeWorkspaceRoot = routeSearchParams.get("workspaceRoot")?.trim() || "";
 	const routeSessionId = routeSearchParams.get("sessionId")?.trim() || "";
 	const activeThreadWorkspaceIdFromRoute =
-		(pathname.startsWith("/code-agent/quick-chat") && routeWorkspaceRoot
+		(pathname.startsWith("/chat/code") && routeWorkspaceRoot
 			? workspaceIdByNormalizedRoot[normalizeWorkspacePath(routeWorkspaceRoot)]
 			: undefined) ?? null;
 
@@ -617,7 +617,7 @@ export function LegacySidebar() {
 			setSidebarActiveContext({ kind: "realtimeVoice", workspaceId: null });
 			return;
 		}
-		if (pathname.startsWith("/code-agent/quick-chat") && activeThreadWorkspaceIdFromRoute) {
+		if (pathname.startsWith("/chat/code") && activeThreadWorkspaceIdFromRoute) {
 			setSidebarActiveContext({ kind: "thread", workspaceId: activeThreadWorkspaceIdFromRoute });
 		}
 	}, [activeThreadWorkspaceIdFromRoute, pathname, setSidebarActiveContext]);
@@ -1107,7 +1107,7 @@ export function LegacySidebar() {
 										) : null}
 										{visibleSessions.map((session) => {
 											const isActive =
-												pathname.startsWith("/code-agent/quick-chat")
+												pathname.startsWith("/chat/code")
 												&& activeThreadWorkspaceIdFromRoute === workspace.id
 												&& routeSessionId === session.sessionId;
 											return (

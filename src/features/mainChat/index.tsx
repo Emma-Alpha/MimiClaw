@@ -41,11 +41,23 @@ const useStyles = createStyles(({ token, css }) => ({
     background: transparent;
   `,
   toolbar: css`
+    --main-chat-header-bg: color-mix(
+      in srgb,
+      ${token.colorBgContainer} 86%,
+      transparent
+    );
+    --main-chat-header-title-color: color-mix(
+      in srgb,
+      ${token.colorText} 78%,
+      ${token.colorTextSecondary}
+    );
     height: ${CHAT_HEADER_HEIGHT}px;
     display: flex;
     align-items: stretch;
     flex-shrink: 0;
-    background: transparent;
+    background: var(--main-chat-header-bg);
+    backdrop-filter: saturate(160%) blur(18px);
+    -webkit-backdrop-filter: saturate(160%) blur(18px);
     position: relative;
     overflow: visible;
     z-index: 10;
@@ -57,7 +69,11 @@ const useStyles = createStyles(({ token, css }) => ({
       left: 0;
       right: 0;
       height: 32px;
-      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.18) 0%, transparent 100%);
+      background: linear-gradient(
+        to bottom,
+        var(--main-chat-header-bg) 0%,
+        transparent 100%
+      );
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       mask-image: linear-gradient(to bottom, black 0%, transparent 100%);

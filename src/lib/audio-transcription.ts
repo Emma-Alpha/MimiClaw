@@ -1,5 +1,5 @@
 import { hostApiFetch } from "@/lib/host-api";
-import type { PetMiniChatSeedAttachment } from "../../shared/pet";
+import type { PetCodeChatSeedAttachment } from "../../shared/pet";
 
 export interface LocalSpeechTranscription {
 	text: string;
@@ -105,8 +105,8 @@ async function resampleMonoAudio(
 }
 
 function ensureReadyAttachment(
-	attachment: Omit<PetMiniChatSeedAttachment, "status"> & { status?: PetMiniChatSeedAttachment["status"] },
-): PetMiniChatSeedAttachment {
+	attachment: Omit<PetCodeChatSeedAttachment, "status"> & { status?: PetCodeChatSeedAttachment["status"] },
+): PetCodeChatSeedAttachment {
 	return {
 		...attachment,
 		status: attachment.status ?? "ready",
@@ -130,10 +130,10 @@ async function readFileAsBase64(file: globalThis.File): Promise<string> {
 	});
 }
 
-export async function stageFileForChat(file: File): Promise<PetMiniChatSeedAttachment> {
+export async function stageFileForChat(file: File): Promise<PetCodeChatSeedAttachment> {
 	const base64 = await readFileAsBase64(file);
 	const attachment = await hostApiFetch<
-		Omit<PetMiniChatSeedAttachment, "status"> & { status?: PetMiniChatSeedAttachment["status"] }
+		Omit<PetCodeChatSeedAttachment, "status"> & { status?: PetCodeChatSeedAttachment["status"] }
 	>("/api/files/stage-buffer", {
 		method: "POST",
 		body: JSON.stringify({

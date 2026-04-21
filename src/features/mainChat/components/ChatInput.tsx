@@ -12,6 +12,10 @@ import {
 	ComposerChip,
 	ComposerIconButton,
 } from "./composer";
+import {
+	CodeModeChatInput,
+	type CodeModeChatInputProps,
+} from "./CodeModeChatInput";
 import { type FileAttachment, readFileAsBase64 } from "../lib/composer-helpers";
 import { hostApiFetch } from "@/lib/host-api";
 import { invokeIpc } from "@/lib/api-client";
@@ -22,6 +26,15 @@ import {
 	toOpenClawSubmission,
 	type UnifiedComposerPath,
 } from "@/lib/unified-composer";
+import {
+	CODEX_COMPOSER_BOTTOM_PADDING,
+	CODEX_COMPOSER_HIGHLIGHT,
+	CODEX_COMPOSER_HORIZONTAL_PADDING,
+	CODEX_COMPOSER_MIN_HEIGHT,
+	CODEX_COMPOSER_RADIUS,
+	CODEX_COMPOSER_SUPERELLIPSE_RADIUS,
+	CODEX_COMPOSER_TOP_PADDING,
+} from "@/features/mainChat/lib/composer-shell";
 import { useGatewayStore } from "@/stores/gateway";
 import { useSettingsStore } from "@/stores/settings";
 import { useAgentsStore } from "@/stores/agents";
@@ -41,14 +54,39 @@ const useStyles = createStyles(({ token, css }) => ({
     width: 100%;
     max-width: calc(var(--chat-window-content-width, 800px) + (var(--chat-window-side-gap, 16px) * 2));
     margin: 0 auto;
-    padding: 8px var(--chat-window-side-gap, 16px) 12px;
+    padding: 10px var(--chat-window-side-gap, 16px) 12px;
     flex-shrink: 0;
     position: relative;
     z-index: 6;
     overflow: visible;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
+  `,
+	composerShell: css`
+    border-radius: ${CODEX_COMPOSER_RADIUS}px !important;
+    padding: ${CODEX_COMPOSER_TOP_PADDING}px ${CODEX_COMPOSER_HORIZONTAL_PADDING}px ${CODEX_COMPOSER_BOTTOM_PADDING}px !important;
+    min-height: ${CODEX_COMPOSER_MIN_HEIGHT}px !important;
+    background: ${token.colorBgContainer} !important;
+    border-color: transparent !important;
+    box-shadow:
+      ${CODEX_COMPOSER_HIGHLIGHT},
+      0 0 0 0.5px var(--composer-ring-color, ${token.colorBorder}) !important;
+
+    @supports (corner-shape: superellipse(1.5)) {
+      border-radius: ${CODEX_COMPOSER_SUPERELLIPSE_RADIUS}px !important;
+      corner-shape: superellipse(1.5);
+    }
+
+    &:focus-within {
+      border-color: transparent !important;
+      box-shadow:
+        ${CODEX_COMPOSER_HIGHLIGHT},
+        0 0 0 0.5px var(
+          --composer-ring-color-focus,
+          var(--composer-ring-color, ${token.colorBorder})
+        ) !important;
+    }
   `,
 	recordingPill: css`
     display: flex;
@@ -138,9 +176,10 @@ const useStyles = createStyles(({ token, css }) => ({
 	    justify-content: space-between;
 	    gap: 8px;
 	    min-height: 20px;
-	    font-size: var(--mimi-font-size-xs);
-	    color: ${token.colorTextQuaternary};
-	    padding: 4px 8px 0;
+	    font-size: 11px;
+	    line-height: 1;
+	    color: ${token.colorTextSecondary};
+	    padding: 1px 4px 0;
 	  `,
 	footerStatus: css`
 	    display: inline-flex;
@@ -178,7 +217,8 @@ const useStyles = createStyles(({ token, css }) => ({
 
 // ── Types ────────────────────────────────────────────────────────
 
-interface ChatInputProps {
+interface MainChatInputProps {
+	mode?: "main";
 	onSend: (
 		text: string,
 		attachments?: FileAttachment[],
@@ -189,14 +229,27 @@ interface ChatInputProps {
 	sending?: boolean;
 }
 
+type CodeChatInputProps = CodeModeChatInputProps & { mode: "code" };
+
+export type ChatInputProps = MainChatInputProps | CodeChatInputProps;
+
 // ── Component ────────────────────────────────────────────────────
 
-export function ChatInput({
+export function ChatInput(props: ChatInputProps) {
+	if ("mode" in props && props.mode === "code") {
+		const { mode: _mode, ...codeProps } = props;
+		return <CodeModeChatInput {...codeProps} />;
+	}
+
+	return <MainChatInputInner {...props} />;
+}
+
+function MainChatInputInner({
 	onSend,
 	onStop,
 	disabled = false,
 	sending = false,
-}: ChatInputProps) {
+}: MainChatInputProps) {
 	const { t } = useTranslation("chat");
 	const { styles, cx } = useStyles();
 
@@ -746,6 +799,7 @@ export function ChatInput({
 		>
 			<ComposerBase
 				variant="desktop"
+				className={styles.composerShell}
 				value={input}
 				onInput={setInput}
 				paths={droppedPaths}

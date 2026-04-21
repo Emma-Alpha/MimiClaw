@@ -3,11 +3,12 @@ import { Chat as OpenClawChat } from '../modes/openclaw';
 import { JizhiChat } from '../modes/jizhi';
 import { XiaojiuChat } from '../modes/xiaojiu';
 import { VoiceChatHistory } from '../modes/voice';
+import { CodeChat } from '@/pages/CodeChat';
 
-export type UnifiedChatKind = 'openclaw' | 'xiaojiu' | 'jizhi' | 'voice';
+export type UnifiedChatKind = 'openclaw' | 'xiaojiu' | 'jizhi' | 'voice' | 'code';
 
 function normalizeKind(kind?: string): UnifiedChatKind | null {
-  if (!kind || kind === 'openclaw' || kind === 'xiaojiu' || kind === 'jizhi' || kind === 'voice') {
+  if (!kind || kind === 'openclaw' || kind === 'xiaojiu' || kind === 'jizhi' || kind === 'voice' || kind === 'code') {
     return (kind ?? 'openclaw') as UnifiedChatKind;
   }
   return null;
@@ -31,6 +32,10 @@ export function UnifiedChatPage() {
 
   if (resolvedKind === 'jizhi') {
     return <JizhiChat />;
+  }
+
+  if (resolvedKind === 'code') {
+    return <CodeChat embeddedCodeAssistant />;
   }
 
   return <VoiceChatHistory />;

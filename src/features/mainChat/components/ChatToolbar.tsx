@@ -1,6 +1,6 @@
 /**
  * Chat Toolbar
- * Unified header style matching MiniChat embedded codex header.
+ * Unified header style matching CodeChat embedded codex header.
  */
 import { useMemo } from 'react';
 import type { CSSProperties } from 'react';
@@ -55,9 +55,9 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
   sessionTitle: css`
     font-size: ${CHAT_SESSION_TITLE_FONT_SIZE}px;
-    font-weight: 500;
-    line-height: 1.2;
-    color: ${token.colorText};
+    font-weight: 480;
+    line-height: 1.1;
+    color: var(--main-chat-header-title-color, ${token.colorText});
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -66,7 +66,7 @@ const useStyles = createStyles(({ token, css }) => ({
     font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
     font-weight: 400;
     line-height: 1.2;
-    color: ${token.colorTextTertiary};
+    color: ${token.colorTextSecondary};
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

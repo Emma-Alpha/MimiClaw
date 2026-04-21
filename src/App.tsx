@@ -21,7 +21,7 @@ import { CodeAgent } from "./pages/CodeAgent";
 import { PetFloating } from "./pages/PetFloating";
 import { PetBubble } from "./pages/PetBubble";
 import { PetCompanion } from "./pages/PetCompanion";
-import { MiniChat } from "./pages/MiniChat";
+import { CodeChat } from "./pages/CodeChat";
 import { VoiceDialog } from "./pages/VoiceDialog";
 import { TrayRuntime } from "./pages/TrayRuntime";
 import { Setup } from "./pages/Setup";
@@ -33,6 +33,12 @@ import { useChatStore, chatStreamingSelectors } from "./stores/chat";
 import { applyGatewayTransportPreference, invokeIpc } from "./lib/api-client";
 import { ThemeWrapper } from "./components/theme/ThemeWrapper";
 import { UpdateBootstrap } from "@/components/update/UpdateBootstrap";
+
+function LegacyCodeQuickChatRedirect() {
+	const location = useLocation();
+
+	return <Navigate to={`/chat/code${location.search}`} replace />;
+}
 
 /**
  * Error Boundary to catch and display React rendering errors
@@ -122,7 +128,7 @@ function App() {
 	const isPetBubbleRoute = location.pathname.startsWith("/pet-bubble");
 	const isPetRoute =
 		location.pathname === "/pet" || location.pathname.startsWith("/pet/");
-	const isMiniChatRoute = location.pathname.startsWith("/quick-chat");
+	const isCodeChatRoute = location.pathname.startsWith("/quick-chat");
 	const isPetCompanionRoute = location.pathname.startsWith("/pet-companion");
 	const isVoiceDialogRoute = location.pathname.startsWith("/voice-dialog");
 	const isTrayRuntimeRoute = location.pathname.startsWith("/tray-runtime");
@@ -147,7 +153,7 @@ function App() {
 		if (
 			!isPetRoute &&
 			!isPetBubbleRoute &&
-			!isMiniChatRoute &&
+			!isCodeChatRoute &&
 			!isPetCompanionRoute &&
 			!isVoiceDialogRoute &&
 			!isTrayRuntimeRoute
@@ -156,7 +162,7 @@ function App() {
 		}
 	}, [
 		initGateway,
-		isMiniChatRoute,
+		isCodeChatRoute,
 		isPetCompanionRoute,
 		isPetBubbleRoute,
 		isPetRoute,
@@ -171,7 +177,7 @@ function App() {
 			!location.pathname.startsWith("/login") &&
 			!isPetRoute &&
 			!isPetBubbleRoute &&
-			!isMiniChatRoute &&
+			!isCodeChatRoute &&
 			!isPetCompanionRoute &&
 			!isVoiceDialogRoute &&
 			!isTrayRuntimeRoute
@@ -180,7 +186,7 @@ function App() {
 		}
 	}, [
 		cloudLoggedIn,
-		isMiniChatRoute,
+		isCodeChatRoute,
 		isPetCompanionRoute,
 		isPetBubbleRoute,
 		isPetRoute,
@@ -200,7 +206,7 @@ function App() {
 			!location.pathname.startsWith("/login") &&
 			!isPetRoute &&
 			!isPetBubbleRoute &&
-			!isMiniChatRoute &&
+			!isCodeChatRoute &&
 			!isPetCompanionRoute &&
 			!isVoiceDialogRoute &&
 			!isTrayRuntimeRoute
@@ -209,7 +215,7 @@ function App() {
 		}
 	}, [
 		cloudLoggedIn,
-		isMiniChatRoute,
+		isCodeChatRoute,
 		isPetCompanionRoute,
 		isPetBubbleRoute,
 		isPetRoute,
@@ -277,7 +283,7 @@ function App() {
 		if (
 			isPetRoute ||
 			isPetBubbleRoute ||
-			isMiniChatRoute ||
+			isCodeChatRoute ||
 			isPetCompanionRoute ||
 			isVoiceDialogRoute ||
 			isTrayRuntimeRoute ||
@@ -289,7 +295,7 @@ function App() {
 		);
 	}, [
 		isMainChatRoute,
-		isMiniChatRoute,
+		isCodeChatRoute,
 		isPetCompanionRoute,
 		isPetBubbleRoute,
 		isPetRoute,
@@ -304,7 +310,7 @@ function App() {
 				<TooltipProvider>
 					{!isPetRoute &&
 					!isPetBubbleRoute &&
-					!isMiniChatRoute &&
+					!isCodeChatRoute &&
 					!isPetCompanionRoute &&
 					!isVoiceDialogRoute &&
 					!isTrayRuntimeRoute ? (
@@ -322,7 +328,7 @@ function App() {
 						<Route path="/pet-bubble" element={<PetBubble />} />
 
 						{/* Quick chat popup (opened by clicking the floating pet) */}
-						<Route path="/quick-chat" element={<MiniChat />} />
+						<Route path="/quick-chat" element={<CodeChat />} />
 						<Route path="/pet-companion" element={<PetCompanion />} />
 						<Route path="/voice-dialog" element={<VoiceDialog />} />
 						<Route path="/tray-runtime" element={<TrayRuntime />} />
@@ -342,10 +348,7 @@ function App() {
 							<Route path="/skills" element={<Skills />} />
 							<Route path="/skills/store" element={<SkillsStorePage />} />
 							<Route path="/cron" element={<Cron />} />
-							<Route
-								path="/code-agent/quick-chat"
-								element={<MiniChat embeddedCodeAssistant />}
-							/>
+							<Route path="/code-agent/quick-chat" element={<LegacyCodeQuickChatRedirect />} />
 							<Route path="/code-agent" element={<CodeAgent />} />
 							<Route path="/settings/*" element={<Settings />} />
 							<Route path="/webview/:site" element={<RemoteWebviewPage />} />

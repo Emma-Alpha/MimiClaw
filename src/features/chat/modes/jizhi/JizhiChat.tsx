@@ -664,7 +664,7 @@ export function JizhiChat() {
             </div>
             <Button
               size="small"
-              style={{ borderRadius: 9999, gap: 8 }}
+              className={styles.headerActionButton}
               onClick={() => requestRefresh()}
               disabled={loading}
             >
@@ -723,6 +723,7 @@ export function JizhiChat() {
         <div className={styles.composerInner}>
           <ComposerBase
             variant="desktop"
+            className={styles.composerShell}
             value={draft}
             onInput={setDraft}
             paths={droppedPaths}

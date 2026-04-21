@@ -456,11 +456,11 @@ export function Sidebar() {
 	const activeThreadSessionId =
 		routeSessionId || codeAgentSessionId?.trim() || "";
 	const activeThreadWorkspaceIdFromRoute =
-		(pathname.startsWith("/code-agent/quick-chat") && routeWorkspaceRoot
+		(pathname.startsWith("/chat/code") && routeWorkspaceRoot
 			? workspaceIdByNormalizedRoot[normalizeWorkspacePath(routeWorkspaceRoot)]
 			: undefined) ?? null;
 	const isThreadSessionGenerating =
-		pathname.startsWith("/code-agent/quick-chat")
+		pathname.startsWith("/chat/code")
 		&& (
 			codeAgentSessionState === "running"
 			|| codeAgentSessionState === "requires_action"
@@ -747,10 +747,7 @@ export function Sidebar() {
 			setSidebarActiveContext({ kind: "realtimeVoice", workspaceId: null });
 			return;
 		}
-		if (
-			pathname.startsWith("/code-agent/quick-chat") &&
-			activeThreadWorkspaceIdFromRoute
-		) {
+		if (pathname.startsWith("/chat/code") && activeThreadWorkspaceIdFromRoute) {
 			setSidebarActiveContext({
 				kind: "thread",
 				workspaceId: activeThreadWorkspaceIdFromRoute,
@@ -842,7 +839,7 @@ export function Sidebar() {
 			const params = new URLSearchParams();
 			params.set("workspaceRoot", workspace.rootPath);
 			params.set("newThread", String(Date.now()));
-			navigate(`/code-agent/quick-chat?${params.toString()}`);
+			navigate(`/chat/code?${params.toString()}`);
 		},
 		[
 			navigate,
@@ -952,7 +949,7 @@ export function Sidebar() {
 			const params = new URLSearchParams();
 			params.set("workspaceRoot", workspace.rootPath);
 			params.set("sessionId", sessionId);
-			navigate(`/code-agent/quick-chat?${params.toString()}`);
+			navigate(`/chat/code?${params.toString()}`);
 		},
 		[
 			navigate,
@@ -1251,7 +1248,7 @@ export function Sidebar() {
 										)}
 										{visibleSessions.map((session) => {
 											const isActive =
-												pathname.startsWith("/code-agent/quick-chat") &&
+												pathname.startsWith("/chat/code") &&
 												activeThreadWorkspaceIdFromRoute === workspace.id &&
 												activeThreadSessionId === session.sessionId;
 											const isRunning =

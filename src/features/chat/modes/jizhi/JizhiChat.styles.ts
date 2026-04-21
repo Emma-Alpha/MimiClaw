@@ -1,4 +1,14 @@
 import { createStyles } from 'antd-style';
+import { CHAT_HEADER_HEIGHT } from '@/lib/titlebar-safe-area';
+import {
+  CODEX_COMPOSER_BOTTOM_PADDING,
+  CODEX_COMPOSER_HIGHLIGHT,
+  CODEX_COMPOSER_HORIZONTAL_PADDING,
+  CODEX_COMPOSER_MIN_HEIGHT,
+  CODEX_COMPOSER_RADIUS,
+  CODEX_COMPOSER_SUPERELLIPSE_RADIUS,
+  CODEX_COMPOSER_TOP_PADDING,
+} from '@/features/mainChat/lib/composer-shell';
 import {
   CHAT_SESSION_META_FONT_SIZE,
   CHAT_SESSION_TITLE_FONT_SIZE,
@@ -48,41 +58,81 @@ export const useStyles = createStyles(({ css, token }) => ({
     color: rgba(0, 0, 0, 0.45);
   `,
   root: css`
+    --jizhi-header-bg: color-mix(
+      in srgb,
+      ${token.colorBgContainer} 86%,
+      transparent
+    );
+    --jizhi-header-title-color: color-mix(
+      in srgb,
+      ${token.colorText} 78%,
+      ${token.colorTextSecondary}
+    );
     display: flex;
     height: 100%;
     min-height: 0;
     flex: 1;
     flex-direction: column;
-    background: linear-gradient(180deg, #fbfcfe 0%, #f6f8fc 100%);
+    background:
+      radial-gradient(circle at top, ${token.colorPrimaryBg} 0%, transparent 48%),
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, ${token.colorBgContainer} 96%, ${token.colorFillQuaternary}) 0%,
+        color-mix(in srgb, ${token.colorBgContainer} 92%, ${token.colorFillTertiary}) 100%
+      );
   `,
   headerWrap: css`
-    padding: 16px 24px;
+    background: var(--jizhi-header-bg);
+    backdrop-filter: saturate(160%) blur(18px);
+    -webkit-backdrop-filter: saturate(160%) blur(18px);
+    position: relative;
+    overflow: visible;
+    z-index: 10;
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      height: 32px;
+      background: linear-gradient(to bottom, var(--jizhi-header-bg) 0%, transparent 100%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+      pointer-events: none;
+    }
   `,
   headerInner: css`
     margin: 0 auto;
     max-width: 1024px;
+    min-height: ${CHAT_HEADER_HEIGHT}px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
   `,
   headerCard: css`
     display: flex;
     align-items: center;
-    gap: 16px;
-    border-radius: 28px;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    background: rgba(255, 255, 255, 0.72);
-    padding: 16px;
-    box-shadow: 0 16px 44px rgba(15, 23, 42, 0.06);
-    backdrop-filter: blur(12px);
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
   `,
   headerIcon: css`
     display: flex;
-    height: 48px;
-    width: 48px;
+    height: 32px;
+    width: 32px;
     align-items: center;
     justify-content: center;
-    border-radius: 18px;
-    background: linear-gradient(180deg, #eef5ff 0%, #e2eeff 100%);
+    border-radius: 12px;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, ${token.colorPrimaryBg} 88%, white) 0%,
+      color-mix(in srgb, ${token.colorPrimaryBg} 72%, ${token.colorFillSecondary}) 100%
+    );
     color: #2667d8;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
     flex-shrink: 0;
   `,
   headerContent: css`
@@ -100,26 +150,27 @@ export const useStyles = createStyles(({ css, token }) => ({
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: ${CHAT_SESSION_TITLE_FONT_SIZE}px;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    color: ${token.colorText};
+    font-weight: 480;
+    line-height: 1.1;
+    letter-spacing: 0;
+    color: var(--jizhi-header-title-color);
   `,
   headerBadge: css`
     border-radius: 9999px;
-    background: #e8f2ff;
-    padding: 4px 10px;
+    background: color-mix(in srgb, ${token.colorPrimary} 12%, transparent);
+    padding: 3px 8px;
     font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
     font-weight: 500;
     color: #2667d8;
   `,
   headerCategoryBadge: css`
     border-radius: 9999px;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    background: rgba(0, 0, 0, 0.03);
-    padding: 4px 10px;
+    border: 1px solid color-mix(in srgb, ${token.colorText} 8%, transparent);
+    background: color-mix(in srgb, ${token.colorText} 4%, transparent);
+    padding: 3px 8px;
     font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
     font-weight: 500;
-    color: rgba(0, 0, 0, 0.6);
+    color: ${token.colorTextSecondary};
   `,
   headerMeta: css`
     margin-top: 6px;
@@ -128,13 +179,27 @@ export const useStyles = createStyles(({ css, token }) => ({
     align-items: center;
     gap: 8px;
     font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
-    color: rgba(0, 0, 0, 0.45);
+    color: ${token.colorTextSecondary};
   `,
   headerDivider: css`
-    color: rgba(0, 0, 0, 0.25);
+    color: ${token.colorTextQuaternary};
+  `,
+  headerActionButton: css`
+    border-radius: 9999px !important;
+    gap: 8px;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    color: ${token.colorTextSecondary} !important;
+
+    &:hover:not(:disabled),
+    &:focus-visible:not(:disabled) {
+      color: ${token.colorText} !important;
+      background: color-mix(in srgb, ${token.colorText} 8%, transparent) !important;
+    }
   `,
   syncError: css`
-    padding: 0 24px 8px;
+    padding: 0 16px 8px;
     font-size: ${token.fontSizeSM}px;
     color: #b42318;
   `,
@@ -146,7 +211,7 @@ export const useStyles = createStyles(({ css, token }) => ({
     min-height: 0;
     flex: 1;
     overflow-y: auto;
-    padding: 24px;
+    padding: 24px 16px;
   `,
   messageListInner: css`
     margin: 0 auto;
@@ -174,8 +239,7 @@ export const useStyles = createStyles(({ css, token }) => ({
     gap: 8px;
   `,
   composerWrap: css`
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
-    padding: 16px 24px;
+    padding: 10px 16px 12px;
   `,
   composerInner: css`
     margin: 0 auto;
@@ -183,7 +247,32 @@ export const useStyles = createStyles(({ css, token }) => ({
     width: 100%;
     max-width: 800px;
     flex-direction: column;
-    gap: 12px;
+    gap: 6px;
+  `,
+  composerShell: css`
+    border-radius: ${CODEX_COMPOSER_RADIUS}px !important;
+    padding: ${CODEX_COMPOSER_TOP_PADDING}px ${CODEX_COMPOSER_HORIZONTAL_PADDING}px ${CODEX_COMPOSER_BOTTOM_PADDING}px !important;
+    min-height: ${CODEX_COMPOSER_MIN_HEIGHT}px !important;
+    background: ${token.colorBgContainer} !important;
+    border-color: transparent !important;
+    box-shadow:
+      ${CODEX_COMPOSER_HIGHLIGHT},
+      0 0 0 0.5px var(--composer-ring-color, ${token.colorBorder}) !important;
+
+    @supports (corner-shape: superellipse(1.5)) {
+      border-radius: ${CODEX_COMPOSER_SUPERELLIPSE_RADIUS}px !important;
+      corner-shape: superellipse(1.5);
+    }
+
+    &:focus-within {
+      border-color: transparent !important;
+      box-shadow:
+        ${CODEX_COMPOSER_HIGHLIGHT},
+        0 0 0 0.5px var(
+          --composer-ring-color-focus,
+          var(--composer-ring-color, ${token.colorBorder})
+        ) !important;
+    }
   `,
 
   /* ---- UserBubble ---- */

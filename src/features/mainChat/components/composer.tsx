@@ -7,10 +7,12 @@ import {
 	useState,
 } from "react";
 import type {
+	ClipboardEventHandler,
 	CSSProperties,
 	KeyboardEvent as ReactKeyboardEvent,
 	ReactElement,
 	ReactNode,
+	RefObject,
 } from "react";
 import { createStyles } from "antd-style";
 import { Button } from "antd";
@@ -24,6 +26,10 @@ import {
 	CHAT_PRIMARY_ACTION_ICON_SIZE,
 	CHAT_STOP_ICON_SIZE,
 } from "@/styles/typography-tokens";
+import type {
+	UnifiedComposerInputHandle,
+	UnifiedComposerInputValue,
+} from "./unified-composer-input";
 import { UnifiedComposerInput } from "./unified-composer-input";
 import { formatFileSize, type FileAttachment } from "../lib/composer-helpers";
 
@@ -68,6 +74,46 @@ interface ComposerBaseProps {
 	onDragOver?: React.DragEventHandler<HTMLDivElement>;
 	onDragLeave?: React.DragEventHandler<HTMLDivElement>;
 	onDrop?: React.DragEventHandler<HTMLDivElement>;
+}
+
+interface ComposerSurfaceProps {
+	children: ReactNode;
+	className?: string;
+	overlay?: ReactNode;
+	attachments?: FileAttachment[];
+	onRemoveAttachment?: (id: string) => void;
+	attachmentRowClassName?: string;
+	dragOver?: boolean;
+	dragOverClassName?: string;
+	onDragOver?: React.DragEventHandler<HTMLDivElement>;
+	onDragLeave?: React.DragEventHandler<HTMLDivElement>;
+	onDrop?: React.DragEventHandler<HTMLDivElement>;
+}
+
+interface ComposerInputFieldProps {
+	value: UnifiedComposerInputValue;
+	onChange: (value: UnifiedComposerInputValue) => void;
+	variant?: ComposerVariant;
+	placeholder?: string;
+	disabled?: boolean;
+	className?: string;
+	placeholderClassName?: string;
+	pathChipClassName?: string;
+	pathChipIconClassName?: string;
+	pathChipNameClassName?: string;
+	pathChipRemoveClassName?: string;
+	skillChipClassName?: string;
+	inputRef?: RefObject<UnifiedComposerInputHandle | null>;
+	onKeyDown?: (event: ReactKeyboardEvent<HTMLElement>) => void;
+	onPressEnter?: (event: ReactKeyboardEvent<HTMLElement>) => void;
+	onCompositionStart?: () => void;
+	onCompositionEnd?: () => void;
+	onFocusChange?: (focused: boolean) => void;
+	onCaretChange?: (index: number) => void;
+	onPaste?: ClipboardEventHandler<HTMLDivElement>;
+	onVisualMultilineChange?: (multiline: boolean) => void;
+	lockSingleLineHeight?: boolean;
+	maxPaths?: number;
 }
 
 interface ComposerIconButtonProps {
@@ -635,6 +681,23 @@ function FileIconComp({
 	return <FileIcon style={style} />;
 }
 
+function areComposerPathsEqual(
+	left: UnifiedComposerPath[],
+	right: UnifiedComposerPath[],
+): boolean {
+	return (
+		left.length === right.length
+		&& left.every((item, index) => {
+			const current = right[index];
+			return (
+				current?.absolutePath === item.absolutePath
+				&& current?.name === item.name
+				&& current?.isDirectory === item.isDirectory
+			);
+		})
+	);
+}
+
 export function ImageLightbox({
 	src,
 	fileName,
@@ -746,6 +809,123 @@ export function ComposerAttachmentPreview({
 				<X style={{ width: 10, height: 10 }} />
 			</button>
 		</div>
+	);
+}
+
+export function ComposerSurface({
+	children,
+	className,
+	overlay,
+	attachments = [],
+	onRemoveAttachment,
+	attachmentRowClassName,
+	dragOver = false,
+	dragOverClassName,
+	onDragOver,
+	onDragLeave,
+	onDrop,
+}: ComposerSurfaceProps) {
+	const { styles, cx } = useStyles();
+	const [previewImage, setPreviewImage] = useState<{ src: string; fileName: string } | null>(null);
+
+	return (
+		<>
+			{/* biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop */}
+			<div
+				className={cx(
+					styles.shell,
+					className,
+					dragOver && (dragOverClassName ?? styles.shellDragOver),
+				)}
+				onDragOver={onDragOver}
+				onDragLeave={onDragLeave}
+				onDrop={onDrop}
+			>
+				{overlay}
+
+				{attachments.length > 0 ? (
+					<div className={cx(styles.attachmentRow, attachmentRowClassName)}>
+						{attachments.map((attachment) => (
+							<ComposerAttachmentPreview
+								key={attachment.id}
+								attachment={attachment}
+								onRemove={() => onRemoveAttachment?.(attachment.id)}
+								onPreview={(src, fileName) => setPreviewImage({ src, fileName })}
+							/>
+						))}
+					</div>
+				) : null}
+
+				{children}
+			</div>
+
+			{previewImage ? (
+				<ImageLightbox
+					src={previewImage.src}
+					fileName={previewImage.fileName}
+					onClose={() => setPreviewImage(null)}
+				/>
+			) : null}
+		</>
+	);
+}
+
+export function ComposerInputField({
+	value,
+	onChange,
+	variant = "desktop",
+	placeholder,
+	disabled = false,
+	className,
+	placeholderClassName,
+	pathChipClassName,
+	pathChipIconClassName,
+	pathChipNameClassName,
+	pathChipRemoveClassName,
+	skillChipClassName,
+	inputRef,
+	onKeyDown,
+	onPressEnter,
+	onCompositionStart,
+	onCompositionEnd,
+	onFocusChange,
+	onCaretChange,
+	onPaste,
+	onVisualMultilineChange,
+	lockSingleLineHeight = false,
+	maxPaths = 20,
+}: ComposerInputFieldProps) {
+	const { styles, cx } = useStyles();
+
+	return (
+		<UnifiedComposerInput
+			ref={inputRef}
+			value={value}
+			onChange={onChange}
+			placeholder={placeholder}
+			disabled={disabled}
+			className={cx(
+				styles.inputEditor,
+				variant === "compact" ? styles.inputEditorCompact : styles.inputEditorDesktop,
+				lockSingleLineHeight && styles.inputEditorSingleLineLock,
+				className,
+			)}
+			placeholderClassName={cx(styles.inputPlaceholder, placeholderClassName)}
+			pathChipClassName={cx(styles.pathChip, pathChipClassName)}
+			pathChipIconClassName={cx(styles.pathChipIcon, pathChipIconClassName)}
+			pathChipNameClassName={cx(styles.pathChipName, pathChipNameClassName)}
+			pathChipRemoveClassName={cx(styles.pathChipRemove, pathChipRemoveClassName)}
+			skillChipClassName={skillChipClassName}
+			onKeyDown={onKeyDown}
+			onPressEnter={onPressEnter}
+			onCompositionStart={onCompositionStart}
+			onCompositionEnd={onCompositionEnd}
+			onFocusChange={onFocusChange}
+			onCaretChange={onCaretChange}
+			onPaste={onPaste}
+			onVisualMultilineChange={onVisualMultilineChange}
+			maxPaths={maxPaths}
+		/>
 	);
 }
 
@@ -872,7 +1052,6 @@ export function ComposerBase({
 	onDrop,
 }: ComposerBaseProps) {
 	const { styles, cx } = useStyles();
-	const [previewImage, setPreviewImage] = useState<{ src: string; fileName: string } | null>(null);
 
 	const compact = variant === "compact";
 	const canStop = loading && Boolean(onStop);
@@ -889,20 +1068,8 @@ export function ComposerBase({
 		if (next.text !== value) {
 			onInput(next.text);
 		}
-		if (onPathsChange) {
-			const samePaths =
-				next.paths.length === paths.length
-				&& next.paths.every((item, index) => {
-					const current = paths[index];
-					return (
-						current?.absolutePath === item.absolutePath
-						&& current?.name === item.name
-						&& current?.isDirectory === item.isDirectory
-					);
-				});
-			if (!samePaths) {
-				onPathsChange(next.paths);
-			}
+		if (onPathsChange && !areComposerPathsEqual(next.paths, paths)) {
+			onPathsChange(next.paths);
 		}
 	};
 	const handlePressEnter = (event: ReactKeyboardEvent<HTMLElement>) => {
@@ -946,84 +1113,52 @@ export function ComposerBase({
 	);
 
 	return (
-		<>
-			{/* biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop */}
-			<div
-				className={cx(
-					styles.shell,
-					compact ? styles.shellCompact : styles.shellDesktop,
-					dragOver && styles.shellDragOver,
-					className,
-				)}
-				onDragOver={onDragOver}
-				onDragLeave={onDragLeave}
-				onDrop={onDrop}
-			>
-				{overlay}
+		<ComposerSurface
+			className={cx(
+				compact ? styles.shellCompact : styles.shellDesktop,
+				className,
+			)}
+			overlay={overlay}
+			attachments={attachments}
+			onRemoveAttachment={onRemoveAttachment}
+			dragOver={dragOver}
+			onDragOver={onDragOver}
+			onDragLeave={onDragLeave}
+			onDrop={onDrop}
+		>
+			{topActions ? (
+				<div className={styles.topActionsRow}>{topActions}</div>
+			) : null}
 
-				{attachments.length > 0 ? (
-					<div className={styles.attachmentRow}>
-						{attachments.map((attachment) => (
-							<ComposerAttachmentPreview
-								key={attachment.id}
-								attachment={attachment}
-								onRemove={() => onRemoveAttachment?.(attachment.id)}
-								onPreview={(src, fileName) => setPreviewImage({ src, fileName })}
-							/>
-						))}
-					</div>
-				) : null}
-
-				{topActions ? (
-					<div className={styles.topActionsRow}>{topActions}</div>
-				) : null}
-
-				<div className={styles.inputWrap}>
-					<UnifiedComposerInput
-						value={composerValue}
-						onChange={handleComposerChange}
-						placeholder={placeholder}
-						disabled={disabled}
-						className={cx(
-							styles.inputEditor,
-							compact ? styles.inputEditorCompact : styles.inputEditorDesktop,
-							shouldLockSingleLineHeight && styles.inputEditorSingleLineLock,
-						)}
-						placeholderClassName={styles.inputPlaceholder}
-						pathChipClassName={styles.pathChip}
-						pathChipIconClassName={styles.pathChipIcon}
-						pathChipNameClassName={styles.pathChipName}
-						pathChipRemoveClassName={styles.pathChipRemove}
-						onKeyDown={
-							textareaProps?.onKeyDown
-								? (event) => {
-									textareaProps.onKeyDown?.(
-										event as unknown as ReactKeyboardEvent<HTMLDivElement>,
-									);
-								}
-								: undefined
-						}
-						onPaste={textareaProps?.onPaste}
-						onPressEnter={handlePressEnter}
-					/>
-				</div>
-
-				<div className={styles.bottomRow}>
-					<div className={styles.leftActions}>{leftActions}</div>
-					<div className={styles.rightActions}>
-						{rightActions}
-						<ComposerTooltip title={sendButtonTitle}>{sendButton}</ComposerTooltip>
-					</div>
-				</div>
+			<div className={styles.inputWrap}>
+				<ComposerInputField
+					variant={variant}
+					value={composerValue}
+					onChange={handleComposerChange}
+					placeholder={placeholder}
+					disabled={disabled}
+					lockSingleLineHeight={shouldLockSingleLineHeight}
+					onKeyDown={
+						textareaProps?.onKeyDown
+							? (event) => {
+								textareaProps.onKeyDown?.(
+									event as unknown as ReactKeyboardEvent<HTMLDivElement>,
+								);
+							}
+							: undefined
+					}
+					onPaste={textareaProps?.onPaste}
+					onPressEnter={handlePressEnter}
+				/>
 			</div>
 
-			{previewImage ? (
-				<ImageLightbox
-					src={previewImage.src}
-					fileName={previewImage.fileName}
-					onClose={() => setPreviewImage(null)}
-				/>
-			) : null}
-		</>
+			<div className={styles.bottomRow}>
+				<div className={styles.leftActions}>{leftActions}</div>
+				<div className={styles.rightActions}>
+					{rightActions}
+					<ComposerTooltip title={sendButtonTitle}>{sendButton}</ComposerTooltip>
+				</div>
+			</div>
+		</ComposerSurface>
 	);
 }

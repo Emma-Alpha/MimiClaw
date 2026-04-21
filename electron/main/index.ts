@@ -36,7 +36,7 @@ import { isInstallingUpdate, isQuitting, setInstallingUpdate, setQuitting } from
 import { applyProxySettings } from './proxy';
 import { syncLaunchAtStartupSettingFromStore } from './launch-at-startup';
 import { syncPetWindowFromSettings, getPetWindow } from './pet-window';
-import { getMiniChatWindow, forwardDroppedPathToMiniChat, ensureMiniChatWindowForDroppedPath } from './mini-chat-window';
+import { getCodeChatWindow, forwardDroppedPathToCodeChat, ensureCodeChatWindowForDroppedPath } from './code-chat-window';
 import { registerPetRuntime } from './pet-runtime';
 import { startVoiceShortcutMonitor, stopVoiceShortcutMonitor } from './voice-shortcut';
 import {
@@ -555,29 +555,29 @@ function extractOpenedPaths(argv: string[]): string[] {
   return results;
 }
 
-async function routePathToMiniChat(candidate: string): Promise<boolean> {
+async function routePathToCodeChat(candidate: string): Promise<boolean> {
   const normalizedPath = normalizeOpenedPath(candidate);
   if (!normalizedPath) {
     return false;
   }
 
-  const miniChatWindow = getMiniChatWindow();
-  if (miniChatWindow) {
-    miniChatWindow.focus();
-    return forwardDroppedPathToMiniChat(`file://${encodeURI(normalizedPath)}`);
+  const codeChatWindow = getCodeChatWindow();
+  if (codeChatWindow) {
+    codeChatWindow.focus();
+    return forwardDroppedPathToCodeChat(`file://${encodeURI(normalizedPath)}`);
   }
 
-  await ensureMiniChatWindowForDroppedPath(normalizedPath);
+  await ensureCodeChatWindowForDroppedPath(normalizedPath);
   return true;
 }
 
-function closeNonMiniChatOwnerWindow(contents: Electron.WebContents): void {
-  const miniChatWindow = getMiniChatWindow();
+function closeNonCodeChatOwnerWindow(contents: Electron.WebContents): void {
+  const codeChatWindow = getCodeChatWindow();
   const ownerWindow = BrowserWindow.fromWebContents(contents);
   if (!ownerWindow || ownerWindow.isDestroyed()) {
     return;
   }
-  if (miniChatWindow && ownerWindow === miniChatWindow) {
+  if (codeChatWindow && ownerWindow === codeChatWindow) {
     return;
   }
   ownerWindow.close();
@@ -769,8 +769,8 @@ async function initialize(): Promise<void> {
         return;
       }
 
-      void routePathToMiniChat(normalizedPath).catch((error) => {
-        logger.warn(`Failed to route dropped file path "${normalizedPath}" to mini chat:`, error);
+      void routePathToCodeChat(normalizedPath).catch((error) => {
+        logger.warn(`Failed to route dropped file path "${normalizedPath}" to code chat:`, error);
       });
       callback({ cancel: true });
     },
@@ -900,7 +900,7 @@ async function initialize(): Promise<void> {
 
   codeAgentManager.on('status', (status) => {
     hostEventBus.emit('code-agent:status', status);
-    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    const wins = [mainWindow, getCodeChatWindow(), getPetWindow()];
     for (const win of wins) {
       if (win && !win.isDestroyed()) {
         win.webContents.send('code-agent:status', status);
@@ -911,7 +911,7 @@ async function initialize(): Promise<void> {
   codeAgentManager.on('error', (error) => {
     const payload = { message: error instanceof Error ? error.message : String(error) };
     hostEventBus.emit('code-agent:error', payload);
-    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    const wins = [mainWindow, getCodeChatWindow(), getPetWindow()];
     for (const win of wins) {
       if (win && !win.isDestroyed()) {
         win.webContents.send('code-agent:error', payload);
@@ -925,7 +925,7 @@ async function initialize(): Promise<void> {
 
   codeAgentManager.on('exit', (payload) => {
     hostEventBus.emit('code-agent:exit', payload);
-    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    const wins = [mainWindow, getCodeChatWindow(), getPetWindow()];
     for (const win of wins) {
       if (win && !win.isDestroyed()) {
         win.webContents.send('code-agent:exit', payload);
@@ -936,7 +936,7 @@ async function initialize(): Promise<void> {
   codeAgentManager.on('run:started', (payload) => {
     recordUnifiedCodeRunStarted(payload);
     hostEventBus.emit('code-agent:run-started', payload);
-    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    const wins = [mainWindow, getCodeChatWindow(), getPetWindow()];
     for (const win of wins) {
       if (win && !win.isDestroyed()) {
         win.webContents.send('code-agent:run-started', payload);
@@ -947,7 +947,7 @@ async function initialize(): Promise<void> {
   codeAgentManager.on('run:completed', (payload) => {
     recordUnifiedCodeRunFinished();
     hostEventBus.emit('code-agent:run-completed', payload);
-    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    const wins = [mainWindow, getCodeChatWindow(), getPetWindow()];
     for (const win of wins) {
       if (win && !win.isDestroyed()) {
         win.webContents.send('code-agent:run-completed', payload);
@@ -958,7 +958,7 @@ async function initialize(): Promise<void> {
   codeAgentManager.on('run:failed', (payload) => {
     recordUnifiedCodeRunFinished();
     hostEventBus.emit('code-agent:run-failed', payload);
-    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    const wins = [mainWindow, getCodeChatWindow(), getPetWindow()];
     for (const win of wins) {
       if (win && !win.isDestroyed()) {
         win.webContents.send('code-agent:run-failed', payload);
@@ -967,7 +967,7 @@ async function initialize(): Promise<void> {
   });
 
   codeAgentManager.on('run:token', (payload) => {
-    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    const wins = [mainWindow, getCodeChatWindow(), getPetWindow()];
     for (const win of wins) {
       if (win && !win.isDestroyed()) {
         win.webContents.send('code-agent:token', payload);
@@ -977,7 +977,7 @@ async function initialize(): Promise<void> {
 
   codeAgentManager.on('run:activity', (payload) => {
     recordUnifiedCodeActivity(payload as { toolName?: string; inputSummary?: string });
-    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    const wins = [mainWindow, getCodeChatWindow(), getPetWindow()];
     for (const win of wins) {
       if (win && !win.isDestroyed()) {
         win.webContents.send('code-agent:activity', payload);
@@ -986,7 +986,7 @@ async function initialize(): Promise<void> {
   });
 
   codeAgentManager.on('run:tool-result', (payload) => {
-    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    const wins = [mainWindow, getCodeChatWindow(), getPetWindow()];
     for (const win of wins) {
       if (win && !win.isDestroyed()) {
         win.webContents.send('code-agent:tool-result', payload);
@@ -995,7 +995,7 @@ async function initialize(): Promise<void> {
   });
 
   codeAgentManager.on('run:permission-request', (payload) => {
-    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    const wins = [mainWindow, getCodeChatWindow(), getPetWindow()];
     for (const win of wins) {
       if (win && !win.isDestroyed()) {
         win.webContents.send('code-agent:permission-request', payload);
@@ -1004,7 +1004,7 @@ async function initialize(): Promise<void> {
   });
 
   codeAgentManager.on('run:sdk-message', (payload) => {
-    const wins = [mainWindow, getMiniChatWindow(), getPetWindow()];
+    const wins = [mainWindow, getCodeChatWindow(), getPetWindow()];
     for (const win of wins) {
       if (win && !win.isDestroyed()) {
         win.webContents.send('code-agent:sdk-message', payload);
@@ -1170,8 +1170,8 @@ if (gotTheLock) {
 
   app.on('open-file', (event, filePath) => {
     event.preventDefault();
-    void routePathToMiniChat(filePath).catch((error) => {
-      logger.warn(`Failed to route open-file path "${filePath}" to mini chat:`, error);
+    void routePathToCodeChat(filePath).catch((error) => {
+      logger.warn(`Failed to route open-file path "${filePath}" to code chat:`, error);
     });
   });
 
@@ -1185,8 +1185,8 @@ if (gotTheLock) {
 
     const openedPaths = extractOpenedPaths(argv);
     for (const openedPath of openedPaths) {
-      void routePathToMiniChat(openedPath).catch((error) => {
-        logger.warn(`Failed to route second-instance path "${openedPath}" to mini chat:`, error);
+      void routePathToCodeChat(openedPath).catch((error) => {
+        logger.warn(`Failed to route second-instance path "${openedPath}" to code chat:`, error);
       });
     }
 
@@ -1215,9 +1215,9 @@ if (gotTheLock) {
       if (navigationUrl.startsWith('file://')) {
         if (!navigationUrl.includes('index.html')) {
           navEvent.preventDefault();
-          closeNonMiniChatOwnerWindow(contents);
-          void routePathToMiniChat(navigationUrl).catch((error) => {
-            logger.warn(`Failed to route navigation drop URL "${navigationUrl}" to mini chat:`, error);
+          closeNonCodeChatOwnerWindow(contents);
+          void routePathToCodeChat(navigationUrl).catch((error) => {
+            logger.warn(`Failed to route navigation drop URL "${navigationUrl}" to code chat:`, error);
           });
           logger.debug(`[App] Prevented navigation to dropped file: ${navigationUrl}`);
         }
@@ -1227,8 +1227,8 @@ if (gotTheLock) {
     contents.on('did-fail-provisional-load', (e, code, desc, url, isMainFrame) => {
       console.log(`[App DEBUG] did-fail-provisional-load globally: code=${code}, url=${url}, isMainFrame=${isMainFrame}`);
       if (isMainFrame && url.startsWith('file://') && !url.includes('index.html')) {
-        closeNonMiniChatOwnerWindow(contents);
-        void routePathToMiniChat(url).catch((error) => {
+        closeNonCodeChatOwnerWindow(contents);
+        void routePathToCodeChat(url).catch((error) => {
           logger.warn(`Failed to recover from did-fail-provisional-load URL "${url}":`, error);
         });
       }
@@ -1237,8 +1237,8 @@ if (gotTheLock) {
     contents.on('did-fail-load', (e, code, desc, url, isMainFrame) => {
       console.log(`[App DEBUG] did-fail-load globally: code=${code}, url=${url}, isMainFrame=${isMainFrame}`);
       if (isMainFrame && url.startsWith('file://') && !url.includes('index.html')) {
-        closeNonMiniChatOwnerWindow(contents);
-        void routePathToMiniChat(url).catch((error) => {
+        closeNonCodeChatOwnerWindow(contents);
+        void routePathToCodeChat(url).catch((error) => {
           logger.warn(`Failed to recover from did-fail-load URL "${url}":`, error);
         });
       }

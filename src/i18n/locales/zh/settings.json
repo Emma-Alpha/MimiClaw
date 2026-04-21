@@ -121,7 +121,7 @@
   },
   "speech": {
     "title": "火山引擎 ASR",
-    "description": "悬浮宠物会把麦克风音频实时推送到火山引擎流式语音识别，并直接把文本发送进 Mini Chat。",
+    "description": "悬浮宠物会把麦克风音频实时推送到火山引擎流式语音识别，并直接把文本发送进 Code Chat。",
     "loading": "读取中",
     "configured": "已配置",
     "missing": "未配置",

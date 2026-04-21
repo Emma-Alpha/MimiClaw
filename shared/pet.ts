@@ -27,7 +27,7 @@ export interface PetRecordingCommandPayload {
   action: PetRecordingCommandAction;
 }
 
-export interface PetMiniChatSeedAttachment {
+export interface PetCodeChatSeedAttachment {
   id: string;
   fileName: string;
   mimeType: string;
@@ -38,9 +38,9 @@ export interface PetMiniChatSeedAttachment {
   error?: string;
 }
 
-export interface PetMiniChatSeed {
+export interface PetCodeChatSeed {
   text: string;
-  attachments?: PetMiniChatSeedAttachment[];
+  attachments?: PetCodeChatSeedAttachment[];
   autoSend?: boolean;
   target?: 'chat' | 'code';
   persistTarget?: boolean;

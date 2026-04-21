@@ -52,6 +52,7 @@ import {
 import {
 	checkUvInstalled,
 	installUv,
+	setupClaudeCodeCli,
 	setupManagedPython,
 } from "../utils/uv-setup";
 import {
@@ -100,13 +101,13 @@ import {
 	pushPetTerminalLine,
 } from "./pet-runtime";
 import {
-	toggleMiniChatWindow,
-	closeMiniChatWindow,
-	openMiniChatWithMessage,
-	openMiniChatWithPayload,
+	toggleCodeChatWindow,
+	closeCodeChatWindow,
+	openCodeChatWithMessage,
+	openCodeChatWithPayload,
 	consumePendingInitialMessage,
-	openMiniChatDevTools,
-} from "./mini-chat-window";
+	openCodeChatDevTools,
+} from "./code-chat-window";
 import { openPetCompanionWindow } from "./pet-companion-window";
 import { getPetWindow } from "./pet-window";
 import {
@@ -115,7 +116,7 @@ import {
 	updatePetBubbleWindowHeight,
 } from "./pet-bubble-window";
 import {
-	type PetMiniChatSeed,
+	type PetCodeChatSeed,
 	type PetRecordingCommandAction,
 	type PetUiActivity,
 } from "../../shared/pet";
@@ -565,9 +566,9 @@ function registerPetHandlers(): void {
 			const language = resolvePetMenuLanguage(payload?.language);
 			const isDevPetMenu = Boolean(process.env.VITE_DEV_SERVER_URL);
 
-			const openMiniChatLabels = {
+			const openCodeChatLabels = {
 				zh: "迷你对话",
-				en: "Open Mini Chat",
+				en: "Open Code Chat",
 				ja: "ミニチャットを開く",
 			} as const;
 			const codeAssistantLabels = {
@@ -595,18 +596,18 @@ function registerPetHandlers(): void {
 				en: "Attributes",
 				ja: "属性パネル",
 			} as const;
-			const openMiniChatDevToolsLabels = {
-				zh: "打开调试 MiniChat（代码助手）窗口",
-				en: "Open MiniChat (Code Assistant) DevTools",
-				ja: "MiniChat（コードアシスタント）の DevTools を開く",
+			const openCodeChatDevToolsLabels = {
+				zh: "打开调试 CodeChat（代码助手）窗口",
+				en: "Open CodeChat (Code Assistant) DevTools",
+				ja: "CodeChat（コードアシスタント）の DevTools を開く",
 			} as const;
 
 			const menu = Menu.buildFromTemplate([
 				{
-					label: openMiniChatLabels[language],
+					label: openCodeChatLabels[language],
 					click: () => {
-						runPetMenuAction("open-mini-chat", async () => {
-							await toggleMiniChatWindow();
+						runPetMenuAction("open-code-chat", async () => {
+							await toggleCodeChatWindow();
 						});
 					},
 				},
@@ -615,7 +616,7 @@ function registerPetHandlers(): void {
 					click: () => {
 						runPetMenuAction("open-code-assistant", async () => {
 							await recordPetCompanionUsage("code_assistant");
-							await openMiniChatWithPayload({
+							await openCodeChatWithPayload({
 								text: "",
 								autoSend: false,
 								target: "code",
@@ -627,10 +628,10 @@ function registerPetHandlers(): void {
 				...(isDevPetMenu
 					? [
 							{
-								label: openMiniChatDevToolsLabels[language],
+								label: openCodeChatDevToolsLabels[language],
 								click: () => {
-									runPetMenuAction("open-mini-chat-devtools", async () => {
-										await openMiniChatDevTools();
+									runPetMenuAction("open-code-chat-devtools", async () => {
+										await openCodeChatDevTools();
 									});
 								},
 							},
@@ -725,12 +726,12 @@ function registerPetHandlers(): void {
 
 	ipcMain.handle("pet:toggleQuickChat", async () => {
 		await recordPetCompanionUsage("mini_chat");
-		await toggleMiniChatWindow();
+		await toggleCodeChatWindow();
 		return { success: true };
 	});
 
 	ipcMain.handle("pet:closeQuickChat", () => {
-		closeMiniChatWindow();
+		closeCodeChatWindow();
 		return { success: true };
 	});
 
@@ -738,16 +739,16 @@ function registerPetHandlers(): void {
 		"pet:openQuickChatWithMessage",
 		async (_event, text: string) => {
 			await recordPetCompanionUsage("mini_chat");
-			await openMiniChatWithMessage(text);
+			await openCodeChatWithMessage(text);
 			return { success: true };
 		},
 	);
 
 	ipcMain.handle(
 		"pet:openQuickChatWithPayload",
-		async (_event, payload: PetMiniChatSeed) => {
+		async (_event, payload: PetCodeChatSeed) => {
 			await recordPetCompanionUsage("mini_chat");
-			await openMiniChatWithPayload(payload);
+			await openCodeChatWithPayload(payload);
 			return { success: true };
 		},
 	);
@@ -2182,9 +2183,10 @@ function registerUvHandlers(): void {
 			}
 			// Always run python setup to ensure it exists in uv's cache
 			await setupManagedPython();
+			await setupClaudeCodeCli();
 			return { success: true };
 		} catch (error) {
-			console.error("Failed to setup uv/python:", error);
+			console.error("Failed to setup uv/python/claude:", error);
 			return { success: false, error: String(error) };
 		}
 	});

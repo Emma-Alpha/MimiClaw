@@ -43,7 +43,7 @@ const FALLBACK_RUNTIME_STATE: PetRuntimeState = {
 const DRAG_THRESHOLD_PX = 6;
 /** Minimum ms between IPC window-move calls (~60 fps). */
 const MOVE_THROTTLE_MS = 16;
-/** Minimum ms between two toggleMiniChat calls to prevent double-click ghost windows. */
+/** Minimum ms between two toggleCodeChat calls to prevent double-click ghost windows. */
 const TOGGLE_DEBOUNCE_MS = 400;
 
 function PetThinkingBubble({ label, styles }: { label: string; styles: Record<string, string> }) {

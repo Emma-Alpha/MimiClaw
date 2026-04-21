@@ -121,7 +121,7 @@
   },
   "speech": {
     "title": "Volcengine ASR",
-    "description": "The floating pet streams microphone audio to Volcengine realtime ASR and sends recognized text directly into Mini Chat.",
+    "description": "The floating pet streams microphone audio to Volcengine realtime ASR and sends recognized text directly into Code Chat.",
     "loading": "Loading",
     "configured": "Configured",
     "missing": "Missing",
