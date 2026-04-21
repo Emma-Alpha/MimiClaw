@@ -16,7 +16,8 @@ import {
 	CodeModeChatInput,
 	type CodeModeChatInputProps,
 } from "./CodeModeChatInput";
-import { type FileAttachment, readFileAsBase64 } from "../lib/composer-helpers";
+import { type FileAttachment } from "../lib/composer-helpers";
+import { useChatInputAttachments } from "../hooks/useChatInputAttachments";
 import { hostApiFetch } from "@/lib/host-api";
 import { invokeIpc } from "@/lib/api-client";
 import {
@@ -320,119 +321,9 @@ function MainChatInputInner({
 
 	// ── File staging ──────────────────────────────────────────────
 
-	const pickFiles = useCallback(async () => {
-		try {
-			const result = (await invokeIpc("dialog:open", {
-				properties: ["openFile", "multiSelections"],
-			})) as { canceled: boolean; filePaths?: string[] };
-			if (result.canceled || !result.filePaths?.length) return;
-
-			const tempIds: string[] = [];
-			for (const fp of result.filePaths) {
-				const tempId = crypto.randomUUID();
-				tempIds.push(tempId);
-				const fileName = fp.split(/[\\/]/).pop() || "file";
-				setAttachments((prev) => [
-					...prev,
-					{
-						id: tempId,
-						fileName,
-						mimeType: "",
-						fileSize: 0,
-						stagedPath: "",
-						preview: null,
-						status: "staging",
-					},
-				]);
-			}
-
-			const staged = await hostApiFetch<
-				Array<{
-					id: string;
-					fileName: string;
-					mimeType: string;
-					fileSize: number;
-					stagedPath: string;
-					preview: string | null;
-				}>
-			>("/api/files/stage-paths", {
-				method: "POST",
-				body: JSON.stringify({ filePaths: result.filePaths }),
-			});
-
-			setAttachments((prev) => {
-				let updated = [...prev];
-				for (let i = 0; i < tempIds.length; i++) {
-					const data = staged[i];
-					updated = updated.map((a) =>
-						a.id === tempIds[i]
-							? data
-								? { ...data, status: "ready" as const }
-								: { ...a, status: "error" as const, error: "Staging failed" }
-							: a,
-					);
-				}
-				return updated;
-			});
-		} catch (err) {
-			setAttachments((prev) =>
-				prev.map((a) =>
-					a.status === "staging"
-						? { ...a, status: "error" as const, error: String(err) }
-						: a,
-				),
-			);
-		}
-	}, []);
-
-	const stageBufferFiles = useCallback(async (files: globalThis.File[]) => {
-		for (const file of files) {
-			const tempId = crypto.randomUUID();
-			setAttachments((prev) => [
-				...prev,
-				{
-					id: tempId,
-					fileName: file.name,
-					mimeType: file.type || "application/octet-stream",
-					fileSize: file.size,
-					stagedPath: "",
-					preview: null,
-					status: "staging",
-				},
-			]);
-			try {
-				const base64 = await readFileAsBase64(file);
-				const staged = await hostApiFetch<{
-					id: string;
-					fileName: string;
-					mimeType: string;
-					fileSize: number;
-					stagedPath: string;
-					preview: string | null;
-				}>("/api/files/stage-buffer", {
-					method: "POST",
-					body: JSON.stringify({
-						base64,
-						fileName: file.name,
-						mimeType: file.type || "application/octet-stream",
-					}),
-				});
-				setAttachments((prev) =>
-					prev.map((a) =>
-						a.id === tempId ? { ...staged, status: "ready" as const } : a,
-					),
-				);
-			} catch (err) {
-				setAttachments((prev) =>
-					prev.map((a) =>
-						a.id === tempId
-							? { ...a, status: "error" as const, error: String(err) }
-							: a,
-					),
-				);
-			}
-		}
-	}, []);
+	const { pickFiles, stageBufferFiles } = useChatInputAttachments({
+		setAttachments,
+	});
 
 	// ── Audio Recording ──────────────────────────────────────────────
 

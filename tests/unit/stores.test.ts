@@ -2,8 +2,9 @@
  * Zustand Stores Tests
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { useSettingsStore } from '@/stores/settings';
+import { useSettingsStore, preferenceSelectors, userGeneralSettingsSelectors } from '@/stores/settings';
 import { useGatewayStore } from '@/stores/gateway';
+import { aiModelSelectors, aiProviderSelectors, useProviderStore } from '@/stores/providers';
 
 describe('Settings Store', () => {
   beforeEach(() => {
@@ -90,6 +91,94 @@ describe('Settings Store', () => {
         method: 'PUT',
       }),
     );
+  });
+});
+
+describe('Provider selectors', () => {
+  beforeEach(() => {
+    useProviderStore.setState({
+      statuses: [],
+      vendors: [],
+      defaultAccountId: null,
+      loading: false,
+      error: null,
+      accounts: [
+        {
+          id: 'openai-main',
+          vendorId: 'openai',
+          label: 'OpenAI Main',
+          authMode: 'api_key',
+          enabled: true,
+          isDefault: true,
+          model: 'gpt-5',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'ollama-local',
+          vendorId: 'ollama',
+          label: 'Ollama',
+          authMode: 'local',
+          enabled: true,
+          isDefault: false,
+          model: 'qwen3:latest',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+  });
+
+  it('derives model and provider selector data', () => {
+    const state = useProviderStore.getState();
+
+    expect(aiModelSelectors.modelById('openai-main')(state)).toMatchObject({
+      id: 'openai-main',
+      providerId: 'openai',
+      model: 'gpt-5',
+    });
+    expect(aiModelSelectors.supportsSearch('openai-main')(state)).toBe(true);
+    expect(aiModelSelectors.supportsFunctionCalling('ollama-local')(state)).toBe(false);
+    expect(aiProviderSelectors.enabledProviders(state)).toHaveLength(2);
+    expect(aiProviderSelectors.fcSearchModels(state)).toHaveLength(1);
+  });
+});
+
+describe('Settings selectors', () => {
+  beforeEach(() => {
+    useSettingsStore.setState({
+      theme: 'system',
+      language: 'en',
+      sidebarCollapsed: false,
+      devModeUnlocked: false,
+      petEnabled: true,
+      gatewayAutoStart: true,
+      gatewayPort: 18789,
+      autoCheckUpdate: true,
+      autoDownloadUpdate: false,
+      startMinimized: false,
+      launchAtStartup: false,
+      updateChannel: 'stable',
+      preference: {
+        useCmdEnterToSend: true,
+        isDevMode: false,
+        autoApproveTools: false,
+        hotkeys: { saveTopic: 'Mod+Shift+S' },
+      },
+      labPreferences: {
+        memory: false,
+        intervention: true,
+        promptTransform: false,
+        stt: true,
+      },
+    });
+  });
+
+  it('reads preference selectors', () => {
+    const state = useSettingsStore.getState();
+    expect(preferenceSelectors.useCmdEnterToSend(state)).toBe(true);
+    expect(preferenceSelectors.hotkeyById('saveTopic')(state)).toBe('Mod+Shift+S');
+    expect(userGeneralSettingsSelectors.config(state)).toEqual({ isDevMode: false });
   });
 });
 

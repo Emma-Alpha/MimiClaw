@@ -1,0 +1,148 @@
+import { SIDEBAR_DEFAULT_WIDTH } from '@/lib/sidebar-layout';
+import { DEFAULT_CODE_AGENT_RUNTIME_CONFIG } from '../../../shared/code-agent';
+import {
+  DEFAULT_APP_THEME_MODE,
+  DEFAULT_CHAT_FONT_SIZE,
+  DEFAULT_NEUTRAL_COLOR,
+} from '../../../shared/appearance';
+import { resolveSupportedLanguage } from '../../../shared/language';
+import { DEFAULT_PET_ANIMATION } from '../../../shared/pet';
+import type { MainProcessSettingsPatch, SettingsStoreState } from './types';
+
+export const initialSettingsState: SettingsStoreState = {
+  theme: DEFAULT_APP_THEME_MODE,
+  language: resolveSupportedLanguage(typeof navigator !== 'undefined' ? navigator.language : undefined),
+  primaryColor: undefined,
+  neutralColor: DEFAULT_NEUTRAL_COLOR,
+  translucentSidebar: false,
+  fontSize: DEFAULT_CHAT_FONT_SIZE,
+  highlighterTheme: 'lobe-theme',
+  mermaidTheme: 'lobe-theme',
+  transitionMode: 'smooth',
+  animationMode: 'agile',
+  contextMenuMode: 'default',
+  responseLanguage: '',
+  enableAutoScrollOnStreaming: true,
+  startMinimized: false,
+  launchAtStartup: false,
+  telemetryEnabled: true,
+  petEnabled: true,
+  petAnimation: DEFAULT_PET_ANIMATION,
+  petCompanionSeed: '',
+  petCompanion: null,
+  xiaojiuEnabled: false,
+  jizhiEnabled: false,
+  machineId: '',
+  preference: {
+    useCmdEnterToSend: false,
+    isDevMode: false,
+    autoApproveTools: false,
+    hotkeys: {
+      saveTopic: 'Mod+Shift+S',
+    },
+  },
+  labPreferences: {
+    memory: false,
+    intervention: false,
+    promptTransform: false,
+    stt: true,
+  },
+  gatewayAutoStart: true,
+  gatewayPort: 18789,
+  remoteGatewayUrl: '',
+  remoteGatewayToken: '',
+  proxyEnabled: false,
+  proxyServer: '',
+  proxyHttpServer: '',
+  proxyHttpsServer: '',
+  proxyAllServer: '',
+  proxyBypassRules: '<local>;localhost;127.0.0.1;::1',
+  codeAgent: { ...DEFAULT_CODE_AGENT_RUNTIME_CONFIG },
+  updateChannel: 'stable',
+  autoCheckUpdate: true,
+  autoDownloadUpdate: false,
+  sidebarCollapsed: false,
+  sidebarFolderExpanded: {
+    chat: true,
+    cli: true,
+    thread: true,
+    openclaw: true,
+    realtimeVoice: true,
+    jizhi: true,
+    xiaojiu: true,
+    voice: true,
+  },
+  sidebarThreadWorkspaces: [],
+  sidebarThreadWorkspaceExpanded: {},
+  sidebarActiveContext: {
+    kind: 'openclaw',
+    workspaceId: null,
+  },
+  sidebarBetaEnabled: false,
+  sidebarWidth: SIDEBAR_DEFAULT_WIDTH,
+  sidebarProjects: [],
+  sidebarProjectExpanded: {
+    'system-inbox': true,
+  },
+  sidebarThreadProjectMap: {},
+  sidebarThreadFirstSeenAt: {},
+  devModeUnlocked: false,
+  setupComplete: false,
+  cloudLoggedIn: false,
+  cloudBootstrapped: false,
+  cloudUserId: null,
+  cloudWorkspaceId: null,
+};
+
+export const MAIN_PROCESS_SETTINGS_KEYS = [
+  'theme',
+  'language',
+  'primaryColor',
+  'neutralColor',
+  'translucentSidebar',
+  'fontSize',
+  'highlighterTheme',
+  'mermaidTheme',
+  'transitionMode',
+  'animationMode',
+  'contextMenuMode',
+  'responseLanguage',
+  'enableAutoScrollOnStreaming',
+  'startMinimized',
+  'launchAtStartup',
+  'telemetryEnabled',
+  'petEnabled',
+  'petAnimation',
+  'petCompanionSeed',
+  'petCompanion',
+  'xiaojiuEnabled',
+  'jizhiEnabled',
+  'machineId',
+  'gatewayAutoStart',
+  'gatewayPort',
+  'remoteGatewayUrl',
+  'remoteGatewayToken',
+  'proxyEnabled',
+  'proxyServer',
+  'proxyHttpServer',
+  'proxyHttpsServer',
+  'proxyAllServer',
+  'proxyBypassRules',
+  'codeAgent',
+  'updateChannel',
+  'autoCheckUpdate',
+  'autoDownloadUpdate',
+  'sidebarCollapsed',
+  'sidebarThreadWorkspaces',
+  'sidebarThreadWorkspaceExpanded',
+  'devModeUnlocked',
+] as const;
+
+export function pickMainProcessSettings(raw: Record<string, unknown>): MainProcessSettingsPatch {
+  const patch: MainProcessSettingsPatch = {};
+  for (const key of MAIN_PROCESS_SETTINGS_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(raw, key)) continue;
+    (patch as Record<string, unknown>)[key] = raw[key];
+  }
+  return patch;
+}

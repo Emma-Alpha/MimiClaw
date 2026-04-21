@@ -57,6 +57,59 @@ export interface ToolStatus {
   updatedAt: number;
 }
 
+export interface ChatTopic {
+  id: string;
+  sessionId: string;
+  agentId: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  summary?: string;
+}
+
+export interface InterventionItem {
+  id: string;
+  toolCallId?: string;
+  toolName: string;
+  requestArgs?: unknown;
+  sessionKey: string;
+  createdAt: number;
+}
+
+export interface QueuedMessage {
+  id: string;
+  message: string;
+  attachments?: Array<{
+    fileName: string;
+    mimeType: string;
+    fileSize: number;
+    stagedPath: string;
+    preview: string | null;
+  }>;
+  targetAgentId?: string | null;
+  createdAt: number;
+}
+
+export type TopicDispatch =
+  | { type: 'addTopic'; value: ChatTopic }
+  | { type: 'deleteTopic'; id: string }
+  | { type: 'setCurrentTopic'; id: string | null }
+  | {
+    type: 'updateTopic';
+    id: string;
+    value: Partial<Pick<ChatTopic, 'title' | 'summary' | 'updatedAt'>>;
+  };
+
+export type InterventionDispatch =
+  | { type: 'setInterventions'; value: InterventionItem[] }
+  | { type: 'removeIntervention'; id: string }
+  | { type: 'upsertIntervention'; value: InterventionItem };
+
+export type QueueDispatch =
+  | { type: 'setQueue'; sessionKey: string; value: QueuedMessage[] }
+  | { type: 'enqueue'; sessionKey: string; value: QueuedMessage }
+  | { type: 'flushQueue'; sessionKey: string };
+
 export interface ChatState {
   // Messages
   messages: RawMessage[];
@@ -84,10 +137,22 @@ export interface ChatState {
   sessionLabels: Record<string, string>;
   /** Last message timestamp (ms) per session key, used for sorting */
   sessionLastActivity: Record<string, number>;
+  topicMap: Record<string, ChatTopic>;
+  currentTopicId: string | null;
+  pendingInterventions: InterventionItem[];
+  queuedMessages: Record<string, QueuedMessage[]>;
+  mode: 'chat' | 'agent';
+  mainInputEditor: unknown | null;
 
   // Thinking
   showThinking: boolean;
   thinkingLevel: string | null;
+
+  // Internal dispatch / helpers
+  internal_dispatchTopic: (payload: TopicDispatch, source?: string) => void;
+  internal_dispatchIntervention: (payload: InterventionDispatch, source?: string) => void;
+  internal_dispatchQueue: (payload: QueueDispatch, source?: string) => void;
+  internal_createTopic: (sessionId: string, title?: string) => string;
 
   // Actions
   loadSessions: () => Promise<void>;
@@ -112,6 +177,18 @@ export interface ChatState {
   toggleThinking: () => void;
   refresh: () => Promise<void>;
   clearError: () => void;
+
+  createTopic: (sessionId: string, title?: string) => string;
+  switchTopic: (topicId: string | null) => void;
+  summarizeTopic: (topicId: string, summary?: string) => void;
+  deleteTopic: (topicId: string) => void;
+  clearCurrentTopic: (topicId?: string | null) => void;
+  approveIntervention: (id: string) => void;
+  rejectIntervention: (id: string) => void;
+  enqueueMessage: (sessionKey: string, message: Omit<QueuedMessage, 'id' | 'createdAt'>) => string;
+  flushQueue: (sessionKey: string) => QueuedMessage[];
+  setMainInputEditor: (editor: unknown | null) => void;
+  setChatMode: (mode: 'chat' | 'agent') => void;
 }
 
 export const DEFAULT_CANONICAL_PREFIX = 'agent:main';

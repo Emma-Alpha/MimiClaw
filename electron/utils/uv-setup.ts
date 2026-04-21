@@ -1,6 +1,8 @@
 import { app } from 'electron';
 import { execSync, spawn } from 'child_process';
 import { existsSync } from 'fs';
+import { mkdir } from 'fs/promises';
+import { homedir } from 'os';
 import { join } from 'path';
 import { getUvMirrorEnv } from './uv-env';
 import { logger } from './logger';
@@ -225,4 +227,10 @@ export async function setupManagedPython(): Promise<void> {
   } catch (err) {
     logger.warn('Could not determine Python path after install:', err);
   }
+}
+
+export async function setupClaudeCodeCli(): Promise<void> {
+  const claudeDir = join(homedir(), '.claude');
+  await mkdir(claudeDir, { recursive: true });
+  logger.info(`Ensured Claude Code directory exists at: ${claudeDir}`);
 }

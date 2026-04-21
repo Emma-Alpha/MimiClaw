@@ -18,10 +18,16 @@ const WEBVIEW_SITE_CONFIG = {
 	},
 } as const satisfies Record<string, WebviewSiteConfig>;
 
+type WebviewSite = keyof typeof WEBVIEW_SITE_CONFIG;
+
+function isWebviewSite(value: string): value is WebviewSite {
+	return value in WEBVIEW_SITE_CONFIG;
+}
+
 export function RemoteWebviewPage() {
 	const { styles } = useStyles();
 	const { site } = useParams<{ site?: string }>();
-	const config = site ? WEBVIEW_SITE_CONFIG[site] : undefined;
+	const config = site && isWebviewSite(site) ? WEBVIEW_SITE_CONFIG[site] : undefined;
 
 	if (!config) {
 		return <Navigate to="/chat/openclaw" replace />;
