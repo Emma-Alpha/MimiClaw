@@ -36,7 +36,7 @@ import { isInstallingUpdate, isQuitting, setInstallingUpdate, setQuitting } from
 import { applyProxySettings } from './proxy';
 import { syncLaunchAtStartupSettingFromStore } from './launch-at-startup';
 import { syncPetWindowFromSettings, getPetWindow } from './pet-window';
-import { getCodeChatWindow, forwardDroppedPathToCodeChat, ensureCodeChatWindowForDroppedPath } from './code-chat-window';
+import { getCodeChatWindow, forwardDroppedPathToCodeChat, ensureCodeChatWindowForDroppedPath } from './code-assistant-launcher';
 import { registerPetRuntime } from './pet-runtime';
 import { startVoiceShortcutMonitor, stopVoiceShortcutMonitor } from './voice-shortcut';
 import {

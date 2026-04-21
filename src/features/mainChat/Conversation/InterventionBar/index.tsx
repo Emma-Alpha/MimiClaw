@@ -1,12 +1,12 @@
 import { ActionIcon, Alert, Flexbox } from '@lobehub/ui';
 import { Check, X } from 'lucide-react';
 import { useChatStore } from '@/stores/chat';
+import { dataSelectors, useConversationStore } from '../store';
 
 export function InterventionBar() {
   const currentSessionKey = useChatStore((s) => s.currentSessionKey);
-  const pendingInterventions = useChatStore((s) =>
-    s.pendingInterventions.filter((item) => item.sessionKey === currentSessionKey),
-  );
+  const pendingInterventions = useConversationStore(dataSelectors.pendingInterventions)
+    .filter((item) => item.sessionKey === currentSessionKey);
   const approveIntervention = useChatStore((s) => s.approveIntervention);
   const rejectIntervention = useChatStore((s) => s.rejectIntervention);
 

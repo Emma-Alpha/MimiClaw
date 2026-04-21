@@ -18,7 +18,7 @@ import { createStyles } from "antd-style";
 import { Button } from "antd";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Loader2, Send, Square, X, FileText, Film, Music, FileArchive, File as FileIcon } from "lucide-react";
-import type { UnifiedComposerPath } from "@/lib/unified-composer";
+import type { ComposerPath } from "@/lib/unified-composer";
 import {
 	CHAT_ACTION_BUTTON_SIZE,
 	CHAT_ACTION_ICON_SIZE,
@@ -64,8 +64,8 @@ interface ComposerBaseProps {
 	topActions?: ReactNode;
 	overlay?: ReactNode;
 	attachments?: FileAttachment[];
-	paths?: UnifiedComposerPath[];
-	onPathsChange?: (paths: UnifiedComposerPath[]) => void;
+	paths?: ComposerPath[];
+	onPathsChange?: (paths: ComposerPath[]) => void;
 	onRemoveAttachment?: (id: string) => void;
 	textareaProps?: TextareaExtraProps;
 	sendTexts?: SendTexts;
@@ -682,8 +682,8 @@ function FileIconComp({
 }
 
 function areComposerPathsEqual(
-	left: UnifiedComposerPath[],
-	right: UnifiedComposerPath[],
+	left: ComposerPath[],
+	right: ComposerPath[],
 ): boolean {
 	return (
 		left.length === right.length
@@ -1064,7 +1064,7 @@ export function ComposerBase({
 
 	const compactSendDisabled = loading ? !onStop : sendDisabled;
 	const sendButtonTitle = canStop ? sendTexts?.stop ?? "停止" : sendTexts?.send ?? "发送";
-	const handleComposerChange = (next: { text: string; paths: UnifiedComposerPath[] }) => {
+	const handleComposerChange = (next: { text: string; paths: ComposerPath[] }) => {
 		if (next.text !== value) {
 			onInput(next.text);
 		}

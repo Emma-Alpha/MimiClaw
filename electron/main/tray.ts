@@ -503,10 +503,10 @@ function openRuntimeThread(thread: UnifiedRuntimeThread): void {
 
   const sessionId = thread.sessionId?.trim();
   if (sessionId) {
-    openWindowAndNavigate(`/code-agent/quick-chat?sessionId=${encodeURIComponent(sessionId)}`);
+    openWindowAndNavigate(`/chat/code?sessionId=${encodeURIComponent(sessionId)}`);
     return;
   }
-  openWindowAndNavigate('/code-agent/quick-chat');
+  openWindowAndNavigate('/chat/code');
 }
 
 function gatewayStateLabel(state: UnifiedGatewayLifecycleState): string {

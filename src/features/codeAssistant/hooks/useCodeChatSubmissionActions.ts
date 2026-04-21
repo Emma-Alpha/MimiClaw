@@ -13,15 +13,14 @@ import {
 } from "@/lib/code-agent";
 import { invokeIpc, toUserMessage } from "@/lib/api-client";
 import {
-	mergeUnifiedComposerPaths,
+	mergeComposerPaths,
 	toCliSubmission,
 	toCodeChatSubmission,
-	type UnifiedComposerPath,
+	type ComposerPath,
 } from "@/lib/unified-composer";
 import { useChatStore } from "@/stores/chat";
 import { useSettingsStore } from "@/stores/settings";
 import { toast } from "sonner";
-import { applyResponseLanguageToPrompt } from "@/lib/unified-composer";
 import type {
 	CodeAgentImageAttachment,
 	CodeAgentStatus,
@@ -39,7 +38,7 @@ import { parseSubmissionIntent } from "../utils";
 type Params = {
 	input: string;
 	attachments: FileAttachment[];
-	droppedPaths: UnifiedComposerPath[];
+	droppedPaths: ComposerPath[];
 	selectedMode: CodeChatTarget | null;
 	persistentMode: CodeChatTarget | null;
 	isReady: boolean;
@@ -70,7 +69,6 @@ type Params = {
 			stagedPath: string;
 			preview: string | null;
 		}>,
-		targetAgentId?: string | null,
 	) => Promise<void>;
 	clearComposer: () => void;
 	activeSkillsRef: MutableRefObject<SlashOption[]>;
@@ -235,7 +233,7 @@ export function useCodeChatSubmissionActions({
 			rawText: string,
 			attachmentOverride?: PetCodeChatSeedAttachment[],
 			forcedTarget?: CodeChatTarget,
-			pathOverride?: UnifiedComposerPath[],
+			pathOverride?: ComposerPath[],
 		) => {
 			const parsedIntent = parseSubmissionIntent(rawText);
 			const target =
@@ -260,7 +258,7 @@ export function useCodeChatSubmissionActions({
 
 			const imageAttachments: CodeAgentImageAttachment[] = [];
 			const imagePreviews: MiniCodeMessageImagePreview[] = [];
-			const codeAttachmentPaths = readyAttachments.reduce<UnifiedComposerPath[]>(
+			const codeAttachmentPaths = readyAttachments.reduce<ComposerPath[]>(
 				(accumulator, attachment) => {
 					const absolutePath = attachment.stagedPath?.trim();
 					if (!absolutePath) return accumulator;
@@ -287,7 +285,7 @@ export function useCodeChatSubmissionActions({
 				},
 				[],
 			);
-			const mergedPathTags = mergeUnifiedComposerPaths(
+			const mergedPathTags = mergeComposerPaths(
 				effectivePaths,
 				codeAttachmentPaths,
 			);
@@ -318,7 +316,7 @@ export function useCodeChatSubmissionActions({
 				target === "code"
 					? toCliSubmission({
 							text: codeText,
-							paths: mergeUnifiedComposerPaths(
+							paths: mergeComposerPaths(
 								effectivePaths,
 								codeAttachmentPaths,
 							),
@@ -343,11 +341,7 @@ export function useCodeChatSubmissionActions({
 				chatSubmitInFlightRef.current = true;
 				clearComposer();
 				try {
-					const responseLanguage = useSettingsStore.getState().responseLanguage;
-					await sendMessage(
-						applyResponseLanguageToPrompt(prompt, responseLanguage),
-						readyAttachments,
-					);
+					await sendMessage(prompt, readyAttachments);
 					return true;
 				} finally {
 					chatSubmitInFlightRef.current = false;
@@ -361,17 +355,12 @@ export function useCodeChatSubmissionActions({
 				? JSON.parse(JSON.stringify(raw))
 				: undefined;
 			clearComposer();
-			const responseLanguage = useSettingsStore.getState().responseLanguage;
-			return runMiniCodeTask(
-				applyResponseLanguageToPrompt(prompt, responseLanguage),
-				imageAttachments,
-				{
+			return runMiniCodeTask(prompt, imageAttachments, {
 				imagePreviews,
 				pathTags: mergedPathTags,
 				displayText: rawText,
 				richContent: snapshotRichContent,
-				},
-			);
+			});
 		},
 		[
 			activeSkillsRef,

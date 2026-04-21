@@ -7,6 +7,7 @@ export type ChatInputActionKey =
   | 'typo'
   | 'params'
   | 'mainToken'
+  | 'portalToken'
   | 'promptTransform'
   | 'stt'
   | 'agentMode'

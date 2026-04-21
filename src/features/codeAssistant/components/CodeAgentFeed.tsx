@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Markdown } from "@lobehub/ui";
 import { createStyles } from "antd-style";
 import type { ToolActivityItem } from "../types";
+import { MessageMarkdown } from "@/components/MessageMarkdown";
 import { useEnhancedMarkdownProps } from "@/lib/markdown-enhancements";
 
 export type { ToolActivityItem };
@@ -253,7 +253,7 @@ export function CodeAgentFeed({
 					<>
 						{hasActivities ? <div className={styles.divider} /> : null}
 						<div className={styles.text}>
-							<Markdown variant="chat" headerMultiple={0} {...markdownProps}>{streamingText}</Markdown>
+							<MessageMarkdown markdownProps={markdownProps}>{streamingText}</MessageMarkdown>
 							{isRunning ? <span className={styles.cursor} /> : null}
 						</div>
 					</>

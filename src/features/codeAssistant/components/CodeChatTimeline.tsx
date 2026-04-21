@@ -1,7 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { VList, type VListHandle } from "virtua";
 import { OpenClaw, ClaudeCode } from "@lobehub/icons";
-import { Markdown } from "@lobehub/ui";
 import { ChatItem } from "@lobehub/ui/chat";
 import { useCodeChatStyles } from "../styles";
 import type { TimelineItem } from "../types";
@@ -13,6 +12,7 @@ import { StatusIndicator } from "./code-agent/StatusIndicator";
 import { TypingIndicator } from "./TypingIndicator";
 import { useFileReferenceMarkdownProps } from "./file-reference-markdown";
 import { BackBottomButton } from "@/components/common/BackBottomButton";
+import { MessageMarkdown } from "@/components/MessageMarkdown";
 import { UserMessage } from "@/features/mainChat/components/messages/UserMessage";
 import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/code-agent";
 import { useSettingsStore } from "@/stores/settings";
@@ -134,7 +134,7 @@ function CodeChatTimelineImpl({
 							text={text}
 							renderContent={() => (
 								<div className={styles.markdownBubble}>
-									<Markdown variant="chat" headerMultiple={0} {...markdownProps}>{text}</Markdown>
+									<MessageMarkdown markdownProps={markdownProps}>{text}</MessageMarkdown>
 								</div>
 							)}
 						/>
@@ -250,7 +250,7 @@ function CodeChatTimelineImpl({
 							text={streamingText}
 							renderContent={() => (
 								<div className={styles.markdownBubble}>
-									<Markdown variant="chat" headerMultiple={0} {...markdownProps}>{streamingText}</Markdown>
+									<MessageMarkdown markdownProps={markdownProps}>{streamingText}</MessageMarkdown>
 									<span className={styles.streamCursor} />
 								</div>
 							)}

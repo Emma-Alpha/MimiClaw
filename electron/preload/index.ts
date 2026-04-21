@@ -235,7 +235,6 @@ const electronAPI = {
         'pet:clipboard-changed',
         'voice:realtime-event',
         'quick-chat:initial-message',
-        'quick-chat:paths-dropped',
         'tray-runtime:state',
         'screenshot:capture',
         'skills:runtime-progress',

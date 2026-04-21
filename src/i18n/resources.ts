@@ -10,6 +10,7 @@ export const NAMESPACES = [
   'settings',
   'dashboard',
   'chat',
+  'chatInput',
   'channels',
   'agents',
   'plugins',

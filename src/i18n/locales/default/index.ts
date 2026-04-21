@@ -1,6 +1,7 @@
 import agents from '../zh/agents.json';
 import channels from '../zh/channels.json';
 import chat from '../zh/chat.json';
+import chatInput from '../zh/chatInput.json';
 import common from '../zh/common.json';
 import cron from '../zh/cron.json';
 import dashboard from '../zh/dashboard.json';
@@ -14,6 +15,7 @@ const defaultResources = {
   settings,
   dashboard,
   chat,
+  chatInput,
   channels,
   agents,
   plugins,

@@ -1,5 +1,5 @@
 import type { IEditor } from '@lobehub/editor';
-import { useMemo, useRef, type MutableRefObject } from 'react';
+import { useRef, useState, type MutableRefObject } from 'react';
 import type { ChatInputEditorApi, ChatInputEditorInstance, ChatInputTextareaAdapter } from '../types';
 
 function isRichEditor(instance: ChatInputEditorInstance | null): instance is IEditor {
@@ -31,76 +31,78 @@ export function useChatInputEditor(markdownRef: MutableRefObject<string>, setMar
   }>({
     instance: null,
   });
+  const [api] = useState<ChatInputEditorApi>(() => {
+    const getCurrentMarkdown = () => markdownRef.current;
+    const updateMarkdown = (next: string) => {
+      markdownRef.current = next;
+      setMarkdown(next);
+    };
 
-  const getCurrentMarkdown = () => markdownRef.current;
-  const updateMarkdown = (next: string) => {
-    markdownRef.current = next;
-    setMarkdown(next);
-  };
-
-
-  return useMemo<ChatInputEditorApi>(() => ({
-    focus: () => {
-      stateRef.current.instance?.focus?.();
-    },
-    clearContent: () => {
-      const instance = stateRef.current.instance;
-      updateMarkdown('');
-      if (isRichEditor(instance)) {
-        instance.setDocument('markdown', EMPTY_MARKDOWN_PLACEHOLDER);
-      }
-      if (isTextareaAdapter(instance)) {
-        instance.setValue?.('');
-      }
-      if (isTextareaElement(instance)) {
-        instance.value = '';
-      }
-    },
-    getMarkdownContent: () => {
-      const instance = stateRef.current.instance;
-      if (isRichEditor(instance)) {
-        const lexicalEditor = instance.getLexicalEditor();
-        const markdownSource = instance.getDocument('markdown');
-        if (markdownSource && lexicalEditor) {
-          const next = fromEditorMarkdown(String(markdownSource.write(lexicalEditor) ?? ''));
-          markdownRef.current = next;
-          return next;
+    return {
+      focus: () => {
+        stateRef.current.instance?.focus?.();
+      },
+      clearContent: () => {
+        const instance = stateRef.current.instance;
+        updateMarkdown('');
+        if (isRichEditor(instance)) {
+          instance.setDocument('markdown', EMPTY_MARKDOWN_PLACEHOLDER);
         }
-      }
-      return getCurrentMarkdown();
-    },
-    getEditorData: () => ({ markdown: getCurrentMarkdown() }),
-    setMarkdownContent: (value) => {
-      const instance = stateRef.current.instance;
-      updateMarkdown(value);
-      if (isRichEditor(instance)) {
-        instance.setDocument('markdown', toEditorMarkdown(value));
-      }
-      if (isTextareaAdapter(instance)) {
-        instance.setValue?.(value);
-      }
-      if (isTextareaElement(instance)) {
-        instance.value = value;
-      }
-    },
-    insertTextAtCursor: (value) => {
-      const next = `${getCurrentMarkdown()}${value}`;
-      const instance = stateRef.current.instance;
-      updateMarkdown(next);
-      if (isRichEditor(instance)) {
-        instance.setDocument('markdown', toEditorMarkdown(next));
-      }
-      if (isTextareaAdapter(instance)) {
-        instance.setValue?.(next);
-      }
-      if (isTextareaElement(instance)) {
-        instance.value = next;
-      }
-    },
-    setInstance: (instance) => {
-      stateRef.current.instance = instance;
-    },
-  }), [markdownRef, setMarkdown]);
+        if (isTextareaAdapter(instance)) {
+          instance.setValue?.('');
+        }
+        if (isTextareaElement(instance)) {
+          instance.value = '';
+        }
+      },
+      getMarkdownContent: () => {
+        const instance = stateRef.current.instance;
+        if (isRichEditor(instance)) {
+          const lexicalEditor = instance.getLexicalEditor();
+          const markdownSource = instance.getDocument('markdown');
+          if (markdownSource && lexicalEditor) {
+            const next = fromEditorMarkdown(String(markdownSource.write(lexicalEditor) ?? ''));
+            markdownRef.current = next;
+            return next;
+          }
+        }
+        return getCurrentMarkdown();
+      },
+      getEditorData: () => ({ markdown: getCurrentMarkdown() }),
+      setMarkdownContent: (value) => {
+        const instance = stateRef.current.instance;
+        updateMarkdown(value);
+        if (isRichEditor(instance)) {
+          instance.setDocument('markdown', toEditorMarkdown(value));
+        }
+        if (isTextareaAdapter(instance)) {
+          instance.setValue?.(value);
+        }
+        if (isTextareaElement(instance)) {
+          instance.value = value;
+        }
+      },
+      insertTextAtCursor: (value) => {
+        const next = `${getCurrentMarkdown()}${value}`;
+        const instance = stateRef.current.instance;
+        updateMarkdown(next);
+        if (isRichEditor(instance)) {
+          instance.setDocument('markdown', toEditorMarkdown(next));
+        }
+        if (isTextareaAdapter(instance)) {
+          instance.setValue?.(next);
+        }
+        if (isTextareaElement(instance)) {
+          instance.value = next;
+        }
+      },
+      setInstance: (instance) => {
+        stateRef.current.instance = instance;
+      },
+    };
+  });
+
+  return api;
 }
 
-export { EMPTY_MARKDOWN_PLACEHOLDER, toEditorMarkdown };
+export { EMPTY_MARKDOWN_PLACEHOLDER, fromEditorMarkdown, toEditorMarkdown };

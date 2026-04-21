@@ -3,7 +3,6 @@
  * Creates the native application menu for macOS/Windows/Linux
  */
 import { Menu, app, shell, BrowserWindow } from 'electron';
-import { openCodeChatDevTools } from './code-chat-window';
 import { logger } from '../utils/logger';
 
 /**
@@ -99,12 +98,6 @@ export function createMenu(): void {
         { role: 'reload' },
         { role: 'forceReload' },
         { role: 'toggleDevTools' },
-        {
-          label: 'Open CodeChat DevTools',
-          click: () => {
-            void openCodeChatDevTools();
-          },
-        },
         { type: 'separator' },
         { role: 'resetZoom' },
         { role: 'zoomIn' },

@@ -57,6 +57,21 @@ export interface ToolStatus {
   updatedAt: number;
 }
 
+export interface ChatSendAttachment {
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  stagedPath: string;
+  preview: string | null;
+}
+
+export interface ChatSendPayload {
+  editorData?: Record<string, unknown> | null;
+  files?: ChatSendAttachment[];
+  message: string;
+  pageSelections?: unknown[];
+}
+
 export interface ChatTopic {
   id: string;
   sessionId: string;
@@ -79,14 +94,7 @@ export interface InterventionItem {
 export interface QueuedMessage {
   id: string;
   message: string;
-  attachments?: Array<{
-    fileName: string;
-    mimeType: string;
-    fileSize: number;
-    stagedPath: string;
-    preview: string | null;
-  }>;
-  targetAgentId?: string | null;
+  attachments?: ChatSendAttachment[];
   createdAt: number;
 }
 
@@ -162,15 +170,8 @@ export interface ChatState {
   cleanupEmptySession: () => void;
   loadHistory: (quiet?: boolean) => Promise<void>;
   sendMessage: (
-    text: string,
-    attachments?: Array<{
-      fileName: string;
-      mimeType: string;
-      fileSize: number;
-      stagedPath: string;
-      preview: string | null;
-    }>,
-    targetAgentId?: string | null,
+    payloadOrText: string | ChatSendPayload,
+    attachments?: ChatSendAttachment[],
   ) => Promise<void>;
   abortRun: () => Promise<void>;
   handleChatEvent: (event: Record<string, unknown>) => void;

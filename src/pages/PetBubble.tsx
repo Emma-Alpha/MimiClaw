@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { MessageMarkdown } from "@/components/MessageMarkdown";
 import { invokeIpc } from "@/lib/api-client";
 import type { PetRuntimeState } from "../../shared/pet";
 
@@ -416,9 +415,7 @@ function PetBubbleContent({
 
 					{!derivedErrorText && markdownText ? (
 						<div className="bubble-text">
-							<ReactMarkdown remarkPlugins={[remarkGfm]}>
-								{markdownText}
-							</ReactMarkdown>
+							<MessageMarkdown compact>{markdownText}</MessageMarkdown>
 						</div>
 					) : null}
 

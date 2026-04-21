@@ -1,55 +1,165 @@
 import { createStyles } from 'antd-style';
-import { useCallback, useRef } from 'react';
-import type { TextAreaRef } from 'antd/es/input/TextArea';
-import { Textarea } from '@/components/ui/textarea';
+import { INSERT_MENTION_COMMAND, type IEditor, type ISlashOption } from '@lobehub/editor';
+import { ChatInput as LobeEditorChatInput, Editor, type EditorProps, useEditor } from '@lobehub/editor/react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import { preferenceSelectors, useSettingsStore } from '@/stores/settings';
 import { useChatInputContext } from '../ChatInputProvider';
+import { fromEditorMarkdown, toEditorMarkdown } from '../hooks/useChatInputEditor';
 
 const useStyles = createStyles(({ token, css }) => ({
+  shell: css`
+    width: 100%;
+  `,
   editor: css`
     border: 1px solid ${token.colorBorderSecondary};
     border-radius: ${token.borderRadiusLG}px;
+    box-shadow: none;
     background: ${token.colorBgContainer};
-    min-height: 88px;
-
-    .ant-input {
-      border: 0;
-      box-shadow: none;
-      padding: 10px 12px;
-      resize: none;
-    }
   `,
 }));
 
+type PressEnterPayload = Parameters<NonNullable<EditorProps['onPressEnter']>>[0];
+
 export function InputEditor() {
   const { styles } = useStyles();
-  const { disabled, setEditor, setMarkdown } = useChatInputContext();
-  const textAreaRef = useRef<TextAreaRef | null>(null);
+  const { t } = useTranslation('chatInput');
+  const {
+    attachments,
+    clearAttachments,
+    disabled,
+    editor,
+    markdown,
+    mentionItems = [],
+    onSend,
+    onStop,
+    pickFiles,
+    sending,
+    setEditor,
+    setMarkdown,
+    slashPlacement = 'top',
+  } = useChatInputContext();
+  const useCmdEnterToSend = useSettingsStore(preferenceSelectors.useCmdEnterToSend);
+  const editorInstance = useEditor();
+  const popupContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const handleRef = useCallback(
-    (instance: TextAreaRef | null) => {
-      textAreaRef.current = instance;
-      setEditor(instance?.resizableTextArea?.textArea ?? null);
-    },
-    [setEditor],
-  );
+  useEffect(() => () => setEditor(null), [setEditor]);
 
-  const handleChange = useCallback(
-    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setMarkdown(event.target.value);
+  const handleSend = useCallback(async () => {
+    if (!editor || !onSend || disabled) return;
+    await onSend({
+      attachments,
+      clearAttachments,
+      clearContent: editor.clearContent,
+      getMarkdownContent: editor.getMarkdownContent,
+      getEditorData: editor.getEditorData,
+    });
+  }, [attachments, clearAttachments, disabled, editor, onSend]);
+
+  const handlePressEnter = useCallback(({ event }: PressEnterPayload) => {
+    if (event.isComposing) return true;
+
+    const shouldSend = useCmdEnterToSend
+      ? (event.metaKey || event.ctrlKey) && !event.shiftKey
+      : !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey;
+    if (!shouldSend) return false;
+
+    event.preventDefault();
+    if (sending) {
+      void onStop?.();
+      return true;
+    }
+    void handleSend();
+    return true;
+  }, [handleSend, onStop, sending, useCmdEnterToSend]);
+
+  const handleTextChange = useCallback((activeEditor: IEditor) => {
+    const lexicalEditor = activeEditor.getLexicalEditor();
+    const markdownSource = activeEditor.getDocument('markdown');
+    if (!lexicalEditor || !markdownSource) {
+      setMarkdown('');
+      return;
+    }
+    setMarkdown(fromEditorMarkdown(String(markdownSource.write(lexicalEditor) ?? '')));
+  }, [setMarkdown]);
+
+  const mentionOptions = useMemo<ISlashOption[]>(() => mentionItems.map((item) => {
+    const label = item.label.startsWith('@') ? item.label : `@${item.label}`;
+    return {
+      description: item.description,
+      key: item.id,
+      label,
+      onSelect: (activeEditor: IEditor) => {
+        activeEditor.dispatchCommand(INSERT_MENTION_COMMAND, {
+          metadata: {
+            description: item.description,
+            id: item.id,
+          },
+          label,
+        });
+      },
+    };
+  }), [mentionItems]);
+
+  const slashOptions = useMemo<ISlashOption[]>(() => ([
+    {
+      description: t('input.slash.send.description', { defaultValue: 'Send current message' }),
+      key: 'send-message',
+      label: t('input.slash.send.label', { defaultValue: 'Send Message' }),
+      onSelect: () => {
+        if (sending) return;
+        void handleSend();
+      },
     },
-    [setMarkdown],
-  );
+    {
+      description: t('input.slash.upload.description', { defaultValue: 'Open file picker' }),
+      key: 'upload-files',
+      label: t('input.slash.upload.label', { defaultValue: 'Upload Files' }),
+      onSelect: () => {
+        void pickFiles();
+      },
+    },
+    {
+      description: t('input.slash.clear.description', { defaultValue: 'Clear input and attachments' }),
+      key: 'clear-input',
+      label: t('input.slash.clear.label', { defaultValue: 'Clear Input' }),
+      onSelect: () => {
+        editor?.clearContent();
+        clearAttachments();
+      },
+    },
+  ]), [clearAttachments, editor, handleSend, pickFiles, sending, t]);
+
+  const handleEditorInit = useCallback((activeEditor: IEditor) => {
+    setEditor(activeEditor);
+    if (markdown.trim().length === 0) return;
+    activeEditor.setDocument('markdown', toEditorMarkdown(markdown));
+  }, [markdown, setEditor]);
 
   return (
-    <div className={styles.editor} data-chat-input-editor="true">
-      <Textarea
-        autoFocus
-        autoSize={{ maxRows: 8, minRows: 3 }}
-        disabled={disabled}
-        onChange={handleChange}
-        placeholder="Send a message..."
-        ref={handleRef}
-      />
+    <div className={styles.shell} data-chat-input-editor="true" ref={popupContainerRef}>
+      <LobeEditorChatInput
+        className={styles.editor}
+        maxHeight={320}
+        minHeight={88}
+        resize={false}
+      >
+        <Editor
+          autoFocus
+          editable={!disabled}
+          editor={editorInstance}
+          getPopupContainer={() => popupContainerRef.current}
+          lineEmptyPlaceholder={t('input.placeholder', { defaultValue: 'Send a message...' })}
+          mentionOption={mentionOptions.length > 0 ? { items: mentionOptions } : undefined}
+          onInit={handleEditorInit}
+          onPressEnter={handlePressEnter}
+          onTextChange={handleTextChange}
+          slashOption={{ items: slashOptions }}
+          slashPlacement={slashPlacement}
+          type="markdown"
+          variant="chat"
+        />
+      </LobeEditorChatInput>
     </div>
   );
 }

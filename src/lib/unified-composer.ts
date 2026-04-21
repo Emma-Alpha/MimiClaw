@@ -1,6 +1,6 @@
 import type { FileAttachment } from "@/features/mainChat/lib/composer-helpers";
 
-export type UnifiedComposerPath = {
+export type ComposerPath = {
 	absolutePath: string;
 	name: string;
 	isDirectory: boolean;
@@ -9,7 +9,7 @@ export type UnifiedComposerPath = {
 export type UnifiedComposerDraft<TAttachment = FileAttachment> = {
 	text: string;
 	attachments: TAttachment[];
-	paths: UnifiedComposerPath[];
+	paths: ComposerPath[];
 };
 
 export type SnippetClipboardPayload = {
@@ -86,7 +86,7 @@ function normalizeSnippetPathCandidate(raw: string): string | null {
 function createSnippetReferencePath(
 	normalizedPath: string,
 	range: { start: number; end: number },
-): UnifiedComposerPath {
+): ComposerPath {
 	const rangeLabel = `${range.start}-${range.end}`;
 	const fileName =
 		normalizedPath.split(/[\\/]/).filter(Boolean).pop() || normalizedPath;
@@ -142,7 +142,7 @@ function normalizeVscodePathname(pathname: string): string {
 	return decoded;
 }
 
-function parseSnippetReferenceFromUriToken(rawToken: string): UnifiedComposerPath | null {
+function parseSnippetReferenceFromUriToken(rawToken: string): ComposerPath | null {
 	const candidate = rawToken.trim().replace(/[),.;\]]+$/, "");
 	if (!candidate) return null;
 
@@ -220,7 +220,7 @@ function stripHtmlToText(rawHtml: string): string {
 
 function extractSnippetReferencePathsFromJsonMetadata(
 	rawPayload: string,
-): UnifiedComposerPath[] {
+): ComposerPath[] {
 	const trimmed = rawPayload.trim();
 	if (!trimmed || (!trimmed.startsWith("{") && !trimmed.startsWith("["))) {
 		return [];
@@ -233,7 +233,7 @@ function extractSnippetReferencePathsFromJsonMetadata(
 		return [];
 	}
 
-	const results: UnifiedComposerPath[] = [];
+	const results: ComposerPath[] = [];
 	const seen = new Set<string>();
 	const pathKeys = [
 		"resource",
@@ -386,10 +386,10 @@ function resolveAbsolutePathFromFile(file: globalThis.File | null): string | und
 	return undefined;
 }
 
-export function extractDroppedPathsFromTransfer(dataTransfer: DataTransfer | null): UnifiedComposerPath[] {
+export function extractComposerPathsFromTransfer(dataTransfer: DataTransfer | null): ComposerPath[] {
 	if (!dataTransfer) return [];
 
-	const paths: UnifiedComposerPath[] = [];
+	const paths: ComposerPath[] = [];
 	const seen = new Set<string>();
 	const pushPath = (absolutePath: string | undefined, name: string, isDirectory: boolean) => {
 		const normalizedPath = absolutePath?.trim();
@@ -449,11 +449,11 @@ export function extractDroppedPathsFromTransfer(dataTransfer: DataTransfer | nul
 	return paths;
 }
 
-export function extractSnippetReferencePathsFromText(rawText: string): UnifiedComposerPath[] {
+export function extractSnippetReferencePathsFromText(rawText: string): ComposerPath[] {
 	if (!rawText.trim()) return [];
 
 	const lines = rawText.split(/\r?\n/).slice(0, 80);
-	const paths: UnifiedComposerPath[] = [];
+	const paths: ComposerPath[] = [];
 	const seen = new Set<string>();
 
 	for (const rawLine of lines) {
@@ -491,9 +491,9 @@ export function extractSnippetReferencePathsFromText(rawText: string): UnifiedCo
 }
 
 function appendUniqueSnippetPaths(
-	target: UnifiedComposerPath[],
+	target: ComposerPath[],
 	seen: Set<string>,
-	incoming: UnifiedComposerPath[],
+	incoming: ComposerPath[],
 ) {
 	for (const item of incoming) {
 		const key = item.absolutePath.trim();
@@ -510,8 +510,8 @@ function extractUriTokens(raw: string): string[] {
 }
 
 function removeBasenameOnlySnippetDuplicates(
-	paths: UnifiedComposerPath[],
-): UnifiedComposerPath[] {
+	paths: ComposerPath[],
+): ComposerPath[] {
 	const namesWithDirectory = new Set(
 		paths
 			.filter((item) => {
@@ -536,8 +536,8 @@ function removeBasenameOnlySnippetDuplicates(
 
 export function extractSnippetReferencePathsFromClipboard(
 	payload: SnippetClipboardPayload,
-): UnifiedComposerPath[] {
-	const result: UnifiedComposerPath[] = [];
+): ComposerPath[] {
+	const result: ComposerPath[] = [];
 	const seen = new Set<string>();
 	const extraPayloads = payload.extraTextPayloads ?? [];
 
@@ -606,10 +606,10 @@ export function isPathDrag(dataTransfer: DataTransfer | null | undefined): boole
 	return false;
 }
 
-export function mergeUnifiedComposerPaths(
-	current: UnifiedComposerPath[],
-	incoming: UnifiedComposerPath[],
-): UnifiedComposerPath[] {
+export function mergeComposerPaths(
+	current: ComposerPath[],
+	incoming: ComposerPath[],
+): ComposerPath[] {
 	if (!incoming.length) return current;
 	const seen = new Set(current.map((item) => item.absolutePath));
 	const merged = [...current];
@@ -631,7 +631,7 @@ export function mergeUnifiedComposerPaths(
 	return merged;
 }
 
-export function composePromptWithPaths(text: string, paths: UnifiedComposerPath[]): string {
+export function composePromptWithPaths(text: string, paths: ComposerPath[]): string {
 	const normalizedText = text.trim();
 	if (!paths.length) return normalizedText;
 
@@ -647,37 +647,6 @@ export function composePromptWithPaths(text: string, paths: UnifiedComposerPath[
 	return normalizedText
 		? `${pathLines.join("\n")}\n${normalizedText}`
 		: pathLines.join("\n");
-}
-
-function formatResponseLanguageLabel(responseLanguage: string): string {
-	const normalized = responseLanguage.trim().toLowerCase();
-	if (!normalized) return '';
-	if (normalized.startsWith('zh')) return '简体中文';
-	if (normalized.startsWith('en')) return 'English';
-	if (normalized.startsWith('ja')) return '日本語';
-	return responseLanguage.trim();
-}
-
-export function applyResponseLanguageToPrompt(
-	prompt: string,
-	responseLanguage?: string | null,
-): string {
-	const languageLabel = formatResponseLanguageLabel(responseLanguage ?? '');
-	if (!languageLabel) return prompt.trim();
-
-	const normalizedPrompt = prompt.trim();
-	const suffix = `Please answer in ${languageLabel}.`;
-
-	return normalizedPrompt ? `${normalizedPrompt}\n\n${suffix}` : suffix;
-}
-
-export function toOpenClawSubmission(
-	draft: UnifiedComposerDraft,
-): { prompt: string; attachments: FileAttachment[] } {
-	return {
-		prompt: composePromptWithPaths(draft.text, draft.paths),
-		attachments: draft.attachments,
-	};
 }
 
 export function toCodeChatSubmission(

@@ -1,0 +1,19 @@
+{
+  "input": {
+    "placeholder": "Send a message...",
+    "slash": {
+      "clear": {
+        "description": "Clear input and attachments",
+        "label": "Clear Input"
+      },
+      "send": {
+        "description": "Send current message",
+        "label": "Send Message"
+      },
+      "upload": {
+        "description": "Open file picker",
+        "label": "Upload Files"
+      }
+    }
+  }
+}

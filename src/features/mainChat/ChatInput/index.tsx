@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ChatInputProvider, type ChatInputProviderProps } from './ChatInputProvider';
 import { DesktopChatInput } from './Desktop';
 import { MobileChatInput } from './Mobile';
+import { StoreUpdater } from './StoreUpdater';
 
 export type MainChatInputProps = ChatInputProviderProps;
 
@@ -17,6 +18,7 @@ export function ChatInput(props: MainChatInputProps) {
 
   return (
     <ChatInputProvider {...props}>
+      <StoreUpdater />
       {isMobile ? <MobileChatInput /> : <DesktopChatInput />}
     </ChatInputProvider>
   );

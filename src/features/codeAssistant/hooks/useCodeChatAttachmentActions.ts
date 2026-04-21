@@ -10,24 +10,24 @@ import {
 import { invokeIpc } from "@/lib/api-client";
 import { hostApiFetch } from "@/lib/host-api";
 import {
-	mergeUnifiedComposerPaths,
-	type UnifiedComposerPath,
+	mergeComposerPaths,
+	type ComposerPath,
 } from "@/lib/unified-composer";
 import { toast } from "sonner";
 
 type Params = {
 	setAttachments: Dispatch<SetStateAction<FileAttachment[]>>;
-	setDroppedPaths: Dispatch<SetStateAction<UnifiedComposerPath[]>>;
+	setDroppedPaths: Dispatch<SetStateAction<ComposerPath[]>>;
 };
 
 export function useCodeChatAttachmentActions({
 	setAttachments,
 	setDroppedPaths,
 }: Params) {
-	const applyDroppedPaths = useCallback((dropped: UnifiedComposerPath[]) => {
+	const applyDroppedPaths = useCallback((dropped: ComposerPath[]) => {
 		if (!Array.isArray(dropped) || dropped.length === 0) return;
 		setDroppedPaths((current) => {
-			const merged = mergeUnifiedComposerPaths(current, dropped);
+			const merged = mergeComposerPaths(current, dropped);
 			if (merged.length <= 20) return merged;
 			queueMicrotask(() => {
 				toast.warning("最多可附加 20 个文件/文件夹");
@@ -111,7 +111,7 @@ export function useCodeChatAttachmentActions({
 		})) as { canceled: boolean; filePaths?: string[] };
 		if (result.canceled || !result.filePaths?.length) return;
 
-		const folderPaths: UnifiedComposerPath[] = result.filePaths.map(
+		const folderPaths: ComposerPath[] = result.filePaths.map(
 			(absolutePath) => ({
 				absolutePath,
 				name: absolutePath.split(/[\\/]/).pop() || absolutePath,

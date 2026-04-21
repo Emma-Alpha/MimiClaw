@@ -1,0 +1,19 @@
+{
+  "input": {
+    "placeholder": "メッセージを送信...",
+    "slash": {
+      "clear": {
+        "description": "入力と添付をクリア",
+        "label": "入力をクリア"
+      },
+      "send": {
+        "description": "現在のメッセージを送信",
+        "label": "メッセージ送信"
+      },
+      "upload": {
+        "description": "ファイル選択を開く",
+        "label": "ファイルをアップロード"
+      }
+    }
+  }
+}

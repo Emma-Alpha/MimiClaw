@@ -1,6 +1,6 @@
 import { createStyles } from "antd-style";
-import { Markdown } from "@lobehub/ui";
 import { useFileReferenceMarkdownProps } from "../file-reference-markdown";
+import { MessageMarkdown } from "@/components/MessageMarkdown";
 
 interface Props {
 	text: string;
@@ -37,7 +37,7 @@ export function StreamingText({ text, isStreaming, workspaceRoot }: Props) {
 
 	return (
 		<div className={styles.wrap}>
-			<Markdown variant="chat" headerMultiple={0} {...markdownProps}>{text || " "}</Markdown>
+			<MessageMarkdown markdownProps={markdownProps}>{text || " "}</MessageMarkdown>
 			{isStreaming && <span className={styles.cursor} aria-hidden="true" />}
 		</div>
 	);

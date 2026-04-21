@@ -44,19 +44,19 @@ import {
 } from "@/features/mainChat/components/unified-composer-input";
 import { useVolcengineAsr } from "@/hooks/useVolcengineAsr";
 import {
-	extractDroppedPathsFromTransfer as extractUnifiedDroppedPathsFromTransfer,
+	extractComposerPathsFromTransfer as extractUnifiedDroppedPathsFromTransfer,
 	isPathDrag,
-	type UnifiedComposerPath,
+	type ComposerPath,
 } from "@/lib/unified-composer";
-import { useCodeChatStyles } from "@/features/codeChat/styles";
-import { useComposerStyles } from "@/features/codeChat/components/CodeChatComposer/styles";
-import type { CodeChatComposerProps as CodeModeChatInputProps } from "@/features/codeChat/components/CodeChatComposer/types";
+import { useCodeChatStyles } from "@/features/codeAssistant/styles";
+import { useComposerStyles } from "@/features/codeAssistant/components/CodeChatComposer/styles";
+import type { CodeChatComposerProps as CodeAssistantInputProps } from "@/features/codeAssistant/components/CodeChatComposer/types";
 
-export type { CodeModeChatInputProps };
+export type { CodeAssistantInputProps };
 
-function extractDroppedPathsFromTransfer(
+function extractComposerPathsFromTransfer(
 	dataTransfer: DataTransfer | null,
-): UnifiedComposerPath[] {
+): ComposerPath[] {
 	return extractUnifiedDroppedPathsFromTransfer(dataTransfer);
 }
 
@@ -83,7 +83,7 @@ function QuickActionTooltip({
 	);
 }
 
-export function CodeModeChatInput({
+export function CodeAssistantInput({
 	fusedWithTodo = false,
 	input,
 	onInputChange,
@@ -141,7 +141,7 @@ export function CodeModeChatInput({
 	onCompositionEnd,
 	onFocusChange,
 	onDropPaths,
-}: CodeModeChatInputProps) {
+}: CodeAssistantInputProps) {
 	const { cx } = useCodeChatStyles();
 	const { styles } = useComposerStyles();
 
@@ -318,7 +318,7 @@ export function CodeModeChatInput({
 			enterCount = 0;
 			setIsDragOver(false);
 			if (e.defaultPrevented) return;
-			const paths = extractDroppedPathsFromTransfer(e.dataTransfer);
+			const paths = extractComposerPathsFromTransfer(e.dataTransfer);
 			if (paths.length > 0) {
 				e.preventDefault();
 				e.stopPropagation();
@@ -326,7 +326,7 @@ export function CodeModeChatInput({
 			}
 			// If no paths were extracted here, do not prevent default:
 			// main process `will-navigate` fallback can still intercept file:// drop
-			// and forward absolute paths via `quick-chat:paths-dropped`.
+			// and forward absolute paths to the code assistant composer.
 		};
 		const onDragEnd = () => {
 			enterCount = 0;

@@ -29,14 +29,14 @@ import { File as FileIcon, Folder, Link2, X } from "lucide-react";
 import {
 	extractSnippetReferencePathsFromClipboard,
 	extractSnippetReferencePathsFromText,
-	extractDroppedPathsFromTransfer,
+	extractComposerPathsFromTransfer,
 	isPathDrag,
-	type UnifiedComposerPath,
+	type ComposerPath,
 } from "@/lib/unified-composer";
 
 export type UnifiedComposerInputValue = {
 	text: string;
-	paths: UnifiedComposerPath[];
+	paths: ComposerPath[];
 	skills?: string[];
 	/** Full Slate editor tree for faithful message-list rendering */
 	richContent?: import("slate").Descendant[];
@@ -45,13 +45,13 @@ export type UnifiedComposerInputValue = {
 export type UnifiedComposerInputHandle = {
 	insertSkill: (command: string, replaceRange?: { start: number; end: number }) => void;
 	removeSkill: () => void;
-	insertMention: (path: UnifiedComposerPath, replaceRange: { start: number; end: number }) => void;
+	insertMention: (path: ComposerPath, replaceRange: { start: number; end: number }) => void;
 	focus: () => void;
 };
 
 type SlatePathElement = {
 	type: "path";
-	path: UnifiedComposerPath;
+	path: ComposerPath;
 	children: [{ text: "" }];
 };
 
@@ -80,7 +80,7 @@ function isSlateSkillElement(value: unknown): value is SlateSkillElement {
 	);
 }
 
-function createPathElement(path: UnifiedComposerPath): SlatePathElement {
+function createPathElement(path: ComposerPath): SlatePathElement {
 	return {
 		type: "path",
 		path,
@@ -98,7 +98,7 @@ function createSkillElement(command: string): SlateSkillElement {
 
 function createEditorValue(
 	text: string,
-	paths: UnifiedComposerPath[],
+	paths: ComposerPath[],
 	skills?: string[],
 ): Descendant[] {
 	const children: SlateParagraphElement["children"] = [];
@@ -160,7 +160,7 @@ function collectClipboardExtraTextPayloads(
 	return payloads;
 }
 
-function getPathChipLabel(path: UnifiedComposerPath): string {
+function getPathChipLabel(path: ComposerPath): string {
 	const label = path.name?.trim();
 	if (label) return label;
 	const absolutePath = path.absolutePath?.trim();
@@ -176,8 +176,8 @@ function extractEditorText(value: Descendant[]): string {
 	return value.map((node) => Node.string(node)).join("\n");
 }
 
-function extractEditorPaths(value: Descendant[]): UnifiedComposerPath[] {
-	const found: UnifiedComposerPath[] = [];
+function extractEditorPaths(value: Descendant[]): ComposerPath[] {
+	const found: ComposerPath[] = [];
 	const seen = new Set<string>();
 
 	const visit = (nodes: Descendant[]) => {
@@ -390,7 +390,7 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 	);
 
 	const insertDroppedPathsAtCaret = useCallback(
-		(paths: UnifiedComposerPath[]) => {
+		(paths: ComposerPath[]) => {
 			if (!paths.length) return;
 
 			const existing = new Set(
@@ -537,7 +537,7 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 	}, [editor, removeExistingSkills]);
 
 	const insertMention = useCallback(
-		(path: UnifiedComposerPath, replaceRange: { start: number; end: number }) => {
+		(path: ComposerPath, replaceRange: { start: number; end: number }) => {
 			const existing = new Set(
 				extractEditorPaths(editor.children as Descendant[]).map(
 					(item) => item.absolutePath,
@@ -576,7 +576,7 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 	}), [focusEditorAtEnd, insertMention, insertSkill, removeSkill]);
 
 	const syncPathsFromParent = useCallback(
-		(nextPaths: UnifiedComposerPath[]) => {
+		(nextPaths: ComposerPath[]) => {
 			const propSet = new Set(nextPaths.map((item) => item.absolutePath));
 			const current = extractEditorPaths(editor.children as Descendant[]);
 			const currentSet = new Set(current.map((item) => item.absolutePath));
@@ -992,7 +992,7 @@ export const UnifiedComposerInput = forwardRef<UnifiedComposerInputHandle, Unifi
 				onDropCapture={(event) => {
 					const dataTransfer = event.dataTransfer ?? null;
 					if (!isPathDrag(dataTransfer)) return;
-					const paths = extractDroppedPathsFromTransfer(dataTransfer);
+					const paths = extractComposerPathsFromTransfer(dataTransfer);
 					if (paths.length === 0) return;
 					event.preventDefault();
 					event.stopPropagation();

@@ -106,8 +106,7 @@ import {
 	openCodeChatWithMessage,
 	openCodeChatWithPayload,
 	consumePendingInitialMessage,
-	openCodeChatDevTools,
-} from "./code-chat-window";
+} from "./code-assistant-launcher";
 import { openPetCompanionWindow } from "./pet-companion-window";
 import { getPetWindow } from "./pet-window";
 import {
@@ -564,7 +563,6 @@ function registerPetHandlers(): void {
 			if (!win) return { success: false };
 
 			const language = resolvePetMenuLanguage(payload?.language);
-			const isDevPetMenu = Boolean(process.env.VITE_DEV_SERVER_URL);
 
 			const openCodeChatLabels = {
 				zh: "迷你对话",
@@ -596,11 +594,6 @@ function registerPetHandlers(): void {
 				en: "Attributes",
 				ja: "属性パネル",
 			} as const;
-			const openCodeChatDevToolsLabels = {
-				zh: "打开调试 CodeChat（代码助手）窗口",
-				en: "Open CodeChat (Code Assistant) DevTools",
-				ja: "CodeChat（コードアシスタント）の DevTools を開く",
-			} as const;
 
 			const menu = Menu.buildFromTemplate([
 				{
@@ -625,18 +618,6 @@ function registerPetHandlers(): void {
 						});
 					},
 				},
-				...(isDevPetMenu
-					? [
-							{
-								label: openCodeChatDevToolsLabels[language],
-								click: () => {
-									runPetMenuAction("open-code-chat-devtools", async () => {
-										await openCodeChatDevTools();
-									});
-								},
-							},
-						]
-					: []),
 				{
 					label: openFullWindowLabels[language],
 					click: () => {
@@ -789,7 +770,7 @@ function registerPetHandlers(): void {
 			if (mainWin.isMinimized()) mainWin.restore();
 			mainWin.show();
 			mainWin.focus();
-			mainWin.webContents.send("navigate", "/code-agent/quick-chat");
+			mainWin.webContents.send("navigate", "/chat/code");
 		}
 		return { success: true };
 	});

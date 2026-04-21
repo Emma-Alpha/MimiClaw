@@ -1,6 +1,6 @@
-import { Markdown } from '@lobehub/ui';
 import { Brain, CheckCheck, FileText, Image as ImageIcon, Loader2, Terminal } from 'lucide-react';
 import { createStyles } from 'antd-style';
+import { MessageMarkdown } from '@/components/MessageMarkdown';
 import {
   useEnhancedMarkdownProps,
   type EnhancedMarkdownProps,
@@ -457,7 +457,7 @@ function renderText(
       {reasoningCard}
       {content ? (
         <div className={styles.proseWrapper}>
-          <Markdown variant="chat" headerMultiple={0} {...markdownProps}>{content}</Markdown>
+          <MessageMarkdown markdownProps={markdownProps}>{content}</MessageMarkdown>
         </div>
       ) : null}
     </div>

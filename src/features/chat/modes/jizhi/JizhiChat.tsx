@@ -21,11 +21,11 @@ import {
 } from '@/styles/typography-tokens';
 import { useStyles } from './JizhiChat.styles';
 import {
-  extractDroppedPathsFromTransfer,
+  extractComposerPathsFromTransfer,
   isPathDrag,
-  mergeUnifiedComposerPaths,
+  mergeComposerPaths,
   toJizhiSubmission,
-  type UnifiedComposerPath,
+  type ComposerPath,
 } from '@/lib/unified-composer';
 import {
   activeHostJizhiMessage,
@@ -336,7 +336,7 @@ function MessageRow({
 export function JizhiChat() {
   const { styles } = useStyles();
   const [draft, setDraft] = useState('');
-  const [droppedPaths, setDroppedPaths] = useState<UnifiedComposerPath[]>([]);
+  const [droppedPaths, setDroppedPaths] = useState<ComposerPath[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [sending, setSending] = useState(false);
   const [copiedMessageUUID, setCopiedMessageUUID] = useState<string | null>(null);
@@ -509,9 +509,9 @@ export function JizhiChat() {
     event.preventDefault();
     event.stopPropagation();
     setDragOver(false);
-    const dropped = extractDroppedPathsFromTransfer(event.dataTransfer ?? null);
+    const dropped = extractComposerPathsFromTransfer(event.dataTransfer ?? null);
     if (!dropped.length) return;
-    setDroppedPaths((current) => mergeUnifiedComposerPaths(current, dropped));
+    setDroppedPaths((current) => mergeComposerPaths(current, dropped));
   };
 
   const handleRetry = async () => {

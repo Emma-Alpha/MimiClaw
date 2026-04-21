@@ -6,10 +6,10 @@ import type { Descendant } from "slate";
 import type { FileAttachment } from "@/features/mainChat/lib/composer-helpers";
 import type { UnifiedComposerInputHandle } from "@/features/mainChat/components/unified-composer-input";
 import type { ClaudeCodeSkillsResult } from "@/lib/code-agent";
-import type { UnifiedComposerPath } from "@/lib/unified-composer";
+import type { ComposerPath } from "@/lib/unified-composer";
 import type { MentionEmptyState, MentionOption, SlashOption } from "../../types";
 
-export type DroppedPathChip = UnifiedComposerPath;
+export type DroppedPathChip = ComposerPath;
 
 export type CodeChatComposerProps = {
 	fusedWithTodo?: boolean;

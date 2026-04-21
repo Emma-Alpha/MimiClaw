@@ -21,7 +21,6 @@ import { CodeAgent } from "./pages/CodeAgent";
 import { PetFloating } from "./pages/PetFloating";
 import { PetBubble } from "./pages/PetBubble";
 import { PetCompanion } from "./pages/PetCompanion";
-import { CodeChat } from "./pages/CodeChat";
 import { VoiceDialog } from "./pages/VoiceDialog";
 import { TrayRuntime } from "./pages/TrayRuntime";
 import { Setup } from "./pages/Setup";
@@ -327,8 +326,8 @@ function App() {
 						<Route path="/pet" element={<PetFloating />} />
 						<Route path="/pet-bubble" element={<PetBubble />} />
 
-						{/* Quick chat popup (opened by clicking the floating pet) */}
-						<Route path="/quick-chat" element={<CodeChat />} />
+						{/* Legacy quick chat entry now redirects to chat/code */}
+						<Route path="/quick-chat" element={<Navigate to="/chat/code" replace />} />
 						<Route path="/pet-companion" element={<PetCompanion />} />
 						<Route path="/voice-dialog" element={<VoiceDialog />} />
 						<Route path="/tray-runtime" element={<TrayRuntime />} />

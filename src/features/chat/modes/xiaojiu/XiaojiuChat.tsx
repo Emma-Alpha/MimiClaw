@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { ChatItem } from '@lobehub/ui/chat';
 import { Loader2, MessageSquare, RefreshCw, Image as ImageIcon, FileText } from 'lucide-react';
+import { MessageMarkdown } from '@/components/MessageMarkdown';
 import { Button } from '@/components/ui/button';
 import { useRemoteMessengerStore } from '@/stores/remote-messenger';
 import {
@@ -141,7 +142,7 @@ function MessageBubble({ message, styles }: { message: XiaojiuMessage; styles: R
       renderMessage={() =>
         hasText ? (
           <div className={styles.textMessage}>
-            {message.text}
+            <MessageMarkdown>{message.text || ''}</MessageMarkdown>
           </div>
         ) : hasAttachments ? (
           <div className={styles.attachmentHint}>

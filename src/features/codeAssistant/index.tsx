@@ -20,7 +20,7 @@ import {
 import {
 	type FileAttachment,
 } from "@/features/mainChat/lib/composer-helpers";
-import { ChatInput } from "@/features/mainChat/components/ChatInput";
+import { CodeAssistantInput } from "@/features/mainChat/components/CodeAssistantInput";
 import { ContextUsageTooltip } from "@/components/ui/context-usage-tooltip";
 import { StyledDropdown } from "@/components/ui/styled-dropdown";
 import {
@@ -38,7 +38,7 @@ import {
 import { invokeIpc } from "@/lib/api-client";
 import { useCodeAgentStore, type StreamingToolUse } from "@/stores/code-agent";
 import {
-	type UnifiedComposerPath,
+	type ComposerPath,
 } from "@/lib/unified-composer";
 import type { UnifiedComposerInputHandle } from "@/features/mainChat/components/unified-composer-input";
 import i18n from "@/i18n";
@@ -180,7 +180,7 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 
 	const [input, setInput] = useState("");
 	const [attachments, setAttachments] = useState<FileAttachment[]>([]);
-	const [droppedPaths, setDroppedPaths] = useState<UnifiedComposerPath[]>([]);
+	const [droppedPaths, setDroppedPaths] = useState<ComposerPath[]>([]);
 	const [selectedMode, setSelectedMode] = useState<CodeChatTarget | null>(null);
 	const [persistentMode, setPersistentMode] = useState<CodeChatTarget | null>(
 		embeddedCodeAssistant ? "code" : null,
@@ -615,20 +615,6 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		codeSending,
 		isReady,
 	});
-
-	// Receive file/folder paths dropped into the window (will-navigate fallback from main process).
-	useEffect(() => {
-		const unsubscribe = window.electron.ipcRenderer.on(
-			"quick-chat:paths-dropped",
-			(payload) => {
-				const dropped = payload as UnifiedComposerPath[];
-				applyDroppedPaths(dropped);
-			},
-		);
-		return () => {
-			unsubscribe?.();
-		};
-	}, [applyDroppedPaths]);
 
 	useEffect(() => {
 		const activity =
@@ -1381,8 +1367,7 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 							/>
 						</div>
 					) : null}
-					<ChatInput
-						mode="code"
+					<CodeAssistantInput
 						fusedWithTodo={Boolean(floatingTodoTool)}
 						input={input}
 						onInputChange={setInput}

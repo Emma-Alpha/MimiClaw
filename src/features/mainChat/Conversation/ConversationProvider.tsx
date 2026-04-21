@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, type PropsWithChildren } from 'reac
 import { useAgentsStore } from '@/stores/agents';
 import { useChatStore } from '@/stores/chat';
 import type { ChatInputActionKey, MentionItem } from '../ChatInput/types';
+import { messageStateSelectors, useConversationStore } from './store';
 
 export interface ConversationContextValue {
   agentId: string;
@@ -40,8 +41,8 @@ export function ConversationProvider({
   const agents = useAgentsStore((s) => s.agents);
   const sendMessage = useChatStore((s) => s.sendMessage);
   const stopGenerating = useChatStore((s) => s.abortRun);
-  const error = useChatStore((s) => s.error);
-  const isInputLoading = useChatStore((s) => s.loading || s.sending);
+  const error = useConversationStore(messageStateSelectors.sendMessageError);
+  const isInputLoading = useConversationStore(messageStateSelectors.isInputLoading);
 
   const mentionItems = useMemo(
     () => agents
@@ -77,4 +78,3 @@ export function useConversationContext() {
   }
   return context;
 }
-

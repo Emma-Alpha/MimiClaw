@@ -3,7 +3,7 @@ import { Chat as OpenClawChat } from '../modes/openclaw';
 import { JizhiChat } from '../modes/jizhi';
 import { XiaojiuChat } from '../modes/xiaojiu';
 import { VoiceChatHistory } from '../modes/voice';
-import { CodeChat } from '@/pages/CodeChat';
+import { CodeChat } from '@/features/codeAssistant';
 
 export type UnifiedChatKind = 'openclaw' | 'xiaojiu' | 'jizhi' | 'voice' | 'code';
 

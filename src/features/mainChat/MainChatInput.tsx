@@ -17,14 +17,10 @@ export function MainChatInput() {
       'model',
       'search',
       'memory',
-      'agentMode',
       'fileUpload',
       'tools',
       'typo',
       'mainToken',
-      'mention',
-      'saveTopic',
-      'clear',
     ];
 
     if (isDevMode) {

@@ -1,5 +1,4 @@
 import { invokeIpc } from '@/lib/api-client';
-import { useAgentsStore } from '@/stores/agents';
 import {
   clearErrorRecoveryTimer,
   clearHistoryPoll,
@@ -22,35 +21,7 @@ import {
   upsertToolStatuses,
 } from './helpers';
 import type { ChatGet, ChatSet } from './store-api';
-import type { AttachedFileMeta, ChatSession, RawMessage } from './types';
-
-function normalizeAgentId(value: string | undefined | null): string {
-  return (value ?? '').trim().toLowerCase() || 'main';
-}
-
-function getAgentIdFromSessionKey(sessionKey: string): string {
-  if (!sessionKey.startsWith('agent:')) return 'main';
-  const [, agentId] = sessionKey.split(':');
-  return agentId || 'main';
-}
-
-function buildFallbackMainSessionKey(agentId: string): string {
-  return `agent:${normalizeAgentId(agentId)}:main`;
-}
-
-function resolveMainSessionKeyForAgent(agentId: string | undefined | null): string | null {
-  if (!agentId) return null;
-  const normalizedAgentId = normalizeAgentId(agentId);
-  const summary = useAgentsStore.getState().agents.find((agent) => agent.id === normalizedAgentId);
-  return summary?.mainSessionKey || buildFallbackMainSessionKey(normalizedAgentId);
-}
-
-function ensureSessionEntry(sessions: ChatSession[], sessionKey: string): ChatSession[] {
-  if (sessions.some((session) => session.key === sessionKey)) {
-    return sessions;
-  }
-  return [...sessions, { key: sessionKey, displayName: sessionKey }];
-}
+import type { AttachedFileMeta, ChatSendAttachment, ChatSendPayload, RawMessage } from './types';
 
 export class ChatRuntimeActionImpl {
   readonly #get: ChatGet;
@@ -63,64 +34,26 @@ export class ChatRuntimeActionImpl {
   }
 
   sendMessage = async (
-    text: string,
-    attachments?: Array<{
-      fileName: string;
-      mimeType: string;
-      fileSize: number;
-      stagedPath: string;
-      preview: string | null;
-    }>,
-    targetAgentId?: string | null,
+    payloadOrText: string | ChatSendPayload,
+    attachments?: ChatSendAttachment[],
   ) => {
+    const payload = typeof payloadOrText === 'string'
+      ? { message: payloadOrText }
+      : payloadOrText;
+    const text = payload.message;
+    const resolvedAttachments = payload.files ?? attachments;
     const trimmed = text.trim();
-    if (!trimmed && (!attachments || attachments.length === 0)) return;
-
-    const targetSessionKey = resolveMainSessionKeyForAgent(targetAgentId) ?? this.#get().currentSessionKey;
-    if (targetSessionKey !== this.#get().currentSessionKey) {
-      const current = this.#get();
-      const leavingEmpty = !current.currentSessionKey.endsWith(':main') && current.messages.length === 0;
-      this.#set((s) => ({
-        currentSessionKey: targetSessionKey,
-        currentAgentId: getAgentIdFromSessionKey(targetSessionKey),
-        sessions: ensureSessionEntry(
-          leavingEmpty
-            ? s.sessions.filter((session) => session.key !== current.currentSessionKey)
-            : s.sessions,
-          targetSessionKey,
-        ),
-        sessionLabels: leavingEmpty
-          ? Object.fromEntries(
-            Object.entries(s.sessionLabels).filter(([key]) => key !== current.currentSessionKey),
-          )
-          : s.sessionLabels,
-        sessionLastActivity: leavingEmpty
-          ? Object.fromEntries(
-            Object.entries(s.sessionLastActivity).filter(([key]) => key !== current.currentSessionKey),
-          )
-          : s.sessionLastActivity,
-        messages: [],
-        streamingText: '',
-        streamingMessage: null,
-        streamingTools: [],
-        activeRunId: null,
-        error: null,
-        pendingFinal: false,
-        lastUserMessageAt: null,
-        pendingToolImages: [],
-      }));
-      await this.#get().loadHistory(true);
-    }
-
-    const currentSessionKey = targetSessionKey;
+    if (!trimmed && (!resolvedAttachments || resolvedAttachments.length === 0)) return;
+    const currentSessionKey = this.#get().currentSessionKey;
 
     const nowMs = Date.now();
     const userMsg: RawMessage = {
       role: 'user',
-      content: trimmed || (attachments?.length ? '(file attached)' : ''),
+      content: trimmed || (resolvedAttachments?.length ? '(file attached)' : ''),
       timestamp: nowMs / 1000,
       id: crypto.randomUUID(),
-      _attachedFiles: attachments?.map((a) => ({
+      details: payload.editorData ? { editorData: payload.editorData } : undefined,
+      _attachedFiles: resolvedAttachments?.map((a) => ({
         fileName: a.fileName,
         mimeType: a.mimeType,
         fileSize: a.fileSize,
@@ -197,13 +130,13 @@ export class ChatRuntimeActionImpl {
 
     try {
       const idempotencyKey = crypto.randomUUID();
-      const hasMedia = attachments && attachments.length > 0;
+      const hasMedia = resolvedAttachments && resolvedAttachments.length > 0;
       if (hasMedia) {
-        console.log('[sendMessage] Media paths:', attachments.map((a) => a.stagedPath));
+        console.log('[sendMessage] Media paths:', resolvedAttachments.map((a) => a.stagedPath));
       }
 
-      if (hasMedia && attachments) {
-        for (const a of attachments) {
+      if (hasMedia && resolvedAttachments) {
+        for (const a of resolvedAttachments) {
           upsertImageCacheEntry(a.stagedPath, {
             fileName: a.fileName,
             mimeType: a.mimeType,
@@ -222,7 +155,7 @@ export class ChatRuntimeActionImpl {
           message: trimmed || 'Process the attached file(s).',
           deliver: false,
           idempotencyKey,
-          media: attachments.map((a) => ({
+          media: resolvedAttachments.map((a) => ({
             filePath: a.stagedPath,
             mimeType: a.mimeType,
             fileName: a.fileName,
