@@ -52,5 +52,32 @@
         "withinTwoWeeks": "两周内",
         "withinMonth": "一个月内",
         "older": "一个月之前"
+    },
+    "tokenDetails": {
+        "inputTitle": "输入",
+        "outputTitle": "输出",
+        "inputText": "文本",
+        "inputAudio": "音频",
+        "inputCitation": "引用",
+        "inputCached": "缓存命中",
+        "inputWriteCached": "写入缓存",
+        "inputUncached": "输入",
+        "inputTool": "工具",
+        "reasoning": "推理",
+        "outputText": "文本",
+        "outputImage": "图像",
+        "outputAudio": "音频",
+        "output": "输出",
+        "total": "合计",
+        "speed": {
+            "tps": {
+                "title": "生成速度",
+                "tooltip": "每秒生成的 Token 数"
+            },
+            "ttft": {
+                "title": "首 Token 延迟",
+                "tooltip": "收到第一个 Token 所需的时间"
+            }
+        }
     }
 }

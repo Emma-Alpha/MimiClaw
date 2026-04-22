@@ -68,7 +68,7 @@ const PROJECT_MENTION_SKIP_DIRS = new Set([
   'tmp',
   'temp',
 ]);
-const MAX_PROJECT_MENTION_ENTRIES = 5000;
+const MAX_PROJECT_MENTION_ENTRIES = 500;
 
 type ProjectMentionEntry = {
   absolutePath: string;
@@ -91,6 +91,31 @@ export async function listProjectMentionEntries(workspaceRoot: string): Promise<
   const rootStat = await fsP.stat(normalizedRoot).catch(() => null);
   if (!rootStat?.isDirectory()) return [];
 
+  // Try using Rust indexer first
+  try {
+    const { execFile } = await import('node:child_process');
+    const { promisify } = await import('node:util');
+    const execFileAsync = promisify(execFile);
+
+    // Path to the Rust binary (relative to electron directory)
+    const rustBinaryPath = join(__dirname, '../../rust-indexer/target/release/file-indexer');
+
+    const { stdout } = await execFileAsync(rustBinaryPath, [
+      'index',
+      '--root',
+      normalizedRoot,
+      '--max',
+      String(MAX_PROJECT_MENTION_ENTRIES),
+    ], { maxBuffer: 50 * 1024 * 1024 }); // 50MB buffer
+
+    const entries: ProjectMentionEntry[] = JSON.parse(stdout);
+    return entries;
+  } catch (error) {
+    console.warn('Rust indexer failed, falling back to Node.js implementation:', error);
+    // Fallback to Node.js implementation
+  }
+
+  // Fallback: Node.js implementation
   const results: ProjectMentionEntry[] = [];
   const queue = [normalizedRoot];
 
@@ -128,6 +153,51 @@ export async function listProjectMentionEntries(workspaceRoot: string): Promise<
   return results;
 }
 
+export async function listProjectMentionEntriesWithSearch(
+  workspaceRoot: string,
+  query: string,
+): Promise<ProjectMentionEntry[]> {
+  const normalizedRoot = workspaceRoot.trim();
+  if (!normalizedRoot) return [];
+
+  const fsP = await import('node:fs/promises');
+  const rootStat = await fsP.stat(normalizedRoot).catch(() => null);
+  if (!rootStat?.isDirectory()) return [];
+
+  // Try using Rust search
+  try {
+    const { execFile } = await import('node:child_process');
+    const { promisify } = await import('node:util');
+    const execFileAsync = promisify(execFile);
+
+    const rustBinaryPath = join(__dirname, '../../rust-indexer/target/release/file-indexer');
+
+    const { stdout } = await execFileAsync(rustBinaryPath, [
+      'search',
+      '--root',
+      normalizedRoot,
+      '--query',
+      query,
+      '--limit',
+      '80',
+    ], { maxBuffer: 50 * 1024 * 1024 });
+
+    const entries: ProjectMentionEntry[] = JSON.parse(stdout);
+    return entries;
+  } catch (error) {
+    console.warn('Rust search failed, falling back to simple filter:', error);
+    // Fallback: get all entries and filter
+    const allEntries = await listProjectMentionEntries(normalizedRoot);
+    const lowerQuery = query.toLowerCase();
+    return allEntries
+      .filter(entry =>
+        entry.name.toLowerCase().includes(lowerQuery) ||
+        entry.relativePath.toLowerCase().includes(lowerQuery)
+      )
+      .slice(0, 80);
+  }
+}
+
 async function generateImagePreview(filePath: string, mimeType: string): Promise<string | null> {
   try {
     const img = nativeImage.createFromPath(filePath);
@@ -157,11 +227,17 @@ export async function handleFileRoutes(
   if (url.pathname === '/api/files/project-mentions' && req.method === 'GET') {
     try {
       const workspaceRoot = url.searchParams.get('workspaceRoot')?.trim() || '';
+      const query = url.searchParams.get('query')?.trim() || '';
       if (!workspaceRoot) {
         sendJson(res, 400, { success: false, error: 'workspaceRoot is required' });
         return true;
       }
-      const entries = await listProjectMentionEntries(workspaceRoot);
+
+      // If query is provided, use Rust search; otherwise use index
+      const entries = query
+        ? await listProjectMentionEntriesWithSearch(workspaceRoot, query)
+        : await listProjectMentionEntries(workspaceRoot);
+
       sendJson(res, 200, { success: true, entries });
     } catch (error) {
       sendJson(res, 500, { success: false, error: String(error) });

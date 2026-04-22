@@ -42,6 +42,25 @@ const useStyles = createStyles(({ css, cssVar }) => ({
     background: color-mix(in srgb, ${cssVar.colorBgLayout} 74%, transparent);
     backdrop-filter: blur(10px);
   `,
+  editorWrapper: css`
+    [contenteditable="true"],
+    [contenteditable="true"] *,
+    .lexical-editor,
+    .lexical-editor *,
+    p,
+    span,
+    div {
+      word-wrap: break-word !important;
+      word-break: break-word !important;
+      overflow-wrap: break-word !important;
+      white-space: pre-wrap !important;
+      max-width: 100% !important;
+    }
+
+    [contenteditable="true"] {
+      padding-right: 12px !important;
+    }
+  `,
 }));
 
 export function DesktopChatInput() {
@@ -64,6 +83,7 @@ export function DesktopChatInput() {
   const content = (
     <Flexbox className={cx(styles.container, expanded && styles.fullscreen)} gap={8}>
       <ChatInput
+        className={styles.editorWrapper}
         footer={
           <ChatInputActionBar
             left={
@@ -72,13 +92,12 @@ export function DesktopChatInput() {
               </Flexbox>
             }
             right={
-              <Flexbox align="center" flex="none" gap={6} horizontal style={{ marginRight: 4 }}>
+              <Flexbox align="center" flex="none" gap={6} horizontal style={{ marginRight: 12 }}>
                 {expandButton}
                 {extraRightContent}
                 <SendArea />
               </Flexbox>
             }
-            style={{ paddingRight: 12 }}
           />
         }
         fullscreen={expanded}

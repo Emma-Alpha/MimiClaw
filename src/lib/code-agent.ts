@@ -181,8 +181,12 @@ export async function fetchClaudeCodeSkills(
 
 export async function fetchProjectMentionEntries(
   workspaceRoot: string,
+  query?: string,
 ): Promise<ProjectMentionEntry[]> {
   const params = new URLSearchParams({ workspaceRoot });
+  if (query) {
+    params.set('query', query);
+  }
   const response = await hostApiFetch<{
     success: boolean;
     entries: ProjectMentionEntry[];

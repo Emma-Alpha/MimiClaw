@@ -15,6 +15,9 @@ export const useCodeChatStyles = createStyles(
 			--code-chat-input-width: min(800px, 100%);
 			--code-chat-content-width: min(800px, calc(100% - (var(--code-chat-side-gap) * 2)));
 			--code-chat-dock-inline-padding: 12px;
+			--chat-window-content-width: min(800px, calc(100% - (var(--code-chat-side-gap) * 2)));
+			--chat-window-side-gap: 16px;
+			--chat-dock-inline-padding: 12px;
 			--code-chat-surface-bg: color-mix(
 				in srgb,
 				${token.colorBgContainer} 94%,
@@ -51,6 +54,9 @@ export const useCodeChatStyles = createStyles(
 			--code-chat-side-gap: 16px;
 			--code-chat-content-width: min(800px, calc(100% - (var(--code-chat-side-gap) * 2)));
 			--code-chat-dock-inline-padding: 12px;
+			--chat-window-content-width: min(800px, calc(100% - (var(--code-chat-side-gap) * 2)));
+			--chat-window-side-gap: 16px;
+			--chat-dock-inline-padding: 12px;
 			height: 100%;
 			width: 100%;
 			box-sizing: border-box;

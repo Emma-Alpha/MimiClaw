@@ -18,8 +18,29 @@ export type ChatInputActionKey =
 
 export interface MentionItem {
   id: string;
+  /**
+   * Mention text inserted into the editor when the item is selected.
+   * Must be a plain string. Prefix "@" is added automatically if missing.
+   */
   label: string;
+  /** Secondary text used for fuzzy matching. */
   description?: string;
+  /**
+   * Optional short string used for the dropdown row's main label.
+   * Defaults to `label` when omitted. This MUST be a plain string so the
+   * editor's fuse.js client-side filter can search it.
+   */
+  displayLabel?: string;
+  /** Optional icon rendered at the start of the menu row. */
+  icon?: import('react').ReactNode;
+  /** Optional trailing node rendered on the right of the menu row. */
+  extra?: import('react').ReactNode;
+  /**
+   * Type hint used by the inserted pill to pick an icon. The editor
+   * serializes MentionNode metadata, so callers can drive visual state
+   * (e.g. folder vs. file) from here without shipping React nodes.
+   */
+  kind?: 'folder' | 'file' | 'agent' | string;
   /** Called when the user confirms this mention in the editor */
   onSelect?: () => void;
 }

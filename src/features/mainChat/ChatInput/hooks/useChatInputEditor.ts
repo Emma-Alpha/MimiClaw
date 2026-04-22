@@ -60,7 +60,16 @@ export function useChatInputEditor(markdownRef: MutableRefObject<string>, setMar
         if (isRichEditor(instance)) {
           const lexicalEditor = instance.getLexicalEditor();
           const markdownSource = instance.getDocument('markdown');
-          if (markdownSource && lexicalEditor) {
+
+          // If markdownSource is already a string, use it directly
+          if (typeof markdownSource === 'string') {
+            const next = fromEditorMarkdown(markdownSource);
+            markdownRef.current = next;
+            return next;
+          }
+
+          // Otherwise, try to use the write method
+          if (markdownSource && lexicalEditor && typeof markdownSource.write === 'function') {
             const next = fromEditorMarkdown(String(markdownSource.write(lexicalEditor) ?? ''));
             markdownRef.current = next;
             return next;

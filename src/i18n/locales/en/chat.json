@@ -50,5 +50,32 @@
         "withinTwoWeeks": "Within 2 Weeks",
         "withinMonth": "Within 1 Month",
         "older": "Older than 1 Month"
+    },
+    "tokenDetails": {
+        "inputTitle": "Input",
+        "outputTitle": "Output",
+        "inputText": "Text",
+        "inputAudio": "Audio",
+        "inputCitation": "Citation",
+        "inputCached": "Cached",
+        "inputWriteCached": "Write Cache",
+        "inputUncached": "Input",
+        "inputTool": "Tool",
+        "reasoning": "Reasoning",
+        "outputText": "Text",
+        "outputImage": "Image",
+        "outputAudio": "Audio",
+        "output": "Output",
+        "total": "Total",
+        "speed": {
+            "tps": {
+                "title": "Speed",
+                "tooltip": "Tokens generated per second"
+            },
+            "ttft": {
+                "title": "First Token",
+                "tooltip": "Time to receive the first token"
+            }
+        }
     }
 }

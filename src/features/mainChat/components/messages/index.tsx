@@ -10,6 +10,8 @@ import {
 } from '../../lib/message-utils';
 import { detectMessageProtocol } from './protocols/detectMessageProtocol';
 import { AssistantMessage } from './AssistantMessage';
+import { NewAssistantMessage } from './NewAssistantMessage';
+import { NewUserMessage } from './NewUserMessage';
 import { ToolResultMessage } from './ToolResultMessage';
 import type { StreamingToolStatus } from './types';
 import { UserMessage } from './UserMessage';
@@ -19,6 +21,7 @@ export interface ChatMessageProps {
   message: RawMessage;
   showThinking: boolean;
   streamingTools?: StreamingToolStatus[];
+  useNewUI?: boolean; // 新增：控制是否使用新 UI
 }
 
 export const ChatMessage = memo(function ChatMessage({
@@ -26,7 +29,14 @@ export const ChatMessage = memo(function ChatMessage({
   message,
   showThinking,
   streamingTools = [],
+  useNewUI = true, // 默认使用新 UI
 }: ChatMessageProps) {
+  console.log('=== [ChatMessage] START ===');
+  console.log('[ChatMessage] useNewUI:', useNewUI);
+  console.log('[ChatMessage] message.role:', message.role);
+  console.log('[ChatMessage] isUser:', message.role === 'user');
+  console.log('=== [ChatMessage] END ===');
+
   const markdownProps = useEnhancedMarkdownProps();
 
   const isUser = message.role === 'user';
@@ -59,6 +69,18 @@ export const ChatMessage = memo(function ChatMessage({
   }
 
   if (isUser) {
+    if (useNewUI) {
+      return (
+        <NewUserMessage
+          attachedFiles={attachedFiles}
+          hasText={hasText}
+          images={images}
+          message={message}
+          protocol={protocol}
+          text={text}
+        />
+      );
+    }
     return (
       <UserMessage
         attachedFiles={attachedFiles}
@@ -67,6 +89,25 @@ export const ChatMessage = memo(function ChatMessage({
         message={message}
         protocol={protocol}
         text={text}
+      />
+    );
+  }
+
+  if (useNewUI) {
+    return (
+      <NewAssistantMessage
+        attachedFiles={attachedFiles}
+        hasText={hasText}
+        images={images}
+        isStreaming={isStreaming}
+        markdownProps={markdownProps}
+        message={message}
+        protocol={protocol}
+        showThinking={showThinking}
+        streamingTools={streamingTools}
+        text={text}
+        thinking={thinking}
+        tools={tools}
       />
     );
   }

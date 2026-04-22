@@ -3,7 +3,6 @@ import type { PetCodeChatSeed } from "../../../shared/pet";
 import type { CodeAgentStatus } from "../../../shared/code-agent";
 import type {
 	MentionDraft,
-	MentionOption,
 	SlashDraft,
 	SubmissionIntent,
 } from "./types";
@@ -12,46 +11,6 @@ const CODE_MODE_PREFIXES = ["@code", "@cli", "@cli编程", "@CLI编程"];
 const CHAT_MODE_PREFIXES = ["@chat"];
 const MENTION_QUERY_PATTERN = /^[a-z0-9_./\-\u4e00-\u9fa5]*$/i;
 
-export function filterMentionOptions(
-	entries: MentionOption[],
-	query: string,
-): MentionOption[] {
-	const normalizedQuery = query.trim().toLowerCase().replace(/\\/g, "/");
-	if (!normalizedQuery) {
-		return entries.slice(0, 80);
-	}
-
-	const scored = entries
-		.map((entry) => {
-			const relative = entry.relativePath.toLowerCase();
-			const label = entry.label.toLowerCase();
-			const startsWithRelative = relative.startsWith(normalizedQuery);
-			const startsWithLabel = label.startsWith(normalizedQuery);
-			const includesRelative = relative.includes(normalizedQuery);
-			const includesLabel = label.includes(normalizedQuery);
-			if (!startsWithRelative && !startsWithLabel && !includesRelative && !includesLabel) {
-				return null;
-			}
-			const score = startsWithLabel
-				? 0
-				: startsWithRelative
-					? 1
-					: includesLabel
-						? 2
-						: 3;
-			return { entry, score };
-		})
-		.filter((item): item is { entry: MentionOption; score: number } => item !== null)
-		.sort((left, right) => {
-			if (left.score !== right.score) return left.score - right.score;
-			if (left.entry.isDirectory !== right.entry.isDirectory) {
-				return left.entry.isDirectory ? -1 : 1;
-			}
-			return left.entry.relativePath.localeCompare(right.entry.relativePath, "zh-CN");
-		});
-
-	return scored.slice(0, 80).map((item) => item.entry);
-}
 
 export function normalizeCodeChatSeed(
 	value: string | PetCodeChatSeed | null | undefined,

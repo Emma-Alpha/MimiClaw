@@ -192,6 +192,12 @@ type ConversationViewProps = {
 };
 
 export function ConversationView({ messages, currentSessionKey, loading, sending, error, showThinking, streamingMessage, streamingTools, pendingFinal, lastRunWasAborted, clearError }: ConversationViewProps) {
+  console.log('=== [ConversationView] RENDER ===');
+  console.log('[ConversationView] currentSessionKey:', currentSessionKey);
+  console.log('[ConversationView] messages.length:', messages.length);
+  console.log('[ConversationView] loading:', loading);
+  console.log('[ConversationView] streamingMessage:', streamingMessage);
+
   const { t } = useTranslation('chat');
   const { styles } = useStyles();
   const enableAutoScrollOnStreaming = useSettingsStore((s) => s.enableAutoScrollOnStreaming);
@@ -223,17 +229,27 @@ export function ConversationView({ messages, currentSessionKey, loading, sending
   const showInitialSkeleton = loading && messages.length === 0 && !sending;
 
   const timelineRows = useMemo<TimelineRenderRow[]>(() => {
+    console.log('[ConversationView] Building timeline rows, messages count:', messages.length);
     if (showInitialSkeleton || isEmpty) return [];
-    const rows: TimelineRenderRow[] = messages.map((msg, idx) => ({
-      key: msg.id || `msg-${idx}`,
-      messageIndex: idx,
-      node: <ChatMessage key={msg.id || `msg-${idx}`} message={msg} showThinking={showThinking} />,
-    }));
+    const rows: TimelineRenderRow[] = messages.map((msg, idx) => {
+      console.log('[ConversationView] Creating row for message:', msg.id, 'role:', msg.role);
+      return {
+        key: msg.id || `msg-${idx}`,
+        messageIndex: idx,
+        node: <ChatMessage key={msg.id || `msg-${idx}`} message={msg} showThinking={showThinking} />,
+      };
+    });
     if (shouldRenderStreaming) {
-      rows.push({
-        key: 'streaming:message',
-        node: <ChatMessage message={(streamMsg ? { ...(streamMsg as Record<string, unknown>), role: (typeof streamMsg.role === 'string' ? streamMsg.role : 'assistant') as RawMessage['role'], content: streamMsg.content ?? streamText, timestamp: streamMsg.timestamp ?? streamingTimestamp } : { role: 'assistant', content: streamText, timestamp: streamingTimestamp }) as RawMessage} showThinking={showThinking} isStreaming streamingTools={streamingTools} />,
-      });
+      // 检查流式消息是否已经存在于 messages 中，避免重复渲染
+      const streamMsgId = streamMsg && typeof streamMsg === 'object' && 'id' in streamMsg ? String(streamMsg.id) : null;
+      const alreadyInMessages = streamMsgId && messages.some((msg) => msg.id === streamMsgId);
+
+      if (!alreadyInMessages) {
+        rows.push({
+          key: 'streaming:message',
+          node: <ChatMessage message={(streamMsg ? { ...(streamMsg as Record<string, unknown>), role: (typeof streamMsg.role === 'string' ? streamMsg.role : 'assistant') as RawMessage['role'], content: streamMsg.content ?? streamText, timestamp: streamMsg.timestamp ?? streamingTimestamp } : { role: 'assistant', content: streamText, timestamp: streamingTimestamp }) as RawMessage} showThinking={showThinking} isStreaming streamingTools={streamingTools} />,
+        });
+      }
     }
     if (sending && pendingFinal && !shouldRenderStreaming) rows.push({ key: 'streaming:pending-final', node: <ActivityIndicator phase="tool_processing" startedAt={streamingTimestamp || undefined} /> });
     if (sending && !pendingFinal && !hasAnyStreamContent) rows.push({ key: 'streaming:typing', node: <TypingIndicator startedAt={streamingTimestamp || undefined} /> });

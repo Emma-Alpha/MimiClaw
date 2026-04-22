@@ -51,7 +51,7 @@ export function trackUiEvent(event: string, payload: TelemetryPayload = {}): voi
   };
 
   // Local-only telemetry for UX diagnostics.
-  console.info(`[ui-metric] ${event} ${safeStringify(logPayload)}`);
+  // console.info(`[ui-metric] ${event} ${safeStringify(logPayload)}`);
 }
 
 export function getUiCounter(event: string): number {

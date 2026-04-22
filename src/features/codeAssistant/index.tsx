@@ -10,6 +10,8 @@ import type { MenuProps } from "antd";
 import {
 	Check,
 	ChevronDown,
+	FileText,
+	Folder,
 	GitBranch,
 	Plus,
 	Search,
@@ -61,7 +63,7 @@ import type {
 	PetCodeChatSeed,
 } from "../../../shared/pet";
 import { CodeChatHeader } from "./components/CodeChatHeader";
-import { CodeChatTimeline } from "./components/CodeChatTimeline";
+import { ConversationView } from "@/features/mainChat/components/ConversationView";
 import { ThreadTerminalPanel } from "./components/ThreadTerminalPanel";
 import { ElicitationForm } from "./components/code-agent/ElicitationForm";
 import { PermissionDispatcher } from "./components/code-agent/permissions/PermissionDispatcher";
@@ -518,18 +520,53 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		setDroppedPaths,
 	});
 
-	// Fetch project mention entries whenever workspace root changes
+	// Preload project mention entries once the workspace root is known.
+	// This MUST happen before the user types "@", because @lobehub/editor only
+	// registers the "@" mention plugin when `mentionOption.items.length > 0`.
+	// If the list is empty when "@" is first typed, the dropdown will not open —
+	// even after items arrive asynchronously (e.g. while typing "@src").
 	useEffect(() => {
 		if (!codeWorkspaceRoot) {
 			setProjectMentionEntries([]);
 			return;
 		}
+		let cancelled = false;
 		fetchProjectMentionEntries(codeWorkspaceRoot)
 			.then((entries) => {
-				setProjectMentionEntries(entries);
+				if (!cancelled) setProjectMentionEntries(entries);
 			})
-			.catch(() => {});
+			.catch((err) => {
+				console.error('[CodeAssistant] preload mentions error:', err);
+			});
+		return () => {
+			cancelled = true;
+		};
 	}, [codeWorkspaceRoot]);
+
+	// Refine the mention list as the user types "@query". When no "@" is being
+	// typed, keep the previously-loaded list intact so the plugin stays active
+	// and the dropdown can reopen immediately on the next "@".
+	useEffect(() => {
+		if (!codeWorkspaceRoot) return;
+
+		const trimmedInput = input.trimEnd();
+		const mentionMatch = trimmedInput.match(/(^|\s)@([^\s@]*)$/);
+		if (!mentionMatch) return;
+
+		const query = (mentionMatch[2] ?? '').replace(/\\/g, '/');
+
+		const timeoutId = setTimeout(() => {
+			fetchProjectMentionEntries(codeWorkspaceRoot, query || undefined)
+				.then((entries) => {
+					setProjectMentionEntries(entries);
+				})
+				.catch((err) => {
+					console.error('[CodeAssistant] search error:', err);
+				});
+		}, 150);
+
+		return () => clearTimeout(timeoutId);
+	}, [codeWorkspaceRoot, input]);
 
 	// Fetch claude code skills whenever workspace root changes
 	useEffect(() => {
@@ -544,21 +581,60 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 
 	// Map project mention entries to MentionItem[]
 	const mentionItems = useMemo<MentionItem[]>(
-		() =>
-			projectMentionEntries.map((entry) => ({
-				description: entry.relativePath,
-				id: entry.absolutePath,
-				label: entry.name,
-				onSelect: () => {
-					// Register the path so it is included in the submission's paths list
-					applyDroppedPaths([{
-						absolutePath: entry.absolutePath,
-						isDirectory: entry.isDirectory,
-						name: entry.name,
-					}]);
-				},
-			})),
-		[applyDroppedPaths, projectMentionEntries],
+		() => {
+			return projectMentionEntries.map((entry) => {
+				const lastSlash = entry.relativePath.lastIndexOf('/');
+				const parentDir = lastSlash >= 0
+					? entry.relativePath.slice(0, lastSlash)
+					: '';
+				const Icon = entry.isDirectory ? Folder : FileText;
+				return {
+					id: entry.absolutePath,
+					// Inserted mention text: full relative path keeps every
+					// entry unique (avoids duplicate "@src" pills) and makes
+					// it clear which file/folder was referenced.
+					label: `@${entry.relativePath}`,
+					// Dropdown row label: short name for easy scanning. The
+					// fuse.js client-side filter also uses this string.
+					displayLabel: entry.name,
+					// Description participates in fuse matching; also useful
+					// for other consumers that want secondary metadata.
+					description: entry.relativePath,
+					kind: entry.isDirectory ? 'folder' : 'file',
+					icon: (
+						<Icon
+							size={14}
+							strokeWidth={1.75}
+							style={{
+								color: entry.isDirectory
+									? 'var(--color-primary)'
+									: 'var(--color-text-secondary)',
+								flexShrink: 0,
+							}}
+						/>
+					),
+					extra: (
+						<span
+							style={{
+								color: 'var(--color-text-tertiary)',
+								fontSize: 12,
+								marginLeft: 12,
+								overflow: 'hidden',
+								textOverflow: 'ellipsis',
+								whiteSpace: 'nowrap',
+								maxWidth: 220,
+								direction: 'rtl',
+								textAlign: 'left',
+							}}
+							title={entry.relativePath}
+						>
+							{parentDir || (entry.isDirectory ? '/' : '.')}
+						</span>
+					),
+				};
+			});
+		},
+		[projectMentionEntries],
 	);
 
 	// Map claudeCodeSkills to ISlashOption[] for the editor slash menu
@@ -836,6 +912,67 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		[messages],
 	);
 
+	// Convert codeAgentItems to RawMessage format for unified rendering
+	const codeAgentMessages = useMemo<RawMessage[]>(() => {
+		if (draftTarget !== "code") return [];
+
+		const converted: RawMessage[] = [];
+
+		for (const item of codeAgentItems) {
+			if (item.kind === "user") {
+				converted.push({
+					id: item.id,
+					role: "user",
+					content: item.text,
+					timestamp: Date.now(),
+					_attachedFiles: [],
+				});
+			} else if (item.kind === "assistant-text") {
+				converted.push({
+					id: item.id,
+					role: "assistant",
+					content: item.text,
+					timestamp: Date.now(),
+				});
+			} else if (item.kind === "thinking") {
+				// Include thinking as part of assistant message
+				converted.push({
+					id: item.id,
+					role: "assistant",
+					content: [
+						{
+							type: "thinking" as const,
+							thinking: item.data.text,
+						},
+					],
+					timestamp: Date.now(),
+				});
+			} else if (item.kind === "tool-use") {
+				// Include tool use in assistant message
+				converted.push({
+					id: item.id,
+					role: "assistant",
+					content: [
+						{
+							type: "tool_use" as const,
+							id: item.tool.toolUseId,
+							name: item.tool.toolName,
+							input: item.tool.rawInput,
+						},
+					],
+					timestamp: Date.now(),
+				});
+			}
+		}
+
+		return converted;
+	}, [codeAgentItems, draftTarget]);
+
+	// Merge messages based on current mode
+	const unifiedMessages = useMemo(() => {
+		return draftTarget === "code" ? codeAgentMessages : visibleMessages;
+	}, [draftTarget, codeAgentMessages, visibleMessages]);
+
 	useEffect(() => {
 		setChatSeenAt((previous) => {
 			let changed = false;
@@ -1111,22 +1248,18 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 					}}
 				/>
 
-			<CodeChatTimeline
-				embedded={embeddedCodeAssistant}
-				timelineItems={embeddedCodeAssistant ? [] : timelineItems}
-				sending={sending}
-				streamingText={liveStreamingText}
+			<ConversationView
+				messages={unifiedMessages}
+				currentSessionKey={draftTarget === "code" ? activeClaudeSessionId : currentSessionKey}
+				loading={false}
+				sending={sending || codeSending}
+				error={null}
+				showThinking={true}
+				streamingMessage={streamingMessage}
+				streamingTools={streamingTools}
 				pendingFinal={pendingFinal}
-				codeSending={codeSending}
-				codeAgentItems={codeAgentItems}
-				streamingThinkingText={codeStreaming.thinkingText}
-				streamingAssistantText={codeStreaming.assistantText}
-				vendorStatusText={codeStreaming.vendorStatusText}
-				isThinking={codeStreaming.isThinking}
-				isCodeStreaming={codeStreaming.isStreaming}
-				codeWorkspaceRoot={codeWorkspaceRoot}
-				spinnerMode={codeStreaming.spinnerMode}
-				bottomReservedHeight={timelineBottomReservedHeight}
+				lastRunWasAborted={false}
+				clearError={() => {}}
 			/>
 
 			<div className={styles.bottomDock}>
@@ -1258,7 +1391,9 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 					</div>
 				}
 				mentionItems={mentionItems}
-				onMarkdownContentChange={setInput}
+				onMarkdownContentChange={(value) => {
+					setInput(value);
+				}}
 				onSend={handleCodeAssistantSend}
 				onStop={() => { void handleStop(); }}
 				rightActions={[]}
