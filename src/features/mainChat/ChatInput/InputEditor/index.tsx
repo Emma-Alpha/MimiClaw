@@ -3,8 +3,10 @@ import { Editor, type EditorProps, useEditor } from '@lobehub/editor/react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { preferenceSelectors, useSettingsStore } from '@/stores/settings';
+import { usePasteFile, useUploadFiles } from '@/components/DragUploadZone';
 import { useChatInputContext } from '../ChatInputProvider';
 import { fromEditorMarkdown, toEditorMarkdown } from '../hooks/useChatInputEditor';
+import { useChatInputStore } from '../store';
 
 type PressEnterPayload = Parameters<NonNullable<EditorProps['onPressEnter']>>[0];
 
@@ -28,6 +30,11 @@ export function InputEditor() {
   } = useChatInputContext();
   const useCmdEnterToSend = useSettingsStore(preferenceSelectors.useCmdEnterToSend);
   const editorInstance = useEditor();
+  const setEditorInstance = useChatInputStore((s) => s.setEditorInstance);
+  const editorInstanceFromStore = useChatInputStore((s) => s.editorInstance);
+
+  const { handleUploadFiles } = useUploadFiles();
+  usePasteFile(editorInstanceFromStore, handleUploadFiles);
 
   useEffect(() => () => setEditor(null), [setEditor]);
 
@@ -124,9 +131,10 @@ export function InputEditor() {
 
   const handleEditorInit = useCallback((activeEditor: IEditor) => {
     setEditor(activeEditor);
+    setEditorInstance(activeEditor);
     if (markdown.trim().length === 0) return;
     activeEditor.setDocument('markdown', toEditorMarkdown(markdown));
-  }, [markdown, setEditor]);
+  }, [markdown, setEditor, setEditorInstance]);
 
   return (
     <Editor

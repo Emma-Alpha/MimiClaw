@@ -2,6 +2,7 @@ import type { ChatInputStoreState } from './types';
 
 export const initialChatInputStoreState: ChatInputStoreState = {
   editor: null,
+  editorInstance: null,
   expanded: false,
   historyCount: 0,
   leftActions: [],

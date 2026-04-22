@@ -9,6 +9,9 @@ import { SendArea } from '../SendArea';
 import { TypoBar } from '../TypoBar';
 import { useChatInputContext } from '../ChatInputProvider';
 import { chatInputStoreSelectors, useChatInputStore } from '../store';
+import { ContextContainer } from './ContextContainer';
+import { TokenDisplay } from './TokenDisplay';
+import { fileChatSelectors, useFileStore } from '@/stores/file';
 
 const useStyles = createStyles(({ css, cssVar }) => ({
   container: css`
@@ -45,6 +48,7 @@ export function DesktopChatInput() {
   const { styles } = useStyles();
   const { allowExpand, expanded, extraRightContent, leftContent, setExpanded } = useChatInputContext();
   const showTypoBar = useChatInputStore(chatInputStoreSelectors.showTypoBar);
+  const hasFiles = useFileStore(fileChatSelectors.chatUploadFileListHasItem);
 
   const expandButton = allowExpand ? (
     <ActionIcon
@@ -62,26 +66,34 @@ export function DesktopChatInput() {
       <ChatInput
         footer={
           <ChatInputActionBar
-            left={leftContent ?? <MimiActionBar />}
+            left={
+              <Flexbox align="center" gap={8} horizontal>
+                {leftContent ?? <MimiActionBar />}
+              </Flexbox>
+            }
             right={
-              <Flexbox align="center" flex="none" gap={6} horizontal>
+              <Flexbox align="center" flex="none" gap={6} horizontal style={{ marginRight: 4 }}>
                 {expandButton}
                 {extraRightContent}
                 <SendArea />
               </Flexbox>
             }
-            style={{ paddingRight: 8 }}
+            style={{ paddingRight: 12 }}
           />
         }
         fullscreen={expanded}
-        header={showTypoBar ? <TypoBar /> : undefined}
+        header={
+          <Flexbox gap={0}>
+            {showTypoBar && <TypoBar />}
+            {hasFiles && <ContextContainer />}
+          </Flexbox>
+        }
         maxHeight={320}
         minHeight={36}
         resize
       >
         <InputEditor />
       </ChatInput>
-      <RuntimeConfig />
     </Flexbox>
   );
 

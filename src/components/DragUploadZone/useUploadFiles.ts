@@ -1,40 +1,26 @@
 import { useCallback } from 'react';
-
-import { useModelSupportVision } from '@/hooks/useModelSupportVision';
-import { useFileStore } from '@/store/file';
-
-interface UseUploadFilesOptions {
-  model?: string;
-  provider?: string;
-}
+import { useFileStore } from '@/stores/file';
 
 /**
- * Hook to handle file uploads with vision support filtering.
- * Filters out image files if the model does not support vision.
+ * Hook to handle file uploads from paste/drag events.
+ * Uses stageBufferFile to upload each file individually.
  *
- * @param options - The model and provider to check for vision support
  * @returns handleUploadFiles - Callback to handle file uploads
  */
-export const useUploadFiles = (options: UseUploadFilesOptions = {}) => {
-  const { model = '', provider = '' } = options;
-
-  const canUploadImage = useModelSupportVision(model, provider);
-  const uploadFiles = useFileStore((s) => s.uploadChatFiles);
+export const useUploadFiles = () => {
+  const stageBufferFile = useFileStore((s) => s.stageBufferFile);
 
   const handleUploadFiles = useCallback(
     async (files: File[]) => {
-      // Filter out image files if the model does not support vision
-      const filteredFiles = files.filter((file) => {
-        if (canUploadImage) return true;
-        return !file.type.startsWith('image');
-      });
+      console.log('[useUploadFiles] Uploading files:', files);
+      if (files.length === 0) return;
 
-      if (filteredFiles.length > 0) {
-        uploadFiles(filteredFiles);
-      }
+      // Upload each file individually via stageBufferFile
+      const results = await Promise.allSettled(files.map((file) => stageBufferFile(file)));
+      console.log('[useUploadFiles] Upload results:', results);
     },
-    [canUploadImage, uploadFiles],
+    [stageBufferFile],
   );
 
-  return { canUploadImage, handleUploadFiles };
+  return { handleUploadFiles };
 };

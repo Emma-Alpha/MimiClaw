@@ -1,3 +1,4 @@
+import type { IEditor } from '@lobehub/editor';
 import type { ChatInputActionKey, ChatInputEditorApi, MentionItem } from '../types';
 
 export interface ChatInputModelParams {
@@ -9,6 +10,7 @@ export interface ChatInputModelParams {
 
 export interface ChatInputStoreState {
   editor: ChatInputEditorApi | null;
+  editorInstance: IEditor | null;
   expanded: boolean;
   historyCount: number;
   leftActions: ChatInputActionKey[];
@@ -41,6 +43,7 @@ export interface ChatInputStoreAction {
   reset: () => void;
   setActionConfig: (left: ChatInputActionKey[], right: ChatInputActionKey[]) => void;
   setEditor: (editor: ChatInputEditorApi | null) => void;
+  setEditorInstance: (instance: IEditor | null) => void;
   setExpanded: (expanded: boolean) => void;
   setMarkdown: (markdown: string) => void;
   setMentionItems: (items: MentionItem[]) => void;

@@ -13,6 +13,8 @@ import { useSettingsStore, labPreferSelectors } from '@/stores/settings';
 import { chatInputStoreSelectors, useChatInputStore } from '../store';
 import type { ChatInputActionKey } from '../types';
 import { useChatInputContext } from '../ChatInputProvider';
+import { RuntimeConfig } from '../RuntimeConfig';
+import { TokenDisplay } from '../Desktop/TokenDisplay';
 import {
   handleAgentModeAction,
   handleClearAction,
@@ -358,6 +360,7 @@ export function ChatInputActionBar() {
     });
 
     const tagItems: ChatInputActionItem[] = [
+      { alwaysDisplay: true as const, children: <RuntimeConfig />, key: 'runtime-config' },
       ...(searchEnabled ? [{ alwaysDisplay: true as const, children: <Tag>Search On</Tag>, key: 'tag-search' }] : []),
       ...(memoryTurnEnabled ? [{ alwaysDisplay: true as const, children: <Tag>Memory On</Tag>, key: 'tag-memory' }] : []),
       ...(historyCount > 0 ? [{ alwaysDisplay: true as const, children: <Tag>{`History ${historyCount}`}</Tag>, key: 'tag-history' }] : []),
@@ -381,6 +384,7 @@ export function ChatInputActionBar() {
       ...(attachments.length > 0
         ? [{ alwaysDisplay: true as const, children: <ActionIcon icon={X} onClick={clearAttachments} title="Clear files" />, key: 'clear-attachments' }]
         : []),
+      { alwaysDisplay: true as const, children: <TokenDisplay />, key: 'token-display' },
     ];
 
     return [...result, ...tagItems];

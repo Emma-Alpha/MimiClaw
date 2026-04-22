@@ -19,6 +19,10 @@ export class ChatInputStoreActionImpl {
     this.#set({ editor });
   };
 
+  setEditorInstance: ChatInputStoreAction['setEditorInstance'] = (editorInstance) => {
+    this.#set({ editorInstance });
+  };
+
   setExpanded: ChatInputStoreAction['setExpanded'] = (expanded) => {
     this.#set({ expanded, showTypoBar: expanded });
   };
@@ -65,9 +69,11 @@ export class ChatInputStoreActionImpl {
 
   reset: ChatInputStoreAction['reset'] = () => {
     const currentEditor = this.#get().editor;
+    const currentEditorInstance = this.#get().editorInstance;
     this.#set({
       ...initialChatInputStoreState,
       editor: currentEditor,
+      editorInstance: currentEditorInstance,
     });
   };
 }
