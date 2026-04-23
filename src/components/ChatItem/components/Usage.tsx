@@ -21,6 +21,9 @@ export interface UsageProps {
 }
 
 const Usage = memo<UsageProps>(({ model, usage, performance }) => {
+  // Debug logging
+  console.log('[Usage] Rendering with:', { model, usage, performance });
+
   if (!usage?.totalTokens && !model) return null;
 
   return (

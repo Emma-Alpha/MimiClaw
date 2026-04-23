@@ -38,14 +38,17 @@ export class ChatRuntimeActionImpl {
     payloadOrText: string | ChatSendPayload,
     attachments?: ChatSendAttachment[],
   ) => {
+    console.log('[sendMessage] Called with:', { payloadOrText, attachments });
     const payload = typeof payloadOrText === 'string'
       ? { message: payloadOrText }
       : payloadOrText;
     const text = payload.message;
     const resolvedAttachments = payload.files ?? attachments;
     const trimmed = text.trim();
+    console.log('[sendMessage] Trimmed text:', trimmed, 'attachments:', resolvedAttachments?.length || 0);
     if (!trimmed && (!resolvedAttachments || resolvedAttachments.length === 0)) return;
     const currentSessionKey = this.#get().currentSessionKey;
+    console.log('[sendMessage] Current session key:', currentSessionKey);
 
     const nowMs = Date.now();
     const userMsg: RawMessage = {
@@ -150,7 +153,10 @@ export class ChatRuntimeActionImpl {
       let result: { success: boolean; result?: { runId?: string }; error?: string };
       const CHAT_SEND_TIMEOUT_MS = 120_000;
 
+      console.log('[sendMessage] About to send message, hasMedia:', hasMedia);
+
       if (hasMedia) {
+        console.log('[sendMessage] Sending with media via chat:sendWithMedia');
         result = (await invokeIpc('chat:sendWithMedia', {
           sessionKey: currentSessionKey,
           message: trimmed || 'Process the attached file(s).',
@@ -163,6 +169,7 @@ export class ChatRuntimeActionImpl {
           })),
         })) as { success: boolean; result?: { runId?: string }; error?: string };
       } else {
+        console.log('[sendMessage] Sending text-only message via gateway:rpc');
         result = (await invokeIpc(
           'gateway:rpc',
           'chat.send',
@@ -215,6 +222,8 @@ export class ChatRuntimeActionImpl {
   };
 
   handleChatEvent = (event: Record<string, unknown>) => {
+    console.log('[handleChatEvent] Received event:', JSON.stringify(event, null, 2));
+
     const runId = String(event.runId || '');
     const eventState = String(event.state || '');
     const eventSessionKey = event.sessionKey != null ? String(event.sessionKey) : null;
@@ -295,6 +304,8 @@ export class ChatRuntimeActionImpl {
         if (this.#get().error) this.#set({ error: null });
 
         const finalMessage = event.message as RawMessage | undefined;
+        console.log('[handleChatEvent] Final message:', JSON.stringify(finalMessage, null, 2));
+        console.log('[handleChatEvent] Full event in final:', JSON.stringify(event, null, 2));
         if (finalMessage) {
           const updates = collectToolUpdates(finalMessage, resolvedState);
           if (isToolResultRole(finalMessage.role)) {

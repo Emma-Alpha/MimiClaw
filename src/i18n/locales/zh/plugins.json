@@ -26,7 +26,7 @@
       "fileMissing": "尚未生成 .mcp.json",
       "notDetected": "当前项目里还没有检测到 {{server}} 配置。",
       "verificationHint": "这里校验的是当前工作区 .mcp.json 是否已接入，并不是远端服务实时握手状态。",
-      "workspaceHint": "请先打开一个线程工作区，再验证项目级 MCP 是否接入。",
+      "workspaceHint": "请先打开一个工作区，再验证项目级 MCP 是否接入。",
       "workspaceLabel": "工作区",
       "workspaceMissing": "当前还没有可用于验证的工作区。"
     },

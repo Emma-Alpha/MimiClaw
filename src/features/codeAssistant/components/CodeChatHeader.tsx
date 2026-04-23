@@ -206,8 +206,8 @@ function CodeChatHeaderImpl({
 		: null;
 
 	const useCodexHeader = embedded && !showWindowActions;
-	const embeddedHeaderTitle = viewModel.headerTitle || "新线程";
-	const embeddedHeaderTitleDisplay = truncateHeaderText(embeddedHeaderTitle, 20) || "新线程";
+	const embeddedHeaderTitle = viewModel.headerTitle || "新对话";
+	const embeddedHeaderTitleDisplay = truncateHeaderText(embeddedHeaderTitle, 20) || "新对话";
 	const embeddedStatusLabel = viewModel.status.label;
 	const sidebarToggleAriaLabel = sidebarCollapsed
 		? t("sidebar.expandSidebar", { defaultValue: "展开侧边栏" })

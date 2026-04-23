@@ -248,6 +248,7 @@ export class GatewayActionImpl {
   };
 
   readonly #handleGatewayChatMessage = (data: unknown): void => {
+    console.log('[Gateway] Received chat message:', JSON.stringify(data, null, 2));
     import('../chat').then(({ useChatStore }) => {
       const chatData = data as Record<string, unknown>;
       const payload = ('message' in chatData && typeof chatData.message === 'object')

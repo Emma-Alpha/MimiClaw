@@ -10,9 +10,6 @@ import { clampSidebarWidth } from '@/lib/sidebar-layout';
 import { useSettingsStore } from '@/stores/settings';
 import { Sidebar } from './Sidebar/index';
 import { TitleBar } from './TitleBar';
-import { JizhiSessionBridge } from './JizhiSessionBridge';
-import { RemoteMessengerSessionBridge } from './RemoteMessengerSessionBridge';
-import { VoiceChatSessionBridge } from './VoiceChatSessionBridge';
 
 type SidebarResizeState = {
   pointerId: number;
@@ -251,9 +248,6 @@ export function MainLayout() {
 
   return (
     <div className={cx(styles.root, translucentSidebar && styles.rootTranslucent)}>
-      <JizhiSessionBridge />
-      <RemoteMessengerSessionBridge />
-      <VoiceChatSessionBridge />
       {/* Global Title Bar for dragging */}
       <TitleBar
         hideManagementMenu={hideTitleBarManagementMenu}
@@ -287,7 +281,6 @@ export function MainLayout() {
         <main
           className={cx(
             styles.main,
-            translucentSidebar && styles.mainCodexChrome,
             fullBleed && styles.mainFullBleed,
           )}
           style={contentSafeAreaStyle}

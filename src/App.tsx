@@ -25,7 +25,6 @@ import { VoiceDialog } from "./pages/VoiceDialog";
 import { TrayRuntime } from "./pages/TrayRuntime";
 import { Setup } from "./pages/Setup";
 import { Login } from "./pages/Login";
-import { RemoteWebviewPage } from "./pages/RemoteWebviewPage";
 import { useSettingsStore } from "./stores/settings";
 import { useGatewayStore } from "./stores/gateway";
 import { useChatStore, chatStreamingSelectors } from "./stores/chat";
@@ -334,12 +333,9 @@ function App() {
 
 						{/* Main application routes */}
 						<Route element={<MainLayout />}>
-							<Route path="/" element={<Navigate to="/chat/openclaw" replace />} />
-							<Route path="/chat" element={<Navigate to="/chat/openclaw" replace />} />
+							<Route path="/" element={<Navigate to="/chat/code" replace />} />
+							<Route path="/chat" element={<Navigate to="/chat/code" replace />} />
 							<Route path="/chat/:kind" element={<UnifiedChatPage />} />
-							<Route path="/xiaojiu-chat" element={<Navigate to="/chat/xiaojiu" replace />} />
-							<Route path="/jizhi-chat" element={<Navigate to="/chat/jizhi" replace />} />
-							<Route path="/voice-chat" element={<Navigate to="/chat/voice" replace />} />
 							<Route path="/models" element={<Models />} />
 							<Route path="/plugins" element={<Plugins />} />
 							<Route path="/agents" element={<Navigate to="/plugins" replace />} />
@@ -350,7 +346,6 @@ function App() {
 							<Route path="/code-agent/quick-chat" element={<LegacyCodeQuickChatRedirect />} />
 							<Route path="/code-agent" element={<CodeAgent />} />
 							<Route path="/settings/*" element={<Settings />} />
-							<Route path="/webview/:site" element={<RemoteWebviewPage />} />
 						</Route>
 					</Routes>
 

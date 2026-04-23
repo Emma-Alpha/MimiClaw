@@ -11,18 +11,11 @@ import {
 	Clock,
 	Ellipsis,
 	FolderOpen,
-	Globe,
 	Hexagon,
 	Loader2,
-	MessageCircle,
-	MessageSquare,
-	Mic,
-	Palette,
-	Pin,
 	Plus,
 	Settings as SettingsIcon,
 	SquarePen,
-	Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -34,11 +27,7 @@ import {
 	useSettingsStore,
 	type SidebarThreadWorkspace,
 } from "@/stores/settings";
-import { useChatStore } from "@/stores/chat";
 import { useCodeAgentStore } from "@/stores/code-agent";
-import { useGatewayStore } from "@/stores/gateway";
-import { useRemoteMessengerStore } from "@/stores/remote-messenger";
-import { useVoiceChatSessionsStore } from "@/stores/voice-chat-sessions";
 import {
 	fetchCodeAgentSessions,
 	fetchWorkspaceAvailability,
@@ -59,19 +48,15 @@ import {
 	CHAT_SESSION_META_ICON_SIZE,
 } from "@/styles/typography-tokens";
 import { SidebarUpdateAction } from "@/components/update/SidebarUpdateAction";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 import { NavItem, SideBarLayout } from "@/features/NavPanel";
 import { SettingsSidebar } from "./SettingsSidebar";
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
-type FolderKey = "thread" | "openclaw" | "realtimeVoice" | "xiaojiu";
+type FolderKey = "thread";
 
-type OpenClawSessionItem = { key: string; label: string; updatedAt: number };
 type CliSessionItem = { sessionId: string; title: string; updatedAt: number };
-type VoiceSessionItem = { id: string; label: string; updatedAt: number };
-type XiaojiuSessionItem = { id: string; label: string; updatedAt: number };
 type WorkspaceAvailability = { available: boolean; reason?: string };
 type RunningThreadSessionMap = Record<string, Record<string, true>>;
 
@@ -224,14 +209,6 @@ function formatRelativeTime(timestamp: number, language: string): string {
 	return isZh ? `${days} 天` : `${days}d`;
 }
 
-function getWorkspaceSecondaryLabel(workspace: SidebarThreadWorkspace): string {
-	const parts = normalizeWorkspacePath(workspace.rootPath)
-		.split(/[\\/]+/)
-		.filter(Boolean);
-	if (parts.length < 2) return "";
-	const parent = parts[parts.length - 2] ?? "";
-	return parent && parent !== workspace.name ? parent : "";
-}
 
 // ─── component ────────────────────────────────────────────────────────────────
 
@@ -273,44 +250,10 @@ export function Sidebar() {
 	const touchSidebarThreadWorkspace = useSettingsStore(
 		(s) => s.touchSidebarThreadWorkspace,
 	);
-	const xiaojiuEnabled = useSettingsStore((s) => s.xiaojiuEnabled);
 
 	// ── chat store ────────────────────────────────────────────────────────────
-	const sessions = useChatStore((s) => s.sessions);
-	const currentSessionKey = useChatStore((s) => s.currentSessionKey);
-	const sessionLabels = useChatStore((s) => s.sessionLabels);
-	const sessionLastActivity = useChatStore((s) => s.sessionLastActivity);
-	const switchSession = useChatStore((s) => s.switchSession);
-	const newSession = useChatStore((s) => s.newSession);
-	const deleteSession = useChatStore((s) => s.deleteSession);
-	const loadSessions = useChatStore((s) => s.loadSessions);
-	const loadHistory = useChatStore((s) => s.loadHistory);
-	const chatSending = useChatStore((s) => s.sending);
 	const codeAgentSessionId = useCodeAgentStore((s) => s.sessionId);
 	const codeAgentSessionState = useCodeAgentStore((s) => s.sessionState);
-
-	// ── gateway / remote / voice stores ───────────────────────────────────────
-	const gatewayStatus = useGatewayStore((s) => s.status);
-	const isGatewayRunning = gatewayStatus.state === "running";
-
-	const remoteSessions = useRemoteMessengerStore((s) => s.sessions);
-	const remoteLastSyncedAt = useRemoteMessengerStore((s) => s.lastSyncedAt);
-	const remoteSyncError = useRemoteMessengerStore((s) => s.syncError);
-	const remoteActiveSessionId = useRemoteMessengerStore(
-		(s) => s.activeSessionId,
-	);
-	const setRemoteActiveSessionId = useRemoteMessengerStore(
-		(s) => s.setActiveSessionId,
-	);
-
-	const voiceSessions = useVoiceChatSessionsStore((s) => s.sessions);
-	const voiceSyncError = useVoiceChatSessionsStore((s) => s.syncError);
-	const voiceActiveSessionId = useVoiceChatSessionsStore(
-		(s) => s.activeSessionId,
-	);
-	const setVoiceActiveSessionId = useVoiceChatSessionsStore(
-		(s) => s.setActiveSessionId,
-	);
 
 	// ── router ────────────────────────────────────────────────────────────────
 	const navigate = useNavigate();
@@ -319,15 +262,7 @@ export function Sidebar() {
 	const { t, i18n } = useTranslation(["common", "settings"]);
 
 	// ── local state ───────────────────────────────────────────────────────────
-	const [sessionToDelete, setSessionToDelete] = useState<{
-		key: string;
-		label: string;
-	} | null>(null);
 	const [searchQuery] = useState("");
-	const [openClawSessionsExpanded, setOpenClawSessionsExpanded] =
-		useState(false);
-	const [xiaojiuSessionsExpanded, setXiaojiuSessionsExpanded] = useState(false);
-	const [voiceSessionsExpanded, setVoiceSessionsExpanded] = useState(false);
 	const [workspaceSessionsExpanded, setWorkspaceSessionsExpanded] = useState<
 		Record<string, boolean>
 	>({});
@@ -350,20 +285,6 @@ export function Sidebar() {
 	const fetchedWorkspaceIdsRef = useRef<Set<string>>(new Set());
 
 	// ── effects ───────────────────────────────────────────────────────────────
-
-	useEffect(() => {
-		if (!isGatewayRunning) return;
-		let cancelled = false;
-		const hasExistingMessages = useChatStore.getState().messages.length > 0;
-		(async () => {
-			await loadSessions();
-			if (cancelled) return;
-			await loadHistory(hasExistingMessages);
-		})();
-		return () => {
-			cancelled = true;
-		};
-	}, [isGatewayRunning, loadHistory, loadSessions]);
 
 	const isFolderExpanded = useCallback(
 		(folder: FolderKey) => sidebarFolderExpanded?.[folder] !== false,
@@ -402,50 +323,6 @@ export function Sidebar() {
 		[threadWorkspaces],
 	);
 
-	const openClawSessions = useMemo<OpenClawSessionItem[]>(() => {
-		const getLabel = (key: string, displayName?: string, label?: string) =>
-			sessionLabels[key] ?? label ?? displayName ?? key;
-		return [...sessions]
-			.sort((a, b) => {
-				const aU = sessionLastActivity[a.key] ?? a.updatedAt ?? 0;
-				const bU = sessionLastActivity[b.key] ?? b.updatedAt ?? 0;
-				return bU - aU;
-			})
-			.map((s) => ({
-				key: s.key,
-				label: getLabel(s.key, s.displayName, s.label),
-				updatedAt: sessionLastActivity[s.key] ?? s.updatedAt ?? 0,
-			}));
-	}, [sessionLabels, sessionLastActivity, sessions]);
-
-	const realtimeVoiceSessions = useMemo<VoiceSessionItem[]>(
-		() =>
-			[...voiceSessions]
-				.sort((a, b) => b.lastActivityAt - a.lastActivityAt)
-				.map((s) => ({
-					id: s.id,
-					label: s.title,
-					updatedAt: s.lastActivityAt,
-				})),
-		[voiceSessions],
-	);
-
-	const xiaojiuSessionItems = useMemo<XiaojiuSessionItem[]>(() => {
-		if (!xiaojiuEnabled) return [];
-		const syncBase = remoteLastSyncedAt ?? 0;
-		return [...remoteSessions]
-			.sort((a, b) => {
-				const aU = a.updatedAt ?? syncBase - a.sortIndex * 1000;
-				const bU = b.updatedAt ?? syncBase - b.sortIndex * 1000;
-				return bU - aU;
-			})
-			.map((s) => ({
-				id: s.id,
-				label: s.name,
-				updatedAt: s.updatedAt ?? syncBase - s.sortIndex * 1000,
-			}));
-	}, [remoteLastSyncedAt, remoteSessions, xiaojiuEnabled]);
-
 	const routeSearchParams = useMemo(
 		() => new URLSearchParams(location.search),
 		[location.search],
@@ -474,18 +351,6 @@ export function Sidebar() {
 		[hasSearchQuery, normalizedQuery],
 	);
 
-	const filteredOpenClawSessions = useMemo(
-		() => openClawSessions.filter((s) => matchesQuery(s.label)),
-		[matchesQuery, openClawSessions],
-	);
-	const filteredRealtimeVoiceSessions = useMemo(
-		() => realtimeVoiceSessions.filter((s) => matchesQuery(s.label)),
-		[matchesQuery, realtimeVoiceSessions],
-	);
-	const filteredXiaojiuSessions = useMemo(
-		() => xiaojiuSessionItems.filter((s) => matchesQuery(s.label)),
-		[matchesQuery, xiaojiuSessionItems],
-	);
 	const filteredThreadSessionsByWorkspace = useMemo(() => {
 		const next: Record<string, CliSessionItem[]> = {};
 		for (const w of threadWorkspaces) {
@@ -553,7 +418,7 @@ export function Sidebar() {
 				setWorkspaceErrorById((prev) => ({
 					...prev,
 					[workspace.id]: t("sidebar.threadSessionsLoadFailed", {
-						defaultValue: "线程会话加载失败",
+						defaultValue: "工作区会话加载失败",
 					}),
 				}));
 			} finally {
@@ -739,14 +604,6 @@ export function Sidebar() {
 	]);
 
 	useEffect(() => {
-		if (pathname === "/" || pathname.startsWith("/chat/openclaw")) {
-			setSidebarActiveContext({ kind: "openclaw", workspaceId: null });
-			return;
-		}
-		if (pathname.startsWith("/chat/voice")) {
-			setSidebarActiveContext({ kind: "realtimeVoice", workspaceId: null });
-			return;
-		}
 		if (pathname.startsWith("/chat/code") && activeThreadWorkspaceIdFromRoute) {
 			setSidebarActiveContext({
 				kind: "thread",
@@ -815,19 +672,6 @@ export function Sidebar() {
 		upsertSidebarThreadWorkspace,
 	]);
 
-	const handleOpenClawNewThread = useCallback(() => {
-		setSidebarActiveContext({ kind: "openclaw", workspaceId: null });
-		setFolderExpanded("openclaw", true);
-		newSession();
-		navigate("/chat/openclaw");
-	}, [navigate, newSession, setFolderExpanded, setSidebarActiveContext]);
-
-	const handleRealtimeVoiceNewThread = useCallback(() => {
-		setSidebarActiveContext({ kind: "realtimeVoice", workspaceId: null });
-		setFolderExpanded("realtimeVoice", true);
-		void invokeIpc("voice:openDialog").catch(() => {});
-	}, [setFolderExpanded, setSidebarActiveContext]);
-
 	const handleWorkspaceNewThread = useCallback(
 		(workspace: SidebarThreadWorkspace) => {
 			const availability = workspaceAvailabilityById[workspace.id];
@@ -851,27 +695,19 @@ export function Sidebar() {
 	);
 
 	const handleGlobalNewThread = useCallback(() => {
-		if (sidebarActiveContext.kind === "realtimeVoice") {
-			handleRealtimeVoiceNewThread();
+		// 只处理 thread 工作区的情况
+		const activeWorkspace =
+			(sidebarActiveContext.workspaceId
+				? workspaceById[sidebarActiveContext.workspaceId]
+				: undefined) ?? threadWorkspaces[0];
+		if (activeWorkspace) {
+			handleWorkspaceNewThread(activeWorkspace);
 			return;
 		}
-		if (sidebarActiveContext.kind === "thread") {
-			const activeWorkspace =
-				(sidebarActiveContext.workspaceId
-					? workspaceById[sidebarActiveContext.workspaceId]
-					: undefined) ?? threadWorkspaces[0];
-			if (activeWorkspace) {
-				handleWorkspaceNewThread(activeWorkspace);
-				return;
-			}
-			void handleAddWorkspace();
-			return;
-		}
-		handleOpenClawNewThread();
+		// 如果没有工作区，提示添加工作区
+		void handleAddWorkspace();
 	}, [
 		handleAddWorkspace,
-		handleOpenClawNewThread,
-		handleRealtimeVoiceNewThread,
 		handleWorkspaceNewThread,
 		sidebarActiveContext,
 		threadWorkspaces,
@@ -914,32 +750,6 @@ export function Sidebar() {
 		[],
 	);
 
-	const handleOpenClawSession = useCallback(
-		(sessionKey: string) => {
-			setSidebarActiveContext({ kind: "openclaw", workspaceId: null });
-			switchSession(sessionKey);
-			navigate("/chat/openclaw");
-		},
-		[navigate, setSidebarActiveContext, switchSession],
-	);
-
-	const handleRealtimeVoiceSession = useCallback(
-		(sessionId: string) => {
-			setSidebarActiveContext({ kind: "realtimeVoice", workspaceId: null });
-			setVoiceActiveSessionId(sessionId);
-			navigate("/chat/voice");
-		},
-		[navigate, setSidebarActiveContext, setVoiceActiveSessionId],
-	);
-
-	const handleXiaojiuSession = useCallback(
-		(sessionId: string) => {
-			setRemoteActiveSessionId(sessionId);
-			navigate("/chat/xiaojiu");
-		},
-		[navigate, setRemoteActiveSessionId],
-	);
-
 	const handleThreadSession = useCallback(
 		(workspace: SidebarThreadWorkspace, sessionId: string) => {
 			setSidebarActiveContext({ kind: "thread", workspaceId: workspace.id });
@@ -961,31 +771,11 @@ export function Sidebar() {
 
 	// ── derived counts ────────────────────────────────────────────────────────
 
-	const openClawCount = filteredOpenClawSessions.length;
-	const xiaojiuCount = filteredXiaojiuSessions.length;
-	const realtimeVoiceCount = filteredRealtimeVoiceSessions.length;
-	const hasActiveOpenClawSession =
-		pathname.startsWith("/chat/openclaw") &&
-		openClawSessions.some((s) => s.key === currentSessionKey);
-
-	const canToggleOpenClawSessions = openClawCount > COLLAPSIBLE_SESSION_LIMIT;
-	const visibleOpenClawSessions =
-		canToggleOpenClawSessions && !openClawSessionsExpanded
-			? filteredOpenClawSessions.slice(0, COLLAPSIBLE_SESSION_LIMIT)
-			: filteredOpenClawSessions;
-
-	const canToggleRealtimeVoiceSessions =
-		realtimeVoiceCount > COLLAPSIBLE_SESSION_LIMIT;
-	const visibleRealtimeVoiceSessions =
-		canToggleRealtimeVoiceSessions && !voiceSessionsExpanded
-			? filteredRealtimeVoiceSessions.slice(0, COLLAPSIBLE_SESSION_LIMIT)
-			: filteredRealtimeVoiceSessions;
-
-	const canToggleXiaojiuSessions = xiaojiuCount > COLLAPSIBLE_SESSION_LIMIT;
-	const visibleXiaojiuSessions =
-		canToggleXiaojiuSessions && !xiaojiuSessionsExpanded
-			? filteredXiaojiuSessions.slice(0, COLLAPSIBLE_SESSION_LIMIT)
-			: filteredXiaojiuSessions;
+	const getWorkspaceSecondaryLabel = (workspace: SidebarThreadWorkspace) => {
+		const sessions = filteredThreadSessionsByWorkspace[workspace.id] ?? [];
+		if (sessions.length === 0) return "";
+		return String(sessions.length);
+	};
 
 	if (sidebarCollapsed) return null;
 
@@ -1005,11 +795,11 @@ export function Sidebar() {
 
 	const headerNode = (
 		<Flexbox gap={2} paddingInline={8} paddingBlock={4}>
-			{/* 新线程 */}
+			{/* 新对话 */}
 			<NavItem
 				icon={SquarePen}
 				iconSize={CHAT_NAV_ICON_SIZE}
-				title={t("sidebar.newThread", { defaultValue: "新线程" })}
+				title={t("sidebar.newThread", { defaultValue: "新对话" })}
 				onClick={handleGlobalNewThread}
 			/>
 
@@ -1039,23 +829,6 @@ export function Sidebar() {
 				active={pathname === "/cron"}
 				onClick={() => navigate("/cron")}
 			/>
-
-			{/* ── 远程应用（WebView） ─────────────────────────────────────────── */}
-			<NavItem
-				icon={Globe}
-				iconSize={CHAT_NAV_ICON_SIZE}
-				title="极智"
-				active={pathname.startsWith("/webview/jizhi")}
-				onClick={() => navigate("/webview/jizhi")}
-			/>
-
-			<NavItem
-				icon={Palette}
-				iconSize={CHAT_NAV_ICON_SIZE}
-				title="智绘"
-				active={pathname.startsWith("/webview/zhihui")}
-				onClick={() => navigate("/webview/zhihui")}
-			/>
 		</Flexbox>
 	);
 
@@ -1066,7 +839,7 @@ export function Sidebar() {
 				icon={FolderOpen}
 				iconSize={CHAT_NAV_ICON_SIZE}
 				iconHover={isFolderExpanded("thread") ? ChevronDown : ChevronRight}
-				title={t("sidebar.folder.thread", { defaultValue: "线程" })}
+				title={t("sidebar.folder.thread", { defaultValue: "工作区" })}
 				active={false}
 				actions={
 					<ActionIcon
@@ -1093,7 +866,7 @@ export function Sidebar() {
 				<>
 					{visibleThreadWorkspaces.length === 0 && (
 						<div className={styles.emptyHint}>
-							{t("sidebar.empty.thread", { defaultValue: "无线程" })}
+							{t("sidebar.empty.thread", { defaultValue: "无工作区" })}
 						</div>
 					)}
 
@@ -1199,7 +972,7 @@ export function Sidebar() {
 												size={{ blockSize: 20, size: 12 }}
 												disabled={!availability.available}
 												title={t("sidebar.newThread", {
-													defaultValue: "新线程",
+													defaultValue: "新对话",
 												})}
 												onClick={(e) => {
 													e.stopPropagation();
@@ -1243,7 +1016,7 @@ export function Sidebar() {
 										)}
 										{!isLoading && !error && visibleSessions.length === 0 && (
 											<div className={cx(styles.emptyHint, styles.emptyHintNested)}>
-												{t("sidebar.empty.thread", { defaultValue: "无线程" })}
+												{t("sidebar.empty.thread", { defaultValue: "无工作区" })}
 											</div>
 										)}
 										{visibleSessions.map((session) => {
@@ -1324,250 +1097,6 @@ export function Sidebar() {
 					})}
 				</>
 			)}
-
-			{/* ── OpenClaw ───────────────────────────────────────────────────── */}
-			<NavItem
-				icon={MessageSquare}
-				iconSize={CHAT_NAV_ICON_SIZE}
-				iconHover={isFolderExpanded("openclaw") ? ChevronDown : ChevronRight}
-				title={t("sidebar.folder.openClaw", { defaultValue: "OpenClaw" })}
-				active={
-					pathname.startsWith("/chat/openclaw") && !hasActiveOpenClawSession
-				}
-				style={{ marginTop: 6 }}
-				actions={
-					<ActionIcon
-						icon={Plus}
-						size={{ blockSize: 20, size: 12 }}
-						title={t("sidebar.newThread", { defaultValue: "新线程" })}
-						onClick={(e) => {
-							e.stopPropagation();
-							handleOpenClawNewThread();
-						}}
-					/>
-				}
-				onClick={() => {
-					toggleFolder("openclaw");
-					setSidebarActiveContext({ kind: "openclaw", workspaceId: null });
-				}}
-			/>
-
-			{isFolderExpanded("openclaw") && (
-				<>
-					{openClawCount === 0 && (
-						<div className={styles.emptyHint}>
-							{t("sidebar.empty.openClaw", { defaultValue: "无对话" })}
-						</div>
-					)}
-					{visibleOpenClawSessions.map((session) => {
-						const isActive =
-							pathname.startsWith("/chat/openclaw") &&
-							currentSessionKey === session.key;
-						const isRunning = isActive && chatSending;
-						return (
-							<NavItem
-								key={session.key}
-								className={styles.subItemLevel1}
-								title={session.label}
-								active={isActive}
-								extra={
-									<TimeLabel
-										text={formatRelativeTime(session.updatedAt, i18n.language)}
-									/>
-								}
-								actions={
-									<ActionIcon
-										icon={Trash2}
-										size={{ blockSize: 20, size: 12 }}
-										title="删除会话"
-										onClick={(e) => {
-											e.stopPropagation();
-											setSessionToDelete({
-												key: session.key,
-												label: session.label,
-											});
-										}}
-									/>
-								}
-								slots={{
-									titlePrefix: (
-										<span
-											className={cx(
-												styles.sessionMarker,
-												isRunning && styles.sessionMarkerSpinning,
-											)}
-										>
-											{isRunning ? (
-												<Loader2 size={CHAT_SESSION_META_ICON_SIZE} />
-											) : (
-												<Pin size={CHAT_SESSION_META_ICON_SIZE} />
-											)}
-										</span>
-									),
-								}}
-								onClick={() => handleOpenClawSession(session.key)}
-							/>
-						);
-					})}
-					{canToggleOpenClawSessions && (
-						<button
-							type="button"
-							className={styles.sessionListToggle}
-							onClick={() => setOpenClawSessionsExpanded((v) => !v)}
-						>
-							{openClawSessionsExpanded
-								? t("sidebar.collapseList", { defaultValue: "折叠显示" })
-								: t("sidebar.expandList", { defaultValue: "展开显示" })}
-						</button>
-					)}
-				</>
-			)}
-
-			{/* ── 小九 ────────────────────────────────────────────────────────── */}
-			{xiaojiuEnabled && (
-				<>
-					<NavItem
-						icon={MessageCircle}
-						iconSize={CHAT_NAV_ICON_SIZE}
-						iconHover={isFolderExpanded("xiaojiu") ? ChevronDown : ChevronRight}
-						title={t("sidebar.folder.xiaojiu", { defaultValue: "小九" })}
-						active={pathname.startsWith("/chat/xiaojiu")}
-						style={{ marginTop: 6 }}
-						extra={
-							xiaojiuCount > 0 ? (
-								<Text style={{ fontSize: CHAT_SESSION_META_FONT_SIZE }}>
-									{xiaojiuCount}
-								</Text>
-							) : undefined
-						}
-						onClick={() => {
-							toggleFolder("xiaojiu");
-							const first = xiaojiuSessionItems[0];
-							if (first) setRemoteActiveSessionId(first.id);
-							navigate("/chat/xiaojiu");
-						}}
-					/>
-					{isFolderExpanded("xiaojiu") && (
-						<>
-							{remoteSyncError && (
-								<div className={styles.warningText}>
-									{t("sidebar.syncFailed", { defaultValue: "同步失败" })}
-								</div>
-							)}
-							{xiaojiuCount === 0 && (
-								<div className={styles.emptyHint}>
-									{t("sidebar.noConversations", { defaultValue: "暂无会话" })}
-								</div>
-							)}
-							{visibleXiaojiuSessions.map((session) => {
-								const isActive =
-									pathname.startsWith("/chat/xiaojiu") &&
-									remoteActiveSessionId === session.id;
-								return (
-									<NavItem
-										key={session.id}
-										className={styles.subItemLevel1}
-										title={session.label}
-										active={isActive}
-										extra={
-											<TimeLabel
-												text={formatRelativeTime(
-													session.updatedAt,
-													i18n.language,
-												)}
-											/>
-										}
-										onClick={() => handleXiaojiuSession(session.id)}
-									/>
-								);
-							})}
-							{canToggleXiaojiuSessions && (
-								<button
-									type="button"
-									className={styles.sessionListToggle}
-									onClick={() => setXiaojiuSessionsExpanded((v) => !v)}
-								>
-									{xiaojiuSessionsExpanded
-										? t("sidebar.collapseList", { defaultValue: "折叠显示" })
-										: t("sidebar.expandList", { defaultValue: "展开显示" })}
-								</button>
-							)}
-						</>
-					)}
-				</>
-			)}
-
-			{/* ── 实时语音 ────────────────────────────────────────────────────── */}
-			<NavItem
-				icon={Mic}
-				iconSize={CHAT_NAV_ICON_SIZE}
-				iconHover={
-					isFolderExpanded("realtimeVoice") ? ChevronDown : ChevronRight
-				}
-				title={t("sidebar.folder.realtimeVoice", { defaultValue: "实时语音" })}
-				active={pathname.startsWith("/chat/voice")}
-				style={{ marginTop: 6 }}
-				actions={
-					<ActionIcon
-						icon={Plus}
-						size={{ blockSize: 20, size: 12 }}
-						title={t("sidebar.newThread", { defaultValue: "新线程" })}
-						onClick={(e) => {
-							e.stopPropagation();
-							handleRealtimeVoiceNewThread();
-						}}
-					/>
-				}
-				onClick={() => {
-					toggleFolder("realtimeVoice");
-					setSidebarActiveContext({ kind: "realtimeVoice", workspaceId: null });
-				}}
-			/>
-
-			{isFolderExpanded("realtimeVoice") && (
-				<>
-					{voiceSyncError && (
-						<div className={styles.warningText}>
-							{t("sidebar.syncFailed", { defaultValue: "同步失败" })}
-						</div>
-					)}
-					{realtimeVoiceCount === 0 && (
-						<div className={styles.emptyHint}>
-							{t("sidebar.empty.realtimeVoice", { defaultValue: "无语音会话" })}
-						</div>
-					)}
-					{visibleRealtimeVoiceSessions.map((session) => {
-						const isActive =
-							pathname.startsWith("/chat/voice") &&
-							voiceActiveSessionId === session.id;
-						return (
-							<NavItem
-								key={session.id}
-								className={styles.subItemLevel1}
-								title={session.label}
-								active={isActive}
-								extra={
-									<TimeLabel
-										text={formatRelativeTime(session.updatedAt, i18n.language)}
-									/>
-								}
-								onClick={() => handleRealtimeVoiceSession(session.id)}
-							/>
-						);
-					})}
-					{canToggleRealtimeVoiceSessions && (
-						<button
-							type="button"
-							className={styles.sessionListToggle}
-							onClick={() => setVoiceSessionsExpanded((v) => !v)}
-						>
-							{voiceSessionsExpanded
-								? t("sidebar.collapseList", { defaultValue: "折叠显示" })
-								: t("sidebar.expandList", { defaultValue: "展开显示" })}
-						</button>
-					)}
-				</>
-			)}
 		</Flexbox>
 	);
 
@@ -1592,23 +1121,6 @@ export function Sidebar() {
 					onClick={() => navigate("/settings")}
 				/>
 			</div>
-
-			<ConfirmDialog
-				open={Boolean(sessionToDelete)}
-				title={t("actions.delete", { defaultValue: "删除" })}
-				message={t("sidebar.deleteSessionConfirm", {
-					defaultValue: '确定要删除会话 "{{label}}" 吗？',
-					label: sessionToDelete?.label || "",
-				})}
-				confirmLabel={t("actions.delete", { defaultValue: "删除" })}
-				cancelLabel={t("actions.cancel", { defaultValue: "取消" })}
-				onConfirm={() => {
-					if (sessionToDelete) deleteSession(sessionToDelete.key);
-					setSessionToDelete(null);
-				}}
-				onCancel={() => setSessionToDelete(null)}
-				variant="destructive"
-			/>
 		</aside>
 	);
 }

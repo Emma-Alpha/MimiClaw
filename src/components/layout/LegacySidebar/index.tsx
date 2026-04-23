@@ -515,7 +515,7 @@ export function LegacySidebar() {
 				setWorkspaceSessionsById((previous) => ({ ...previous, [workspace.id]: [] }));
 				setWorkspaceErrorById((previous) => ({
 					...previous,
-					[workspace.id]: t("sidebar.threadSessionsLoadFailed", { defaultValue: "线程会话加载失败" }),
+					[workspace.id]: t("sidebar.threadSessionsLoadFailed", { defaultValue: "工作区会话加载失败" }),
 				}));
 			} finally {
 				setWorkspaceLoadingById((previous) => ({ ...previous, [workspace.id]: false }));
@@ -874,7 +874,7 @@ export function LegacySidebar() {
 				handleOpenClawNewThread();
 			}}
 			className={styles.folderHeaderActionButton}
-			aria-label={t("sidebar.newThread", { defaultValue: "新线程" })}
+			aria-label={t("sidebar.newThread", { defaultValue: "新对话" })}
 		>
 			<Plus className={styles.primaryActionIcon} />
 		</button>
@@ -888,7 +888,7 @@ export function LegacySidebar() {
 				handleRealtimeVoiceNewThread();
 			}}
 			className={styles.folderHeaderActionButton}
-			aria-label={t("sidebar.newThread", { defaultValue: "新线程" })}
+			aria-label={t("sidebar.newThread", { defaultValue: "新对话" })}
 		>
 			<Plus className={styles.primaryActionIcon} />
 		</button>
@@ -905,7 +905,7 @@ export function LegacySidebar() {
 				<div className={styles.actionStack}>
 					<button type="button" onClick={handleGlobalNewThread} className={styles.primaryAction}>
 						<SquarePen className={styles.primaryActionIcon} />
-						<span className={styles.truncate}>{t("sidebar.newThread", { defaultValue: "新线程" })}</span>
+						<span className={styles.truncate}>{t("sidebar.newThread", { defaultValue: "新对话" })}</span>
 					</button>
 
 					{!searchExpanded && !hasSearchQuery ? (
@@ -968,7 +968,7 @@ export function LegacySidebar() {
 			<div className={styles.threadsArea}>
 				<FolderSection
 					icon={<FolderOpen className={styles.primaryActionIcon} strokeWidth={2} />}
-					label={t("sidebar.folder.thread", { defaultValue: "线程" })}
+					label={t("sidebar.folder.thread", { defaultValue: "工作区" })}
 					active={false}
 					expanded={isFolderExpanded("thread")}
 					onActivate={() => {
@@ -987,7 +987,7 @@ export function LegacySidebar() {
 					cx={cx}
 				>
 					{visibleThreadWorkspaces.length === 0 ? (
-						<div className={styles.sessionEmpty}>{t("sidebar.empty.thread", { defaultValue: "无线程" })}</div>
+						<div className={styles.sessionEmpty}>{t("sidebar.empty.thread", { defaultValue: "无工作区" })}</div>
 					) : null}
 					{visibleThreadWorkspaces.map((workspace) => {
 						const expanded = sidebarThreadWorkspaceExpanded?.[workspace.id] !== false;
@@ -1079,7 +1079,7 @@ export function LegacySidebar() {
 											}}
 											className={cx(styles.workspaceActionButton, styles.threadWorkspaceActionButton)}
 											disabled={!availability.available}
-											aria-label={t("sidebar.newThread", { defaultValue: "新线程" })}
+											aria-label={t("sidebar.newThread", { defaultValue: "新对话" })}
 										>
 											<Plus className={styles.primaryActionIcon} />
 										</button>
@@ -1103,7 +1103,7 @@ export function LegacySidebar() {
 										) : null}
 										{!isLoading && error ? <div className={styles.warningText}>{error}</div> : null}
 										{!isLoading && !error && visibleSessions.length === 0 ? (
-											<div className={styles.sessionEmpty}>{t("sidebar.empty.thread", { defaultValue: "无线程" })}</div>
+											<div className={styles.sessionEmpty}>{t("sidebar.empty.thread", { defaultValue: "无工作区" })}</div>
 										) : null}
 										{visibleSessions.map((session) => {
 											const isActive =

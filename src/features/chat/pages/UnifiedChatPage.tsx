@@ -1,15 +1,11 @@
 import { Navigate, useParams } from 'react-router-dom';
-import { Chat as OpenClawChat } from '../modes/openclaw';
-import { JizhiChat } from '../modes/jizhi';
-import { XiaojiuChat } from '../modes/xiaojiu';
-import { VoiceChatHistory } from '../modes/voice';
 import { CodeChat } from '@/features/codeAssistant';
 
-export type UnifiedChatKind = 'openclaw' | 'xiaojiu' | 'jizhi' | 'voice' | 'code';
+export type UnifiedChatKind = 'code';
 
 function normalizeKind(kind?: string): UnifiedChatKind | null {
-  if (!kind || kind === 'openclaw' || kind === 'xiaojiu' || kind === 'jizhi' || kind === 'voice' || kind === 'code') {
-    return (kind ?? 'openclaw') as UnifiedChatKind;
+  if (!kind || kind === 'code') {
+    return 'code';
   }
   return null;
 }
@@ -19,26 +15,10 @@ export function UnifiedChatPage() {
   const resolvedKind = normalizeKind(kind);
 
   if (!resolvedKind) {
-    return <Navigate to="/chat/openclaw" replace />;
+    return <Navigate to="/chat/code" replace />;
   }
 
-  if (resolvedKind === 'openclaw') {
-    return <OpenClawChat />;
-  }
-
-  if (resolvedKind === 'xiaojiu') {
-    return <XiaojiuChat />;
-  }
-
-  if (resolvedKind === 'jizhi') {
-    return <JizhiChat />;
-  }
-
-  if (resolvedKind === 'code') {
-    return <CodeChat embeddedCodeAssistant />;
-  }
-
-  return <VoiceChatHistory />;
+  return <CodeChat embeddedCodeAssistant />;
 }
 
 export default UnifiedChatPage;

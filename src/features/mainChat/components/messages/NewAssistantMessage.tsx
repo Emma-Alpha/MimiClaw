@@ -6,7 +6,6 @@ import ChatItem from '@/components/ChatItem';
 import ActionButtons from '@/components/ChatItem/components/ActionButtons';
 import type { EnhancedMarkdownProps } from '@/lib/markdown-enhancements';
 import type { AttachedFileMeta, RawMessage } from '@/stores/chat';
-import { useSettingsStore } from '@/stores/settings';
 import { getAssistantProtocolComponents } from './protocols/assistant';
 import type { AssistantToolEntry } from './protocols/assistant/types';
 import { ImageLightbox } from './shared';
@@ -17,6 +16,11 @@ import type {
   MessageProtocol,
   StreamingToolStatus,
 } from './types';
+import {
+  extractUsageFromMessage,
+  extractModelFromMessage,
+  extractProviderFromMessage,
+} from '../../utils/extractUsage';
 
 interface NewAssistantMessageProps {
   attachedFiles: AttachedFileMeta[];
@@ -56,10 +60,10 @@ export function NewAssistantMessage({
   tools,
 }: NewAssistantMessageProps) {
   console.log('[NewAssistantMessage] Rendering with new UI', { message, text });
+  console.log('[NewAssistantMessage] Full message object:', JSON.stringify(message, null, 2));
 
   const { styles } = useMessageStyles();
   const { mobile } = useResponsive();
-  const transitionMode = useSettingsStore((state) => state.transitionMode);
   const [lightboxImg, setLightboxImg] = useState<LightboxImage | null>(null);
 
   const { Above, Below } = getAssistantProtocolComponents(protocol);
@@ -100,6 +104,17 @@ export function NewAssistantMessage({
     }
   };
 
+  // Extract real usage data from message
+  const usage = extractUsageFromMessage(message);
+  const model = extractModelFromMessage(message);
+  const provider = extractProviderFromMessage(message);
+
+  // Debug logging
+  console.log('[NewAssistantMessage] message.details:', message.details);
+  console.log('[NewAssistantMessage] extracted usage:', usage);
+  console.log('[NewAssistantMessage] extracted model:', model);
+  console.log('[NewAssistantMessage] extracted provider:', provider);
+
   return (
     <>
       <ChatItem
@@ -114,12 +129,9 @@ export function NewAssistantMessage({
         time={metaTime}
         placement="left"
         loading={isStreaming}
-        model="Claude Sonnet 4.6"
-        usage={{
-          inputTokens: 1234,
-          outputTokens: 567,
-          totalTokens: 1801,
-        }}
+        model={model}
+        provider={provider}
+        usage={usage}
         message={
           hasRenderableText ? (
             <div className={styles.assistantRender}>
