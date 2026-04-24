@@ -6,10 +6,14 @@
         "description": "清空输入与附件",
         "label": "清空输入"
       },
+      "groupCommands": "命令",
+      "groupSkills": "技能",
       "send": {
         "description": "发送当前消息",
         "label": "发送消息"
       },
+      "showLess": "收起",
+      "showMore": "显示更多 {{count}} 项",
       "upload": {
         "description": "打开文件选择器",
         "label": "上传文件"

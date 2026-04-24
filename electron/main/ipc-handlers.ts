@@ -108,6 +108,7 @@ import {
 	consumePendingInitialMessage,
 } from "./code-assistant-launcher";
 import { openPetCompanionWindow } from "./pet-companion-window";
+import { toggleMiniChatWindow, closeMiniChatWindow } from "./mini-chat-window";
 import { getPetWindow } from "./pet-window";
 import {
 	setPetBubbleVisible,
@@ -198,7 +199,8 @@ function isAuxiliaryWindowUrl(url: string): boolean {
 		url.includes("#/pet-companion") ||
 		url.includes("#/pet") ||
 		url.includes("#/quick-chat") ||
-		url.includes("#/voice-dialog")
+		url.includes("#/voice-dialog") ||
+		url.includes("#/mini-chat")
 	);
 }
 
@@ -373,31 +375,49 @@ function registerPetHandlers(): void {
 	function dispatchPetRecordingCommand(
 		action: PetRecordingCommandAction,
 	): void {
+		let delivered = false;
+
+		// Forward to the main app window so the chat input can handle
+		// confirm/cancel actions triggered from the pet recording bubble.
+		const mainWindow = getMainAppWindow();
+		if (mainWindow && !mainWindow.isDestroyed()) {
+			mainWindow.webContents.send("pet:recording-command", { action });
+			delivered = true;
+		}
+
 		const petWindow = getPetWindow();
-		if (!petWindow || petWindow.isDestroyed()) {
+		if (petWindow && !petWindow.isDestroyed()) {
+			petWindow.webContents.send("pet:recording-command", { action });
+			delivered = true;
+		}
+
+		if (!delivered) {
 			logger.warn(
-				`[pet] Unable to deliver recording command "${action}" because the pet window is unavailable`,
+				`[pet] Unable to deliver recording command "${action}" because no target window is available`,
 			);
 			return;
 		}
 
 		logger.info(`[pet] Delivering recording command: ${action}`);
-		petWindow.webContents.send("pet:recording-command", { action });
 	}
 
 	function emitPetAsrEvent(
 		sessionId: string,
 		payload: Record<string, unknown>,
 	): void {
+		const message = { sessionId, ...payload };
+
 		const petWindow = getPetWindow();
-		if (!petWindow || petWindow.isDestroyed()) {
-			return;
+		if (petWindow && !petWindow.isDestroyed()) {
+			petWindow.webContents.send("pet:asr-event", message);
 		}
 
-		petWindow.webContents.send("pet:asr-event", {
-			sessionId,
-			...payload,
-		});
+		// Also forward to the main app window so the chat input can
+		// display partial transcripts during F2/Fn recording.
+		const mainWindow = getMainAppWindow();
+		if (mainWindow && !mainWindow.isDestroyed()) {
+			mainWindow.webContents.send("pet:asr-event", message);
+		}
 	}
 
 	ipcMain.handle("pet:getRuntimeState", async () => {
@@ -569,11 +589,6 @@ function registerPetHandlers(): void {
 				en: "Open Code Chat",
 				ja: "ミニチャットを開く",
 			} as const;
-			const codeAssistantLabels = {
-				zh: "代码助手",
-				en: "Code Assistant",
-				ja: "コードアシスタント",
-			} as const;
 			const openFullWindowLabels = {
 				zh: "完整窗口",
 				en: "Open Full Window",
@@ -600,21 +615,7 @@ function registerPetHandlers(): void {
 					label: openCodeChatLabels[language],
 					click: () => {
 						runPetMenuAction("open-code-chat", async () => {
-							await toggleCodeChatWindow();
-						});
-					},
-				},
-				{
-					label: codeAssistantLabels[language],
-					click: () => {
-						runPetMenuAction("open-code-assistant", async () => {
-							await recordPetCompanionUsage("code_assistant");
-							await openCodeChatWithPayload({
-								text: "",
-								autoSend: false,
-								target: "code",
-								persistTarget: true,
-							});
+							await toggleMiniChatWindow();
 						});
 					},
 				},
@@ -707,12 +708,12 @@ function registerPetHandlers(): void {
 
 	ipcMain.handle("pet:toggleQuickChat", async () => {
 		await recordPetCompanionUsage("mini_chat");
-		await toggleCodeChatWindow();
+		await toggleMiniChatWindow();
 		return { success: true };
 	});
 
 	ipcMain.handle("pet:closeQuickChat", () => {
-		closeCodeChatWindow();
+		closeMiniChatWindow();
 		return { success: true };
 	});
 

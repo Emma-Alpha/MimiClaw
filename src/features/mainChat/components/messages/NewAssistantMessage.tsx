@@ -111,6 +111,18 @@ export function NewAssistantMessage({
   const performance = extractPerformanceFromMessage(message);
   const elapsed = extractElapsedFromMessage(message);
 
+  if (message.role === 'assistant' && !isStreaming) {
+    console.log('[NewAssistantMessage] render:', {
+      id: message.id,
+      hasUsage: !!usage,
+      totalTokens: usage?.totalTokens,
+      model,
+      elapsed,
+      performance,
+      messageKeys: Object.keys(message as unknown as Record<string, unknown>),
+    });
+  }
+
 
   return (
     <>

@@ -15,6 +15,7 @@ export function MainChatInput() {
   const leftActions = useMemo<ChatInputActionKey[]>(() => {
     const baseActions: ChatInputActionKey[] = [
       'model',
+      'thinking',
       'search',
       'memory',
       'fileUpload',

@@ -11,6 +11,7 @@ const MAIN_WINDOW_BLOCKLIST_ROUTES = [
   '#/pet-companion',
   '#/voice-dialog',
   '#/tray-runtime',
+  '#/mini-chat',
 ];
 
 function normalizeCodeChatSeed(seed: string | PetCodeChatSeed): PetCodeChatSeed {

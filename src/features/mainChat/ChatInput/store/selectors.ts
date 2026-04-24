@@ -15,4 +15,5 @@ export const chatInputStoreSelectors = {
   searchEnabled: (state: ChatInputStore) => state.searchEnabled,
   showTypoBar: (state: ChatInputStore) => state.showTypoBar,
   slashPlacement: (state: ChatInputStore) => state.slashPlacement,
+  thinkingLevel: (state: ChatInputStore) => state.thinkingLevel,
 };

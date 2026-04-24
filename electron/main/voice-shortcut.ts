@@ -1,4 +1,4 @@
-import { app, globalShortcut } from 'electron';
+import { app, BrowserWindow, globalShortcut } from 'electron';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
@@ -169,10 +169,33 @@ let fnMonitorStdoutBuffer = '';
 let fnMonitorStarting: Promise<void> | null = null;
 let awaitingVoiceConfirm = false;
 
+function getMainAppWindow(): BrowserWindow | undefined {
+  return BrowserWindow.getAllWindows().find((win) => {
+    if (win.isDestroyed()) return false;
+    const url = win.webContents.getURL();
+    return !(
+      url.includes('#/pet-companion') ||
+      url.includes('#/pet') ||
+      url.includes('#/quick-chat') ||
+      url.includes('#/voice-dialog') ||
+      url.includes('#/mini-chat')
+    );
+  });
+}
+
 function emitRecordingCommand(action: VoiceRecordingAction): void {
+  // Prefer the main app window so F2 recording fills the chat input box
+  // and highlights the mic button. Fall back to the pet window when the
+  // main window is unavailable.
+  const mainWindow = getMainAppWindow();
+  if (mainWindow) {
+    mainWindow.webContents.send('pet:recording-command', { action });
+    return;
+  }
+
   const petWindow = getPetWindow();
   if (!petWindow || petWindow.isDestroyed()) {
-    logger.warn(`[voice-shortcut] Unable to emit "${action}" because the pet window is unavailable`);
+    logger.warn(`[voice-shortcut] Unable to emit "${action}" because no target window is available`);
     return;
   }
   petWindow.webContents.send('pet:recording-command', { action });

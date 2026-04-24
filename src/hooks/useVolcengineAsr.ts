@@ -9,6 +9,8 @@ interface UseVolcengineAsrOptions {
 	 * The consumer is responsible for putting the text into the input and sending.
 	 */
 	onTranscriptReady: (text: string) => void;
+	/** Called with partial/streaming transcript text during recording. */
+	onPartialTranscript?: (text: string) => void;
 	onError?: (message: string) => void;
 }
 
@@ -27,6 +29,7 @@ interface UseVolcengineAsrReturn {
  */
 export function useVolcengineAsr({
 	onTranscriptReady,
+	onPartialTranscript,
 	onError,
 }: UseVolcengineAsrOptions): UseVolcengineAsrReturn {
 	const [isRecording, setIsRecording] = useState(false);
@@ -230,6 +233,23 @@ export function useVolcengineAsr({
 			await startRecording();
 		}
 	}, [stopAndTranscribe, startRecording]);
+
+	// Listen for partial/final ASR events from the main process so the
+	// consumer can display real-time streaming transcription.
+	const onPartialTranscriptRef = useRef(onPartialTranscript);
+	useEffect(() => { onPartialTranscriptRef.current = onPartialTranscript; }, [onPartialTranscript]);
+
+	useEffect(() => {
+		if (!window.electron?.ipcRenderer) return;
+		const unsubscribe = window.electron.ipcRenderer.on('pet:asr-event', (payload) => {
+			const event = payload as { sessionId?: string; type?: string; text?: string } | undefined;
+			if (!event || event.sessionId !== asrSessionIdRef.current) return;
+			if ((event.type === 'partial' || event.type === 'final') && event.text) {
+				onPartialTranscriptRef.current?.(event.text.trim());
+			}
+		});
+		return () => { unsubscribe?.(); };
+	}, []);
 
 	useEffect(() => {
 		return () => {

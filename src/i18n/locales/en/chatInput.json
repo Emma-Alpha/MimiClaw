@@ -6,10 +6,14 @@
         "description": "Clear input and attachments",
         "label": "Clear Input"
       },
+      "groupCommands": "Commands",
+      "groupSkills": "Skills",
       "send": {
         "description": "Send current message",
         "label": "Send Message"
       },
+      "showLess": "Show less",
+      "showMore": "Show {{count}} more",
       "upload": {
         "description": "Open file picker",
         "label": "Upload Files"

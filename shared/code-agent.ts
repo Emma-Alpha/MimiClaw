@@ -19,6 +19,7 @@ export interface CodeAgentRuntimeConfig {
   apiKey: string;
   permissionMode: CodeAgentPermissionMode;
   allowedTools: string[];
+  disallowedTools: string[];
   appendSystemPrompt: string;
 }
 
@@ -34,6 +35,7 @@ export const DEFAULT_CODE_AGENT_RUNTIME_CONFIG: CodeAgentRuntimeConfig = {
   apiKey: '',
   permissionMode: 'default',
   allowedTools: [],
+  disallowedTools: ['WebSearch', 'WebFetch'],
   appendSystemPrompt: '',
 };
 

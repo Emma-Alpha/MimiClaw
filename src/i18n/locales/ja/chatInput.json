@@ -6,10 +6,14 @@
         "description": "入力と添付をクリア",
         "label": "入力をクリア"
       },
+      "groupCommands": "コマンド",
+      "groupSkills": "スキル",
       "send": {
         "description": "現在のメッセージを送信",
         "label": "メッセージ送信"
       },
+      "showLess": "折りたたむ",
+      "showMore": "さらに {{count}} 件表示",
       "upload": {
         "description": "ファイル選択を開く",
         "label": "ファイルをアップロード"

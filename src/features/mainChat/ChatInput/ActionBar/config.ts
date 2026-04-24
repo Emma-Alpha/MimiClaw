@@ -1,43 +1,42 @@
-import type { FC } from 'react';
-import {
-  AtSign,
-  Bot,
-  Brain,
-  Eraser,
-  History,
-  Mic,
-  Paperclip,
-  PlusSquare,
-  Search,
-  Settings2,
-  Sparkles,
-  SpellCheck2,
-  Wand2,
-  Wrench,
-} from 'lucide-react';
-import type { LucideProps } from 'lucide-react';
+import type { ComponentType } from 'react';
 import type { ChatInputActionKey } from '../types';
 
-export interface ActionMeta {
-  icon: FC<LucideProps>;
-  title: string;
-}
+import { AgentModeAction } from './components/AgentModeAction';
+import { ClearAction } from './components/ClearAction';
+import { FileUploadAction } from './components/FileUploadAction';
+import { HistoryAction } from './components/HistoryAction';
+import { MainTokenAction } from './components/MainTokenAction';
+import { MemoryAction } from './components/MemoryAction';
+import { MentionAction } from './components/MentionAction';
+import { ModelAction } from './components/ModelAction';
+import { ParamsAction } from './components/ParamsAction';
+import { PortalTokenAction } from './components/PortalTokenAction';
+import { PromptTransformAction } from './components/PromptTransformAction';
+import { SaveTopicAction } from './components/SaveTopicAction';
+import { ScreenshotAction } from './components/ScreenshotAction';
+import { SearchAction } from './components/SearchAction';
+import { SttAction } from './components/SttAction';
+import { ThinkingAction } from './components/ThinkingAction';
+import { ToolsAction } from './components/ToolsAction';
+import { TypoAction } from './components/TypoAction';
 
-export const ACTION_META_MAP: Partial<Record<ChatInputActionKey, ActionMeta>> = {
-  agentMode: { icon: Bot, title: 'Agent mode' },
-  clear: { icon: Eraser, title: 'Clear topic' },
-  fileUpload: { icon: Paperclip, title: 'Upload files' },
-  history: { icon: History, title: 'History' },
-  mainToken: { icon: Sparkles, title: 'Token usage' },
-  memory: { icon: Brain, title: 'Memory' },
-  mention: { icon: AtSign, title: 'Mention agent' },
-  model: { icon: Settings2, title: 'Model' },
-  params: { icon: Settings2, title: 'Parameters' },
-  portalToken: { icon: Sparkles, title: 'Portal token usage' },
-  promptTransform: { icon: Wand2, title: 'Prompt transform' },
-  saveTopic: { icon: PlusSquare, title: 'Save topic' },
-  search: { icon: Search, title: 'Search' },
-  stt: { icon: Mic, title: 'Speech to text' },
-  tools: { icon: Wrench, title: 'Tools' },
-  typo: { icon: SpellCheck2, title: 'Typo' },
+export const ACTION_COMPONENT_MAP: Partial<Record<ChatInputActionKey, ComponentType>> = {
+  agentMode: AgentModeAction,
+  clear: ClearAction,
+  fileUpload: FileUploadAction,
+  history: HistoryAction,
+  mainToken: MainTokenAction,
+  memory: MemoryAction,
+  mention: MentionAction,
+  model: ModelAction,
+  params: ParamsAction,
+  portalToken: PortalTokenAction,
+  promptTransform: PromptTransformAction,
+  saveTopic: SaveTopicAction,
+  screenshot: ScreenshotAction,
+  search: SearchAction,
+  stt: SttAction,
+  thinking: ThinkingAction,
+  tools: ToolsAction,
+  typo: TypoAction,
 };

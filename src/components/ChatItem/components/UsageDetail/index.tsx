@@ -121,7 +121,7 @@ const TokenDetail = memo<TokenDetailProps>(({ usage, performance }) => {
       content={
         <Flexbox gap={8} style={{ minWidth: 200 }}>
           <Flexbox gap={20}>
-            {inputDetails.length > 1 && (
+            {inputDetails.length > 0 && (
               <Flexbox gap={4}>
                 <Flexbox
                   horizontal
@@ -137,7 +137,7 @@ const TokenDetail = memo<TokenDetailProps>(({ usage, performance }) => {
                 <TokenProgress showIcon data={inputDetails} />
               </Flexbox>
             )}
-            {outputDetails.length > 1 && (
+            {outputDetails.length > 0 && (
               <Flexbox gap={4}>
                 <Flexbox
                   horizontal

@@ -19,6 +19,7 @@ export function ConversationChatInput() {
   const historyCount = useChatInputStore(chatInputStoreSelectors.historyCount);
   const modelParams = useChatInputStore(chatInputStoreSelectors.modelParams);
   const enabledSkills = useSkillsStore(useShallow((s) => s.skills.filter((skill) => skill.enabled).map((skill) => skill.id)));
+  const thinkingLevel = useChatInputStore(chatInputStoreSelectors.thinkingLevel);
   const editorRef = useRef<ChatInputEditorApi | null>(null);
 
   return (
@@ -61,6 +62,7 @@ export function ConversationChatInput() {
             memoryTurnEnabled,
             modelParams,
             searchEnabled,
+            thinkingLevel,
           };
 
           await sendMessage({

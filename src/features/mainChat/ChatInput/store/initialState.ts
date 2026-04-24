@@ -19,4 +19,5 @@ export const initialChatInputStoreState: ChatInputStoreState = {
   searchEnabled: false,
   showTypoBar: false,
   slashPlacement: 'top',
+  thinkingLevel: 'none',
 };

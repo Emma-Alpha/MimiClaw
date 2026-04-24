@@ -512,6 +512,8 @@
     "codeAgentPermissionBypass": "Bypass permissions",
     "codeAgentAllowedTools": "Allowed tools",
     "codeAgentAllowedToolsPlaceholder": "Bash(git:*)\nEdit\nRead",
+    "codeAgentDisallowedTools": "Disallowed tools",
+    "codeAgentDisallowedToolsPlaceholder": "WebSearch\nWebFetch",
     "codeAgentAppendSystemPrompt": "Append system prompt",
     "codeAgentAppendSystemPromptPlaceholder": "Optional extra system instructions for Claude CLI.",
     "codeAgentWorkspace": "Workspace root",

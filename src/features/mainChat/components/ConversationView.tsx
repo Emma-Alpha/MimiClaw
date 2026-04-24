@@ -194,12 +194,6 @@ type ConversationViewProps = {
 };
 
 export function ConversationView({ messages, currentSessionKey, loading, sending, error, showThinking, streamingMessage, streamingTools, pendingFinal, lastRunWasAborted, clearError }: ConversationViewProps) {
-  console.log('=== [ConversationView] RENDER ===');
-  console.log('[ConversationView] currentSessionKey:', currentSessionKey);
-  console.log('[ConversationView] messages.length:', messages.length);
-  console.log('[ConversationView] loading:', loading);
-  console.log('[ConversationView] streamingMessage:', streamingMessage);
-
   const { t } = useTranslation('chat');
   const { styles } = useStyles();
   const enableAutoScrollOnStreaming = useSettingsStore((s) => s.enableAutoScrollOnStreaming);

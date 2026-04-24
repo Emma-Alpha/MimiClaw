@@ -630,14 +630,23 @@ export function PetFloating() {
 		return () => { unsubscribe?.(); };
 	}, []);
 
+	// Track runtime activity in a ref so the pet:asr-event listener stays stable.
+	const runtimeActivityRef = useRef(runtimeState.activity);
+	useEffect(() => { runtimeActivityRef.current = runtimeState.activity; }, [runtimeState.activity]);
+
 	useEffect(() => {
 		const unsubscribe = window.electron.ipcRenderer.on(
 			"pet:asr-event",
 			(payload) => {
 				const event = payload as PetAsrEventPayload | undefined;
-				if (!event || event.sessionId !== asrSessionIdRef.current) {
-					return;
-				}
+				if (!event) return;
+
+				// Accept events from our own ASR session, OR from any session
+				// when recording was started by the main window (proxy mode:
+				// the pet is in "recording" state but has no own session).
+				const isOwnSession = event.sessionId === asrSessionIdRef.current;
+				const isProxyMode = !asrSessionIdRef.current && runtimeActivityRef.current === "recording";
+				if (!isOwnSession && !isProxyMode) return;
 
 				if (event.type === "partial" || event.type === "final") {
 					setLiveTranscript((event.text || "").trim());
@@ -646,10 +655,12 @@ export function PetFloating() {
 
 				if (event.type === "error") {
 					console.error("[pet-floating] Realtime ASR error", event.message);
-					asrSessionIdRef.current = null;
-					cleanupRecordingPreview();
+					if (isOwnSession) {
+						asrSessionIdRef.current = null;
+						cleanupRecordingPreview();
+						syncPetInputActivity("idle");
+					}
 					setLiveTranscript("");
-					syncPetInputActivity("idle");
 					toast.error(
 						i18n.resolvedLanguage?.startsWith("zh")
 							? `语音识别失败：${event.message || "请检查火山 ASR 配置"}`

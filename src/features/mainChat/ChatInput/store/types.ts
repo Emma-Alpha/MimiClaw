@@ -1,6 +1,8 @@
 import type { IEditor } from '@lobehub/editor';
 import type { ChatInputActionKey, ChatInputEditorApi, MentionItem } from '../types';
 
+export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high';
+
 export interface ChatInputModelParams {
   frequencyPenalty: number;
   label: string;
@@ -32,12 +34,14 @@ export interface ChatInputStoreState {
   searchEnabled: boolean;
   showTypoBar: boolean;
   slashPlacement: 'top' | 'bottom';
+  thinkingLevel: ThinkingLevel;
 }
 
 export interface ChatInputStoreAction {
   setHistoryCount: (count: number) => void;
   setMemoryTurnEnabled: (enabled: boolean) => void;
   setModelParams: (params: ChatInputModelParams) => void;
+  setThinkingLevel: (level: ThinkingLevel) => void;
   setRuntimeLabels: (left: string | undefined, right: string | undefined) => void;
   setSearchEnabled: (enabled: boolean) => void;
   reset: () => void;

@@ -51,6 +51,7 @@ export function CodeAgent() {
   const [showCodeAgentRunDetails, setShowCodeAgentRunDetails] = useState(true);
   const [codeAgentConfigDraft, setCodeAgentConfigDraft] = useState<CodeAgentRuntimeConfig>(codeAgent);
   const [codeAgentAllowedToolsDraft, setCodeAgentAllowedToolsDraft] = useState(codeAgent.allowedTools.join('\n'));
+  const [codeAgentDisallowedToolsDraft, setCodeAgentDisallowedToolsDraft] = useState(codeAgent.disallowedTools.join('\n'));
   const [savingCodeAgentConfig, setSavingCodeAgentConfig] = useState(false);
   const [showCodeAgentApiKey, setShowCodeAgentApiKey] = useState(false);
   const [availableModels, setAvailableModels] = useState<CodeAgentModelInfo[]>([]);
@@ -115,6 +116,7 @@ export function CodeAgent() {
   useEffect(() => {
     setCodeAgentConfigDraft(codeAgent);
     setCodeAgentAllowedToolsDraft(codeAgent.allowedTools.join('\n'));
+    setCodeAgentDisallowedToolsDraft(codeAgent.disallowedTools.join('\n'));
   }, [codeAgent]);
 
   useEffect(() => {
@@ -245,6 +247,12 @@ export function CodeAgent() {
             .map((tool) => tool.trim())
             .filter(Boolean),
         )],
+        disallowedTools: [...new Set(
+          codeAgentDisallowedToolsDraft
+            .split(/[\n,]+/)
+            .map((tool) => tool.trim())
+            .filter(Boolean),
+        )],
       };
 
       await hostApiFetch<{ success: boolean }>('/api/settings', {
@@ -254,6 +262,7 @@ export function CodeAgent() {
       useSettingsStore.setState({ codeAgent: nextConfig });
       setCodeAgentConfigDraft(nextConfig);
       setCodeAgentAllowedToolsDraft(nextConfig.allowedTools.join('\n'));
+      setCodeAgentDisallowedToolsDraft(nextConfig.disallowedTools.join('\n'));
       toast.success(t('settings:developer.codeAgentConfigSaved'));
       await refreshCodeAgentData();
     } catch (error) {
@@ -579,6 +588,17 @@ export function CodeAgent() {
                     value={codeAgentAllowedToolsDraft}
                     onChange={(event) => setCodeAgentAllowedToolsDraft(event.target.value)}
                     placeholder={t('settings:developer.codeAgentAllowedToolsPlaceholder')}
+                    style={{ minHeight: 92, borderRadius: 12, fontFamily: 'monospace', fontSize: 13 }}
+                  />
+                </div>
+
+                <div className={styles.formField}>
+                  <Label htmlFor="code-agent-disallowed-tools">{t('settings:developer.codeAgentDisallowedTools')}</Label>
+                  <Textarea
+                    id="code-agent-disallowed-tools"
+                    value={codeAgentDisallowedToolsDraft}
+                    onChange={(event) => setCodeAgentDisallowedToolsDraft(event.target.value)}
+                    placeholder={t('settings:developer.codeAgentDisallowedToolsPlaceholder')}
                     style={{ minHeight: 92, borderRadius: 12, fontFamily: 'monospace', fontSize: 13 }}
                   />
                 </div>

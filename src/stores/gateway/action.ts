@@ -174,6 +174,7 @@ export class GatewayActionImpl {
 
     if (hasChatData) {
       const normalizedEvent: Record<string, unknown> = {
+        ...p,
         ...data,
         runId: p.runId ?? data.runId,
         sessionKey: p.sessionKey ?? data.sessionKey,
@@ -182,7 +183,10 @@ export class GatewayActionImpl {
         state: p.state ?? data.state,
         message: p.message ?? data.message,
       };
-      if (shouldProcessGatewayEvent(normalizedEvent)) {
+      console.log('[Gateway:notification] hasChatData, state:', normalizedEvent.state, 'hasUsage:', !!normalizedEvent.usage, 'phase:', phase);
+      const accepted = shouldProcessGatewayEvent(normalizedEvent);
+      console.log('[Gateway:notification] dedup accepted:', accepted);
+      if (accepted) {
         import('../chat')
           .then(({ useChatStore }) => {
             useChatStore.getState().handleChatEvent(normalizedEvent);
@@ -239,7 +243,6 @@ export class GatewayActionImpl {
               sending: false,
               activeRunId: null,
               pendingFinal: false,
-              lastUserMessageAt: null,
             });
           }
         })
@@ -256,18 +259,23 @@ export class GatewayActionImpl {
         : chatData;
 
       if (payload.state) {
-        if (!shouldProcessGatewayEvent(payload)) return;
+        const accepted = shouldProcessGatewayEvent(payload);
+        console.log('[Gateway:chatMessage] has state:', payload.state, 'hasUsage:', !!payload.usage, 'dedup accepted:', accepted);
+        if (!accepted) return;
         useChatStore.getState().handleChatEvent(payload);
         pushPetLineFromMessage(payload.message ?? payload);
         return;
       }
 
-      const normalized = {
+      const normalized: Record<string, unknown> = {
+        ...chatData,
         state: 'final',
         message: payload,
         runId: chatData.runId ?? payload.runId,
       };
-      if (!shouldProcessGatewayEvent(normalized)) return;
+      const accepted = shouldProcessGatewayEvent(normalized);
+      console.log('[Gateway:chatMessage] normalized, hasUsage:', !!normalized.usage, 'dedup accepted:', accepted);
+      if (!accepted) return;
       useChatStore.getState().handleChatEvent(normalized);
       pushPetLineFromMessage(payload);
     }).catch(() => {});

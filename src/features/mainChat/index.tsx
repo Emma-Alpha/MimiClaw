@@ -131,3 +131,5 @@ export function Chat() {
 }
 
 export default Chat;
+
+export { CodeChat } from './codeAssistant';

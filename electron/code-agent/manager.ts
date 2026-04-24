@@ -476,6 +476,9 @@ export class CodeAgentManager extends EventEmitter {
       allowedTools: override?.allowedTools
         ?? settings.codeAgent?.allowedTools
         ?? DEFAULT_CODE_AGENT_RUNTIME_CONFIG.allowedTools,
+      disallowedTools: override?.disallowedTools
+        ?? settings.codeAgent?.disallowedTools
+        ?? DEFAULT_CODE_AGENT_RUNTIME_CONFIG.disallowedTools,
     };
     this.runtimeConfigResolution = {
       configSource: 'settings',

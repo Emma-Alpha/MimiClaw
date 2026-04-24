@@ -509,6 +509,8 @@
     "codeAgentPermissionBypass": "権限を迂回",
     "codeAgentAllowedTools": "許可ツール",
     "codeAgentAllowedToolsPlaceholder": "Bash(git:*)\nEdit\nRead",
+    "codeAgentDisallowedTools": "無効化ツール",
+    "codeAgentDisallowedToolsPlaceholder": "WebSearch\nWebFetch",
     "codeAgentAppendSystemPrompt": "追加システムプロンプト",
     "codeAgentAppendSystemPromptPlaceholder": "任意の Claude CLI 追加システム指示。",
     "codeAgentWorkspace": "ワークスペースルート",

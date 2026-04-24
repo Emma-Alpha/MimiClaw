@@ -48,9 +48,9 @@ import {
 	isPathDrag,
 	type ComposerPath,
 } from "@/lib/unified-composer";
-import { useCodeChatStyles } from "@/features/codeAssistant/styles";
-import { useComposerStyles } from "@/features/codeAssistant/components/CodeChatComposer/styles";
-import type { CodeChatComposerProps as CodeAssistantInputProps } from "@/features/codeAssistant/components/CodeChatComposer/types";
+import { useCodeChatStyles } from "@/features/mainChat/codeAssistant/styles";
+import { useComposerStyles } from "@/features/mainChat/codeAssistant/components/CodeChatComposer/styles";
+import type { CodeChatComposerProps as CodeAssistantInputProps } from "@/features/mainChat/codeAssistant/components/CodeChatComposer/types";
 
 export type { CodeAssistantInputProps };
 

@@ -46,10 +46,7 @@ const useStyles = createStyles(({ css, cssVar }) => ({
     [contenteditable="true"],
     [contenteditable="true"] *,
     .lexical-editor,
-    .lexical-editor *,
-    p,
-    span,
-    div {
+    .lexical-editor * {
       word-wrap: break-word !important;
       word-break: break-word !important;
       overflow-wrap: break-word !important;
@@ -87,7 +84,7 @@ export function DesktopChatInput() {
         footer={
           <ChatInputActionBar
             left={
-              <Flexbox align="center" gap={8} horizontal>
+              <Flexbox align="center" flex={1} gap={8} horizontal style={{ minWidth: 0, overflow: 'hidden' }}>
                 {leftContent ?? <MimiActionBar />}
               </Flexbox>
             }

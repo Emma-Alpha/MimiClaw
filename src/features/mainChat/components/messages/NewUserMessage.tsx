@@ -234,9 +234,9 @@ export function NewUserMessage({
           title: '用户',
           backgroundColor: '#1890ff',
         }}
-        showTitle={true}
+        showTitle={false}
         showAvatar={false}
-        time={message?.timestamp ? (message.timestamp < 1e12 ? message.timestamp * 1000 : message.timestamp) : undefined}
+        // time={message?.timestamp ? (message.timestamp < 1e12 ? message.timestamp * 1000 : message.timestamp) : undefined}
         placement="right"
         message={
           <div>

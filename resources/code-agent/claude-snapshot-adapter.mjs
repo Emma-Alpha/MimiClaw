@@ -295,6 +295,12 @@ export function normalizeRuntimeConfig(input) {
       ? input.allowedTools.split(/[\n,]+/)
       : [];
 
+  const disallowedTools = Array.isArray(input?.disallowedTools)
+    ? input.disallowedTools
+    : typeof input?.disallowedTools === 'string'
+      ? input.disallowedTools.split(/[\n,]+/)
+      : [];
+
   const executionMode = input?.executionMode === 'snapshot' ? 'snapshot' : 'cli';
   const permissionMode = CODE_AGENT_PERMISSION_MODES.has(input?.permissionMode)
     ? input.permissionMode
@@ -331,6 +337,11 @@ export function normalizeRuntimeConfig(input) {
     allowedTools: [
       ...new Set(
         allowedTools.map((tool) => (typeof tool === 'string' ? tool.trim() : '')).filter(Boolean)
+      ),
+    ],
+    disallowedTools: [
+      ...new Set(
+        disallowedTools.map((tool) => (typeof tool === 'string' ? tool.trim() : '')).filter(Boolean)
       ),
     ],
     appendSystemPrompt:
@@ -734,6 +745,9 @@ async function runClaudeCliTask({
   }
   if (mergedAllowedTools.length > 0) {
     args.push('--allowedTools', mergedAllowedTools.join(','));
+  }
+  if (cliConfig.disallowedTools.length > 0) {
+    args.push('--disallowedTools', cliConfig.disallowedTools.join(','));
   }
   if (cliConfig.appendSystemPrompt) {
     args.push('--append-system-prompt', cliConfig.appendSystemPrompt);

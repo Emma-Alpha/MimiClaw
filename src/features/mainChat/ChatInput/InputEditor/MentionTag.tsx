@@ -5,8 +5,8 @@ import type { MouseEvent } from 'react';
 import { useLexicalComposerContext } from '@lobehub/editor/es/editor-kernel/react/react-context';
 import { createStyles } from 'antd-style';
 import { $getNodeByKey } from 'lexical';
-import { FileText, Folder, X } from 'lucide-react';
-import { memo, useCallback, useEffect, useRef } from 'react';
+import { FileText, Folder, Puzzle, X } from 'lucide-react';
+import { memo, useCallback, useEffect, useRef, type ReactNode } from 'react';
 
 interface MentionNodeLike {
   getKey: () => string;
@@ -89,11 +89,30 @@ const useStyles = createStyles(({ css, token }) => ({
   `,
 }));
 
+const IMAGE_ICON_RE = /^(https?:\/\/|data:image\/|\/)/i;
+
+function renderMentionIcon(kind: string | undefined, metadata: Record<string, unknown>): ReactNode {
+  if (kind === 'skill') {
+    const icon = metadata.icon as string | undefined;
+    if (icon && IMAGE_ICON_RE.test(icon)) {
+      return <img alt="" src={icon} style={{ borderRadius: 2, height: 12, objectFit: 'contain', width: 12 }} />;
+    }
+    if (icon) {
+      return <span style={{ fontSize: 11, lineHeight: 1 }}>{icon}</span>;
+    }
+    return <Puzzle size={12} strokeWidth={1.75} />;
+  }
+  if (kind === 'folder') return <Folder size={12} strokeWidth={1.75} />;
+  return <FileText size={12} strokeWidth={1.75} />;
+}
+
 const MentionTag = memo<MentionTagProps>(({ node, editor }) => {
   const { styles } = useStyles();
   const metadata = node.metadata ?? {};
   const kind = (metadata as { kind?: string }).kind;
   const label = node.label || '';
+  const isSkill = kind === 'skill';
+  const displayLabel = isSkill ? `/${label}` : label;
   const pillRef = useRef<HTMLSpanElement>(null);
 
   // Strip the default mention theme styles from the outer <span> created
@@ -123,12 +142,10 @@ const MentionTag = memo<MentionTagProps>(({ node, editor }) => {
     [editor, node],
   );
 
-  const FileIcon = kind === 'folder' ? Folder : FileText;
-
   return (
-    <span ref={pillRef} className={styles.pill} contentEditable={false} title={label}>
+    <span ref={pillRef} className={styles.pill} contentEditable={false} title={displayLabel}>
       <span aria-hidden className={styles.fileIcon}>
-        <FileIcon size={12} strokeWidth={1.75} />
+        {renderMentionIcon(kind, metadata)}
       </span>
       <button
         aria-label="Remove mention"
@@ -139,7 +156,7 @@ const MentionTag = memo<MentionTagProps>(({ node, editor }) => {
       >
         <X size={12} strokeWidth={2} />
       </button>
-      <span className={styles.label}>{label}</span>
+      <span className={styles.label}>{displayLabel}</span>
     </span>
   );
 });

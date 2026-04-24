@@ -23,6 +23,7 @@ import { PetBubble } from "./pages/PetBubble";
 import { PetCompanion } from "./pages/PetCompanion";
 import { VoiceDialog } from "./pages/VoiceDialog";
 import { TrayRuntime } from "./pages/TrayRuntime";
+import { MiniChat } from "./pages/MiniChat";
 import { Setup } from "./pages/Setup";
 import { Login } from "./pages/Login";
 import { useSettingsStore } from "./stores/settings";
@@ -130,6 +131,7 @@ function App() {
 	const isPetCompanionRoute = location.pathname.startsWith("/pet-companion");
 	const isVoiceDialogRoute = location.pathname.startsWith("/voice-dialog");
 	const isTrayRuntimeRoute = location.pathname.startsWith("/tray-runtime");
+	const isMiniChatRoute = location.pathname.startsWith("/mini-chat");
 	const isMainChatRoute =
 		location.pathname === "/" || location.pathname.startsWith("/chat");
 
@@ -178,7 +180,8 @@ function App() {
 			!isCodeChatRoute &&
 			!isPetCompanionRoute &&
 			!isVoiceDialogRoute &&
-			!isTrayRuntimeRoute
+			!isTrayRuntimeRoute &&
+			!isMiniChatRoute
 		) {
 			navigate("/login", { replace: true });
 		}
@@ -190,6 +193,7 @@ function App() {
 		isPetRoute,
 		isTrayRuntimeRoute,
 		isVoiceDialogRoute,
+		isMiniChatRoute,
 		location.pathname,
 		navigate,
 	]);
@@ -207,7 +211,8 @@ function App() {
 			!isCodeChatRoute &&
 			!isPetCompanionRoute &&
 			!isVoiceDialogRoute &&
-			!isTrayRuntimeRoute
+			!isTrayRuntimeRoute &&
+			!isMiniChatRoute
 		) {
 			navigate("/setup", { replace: true });
 		}
@@ -219,6 +224,7 @@ function App() {
 		isPetRoute,
 		isTrayRuntimeRoute,
 		isVoiceDialogRoute,
+		isMiniChatRoute,
 		setupComplete,
 		location.pathname,
 		navigate,
@@ -311,7 +317,8 @@ function App() {
 					!isCodeChatRoute &&
 					!isPetCompanionRoute &&
 					!isVoiceDialogRoute &&
-					!isTrayRuntimeRoute ? (
+					!isTrayRuntimeRoute &&
+					!isMiniChatRoute ? (
 						<UpdateBootstrap />
 					) : null}
 					<Routes>
@@ -330,6 +337,7 @@ function App() {
 						<Route path="/pet-companion" element={<PetCompanion />} />
 						<Route path="/voice-dialog" element={<VoiceDialog />} />
 						<Route path="/tray-runtime" element={<TrayRuntime />} />
+						<Route path="/mini-chat" element={<MiniChat />} />
 
 						{/* Main application routes */}
 						<Route element={<MainLayout />}>

@@ -6,6 +6,7 @@ import type { AttachedFileMeta, ChatSession, ContentBlock, RawMessage, ToolStatu
 // during tool-use conversations where streamingMessage is temporarily cleared
 // between tool-result finals and the next delta.
 let _lastChatEventAt = 0;
+let _firstDeltaAt = 0;
 
 /** Normalize a timestamp to milliseconds. Handles both seconds and ms. */
 function toMs(ts: number): number {
@@ -814,6 +815,18 @@ function getLastChatEventAt(): number {
   return _lastChatEventAt;
 }
 
+function setFirstDeltaAt(value: number): void {
+  _firstDeltaAt = value;
+}
+
+function getFirstDeltaAt(): number {
+  return _firstDeltaAt;
+}
+
+function resetFirstDeltaAt(): void {
+  _firstDeltaAt = 0;
+}
+
 // ── Usage metadata cache ─────────────────────────────────────
 // The Gateway's chat.history doesn't return token usage or elapsed time,
 // so we cache these locally keyed by message ID.  Populated during
@@ -863,10 +876,16 @@ function getMessageUsageMeta(messageId: string): UsageMeta | undefined {
 
 /** Merge cached usage metadata into messages that are missing it */
 function enrichWithCachedUsage(messages: RawMessage[]): RawMessage[] {
+  console.log('[enrichWithCachedUsage] cache size:', _usageCache.size, 'cache keys:', [..._usageCache.keys()]);
   return messages.map((msg) => {
     if (!msg.id) return msg;
     const cached = _usageCache.get(msg.id);
-    if (!cached) return msg;
+    if (!cached) {
+      if (msg.role === 'assistant') {
+        console.log('[enrichWithCachedUsage] MISS for assistant msg:', msg.id, 'hasUsage:', !!(msg as unknown as Record<string, unknown>).usage);
+      }
+      return msg;
+    }
     const m = msg as unknown as Record<string, unknown>;
     const extras: Record<string, unknown> = {};
     if (cached.usage && !m.usage) extras.usage = cached.usage;
@@ -903,6 +922,9 @@ export {
   setErrorRecoveryTimer,
   setLastChatEventAt,
   getLastChatEventAt,
+  setFirstDeltaAt,
+  getFirstDeltaAt,
+  resetFirstDeltaAt,
   saveMessageUsageMeta,
   getMessageUsageMeta,
   enrichWithCachedUsage,

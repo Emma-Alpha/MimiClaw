@@ -1,5 +1,6 @@
 export type ChatInputActionKey =
   | 'model'
+  | 'thinking'
   | 'search'
   | 'memory'
   | 'fileUpload'
@@ -9,6 +10,7 @@ export type ChatInputActionKey =
   | 'mainToken'
   | 'portalToken'
   | 'promptTransform'
+  | 'screenshot'
   | 'stt'
   | 'agentMode'
   | 'clear'

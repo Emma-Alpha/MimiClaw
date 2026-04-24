@@ -512,6 +512,8 @@
     "codeAgentPermissionBypass": "绕过权限",
     "codeAgentAllowedTools": "允许的工具",
     "codeAgentAllowedToolsPlaceholder": "Bash(git:*)\nEdit\nRead",
+    "codeAgentDisallowedTools": "禁用的工具",
+    "codeAgentDisallowedToolsPlaceholder": "WebSearch\nWebFetch",
     "codeAgentAppendSystemPrompt": "附加系统提示词",
     "codeAgentAppendSystemPromptPlaceholder": "可选的 Claude CLI 附加系统指令。",
     "codeAgentWorkspace": "工作区根目录",

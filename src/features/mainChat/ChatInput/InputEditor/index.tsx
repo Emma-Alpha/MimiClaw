@@ -1,13 +1,16 @@
 import { INSERT_MENTION_COMMAND, type IEditor, type ISlashOption } from '@lobehub/editor';
 import { Editor, type EditorProps, useEditor } from '@lobehub/editor/react';
+import { Eraser, Send, Upload } from 'lucide-react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { preferenceSelectors, useSettingsStore } from '@/stores/settings';
+import { useSkillsStore } from '@/stores/skills';
 import { usePasteFile, useUploadFiles } from '@/components/DragUploadZone';
 import { useChatInputContext } from '../ChatInputProvider';
 import { fromEditorMarkdown } from '../hooks/useChatInputEditor';
 import { useChatInputStore } from '../store';
 import { MentionTagDecoratorOverride } from './MentionTag';
+import { SlashCommandMenu } from './SlashCommandMenu';
 
 type PressEnterPayload = Parameters<NonNullable<EditorProps['onPressEnter']>>[0];
 
@@ -123,28 +126,55 @@ export function InputEditor() {
     });
   }, [mentionItems]);
 
+  const skills = useSkillsStore((s) => s.skills);
+
+  const skillSlashOptions = useMemo<ISlashOption[]>(() => {
+    return skills.map((skill) => ({
+      desc: skill.description,
+      key: `skill:${skill.id}`,
+      label: skill.name,
+      metadata: { group: 'skills', icon: skill.icon, skillId: skill.id },
+      onSelect: (activeEditor: IEditor) => {
+        activeEditor.dispatchCommand(INSERT_MENTION_COMMAND, {
+          label: skill.name,
+          metadata: {
+            icon: skill.icon,
+            id: skill.id,
+            kind: 'skill',
+          },
+        });
+      },
+    }));
+  }, [skills]);
+
   const builtinSlashOptions = useMemo<ISlashOption[]>(() => ([
     {
-      description: t('input.slash.send.description', { defaultValue: 'Send current message' }),
+      desc: t('input.slash.send.description', { defaultValue: 'Send current message' }),
+      icon: Send,
       key: 'send-message',
       label: t('input.slash.send.label', { defaultValue: 'Send Message' }),
+      metadata: { group: 'commands' },
       onSelect: () => {
         if (sending) return;
         void handleSend();
       },
     },
     {
-      description: t('input.slash.upload.description', { defaultValue: 'Open file picker' }),
+      desc: t('input.slash.upload.description', { defaultValue: 'Open file picker' }),
+      icon: Upload,
       key: 'upload-files',
       label: t('input.slash.upload.label', { defaultValue: 'Upload Files' }),
+      metadata: { group: 'commands' },
       onSelect: () => {
         void pickFiles();
       },
     },
     {
-      description: t('input.slash.clear.description', { defaultValue: 'Clear input and attachments' }),
+      desc: t('input.slash.clear.description', { defaultValue: 'Clear input and attachments' }),
+      icon: Eraser,
       key: 'clear-input',
       label: t('input.slash.clear.label', { defaultValue: 'Clear Input' }),
+      metadata: { group: 'commands' },
       onSelect: () => {
         editor?.clearContent();
         clearAttachments();
@@ -152,9 +182,17 @@ export function InputEditor() {
     },
   ]), [clearAttachments, editor, handleSend, pickFiles, sending, t]);
 
+  const commandSlashOptions = useMemo<ISlashOption[]>(() => {
+    const extraWithGroup = extraSlashItems.map((item) => {
+      if ('type' in item && item.type === 'divider') return item;
+      return { ...item, metadata: { ...item.metadata, group: 'commands' } };
+    });
+    return [...builtinSlashOptions, ...extraWithGroup];
+  }, [builtinSlashOptions, extraSlashItems]);
+
   const slashOptions = useMemo<ISlashOption[]>(
-    () => [...builtinSlashOptions, ...extraSlashItems],
-    [builtinSlashOptions, extraSlashItems],
+    () => [...skillSlashOptions, ...commandSlashOptions],
+    [skillSlashOptions, commandSlashOptions],
   );
 
   const handleEditorInit = useCallback((activeEditor: IEditor) => {
@@ -180,7 +218,10 @@ export function InputEditor() {
         trigger: '@',
         maxLength: 200,
         punctuation: ',;:',
-        markdownWriter: (node: { label: string }) => `@${node.label}`,
+        markdownWriter: (node: { label: string; metadata?: Record<string, unknown> }) => {
+          if (node.metadata?.kind === 'skill') return `/${node.label}`;
+          return `@${node.label}`;
+        },
       } as unknown as NonNullable<EditorProps['mentionOption']>),
     [mentionOptions],
   );
@@ -196,7 +237,14 @@ export function InputEditor() {
       onInit={handleEditorInit}
       onPressEnter={handlePressEnter}
       onTextChange={handleTextChange}
-      slashOption={{ items: slashOptions }}
+      slashOption={{
+        fuseOptions: {
+          keys: ['key', 'label', 'desc'],
+          threshold: 0.4,
+        },
+        items: slashOptions,
+        renderComp: SlashCommandMenu,
+      }}
       slashPlacement={slashPlacement}
       type="text"
       variant="chat"

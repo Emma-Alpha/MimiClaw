@@ -67,6 +67,10 @@ export class ChatInputStoreActionImpl {
     this.#set({ slashPlacement });
   };
 
+  setThinkingLevel: ChatInputStoreAction['setThinkingLevel'] = (thinkingLevel) => {
+    this.#set({ thinkingLevel });
+  };
+
   reset: ChatInputStoreAction['reset'] = () => {
     const currentEditor = this.#get().editor;
     const currentEditorInstance = this.#get().editorInstance;

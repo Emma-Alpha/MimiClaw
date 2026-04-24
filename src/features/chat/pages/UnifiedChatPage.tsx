@@ -1,5 +1,5 @@
 import { Navigate, useParams } from 'react-router-dom';
-import { CodeChat } from '@/features/codeAssistant';
+import { CodeChat } from '@/features/mainChat';
 
 export type UnifiedChatKind = 'code';
 

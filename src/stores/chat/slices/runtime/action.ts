@@ -6,6 +6,7 @@ import {
   extractImagesAsAttachedFiles,
   extractMediaRefs,
   extractRawFilePaths,
+  getFirstDeltaAt,
   getLastChatEventAt,
   getMessageText,
   getToolCallFilePath,
@@ -14,7 +15,9 @@ import {
   isToolOnlyMessage,
   isToolResultRole,
   makeAttachedFile,
+  resetFirstDeltaAt,
   setErrorRecoveryTimer,
+  setFirstDeltaAt,
   setHistoryPollTimer,
   setLastChatEventAt,
   upsertImageCacheEntry,
@@ -89,6 +92,7 @@ export class ChatRuntimeActionImpl {
     this.#set((s) => ({ sessionLastActivity: { ...s.sessionLastActivity, [currentSessionKey]: nowMs } }));
 
     setLastChatEventAt(Date.now());
+    resetFirstDeltaAt();
     clearHistoryPoll();
     clearErrorRecoveryTimer();
 
@@ -282,6 +286,9 @@ export class ChatRuntimeActionImpl {
         break;
       }
       case 'delta': {
+        if (getFirstDeltaAt() === 0) {
+          setFirstDeltaAt(Date.now());
+        }
         if (hasErrorRecoveryTimer()) {
           clearErrorRecoveryTimer();
           this.#set({ error: null });
@@ -326,6 +333,36 @@ export class ChatRuntimeActionImpl {
             const userMsgAt = this.#get().lastUserMessageAt;
             if (userMsgAt) {
               extra.elapsed = Date.now() - userMsgAt;
+            }
+          }
+
+          // Compute TTFT and TPS client-side if not provided by gateway
+          if (!extra.performance) {
+            const computedPerf: Record<string, unknown> = {};
+            const firstDelta = getFirstDeltaAt();
+            const userMsgAt = this.#get().lastUserMessageAt;
+
+            // TTFT = time from user message sent to first delta received
+            if (firstDelta > 0 && userMsgAt) {
+              computedPerf.ttft = firstDelta - userMsgAt;
+            }
+
+            // TPS = output tokens / elapsed seconds
+            const usageObj = (extra.usage ?? (finalMessage as unknown as Record<string, unknown>).usage) as Record<string, unknown> | undefined;
+            const elapsedMs = extra.elapsed as number | undefined;
+            if (usageObj && typeof usageObj === 'object' && typeof elapsedMs === 'number' && elapsedMs > 0) {
+              const outputTokens = (
+                usageObj.output_tokens ?? usageObj.outputTokens ??
+                usageObj.output ?? usageObj.completionTokens ??
+                usageObj.total_output_tokens ?? usageObj.totalOutputTokens
+              ) as number | undefined;
+              if (typeof outputTokens === 'number' && outputTokens > 0) {
+                computedPerf.tps = outputTokens / (elapsedMs / 1000);
+              }
+            }
+
+            if (Object.keys(computedPerf).length > 0) {
+              extra.performance = computedPerf;
             }
           }
 
@@ -453,6 +490,7 @@ export class ChatRuntimeActionImpl {
                   sending: hasOutput ? false : s.sending,
                   activeRunId: hasOutput ? null : s.activeRunId,
                   pendingFinal: hasOutput ? false : true,
+                  lastUserMessageAt: hasOutput ? null : s.lastUserMessageAt,
                   streamingTools,
                   ...clearPendingImages,
                 };
@@ -474,6 +512,7 @@ export class ChatRuntimeActionImpl {
                 sending: hasOutput ? false : s.sending,
                 activeRunId: hasOutput ? null : s.activeRunId,
                 pendingFinal: hasOutput ? false : true,
+                lastUserMessageAt: hasOutput ? null : s.lastUserMessageAt,
                 streamingTools,
                 ...clearPendingImages,
               };
@@ -489,6 +528,12 @@ export class ChatRuntimeActionImpl {
             if (fm.provider) meta.provider = fm.provider;
             if (fm.performance) meta.performance = fm.performance;
             if (fm.elapsed) meta.elapsed = fm.elapsed;
+            console.log('[handleChatEvent] Usage cache save:', {
+              messageId: preMessageId,
+              hasUsage: !!fm.usage,
+              usage: fm.usage,
+              metaKeys: Object.keys(meta),
+            });
             if (Object.keys(meta).length > 0) {
               saveMessageUsageMeta(preMessageId, meta);
             }

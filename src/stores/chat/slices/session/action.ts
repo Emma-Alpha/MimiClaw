@@ -422,6 +422,12 @@ export class ChatSessionActionImpl {
         const data = result.result;
         let rawMessages = Array.isArray(data.messages) ? data.messages as RawMessage[] : [];
         const thinkingLevel = data.thinkingLevel ? String(data.thinkingLevel) : null;
+        // Debug: check if gateway returns usage in messages
+        const lastAssistant = [...rawMessages].reverse().find((m) => m.role === 'assistant');
+        if (lastAssistant) {
+          const m = lastAssistant as unknown as Record<string, unknown>;
+          console.log('[loadHistory] last assistant msg keys:', Object.keys(m), 'hasUsage:', !!m.usage, 'id:', m.id);
+        }
         if (rawMessages.length === 0 && isCronSessionKey(currentSessionKey)) {
           rawMessages = await loadCronFallbackMessages(currentSessionKey, 200);
         }
