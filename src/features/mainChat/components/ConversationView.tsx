@@ -9,6 +9,8 @@ import { invokeIpc } from '@/lib/api-client';
 import { useMinLoading } from '@/hooks/use-min-loading';
 import { useSettingsStore } from '@/stores/settings';
 import { type RawMessage } from '@/stores/chat';
+import { LoadingDots } from '@lobehub/ui/chat';
+import { cssVar } from 'antd-style';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { BackBottomButton } from '@/components/common/BackBottomButton';
 import { CHAT_SESSION_HEADER_ICON_SIZE } from '@/styles/typography-tokens';
@@ -343,7 +345,7 @@ function useElapsedLabel(startedAt?: number): string | null {
 function TypingIndicator({ startedAt }: { startedAt?: number }) {
   const { styles } = useMessageStyles();
   const elapsed = useElapsedLabel(startedAt);
-  return <ChatItem avatar={{ avatar: <span className={styles.messageMetaAvatar}><OpenClaw.Color size={CHAT_SESSION_HEADER_ICON_SIZE} /></span>, backgroundColor: 'transparent', title: '极智' }} className={styles.chatItem} message="" placement="left" renderMessage={() => <div style={{ display: 'flex', alignItems: 'center', gap: 4, height: 22 }}><span style={{ height: 6, width: 6, borderRadius: '50%', backgroundColor: 'var(--ant-color-text-tertiary, #999)', opacity: 0.6 }} /><span style={{ height: 6, width: 6, borderRadius: '50%', backgroundColor: 'var(--ant-color-text-tertiary, #999)', opacity: 0.6 }} /><span style={{ height: 6, width: 6, borderRadius: '50%', backgroundColor: 'var(--ant-color-text-tertiary, #999)', opacity: 0.6 }} />{elapsed && <span className={styles.activityElapsed}>({elapsed})</span>}</div>} showAvatar={false} showTitle={false} variant="bubble" />;
+  return <div style={{ display: 'flex', alignItems: 'center', gap: 4, height: 36, paddingInlineStart: 12 }}><LoadingDots color={cssVar.colorTextSecondary} size={12} variant={'pulse'} />{elapsed && <span className={styles.activityElapsed}>({elapsed})</span>}</div>;
 }
 
 function ActivityIndicator({ startedAt }: { phase: 'tool_processing'; startedAt?: number }) {

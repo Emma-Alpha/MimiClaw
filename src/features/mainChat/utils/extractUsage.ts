@@ -183,3 +183,73 @@ export function extractProviderFromMessage(message: RawMessage): string | undefi
 
   return typeof provider === 'string' ? provider : undefined;
 }
+
+/**
+ * Extract performance data (TPS, TTFT, elapsed) from message
+ */
+export function extractPerformanceFromMessage(message: RawMessage): { ttft?: number; tps?: number } | undefined {
+  const msg = message as unknown as Record<string, unknown>;
+
+  // Try top-level performance object
+  if (msg.performance && typeof msg.performance === 'object') {
+    const perf = msg.performance as Record<string, unknown>;
+    const result: { ttft?: number; tps?: number } = {};
+    if (typeof perf.ttft === 'number') result.ttft = perf.ttft;
+    if (typeof perf.tps === 'number') result.tps = perf.tps;
+    if (result.ttft !== undefined || result.tps !== undefined) return result;
+  }
+
+  // Try details.performance
+  if (msg.details && typeof msg.details === 'object') {
+    const details = msg.details as Record<string, unknown>;
+    if (details.performance && typeof details.performance === 'object') {
+      const perf = details.performance as Record<string, unknown>;
+      const result: { ttft?: number; tps?: number } = {};
+      if (typeof perf.ttft === 'number') result.ttft = perf.ttft;
+      if (typeof perf.tps === 'number') result.tps = perf.tps;
+      if (result.ttft !== undefined || result.tps !== undefined) return result;
+    }
+  }
+
+  // Try to compute from usage data (some providers include these in usage)
+  const usage = msg.usage as Record<string, unknown> | undefined;
+  if (usage && typeof usage === 'object') {
+    const result: { ttft?: number; tps?: number } = {};
+    if (typeof usage.ttft === 'number') result.ttft = usage.ttft;
+    if (typeof usage.tps === 'number') result.tps = usage.tps;
+    if (typeof usage.time_to_first_token === 'number') result.ttft = usage.time_to_first_token;
+    if (typeof usage.tokens_per_second === 'number') result.tps = usage.tokens_per_second;
+    if (result.ttft !== undefined || result.tps !== undefined) return result;
+  }
+
+  return undefined;
+}
+
+/**
+ * Extract elapsed time (duration) from message, in milliseconds
+ */
+export function extractElapsedFromMessage(message: RawMessage): number | undefined {
+  const msg = message as unknown as Record<string, unknown>;
+
+  // Direct elapsed field (set by event merging in handleChatEvent)
+  if (typeof msg.elapsed === 'number') return msg.elapsed;
+  if (typeof msg.duration === 'number') return msg.duration;
+
+  // Check in details
+  if (msg.details && typeof msg.details === 'object') {
+    const details = msg.details as Record<string, unknown>;
+    if (typeof details.elapsed === 'number') return details.elapsed;
+    if (typeof details.duration === 'number') return details.duration;
+    if (typeof details.elapsedMs === 'number') return details.elapsedMs;
+    if (typeof details.durationMs === 'number') return details.durationMs;
+  }
+
+  // Check in usage
+  if (msg.usage && typeof msg.usage === 'object') {
+    const usage = msg.usage as Record<string, unknown>;
+    if (typeof usage.elapsed === 'number') return usage.elapsed;
+    if (typeof usage.duration === 'number') return usage.duration;
+  }
+
+  return undefined;
+}

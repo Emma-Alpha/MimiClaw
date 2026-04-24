@@ -4,6 +4,7 @@ import { useResponsive } from 'antd-style';
 
 import ChatItem from '@/components/ChatItem';
 import ActionButtons from '@/components/ChatItem/components/ActionButtons';
+import { MessageMarkdown } from '@/components/MessageMarkdown';
 import type { EnhancedMarkdownProps } from '@/lib/markdown-enhancements';
 import type { AttachedFileMeta, RawMessage } from '@/stores/chat';
 import { getAssistantProtocolComponents } from './protocols/assistant';
@@ -20,6 +21,8 @@ import {
   extractUsageFromMessage,
   extractModelFromMessage,
   extractProviderFromMessage,
+  extractPerformanceFromMessage,
+  extractElapsedFromMessage,
 } from '../../utils/extractUsage';
 
 interface NewAssistantMessageProps {
@@ -59,9 +62,6 @@ export function NewAssistantMessage({
   thinking,
   tools,
 }: NewAssistantMessageProps) {
-  console.log('[NewAssistantMessage] Rendering with new UI', { message, text });
-  console.log('[NewAssistantMessage] Full message object:', JSON.stringify(message, null, 2));
-
   const { styles } = useMessageStyles();
   const { mobile } = useResponsive();
   const [lightboxImg, setLightboxImg] = useState<LightboxImage | null>(null);
@@ -108,12 +108,9 @@ export function NewAssistantMessage({
   const usage = extractUsageFromMessage(message);
   const model = extractModelFromMessage(message);
   const provider = extractProviderFromMessage(message);
+  const performance = extractPerformanceFromMessage(message);
+  const elapsed = extractElapsedFromMessage(message);
 
-  // Debug logging
-  console.log('[NewAssistantMessage] message.details:', message.details);
-  console.log('[NewAssistantMessage] extracted usage:', usage);
-  console.log('[NewAssistantMessage] extracted model:', model);
-  console.log('[NewAssistantMessage] extracted provider:', provider);
 
   return (
     <>
@@ -132,6 +129,8 @@ export function NewAssistantMessage({
         model={model}
         provider={provider}
         usage={usage}
+        performance={performance}
+        elapsed={elapsed}
         message={
           hasRenderableText ? (
             <div className={styles.assistantRender}>
@@ -140,7 +139,7 @@ export function NewAssistantMessage({
                   {assistantAboveMessage}
                 </div>
               )}
-              <div>{text}</div>
+              <MessageMarkdown animated={isStreaming} markdownProps={markdownProps}>{text}</MessageMarkdown>
               {assistantBelowMessage}
             </div>
           ) : (

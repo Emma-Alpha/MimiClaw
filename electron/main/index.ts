@@ -434,7 +434,7 @@ function createWindow(): BrowserWindow {
     show: false,
     // macOS: native window material, aligned with Codex-style frosted chrome.
     ...(isMac ? {
-      vibrancy: 'menu' as const,
+      vibrancy: 'under-window' as const,
       visualEffectState: 'active' as const,
       backgroundColor: '#00000000',
     } : {}),

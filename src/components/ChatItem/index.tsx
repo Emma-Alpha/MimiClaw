@@ -26,6 +26,7 @@ const ChatItem = memo<ChatItemProps>(
     provider,
     usage,
     performance,
+    elapsed,
   }) => {
     const isUser = placement === 'right';
 
@@ -79,7 +80,7 @@ const ChatItem = memo<ChatItemProps>(
 
           {/* Usage Info */}
           {!isUser && (model || usage) && (
-            <Usage model={model} provider={provider} usage={usage} performance={performance} />
+            <Usage model={model} provider={provider} usage={usage} performance={performance} elapsed={elapsed} />
           )}
         </div>
 

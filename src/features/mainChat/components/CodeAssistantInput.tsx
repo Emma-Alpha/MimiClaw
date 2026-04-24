@@ -870,36 +870,44 @@ export function CodeAssistantInput({
 					{showMentionPanel &&
 						(showMentionPicker ? (
 							<div ref={mentionListRef} className={styles.mentionResultList}>
-								{mentionOptions.map((option, index) => (
-									<button
-										key={option.id}
-										ref={(node) => {
-											mentionItemNodesRef.current[index] = node;
-										}}
-										type="button"
-										onMouseEnter={() => {
-											onActiveMentionIndexChange(index);
-										}}
-										onMouseDown={(event) => {
-											event.preventDefault();
-											onApplyMention(option);
-										}}
-										className={cx(
-											styles.mentionResultItem,
-											index === activeMentionIndex && styles.mentionResultItemActive,
-										)}
-									>
-										<div className={styles.mentionResultMeta}>
-											<div className={styles.mentionResultIcon}>
-												{option.isDirectory ? <Folder size={16} /> : <File size={16} />}
+								{mentionOptions.map((option, index) => {
+									const lastSlash = option.relativePath.lastIndexOf("/");
+									const parentDir = lastSlash >= 0
+										? option.relativePath.slice(0, lastSlash)
+										: "";
+									return (
+										<button
+											key={option.id}
+											ref={(node) => {
+												mentionItemNodesRef.current[index] = node;
+											}}
+											type="button"
+											onMouseEnter={() => {
+												onActiveMentionIndexChange(index);
+											}}
+											onMouseDown={(event) => {
+												event.preventDefault();
+												onApplyMention(option);
+											}}
+											className={cx(
+												styles.mentionResultItem,
+												index === activeMentionIndex && styles.mentionResultItemActive,
+											)}
+										>
+											<div className={styles.mentionResultMeta}>
+												<div className={styles.mentionResultIcon}>
+													{option.isDirectory ? <Folder size={16} /> : <File size={16} />}
+												</div>
+												<div className={styles.mentionResultText}>
+													<div className={styles.mentionResultTitle}>{option.label}</div>
+												</div>
+												{parentDir && (
+													<div className={styles.mentionResultPath}>{parentDir}</div>
+												)}
 											</div>
-											<div className={styles.mentionResultText}>
-												<div className={styles.mentionResultTitle}>{option.label}</div>
-												<div className={styles.mentionResultPath}>{option.relativePath}</div>
-											</div>
-										</div>
-									</button>
-								))}
+										</button>
+									);
+								})}
 							</div>
 						) : mentionEmptyState ? (
 							<div className={styles.mentionEmptyState}>

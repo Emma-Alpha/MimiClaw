@@ -3,6 +3,7 @@
   "version": "0.1.46",
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@anthropic-ai/claude-code",
       "@discordjs/opus",
       "@whiskeysockets/baileys",
       "electron",
@@ -90,6 +91,7 @@
   },
   "dependencies": {
     "@4399ywkf/theme-system": "^1.0.13",
+    "@anthropic-ai/claude-code": "^2.1.119",
     "@lobehub/editor": "^4.5.0",
     "@lobehub/fluent-emoji": "^4.1.0",
     "@lobehub/icons": "^5.2.0",

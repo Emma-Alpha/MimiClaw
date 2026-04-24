@@ -31,12 +31,6 @@ export const ChatMessage = memo(function ChatMessage({
   streamingTools = [],
   useNewUI = true, // 默认使用新 UI
 }: ChatMessageProps) {
-  console.log('=== [ChatMessage] START ===');
-  console.log('[ChatMessage] useNewUI:', useNewUI);
-  console.log('[ChatMessage] message.role:', message.role);
-  console.log('[ChatMessage] isUser:', message.role === 'user');
-  console.log('=== [ChatMessage] END ===');
-
   const markdownProps = useEnhancedMarkdownProps();
 
   const isUser = message.role === 'user';

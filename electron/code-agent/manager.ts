@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { getClaudeCodeConfigDir, getBundledClaudeCliPath } from '../utils/paths';
 import type {
   CodeAgentDescriptor,
   CodeAgentHealth,
@@ -367,11 +368,14 @@ export class CodeAgentManager extends EventEmitter {
     }
 
     this.stdoutBuffer = '';
+    const bundledCliPath = getBundledClaudeCliPath();
     const env = {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
       MIMICLAW_CODE_AGENT_VENDOR_PATH: descriptor.vendorPath,
       MIMICLAW_CODE_AGENT_ID: randomUUID(),
+      CLAUDE_CONFIG_DIR: descriptor.configDir || getClaudeCodeConfigDir(),
+      MIMICLAW_BUNDLED_CLI_PATH: bundledCliPath,
     };
 
     this.setStatus({ state: 'starting', lastError: undefined, ...descriptor });
@@ -449,6 +453,7 @@ export class CodeAgentManager extends EventEmitter {
       || (app.isPackaged
         ? join(process.resourcesPath, 'vendor', 'claude-code')
         : join(app.getAppPath(), 'vendor', 'claude-code'));
+    const configDir = getClaudeCodeConfigDir();
     return {
       adapter: 'emma-alpha-claude-code',
       runtime: 'node',
@@ -457,6 +462,7 @@ export class CodeAgentManager extends EventEmitter {
       vendorPresent: existsSync(vendorPath),
       bunAvailable: this.detectBunAvailable(),
       executionMode: this.runtimeConfig.executionMode,
+      configDir,
       cliPath: this.runtimeConfig.cliPath,
     };
   }
@@ -491,8 +497,7 @@ export class CodeAgentManager extends EventEmitter {
       nextRuntimeConfig.apiKey = claudeUserSettings.apiKey;
       inheritedFromClaudeUserSettings = true;
     }
-    // When the app is set to 'default', defer to the user's ~/.claude/settings.json permissionMode
-    // (the same file Claude Code CLI reads), so our behaviour stays in sync with the CLI.
+    // When the app is set to 'default', defer to the isolated config's settings.json permissionMode.
     // If neither source specifies a mode, 'default' is passed to the CLI as-is, which matches
     // Claude Code CLI's own interactive default (prompt before each tool use).
     if (nextRuntimeConfig.permissionMode === 'default' && claudeUserSettings.permissionMode) {

@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import { promises as fs } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
+import { getClaudeCodeConfigDir } from '../../utils/paths';
 import type {
   CodeAgentRunRequest,
   CodeAgentSessionMessage,
@@ -29,7 +30,7 @@ function encodeClaudeProjectPath(workspaceRoot: string): string {
 }
 
 async function resolveClaudeProjectDir(workspaceRoot: string): Promise<string | null> {
-  const projectsRoot = join(homedir(), '.claude', 'projects');
+  const projectsRoot = join(getClaudeCodeConfigDir(), 'projects');
   const direct = join(projectsRoot, encodeClaudeProjectPath(workspaceRoot));
 
   try {
@@ -333,14 +334,77 @@ export async function handleCodeAgentRoutes(
     return true;
   }
 
+  if (url.pathname === '/api/code-agent/models' && req.method === 'POST') {
+    try {
+      const body = await parseJsonBody<{ baseUrl?: string; apiKey?: string }>(req);
+      const baseUrl = body.baseUrl?.trim();
+      const apiKey = body.apiKey?.trim();
+
+      if (!baseUrl || !apiKey) {
+        sendJson(res, 400, { success: false, error: 'baseUrl and apiKey are required' });
+        return true;
+      }
+
+      // Try /v1/models first (standard Anthropic / OpenAI compatible), fall back to /models
+      let modelsUrl = baseUrl.replace(/\/+$/, '') + '/v1/models';
+      let response = await fetch(modelsUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        signal: AbortSignal.timeout(15_000),
+      });
+
+      if (!response.ok) {
+        modelsUrl = baseUrl.replace(/\/+$/, '') + '/models';
+        response = await fetch(modelsUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          signal: AbortSignal.timeout(15_000),
+        });
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        sendJson(res, response.status, {
+          success: false,
+          error: `Failed to fetch models (${response.status}): ${errorText.slice(0, 500)}`,
+        });
+        return true;
+      }
+
+      const data = await response.json() as { data?: Array<{ id: string; [key: string]: unknown }> };
+      const models = Array.isArray(data?.data)
+        ? data.data.map((m) => ({
+          id: typeof m.id === 'string' ? m.id : String(m.id ?? ''),
+          name: typeof (m as Record<string, unknown>).display_name === 'string'
+            ? (m as Record<string, unknown>).display_name as string
+            : typeof m.id === 'string' ? m.id : '',
+        }))
+        : [];
+
+      sendJson(res, 200, { success: true, models });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
   if (url.pathname === '/api/code-agent/skills' && req.method === 'GET') {
     try {
       const workspaceRoot = url.searchParams.get('workspaceRoot')?.trim() || '';
       const home = homedir();
+      const isolatedConfigDir = getClaudeCodeConfigDir();
 
       // All global skill directories that Claude Code, Codex, or Cursor may use
       const globalDirs = [
-        join(home, '.claude', 'skills'),
+        join(isolatedConfigDir, 'skills'),
         join(home, '.agents', 'skills'),
         join(home, '.codex', 'skills'),
         join(home, '.cursor', 'skills-cursor'),
@@ -352,7 +416,7 @@ export async function handleCodeAgentRoutes(
         : [];
 
       const claudeDirs = new Set([
-        join(home, '.claude', 'skills'),
+        join(isolatedConfigDir, 'skills'),
         ...(workspaceRoot ? [join(workspaceRoot, '.claude', 'skills')] : []),
       ]);
 

@@ -19,6 +19,7 @@ import {
   setLastChatEventAt,
   upsertImageCacheEntry,
   upsertToolStatuses,
+  saveMessageUsageMeta,
 } from '../../helpers';
 import type { ChatGet, ChatSet } from '../../store-api';
 import type { ChatSendAttachment, ChatSendPayload, RawMessage } from '../../types';
@@ -303,9 +304,35 @@ export class ChatRuntimeActionImpl {
         clearErrorRecoveryTimer();
         if (this.#get().error) this.#set({ error: null });
 
-        const finalMessage = event.message as RawMessage | undefined;
+        let finalMessage = event.message as RawMessage | undefined;
         console.log('[handleChatEvent] Final message:', JSON.stringify(finalMessage, null, 2));
         console.log('[handleChatEvent] Full event in final:', JSON.stringify(event, null, 2));
+
+        // Merge event-level usage/model/provider into the message so it's
+        // available when rendering.  The gateway may place these on the
+        // event envelope rather than inside event.message.
+        if (finalMessage) {
+          const extra: Record<string, unknown> = {};
+          if (event.usage && typeof event.usage === 'object') extra.usage = event.usage;
+          if (typeof event.model === 'string') extra.model = event.model;
+          if (typeof event.provider === 'string') extra.provider = event.provider;
+          if (typeof event.performance === 'object' && event.performance) extra.performance = event.performance;
+          // Also check for elapsed / duration on the event
+          if (typeof event.elapsed === 'number') extra.elapsed = event.elapsed;
+          if (typeof event.duration === 'number') extra.elapsed = event.duration;
+
+          // Compute elapsed time if not provided by the gateway
+          if (!extra.elapsed) {
+            const userMsgAt = this.#get().lastUserMessageAt;
+            if (userMsgAt) {
+              extra.elapsed = Date.now() - userMsgAt;
+            }
+          }
+
+          if (Object.keys(extra).length > 0) {
+            finalMessage = { ...finalMessage, ...extra } as RawMessage;
+          }
+        }
         if (finalMessage) {
           const updates = collectToolUpdates(finalMessage, resolvedState);
           if (isToolResultRole(finalMessage.role)) {
@@ -375,6 +402,12 @@ export class ChatRuntimeActionImpl {
 
           const toolOnly = isToolOnlyMessage(finalMessage);
           const hasOutput = hasNonToolAssistantContent(finalMessage);
+          const preEffectiveRunId = runId || this.#get().activeRunId || 'run';
+          const preMessageId =
+            finalMessage.id
+            || (toolOnly
+              ? `run-${preEffectiveRunId}-tool-${finalMessage.toolCallId || finalMessage.timestamp || Date.now()}`
+              : `run-${preEffectiveRunId}`);
           this.#set((s) => {
             const effectiveRunId = runId || s.activeRunId || 'run';
             const messageId =
@@ -445,6 +478,21 @@ export class ChatRuntimeActionImpl {
                 ...clearPendingImages,
               };
           });
+
+          // Persist usage metadata to local cache so it survives history reloads.
+          // The gateway's chat.history doesn't include usage/elapsed data.
+          {
+            const fm = finalMessage as unknown as Record<string, unknown>;
+            const meta: Record<string, unknown> = {};
+            if (fm.usage) meta.usage = fm.usage;
+            if (fm.model) meta.model = fm.model;
+            if (fm.provider) meta.provider = fm.provider;
+            if (fm.performance) meta.performance = fm.performance;
+            if (fm.elapsed) meta.elapsed = fm.elapsed;
+            if (Object.keys(meta).length > 0) {
+              saveMessageUsageMeta(preMessageId, meta);
+            }
+          }
 
           if (hasOutput && !toolOnly) {
             clearHistoryPoll();

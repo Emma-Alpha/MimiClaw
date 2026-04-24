@@ -1,6 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { getClaudeCodeConfigDir } from './paths';
 import type {
   PetCompanionActivityExp,
   PetCompanionGrowthAction,
@@ -153,7 +153,7 @@ async function summarizeClaudeCodeCliUsage(): Promise<{
   totalTurns: number;
   lastActiveAt: number;
 }> {
-  const projectsRoot = join(homedir(), '.claude', 'projects');
+  const projectsRoot = join(getClaudeCodeConfigDir(), 'projects');
   let totalTokens = 0;
   let totalTurns = 0;
   let lastActiveAt = 0;

@@ -1,42 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git pull:*)",
-      "Bash(git config:*)",
-      "Bash(env)",
-      "Bash(egrep '^\\(http_proxy|https_proxy|HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|all_proxy|NO_PROXY|no_proxy\\)=')",
-      "Bash(python3 -)",
-      "Bash(curl -I --max-time 20 https://www.baidu.com)",
-      "Bash(ssh -T -o ConnectTimeout=15 git@github.com)",
-      "Bash(pnpm:*)",
-      "Bash(grep -l \"modal\\\\|dialog\\\\|pending\" /Users/liangpingbo/Desktop/个人/MimiClaw/src/pages/*.tsx)",
-      "Bash(npx tsc *)",
-      "Bash(xargs ls *)",
-      "Bash(node *)",
-      "Read(//private/tmp/**)",
-      "Bash(cp /Applications/Codex.app/Contents/Resources/app.asar .)",
-      "Bash(npx --yes @electron/asar extract app.asar codex_extracted)",
-      "Bash(ls /tmp/codex_extracted/webview/assets/*.css)",
-      "Bash(grep -r \"backdrop-filter\\\\|backdrop_filter\\\\|blur\\\\|sidebar\\\\|--sidebar\\\\|nav.*background\\\\|sidebar.*background\" /tmp/codex_extracted/webview/assets/*.css)",
-      "Bash(ls /tmp/codex_extracted/webview/assets/*.js)",
-      "Bash(xargs -I{} sh -c 'wc -c \"{}\" | awk \"{print \\\\$1, \\\\\"{}\\\\\"}')",
-      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('main:', d.get\\('main'\\)\\); print\\('module:', d.get\\('module'\\)\\); print\\('exports:', list\\(d.get\\('exports',{}\\).keys\\(\\)\\)[:5]\\)\")",
-      "Bash(git worktree *)",
-      "Bash(python3 *)",
-      "Bash(grep -n 'css`' /Users/liangpingbo/Desktop/4399/frontend/MimiClaw/src/features/settings/components/styles.ts)",
-      "Bash(grep -v \"^$\")",
-      "Bash(grep -r \"from.*store\" /Users/liangpingbo/Desktop/4399/frontend/MimiClaw/src/components/ui/*.tsx)",
-      "Bash(grep -h \"from.*@/store\" /Users/liangpingbo/Desktop/4399/frontend/lobe-chat/src/features/NavPanel/*.tsx /Users/liangpingbo/Desktop/4399/frontend/lobe-chat/src/features/NavPanel/components/*.tsx)",
-      "Bash(grep -h \"from.*@/\" /Users/liangpingbo/Desktop/4399/frontend/lobe-chat/src/features/NavPanel/*.tsx /Users/liangpingbo/Desktop/4399/frontend/lobe-chat/src/features/NavPanel/components/*.tsx)",
-      "Bash(grep -h \"useTranslation\\\\|i18n\\\\|i18next\" /Users/liangpingbo/Desktop/4399/frontend/lobe-chat/src/features/NavPanel/components/*.tsx)",
-      "Bash(grep -h \"\\\\.module\\\\.css\\\\|\\\\.css\\\\|createStyles\\\\|createStaticStyles\" /Users/liangpingbo/Desktop/4399/frontend/lobe-chat/src/features/NavPanel/components/*.tsx)",
-      "Bash(grep -h \"\\\\.module\\\\.css\\\\|\\\\.css\\\\|createStyles\\\\|createStaticStyles\" /Users/liangpingbo/Desktop/4399/frontend/MimiClaw/src/features/chat/*.tsx)",
-      "Bash(find *)",
-      "Bash(grep *)",
-      "Bash(ls src/*.css src/**/*.css)",
-      "Bash(mv \"/Users/liangpingbo/Desktop/个人/MimiClaw/src/features/chat\" \"/Users/liangpingbo/Desktop/个人/MimiClaw/src/features/mainChat\")",
-      "Bash(mv \"/Users/liangpingbo/Desktop/个人/MimiClaw/src/features/miniChat\" \"/Users/liangpingbo/Desktop/个人/MimiClaw/src/features/quickChat\")",
-      "Bash(git:*)"
+      "Bash(git checkout:*)"
     ]
   }
 }

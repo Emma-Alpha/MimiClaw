@@ -3,6 +3,7 @@ import { hostApiFetch } from '@/lib/host-api';
 import {
   clearHistoryPoll,
   enrichWithCachedImages,
+  enrichWithCachedUsage,
   enrichWithToolResultFiles,
   getCanonicalPrefixFromSessions,
   getMessageText,
@@ -322,7 +323,11 @@ export class ChatSessionActionImpl {
       const filteredMessages = messagesWithToolImages.filter((msg) => !isToolResultRole(msg.role));
       const enrichedMessages = enrichWithCachedImages(filteredMessages);
 
-      let finalMessages = enrichedMessages;
+      // Merge locally-cached usage metadata (tokens, elapsed, model, etc.)
+      // that the gateway's chat.history doesn't include.
+      const withUsage = enrichWithCachedUsage(enrichedMessages);
+
+      let finalMessages = withUsage;
       const userMsgAt = this.#get().lastUserMessageAt;
       if (this.#get().sending && userMsgAt) {
         const userMsMs = toMs(userMsgAt);

@@ -6,7 +6,7 @@ import { useLexicalComposerContext } from '@lobehub/editor/es/editor-kernel/reac
 import { createStyles } from 'antd-style';
 import { $getNodeByKey } from 'lexical';
 import { FileText, Folder, X } from 'lucide-react';
-import { memo, useCallback, useEffect } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
 
 interface MentionNodeLike {
   getKey: () => string;
@@ -94,6 +94,22 @@ const MentionTag = memo<MentionTagProps>(({ node, editor }) => {
   const metadata = node.metadata ?? {};
   const kind = (metadata as { kind?: string }).kind;
   const label = node.label || '';
+  const pillRef = useRef<HTMLSpanElement>(null);
+
+  // Strip the default mention theme styles from the outer <span> created
+  // by MentionNode.createDOM (border, padding, background). Our custom
+  // pill already provides its own styling.
+  useEffect(() => {
+    const outer = pillRef.current?.parentElement;
+    if (outer) {
+      outer.style.border = 'none';
+      outer.style.padding = '0';
+      outer.style.margin = '0 4px 0 0';
+      outer.style.background = 'none';
+      outer.style.display = 'inline-block';
+      outer.style.paddingRight = '4px';
+    }
+  }, []);
 
   const handleDelete = useCallback(
     (e: MouseEvent<HTMLButtonElement>) => {
@@ -110,7 +126,7 @@ const MentionTag = memo<MentionTagProps>(({ node, editor }) => {
   const FileIcon = kind === 'folder' ? Folder : FileText;
 
   return (
-    <span className={styles.pill} contentEditable={false} title={label}>
+    <span ref={pillRef} className={styles.pill} contentEditable={false} title={label}>
       <span aria-hidden className={styles.fileIcon}>
         <FileIcon size={12} strokeWidth={1.75} />
       </span>

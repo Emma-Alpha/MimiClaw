@@ -814,6 +814,70 @@ function getLastChatEventAt(): number {
   return _lastChatEventAt;
 }
 
+// ── Usage metadata cache ─────────────────────────────────────
+// The Gateway's chat.history doesn't return token usage or elapsed time,
+// so we cache these locally keyed by message ID.  Populated during
+// streaming (handleChatEvent) and merged back when history is loaded.
+interface UsageMeta {
+  usage?: Record<string, unknown>;
+  model?: string;
+  provider?: string;
+  performance?: Record<string, unknown>;
+  elapsed?: number;
+}
+
+const USAGE_CACHE_KEY = 'mimiclaw:usage-cache';
+const USAGE_CACHE_MAX = 500;
+
+function loadUsageCache(): Map<string, UsageMeta> {
+  try {
+    const raw = localStorage.getItem(USAGE_CACHE_KEY);
+    if (raw) {
+      const entries = JSON.parse(raw) as Array<[string, UsageMeta]>;
+      return new Map(entries);
+    }
+  } catch { /* ignore */ }
+  return new Map();
+}
+
+function saveUsageCache(cache: Map<string, UsageMeta>): void {
+  try {
+    const entries = Array.from(cache.entries());
+    const trimmed = entries.length > USAGE_CACHE_MAX
+      ? entries.slice(entries.length - USAGE_CACHE_MAX)
+      : entries;
+    localStorage.setItem(USAGE_CACHE_KEY, JSON.stringify(trimmed));
+  } catch { /* ignore quota errors */ }
+}
+
+const _usageCache = loadUsageCache();
+
+function saveMessageUsageMeta(messageId: string, meta: UsageMeta): void {
+  _usageCache.set(messageId, meta);
+  saveUsageCache(_usageCache);
+}
+
+function getMessageUsageMeta(messageId: string): UsageMeta | undefined {
+  return _usageCache.get(messageId);
+}
+
+/** Merge cached usage metadata into messages that are missing it */
+function enrichWithCachedUsage(messages: RawMessage[]): RawMessage[] {
+  return messages.map((msg) => {
+    if (!msg.id) return msg;
+    const cached = _usageCache.get(msg.id);
+    if (!cached) return msg;
+    const m = msg as unknown as Record<string, unknown>;
+    const extras: Record<string, unknown> = {};
+    if (cached.usage && !m.usage) extras.usage = cached.usage;
+    if (cached.model && !m.model) extras.model = cached.model;
+    if (cached.provider && !m.provider) extras.provider = cached.provider;
+    if (cached.performance && !m.performance) extras.performance = cached.performance;
+    if (cached.elapsed && !m.elapsed) extras.elapsed = cached.elapsed;
+    return Object.keys(extras).length > 0 ? { ...msg, ...extras } as RawMessage : msg;
+  });
+}
+
 export {
   toMs,
   clearErrorRecoveryTimer,
@@ -839,4 +903,7 @@ export {
   setErrorRecoveryTimer,
   setLastChatEventAt,
   getLastChatEventAt,
+  saveMessageUsageMeta,
+  getMessageUsageMeta,
+  enrichWithCachedUsage,
 };

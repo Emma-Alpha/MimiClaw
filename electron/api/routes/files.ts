@@ -153,6 +153,52 @@ export async function listProjectMentionEntries(workspaceRoot: string): Promise<
   return results;
 }
 
+/**
+ * List only the direct children of a specific directory within the workspace.
+ * Used for Cursor-like "@" directory browsing: typing `@src/` shows contents of `src/`.
+ */
+export async function listDirectoryChildren(
+  workspaceRoot: string,
+  dirRelativePath: string,
+): Promise<ProjectMentionEntry[]> {
+  const normalizedRoot = workspaceRoot.trim();
+  if (!normalizedRoot) return [];
+
+  const fsP = await import('node:fs/promises');
+  const targetDir = dirRelativePath
+    ? join(normalizedRoot, dirRelativePath)
+    : normalizedRoot;
+
+  const dirStat = await fsP.stat(targetDir).catch(() => null);
+  if (!dirStat?.isDirectory()) return [];
+
+  const dirEntries = await fsP.readdir(targetDir, { withFileTypes: true }).catch(() => []);
+
+  // Sort: directories first, then alphabetical
+  dirEntries.sort((left, right) => {
+    if (left.isDirectory() !== right.isDirectory()) {
+      return left.isDirectory() ? -1 : 1;
+    }
+    return left.name.localeCompare(right.name, 'en');
+  });
+
+  const results: ProjectMentionEntry[] = [];
+  for (const entry of dirEntries) {
+    const isDirectory = entry.isDirectory();
+    if (shouldSkipProjectMentionEntry(entry.name, isDirectory)) continue;
+    const absolutePath = join(targetDir, entry.name);
+    const normalizedRelative = relative(normalizedRoot, absolutePath).replace(/\\/g, '/');
+    results.push({
+      absolutePath,
+      relativePath: normalizedRelative,
+      name: entry.name,
+      isDirectory,
+    });
+  }
+
+  return results;
+}
+
 export async function listProjectMentionEntriesWithSearch(
   workspaceRoot: string,
   query: string,
@@ -233,10 +279,19 @@ export async function handleFileRoutes(
         return true;
       }
 
-      // If query is provided, use Rust search; otherwise use index
-      const entries = query
-        ? await listProjectMentionEntriesWithSearch(workspaceRoot, query)
-        : await listProjectMentionEntries(workspaceRoot);
+      const mode = url.searchParams.get('mode')?.trim() || '';
+      const dir = url.searchParams.get('dir')?.trim() || '';
+
+      // mode=browse: list direct children of a directory (Cursor-like browsing)
+      // otherwise: search or index
+      let entries: ProjectMentionEntry[];
+      if (mode === 'browse') {
+        entries = await listDirectoryChildren(workspaceRoot, dir);
+      } else if (query) {
+        entries = await listProjectMentionEntriesWithSearch(workspaceRoot, query);
+      } else {
+        entries = await listProjectMentionEntries(workspaceRoot);
+      }
 
       sendJson(res, 200, { success: true, entries });
     } catch (error) {

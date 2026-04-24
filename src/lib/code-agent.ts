@@ -66,6 +66,26 @@ export async function restartCodeAgent(): Promise<{ success: boolean; status: Co
   });
 }
 
+export interface CodeAgentModelInfo {
+  id: string;
+  name: string;
+}
+
+export async function fetchCodeAgentModels(baseUrl: string, apiKey: string): Promise<CodeAgentModelInfo[]> {
+  const response = await hostApiFetch<{
+    success: boolean;
+    models?: CodeAgentModelInfo[];
+    error?: string;
+  }>('/api/code-agent/models', {
+    method: 'POST',
+    body: JSON.stringify({ baseUrl, apiKey }),
+  });
+  if (!response.success) {
+    throw new Error(response.error || 'Failed to fetch models');
+  }
+  return response.models ?? [];
+}
+
 export async function runCodeAgentTask(input: CodeAgentRunRequest): Promise<CodeAgentRunResult> {
   const response = await hostApiFetch<{ success: boolean; result: CodeAgentRunResult; error?: string }>('/api/code-agent/runs', {
     method: 'POST',
@@ -187,6 +207,22 @@ export async function fetchProjectMentionEntries(
   if (query) {
     params.set('query', query);
   }
+  const response = await hostApiFetch<{
+    success: boolean;
+    entries: ProjectMentionEntry[];
+  }>(`/api/files/project-mentions?${params.toString()}`);
+  return Array.isArray(response.entries) ? response.entries : [];
+}
+
+/**
+ * Browse direct children of a specific directory within the workspace.
+ * Used for Cursor-like "@" directory browsing (e.g. `@src/` lists contents of `src/`).
+ */
+export async function fetchDirectoryChildren(
+  workspaceRoot: string,
+  dirRelativePath: string,
+): Promise<ProjectMentionEntry[]> {
+  const params = new URLSearchParams({ workspaceRoot, mode: 'browse', dir: dirRelativePath });
   const response = await hostApiFetch<{
     success: boolean;
     entries: ProjectMentionEntry[];

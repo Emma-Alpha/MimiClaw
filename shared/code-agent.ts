@@ -24,7 +24,7 @@ export interface CodeAgentRuntimeConfig {
 
 export const DEFAULT_CODE_AGENT_RUNTIME_CONFIG: CodeAgentRuntimeConfig = {
   executionMode: 'cli',
-  cliPath: 'claude',
+  cliPath: '',
   model: '',
   fallbackModel: '',
   effort: '',
@@ -53,6 +53,8 @@ export interface CodeAgentDescriptor {
   bunAvailable: boolean;
   executionMode?: CodeAgentExecutionMode;
   cliPath?: string;
+  /** Isolated config directory used by the bundled Claude CLI (CLAUDE_CONFIG_DIR). */
+  configDir?: string;
 }
 
 export interface CodeAgentStatus extends CodeAgentDescriptor {

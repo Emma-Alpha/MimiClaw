@@ -6,7 +6,7 @@ const CODEX_LIGHT_SIDEBAR_BACKGROUND = '#fcfcfc';
 const CODEX_LIGHT_BORDER = 'rgba(26, 28, 31, 0.078)';
 const CODEX_LIGHT_EDGE_SHADOW = 'rgba(26, 28, 31, 0.025)';
 
-const SIDEBAR_TRANSLUCENT_ALPHA = 72;
+const SIDEBAR_TRANSLUCENT_ALPHA = 0;
 
 export function getSidebarChromeCss() {
   return `
@@ -16,7 +16,6 @@ export function getSidebarChromeCss() {
     --mimi-sidebar-edge-shadow: ${CODEX_LIGHT_EDGE_SHADOW};
 
     position: relative;
-    isolation: isolate;
     overflow: hidden;
     border-right: 1px solid var(--mimi-sidebar-border);
     background: transparent;
@@ -24,8 +23,8 @@ export function getSidebarChromeCss() {
 
     &[data-translucent-sidebar='true'] {
       background: var(--mimi-sidebar-surface);
-      backdrop-filter: saturate(160%) blur(18px);
-      -webkit-backdrop-filter: saturate(160%) blur(18px);
+      backdrop-filter: saturate(180%) blur(12px);
+      -webkit-backdrop-filter: saturate(180%) blur(12px);
       box-shadow:
         inset -1px 0 0 var(--mimi-sidebar-edge-shadow),
         0 10px 30px rgba(0, 0, 0, 0.08);
@@ -38,46 +37,11 @@ export function getSidebarChromeCss() {
       box-shadow: inset -1px 0 0 var(--mimi-sidebar-edge-shadow);
     }
 
-    &[data-translucent-sidebar='true']::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-      background: color-mix(in oklab, var(--mimi-sidebar-surface-solid) 22%, transparent);
-    }
-
-    &[data-translucent-sidebar='true']::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      z-index: 1;
-      background: linear-gradient(
-        to right,
-        color-mix(in oklab, white 8%, transparent) 0%,
-        transparent 100%
-      );
-    }
-
-    & > * {
-      position: relative;
-      z-index: 2;
-    }
-
     [data-theme='dark'] & {
       --mimi-sidebar-surface: color-mix(in oklab, ${CODEX_DARK_SIDEBAR_BACKGROUND} ${SIDEBAR_TRANSLUCENT_ALPHA}%, transparent);
       --mimi-sidebar-surface-solid: ${CODEX_DARK_SIDEBAR_BACKGROUND};
       --mimi-sidebar-border: ${CODEX_DARK_BORDER};
       --mimi-sidebar-edge-shadow: ${CODEX_DARK_EDGE_SHADOW};
-    }
-
-    [data-theme='dark'] &[data-translucent-sidebar='true']::after {
-      background: linear-gradient(
-        to right,
-        color-mix(in oklab, white 4%, transparent) 0%,
-        transparent 100%
-      );
     }
   `;
 }

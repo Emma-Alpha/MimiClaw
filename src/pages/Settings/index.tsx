@@ -12,6 +12,7 @@ import {
   Eye,
   EyeOff,
   Globe,
+  List,
 } from 'lucide-react';
 import { Form, type FormGroupItemType } from '@lobehub/ui';
 import { SettingHeader } from './components/SettingHeader';
@@ -52,6 +53,7 @@ import {
 } from '@/lib/host-api';
 import {
   fetchCodeAgentHealth,
+  fetchCodeAgentModels,
   fetchCodeAgentStatus,
   fetchLatestCodeAgentRun,
   restartCodeAgent,
@@ -59,6 +61,7 @@ import {
   startCodeAgent,
   stopCodeAgent,
 } from '@/lib/code-agent';
+import type { CodeAgentModelInfo } from '@/lib/code-agent';
 import { subscribeHostEvent } from '@/lib/host-events';
 import { cn } from '@/lib/utils';
 import { useSettingsStyles } from './styles';
@@ -254,6 +257,8 @@ export function Settings() {
   const [codeAgentAllowedToolsDraft, setCodeAgentAllowedToolsDraft] = useState(codeAgent.allowedTools.join('\n'));
   const [savingCodeAgentConfig, setSavingCodeAgentConfig] = useState(false);
   const [showCodeAgentApiKey, setShowCodeAgentApiKey] = useState(false);
+  const [availableModels, setAvailableModels] = useState<CodeAgentModelInfo[]>([]);
+  const [fetchingModels, setFetchingModels] = useState(false);
 
   type SettingsSection = 'appearance' | 'voicePet' | 'gateway' | 'updates' | 'developer' | 'about';
   const [searchParams] = useSearchParams();
@@ -556,7 +561,7 @@ export function Settings() {
     try {
       const nextConfig: CodeAgentRuntimeConfig = {
         ...codeAgentConfigDraft,
-        cliPath: codeAgentConfigDraft.cliPath.trim() || 'claude',
+        cliPath: codeAgentConfigDraft.cliPath.trim(),
         model: codeAgentConfigDraft.model.trim(),
         fallbackModel: codeAgentConfigDraft.fallbackModel.trim(),
         baseUrl: codeAgentConfigDraft.baseUrl.trim(),
@@ -587,6 +592,29 @@ export function Settings() {
   };
 
 
+
+  const handleFetchModels = async () => {
+    const baseUrl = codeAgentConfigDraft.baseUrl.trim();
+    const apiKey = codeAgentConfigDraft.apiKey.trim();
+    if (!baseUrl || !apiKey) {
+      toast.error(t('developer.codeAgentFetchModelsRequiresConfig'));
+      return;
+    }
+    setFetchingModels(true);
+    try {
+      const models = await fetchCodeAgentModels(baseUrl, apiKey);
+      setAvailableModels(models);
+      if (models.length === 0) {
+        toast.warning(t('developer.codeAgentFetchModelsEmpty'));
+      } else {
+        toast.success(t('developer.codeAgentFetchModelsSuccess', { count: models.length }));
+      }
+    } catch (error) {
+      toast.error(`${t('developer.codeAgentFetchModelsFailed')}: ${toUserMessage(error)}`);
+    } finally {
+      setFetchingModels(false);
+    }
+  };
 
   const refreshControlUiInfo = async () => {
     try {
@@ -1765,29 +1793,66 @@ export function Settings() {
                           </div>
 
                           <div className={styles.formField}>
-                            <Label htmlFor="code-agent-model" className={styles.fieldLabelSmall}>
-                              {t('developer.codeAgentModel')}
-                            </Label>
-                            <Input
-                              id="code-agent-model"
-                              value={codeAgentConfigDraft.model}
-                              onChange={(event) => setCodeAgentConfigDraft((prev) => ({ ...prev, model: event.target.value }))}
-                              placeholder="sonnet"
-                              className={styles.fieldInput}
-                            />
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <Label htmlFor="code-agent-model" className={styles.fieldLabelSmall}>
+                                {t('developer.codeAgentModel')}
+                              </Label>
+                              <Button
+                                size="small"
+                                onClick={() => void handleFetchModels()}
+                                disabled={fetchingModels || !codeAgentConfigDraft.baseUrl.trim() || !codeAgentConfigDraft.apiKey.trim()}
+                                style={{ borderRadius: 8, fontSize: 12, padding: '2px 8px', height: 24 }}
+                              >
+                                <List style={{ marginRight: 4, height: 14, width: 14 }} className={fetchingModels ? 'animate-spin' : ''} />
+                                {fetchingModels ? t('developer.codeAgentFetchingModels') : t('developer.codeAgentFetchModels')}
+                              </Button>
+                            </div>
+                            {availableModels.length > 0 ? (
+                              <Select
+                                id="code-agent-model"
+                                value={codeAgentConfigDraft.model}
+                                onChange={(val) => setCodeAgentConfigDraft((prev) => ({ ...prev, model: val }))}
+                                style={{ borderRadius: 12 }}
+                                options={[
+                                  { value: '', label: t('developer.codeAgentModelAutoDetect') },
+                                  ...availableModels.map((m) => ({ value: m.id, label: m.name || m.id })),
+                                ]}
+                              />
+                            ) : (
+                              <Input
+                                id="code-agent-model"
+                                value={codeAgentConfigDraft.model}
+                                onChange={(event) => setCodeAgentConfigDraft((prev) => ({ ...prev, model: event.target.value }))}
+                                placeholder="sonnet"
+                                className={styles.fieldInput}
+                              />
+                            )}
                           </div>
 
                           <div className={styles.formField}>
                             <Label htmlFor="code-agent-fallback-model" className={styles.fieldLabelSmall}>
                               {t('developer.codeAgentFallbackModel')}
                             </Label>
-                            <Input
-                              id="code-agent-fallback-model"
-                              value={codeAgentConfigDraft.fallbackModel}
-                              onChange={(event) => setCodeAgentConfigDraft((prev) => ({ ...prev, fallbackModel: event.target.value }))}
-                              placeholder="opus"
-                              className={styles.fieldInput}
-                            />
+                            {availableModels.length > 0 ? (
+                              <Select
+                                id="code-agent-fallback-model"
+                                value={codeAgentConfigDraft.fallbackModel}
+                                onChange={(val) => setCodeAgentConfigDraft((prev) => ({ ...prev, fallbackModel: val }))}
+                                style={{ borderRadius: 12 }}
+                                options={[
+                                  { value: '', label: t('developer.codeAgentModelAutoDetect') },
+                                  ...availableModels.map((m) => ({ value: m.id, label: m.name || m.id })),
+                                ]}
+                              />
+                            ) : (
+                              <Input
+                                id="code-agent-fallback-model"
+                                value={codeAgentConfigDraft.fallbackModel}
+                                onChange={(event) => setCodeAgentConfigDraft((prev) => ({ ...prev, fallbackModel: event.target.value }))}
+                                placeholder="opus"
+                                className={styles.fieldInput}
+                              />
+                            )}
                           </div>
 
                           <div className={styles.formField}>

@@ -825,6 +825,7 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		align-items: center;
 		min-width: 0;
 		gap: 6px;
+		flex: 1;
 	`,
 	mentionResultTitle: css`
 		font-size: var(--mimi-font-size-xs);
@@ -841,6 +842,10 @@ export const useComposerStyles = createStyles(({ css, token }) => ({
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		opacity: 0.8;
+		margin-left: auto;
+		flex-shrink: 0;
+		max-width: 200px;
+		text-align: right;
 	`,
 	claudeSlashPanel: css`
 		display: flex;

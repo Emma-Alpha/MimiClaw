@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { CodeAgentPermissionMode, CodeAgentRuntimeConfig } from '../../shared/code-agent';
+import { getClaudeCodeConfigDir } from '../utils/paths';
 
 const CODE_AGENT_PERMISSION_MODES = new Set<CodeAgentPermissionMode>([
   'acceptEdits',
@@ -51,7 +51,7 @@ function toRuntimeConfig(settings: ClaudeUserSettingsJson): ClaudeUserSettingsRu
 }
 
 export function getClaudeUserSettingsPath(): string {
-  return join(homedir(), '.claude', 'settings.json');
+  return join(getClaudeCodeConfigDir(), 'settings.json');
 }
 
 export async function readClaudeUserSettingsRuntimeConfig(): Promise<ClaudeUserSettingsRuntimeConfig> {

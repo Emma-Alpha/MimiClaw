@@ -1,7 +1,8 @@
-import { createStyles } from "antd-style";
+import { createStyles, useTheme } from "antd-style";
 import type { Descendant } from "slate";
 import { ChatItem } from "@lobehub/ui/chat";
-import { File as FileIcon, Folder } from "lucide-react";
+import { Clock, Coins, File as FileIcon, Folder } from "lucide-react";
+import { ModelIcon } from "@lobehub/icons";
 import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/code-agent";
 import { StreamingText } from "./StreamingText";
 import { ThinkingBlock } from "./ThinkingBlock";
@@ -163,6 +164,84 @@ function UserMessageContent({
 	);
 }
 
+function formatTokenCount(n: number): string {
+	if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+	if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+	return String(n);
+}
+
+function formatDuration(ms: number): string {
+	if (ms < 1000) return `${Math.round(ms)}ms`;
+	return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function AssistantUsageLine({
+	usage,
+	model,
+	costUsd,
+	durationMs,
+}: {
+	usage?: { inputTokens: number; outputTokens: number; totalTokens: number };
+	model?: string;
+	costUsd?: number;
+	durationMs?: number;
+}) {
+	const theme = useTheme();
+	const parts: React.ReactNode[] = [];
+
+	if (model) {
+		parts.push(
+			<span key="model" style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+				<ModelIcon model={model} type="mono" size={12} />
+				{model}
+			</span>,
+		);
+	}
+
+	if (usage && usage.totalTokens > 0) {
+		parts.push(
+			<span key="tokens" style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+				<Coins size={12} />
+				{formatTokenCount(usage.totalTokens)} tokens
+			</span>,
+		);
+	}
+
+	if (typeof durationMs === "number" && durationMs > 0) {
+		parts.push(
+			<span key="duration" style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+				<Clock size={12} />
+				{formatDuration(durationMs)}
+			</span>,
+		);
+	}
+
+	if (typeof costUsd === "number" && costUsd > 0) {
+		parts.push(
+			<span key="cost">
+				${costUsd < 0.01 ? costUsd.toFixed(4) : costUsd.toFixed(2)}
+			</span>,
+		);
+	}
+
+	if (parts.length === 0) return null;
+
+	return (
+		<div
+			style={{
+				display: "flex",
+				alignItems: "center",
+				gap: 12,
+				fontSize: 11,
+				color: theme.colorTextQuaternary,
+				padding: "2px 0 4px",
+			}}
+		>
+			{parts}
+		</div>
+	);
+}
+
 /**
  * Renders a single CodeAgentTimelineItem. Used both by CodeTimeline (legacy)
  * and directly as individual VList rows in CodeChatTimeline for virtualisation.
@@ -196,6 +275,16 @@ export function CodeAgentItem({
 					text={item.text}
 					isStreaming={item.isStreaming}
 					workspaceRoot={workspaceRoot}
+				/>
+			);
+
+		case "assistant-usage":
+			return (
+				<AssistantUsageLine
+					usage={item.usage}
+					model={item.model}
+					costUsd={item.costUsd}
+					durationMs={item.durationMs}
 				/>
 			);
 

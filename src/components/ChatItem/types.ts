@@ -55,6 +55,8 @@ export interface ChatItemProps {
   provider?: string;
   usage?: ModelUsage;
   performance?: ModelPerformance;
+  /** Elapsed time for this response in milliseconds */
+  elapsed?: number;
   className?: string;
   style?: React.CSSProperties;
   onAvatarClick?: () => void;

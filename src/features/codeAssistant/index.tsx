@@ -920,19 +920,25 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 
 		for (const item of codeAgentItems) {
 			if (item.kind === "user") {
+				const ts = item.createdAt
+					? (item.createdAt < 1e12 ? item.createdAt : item.createdAt / 1000)
+					: Date.now() / 1000;
 				converted.push({
 					id: item.id,
 					role: "user",
 					content: item.text,
-					timestamp: Date.now(),
+					timestamp: ts,
 					_attachedFiles: [],
 				});
 			} else if (item.kind === "assistant-text") {
+				const ts = item.createdAt
+					? (item.createdAt < 1e12 ? item.createdAt : item.createdAt / 1000)
+					: Date.now() / 1000;
 				converted.push({
 					id: item.id,
 					role: "assistant",
 					content: item.text,
-					timestamp: Date.now(),
+					timestamp: ts,
 				});
 			} else if (item.kind === "thinking") {
 				// Include thinking as part of assistant message
@@ -945,7 +951,7 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 							thinking: item.data.text,
 						},
 					],
-					timestamp: Date.now(),
+					timestamp: Date.now() / 1000,
 				});
 			} else if (item.kind === "tool-use") {
 				// Include tool use in assistant message
@@ -960,8 +966,25 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 							input: item.tool.rawInput,
 						},
 					],
-					timestamp: Date.now(),
+					timestamp: Date.now() / 1000,
 				});
+			} else if (item.kind === "assistant-usage") {
+				// Attach usage metadata to the most recent assistant message
+				// so ConversationView → NewAssistantMessage → Usage can display it
+				for (let i = converted.length - 1; i >= 0; i--) {
+					if (converted[i].role === "assistant") {
+						const target = converted[i] as unknown as Record<string, unknown>;
+						target.usage = {
+							input_tokens: item.usage.inputTokens,
+							output_tokens: item.usage.outputTokens,
+							cache_read_input_tokens: item.usage.cacheReadTokens,
+							cache_creation_input_tokens: item.usage.cacheWriteTokens,
+						};
+						if (item.model) target.model = item.model;
+						if (item.durationMs) target.elapsed = item.durationMs;
+						break;
+					}
+				}
 			}
 		}
 
@@ -1255,7 +1278,21 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 				sending={sending || codeSending}
 				error={null}
 				showThinking={true}
-				streamingMessage={streamingMessage}
+				streamingMessage={
+					draftTarget === "code" && (codeStreaming.assistantText || codeStreaming.thinkingText)
+						? {
+							role: "assistant" as const,
+							content: [
+								...(codeStreaming.thinkingText
+									? [{ type: "thinking" as const, thinking: codeStreaming.thinkingText }]
+									: []),
+								...(codeStreaming.assistantText
+									? [{ type: "text" as const, text: codeStreaming.assistantText }]
+									: []),
+							],
+						}
+						: streamingMessage
+				}
 				streamingTools={streamingTools}
 				pendingFinal={pendingFinal}
 				lastRunWasAborted={false}

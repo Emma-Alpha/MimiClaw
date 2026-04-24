@@ -281,13 +281,15 @@ export type CodeAgentUserMessageMeta = {
 export type CodeAgentTimelineItem =
 	| { kind: "init"; id: string; model: string; permissionMode: string; toolCount: number; mcpCount: number; cwd: string }
 	| { kind: "thinking"; id: string; data: ThinkingBlockData }
-	| { kind: "assistant-text"; id: string; text: string; isStreaming: boolean }
+	| { kind: "assistant-text"; id: string; text: string; isStreaming: boolean; createdAt?: number }
+	| { kind: "assistant-usage"; id: string; usage: { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; totalTokens: number }; model?: string; costUsd?: number; durationMs?: number }
 	| { kind: "tool-use"; id: string; tool: StreamingToolUse }
 	| { kind: "diff"; id: string; files: DiffFile[] }
 	| {
 		kind: "user";
 		id: string;
 		text: string;
+		createdAt?: number;
 		imagePreviews?: CodeAgentUserImagePreview[];
 		pathTags?: CodeAgentUserPathTag[];
 		richContent?: Descendant[];
@@ -1674,6 +1676,30 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 				const thinkingText = streaming.thinkingText;
 			const toolUses = streaming.toolUses;
 
+			// Extract per-message usage from the raw SDK message
+			const msgUsageRaw = asRecord(asRecord(msg.message)?.usage) ?? asRecord(msg.usage);
+			const msgModel = typeof (msg.message as Record<string, unknown>)?.model === "string"
+				? (msg.message as Record<string, unknown>).model as string
+				: typeof msg.model === "string" ? msg.model as string : undefined;
+			const msgCostUsd = toFiniteNumber(msg.costUSD) ?? toFiniteNumber(msg.cost_usd) ?? undefined;
+			const msgDurationMs = toFiniteNumber(msg.duration_ms) ?? toFiniteNumber(msg.durationMs) ?? undefined;
+			const msgUsage = msgUsageRaw ? {
+				inputTokens: Math.max(0, Math.round(
+					pickNumber(msgUsageRaw, ["input_tokens", "inputTokens", "input"]) ?? 0)),
+				outputTokens: Math.max(0, Math.round(
+					pickNumber(msgUsageRaw, ["output_tokens", "outputTokens", "output"]) ?? 0)),
+				cacheReadTokens: Math.max(0, Math.round(
+					pickNumber(msgUsageRaw, ["cache_read_input_tokens", "cacheReadInputTokens", "cacheRead"]) ?? 0)),
+				cacheWriteTokens: Math.max(0, Math.round(
+					pickNumber(msgUsageRaw, ["cache_creation_input_tokens", "cacheCreationInputTokens", "cacheWrite"]) ?? 0)),
+				totalTokens: 0,
+			} : undefined;
+			if (msgUsage) {
+				msgUsage.totalTokens = msgUsage.inputTokens + msgUsage.outputTokens + msgUsage.cacheReadTokens + msgUsage.cacheWriteTokens;
+			}
+			const assistantTs = typeof msg.timestamp === "string" ? Date.parse(msg.timestamp) : toFiniteNumber(msg.timestamp);
+			const assistantCreatedAt = (assistantTs != null && assistantTs > 0) ? assistantTs : undefined;
+
 			// Flush any accumulated thinking block
 			if (thinkingText) {
 				addItem({
@@ -1694,7 +1720,7 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 			// code-agent:token events which fire before this sdk-message arrives).
 			const assistantText = streaming.assistantText;
 			if (assistantText.trim()) {
-				addItem({ kind: "assistant-text", id: uid(), text: assistantText, isStreaming: false });
+				addItem({ kind: "assistant-text", id: uid(), text: assistantText, isStreaming: false, createdAt: assistantCreatedAt });
 			}
 
 			// Reset streaming state
@@ -1708,7 +1734,7 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 				for (const block of content as Array<Record<string, unknown>>) {
 					if (block.type === "text" && block.text && !assistantText) {
 						// Only add text directly if streaming path didn't already flush it
-						addItem({ kind: "assistant-text", id: uid(), text: String(block.text), isStreaming: false });
+						addItem({ kind: "assistant-text", id: uid(), text: String(block.text), isStreaming: false, createdAt: assistantCreatedAt });
 					}
 					if (block.type === "tool_use" && toolUses.size === 0) {
 						// CLI mode: tool uses come here, not from streaming events
@@ -1741,6 +1767,18 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 						});
 					}
 				}
+			}
+
+			// Emit a dedicated usage line for this assistant message
+			if (msgUsage && msgUsage.totalTokens > 0) {
+				addItem({
+					kind: "assistant-usage",
+					id: uid(),
+					usage: msgUsage,
+					model: msgModel,
+					costUsd: msgCostUsd ?? undefined,
+					durationMs: msgDurationMs ?? undefined,
+				});
 			}
 			return;
 		}
@@ -1983,7 +2021,8 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 					const existingUserMsgs = get().items.filter(i => i.kind === "user");
 					const lastUserMsg = existingUserMsgs[existingUserMsgs.length - 1];
 					if (!lastUserMsg || lastUserMsg.text !== userText.trim()) {
-						addItem({ kind: "user", id: String(msg.uuid || uid()), text: userText.trim() });
+						const userTs = typeof msg.timestamp === "string" ? Date.parse(msg.timestamp) : toFiniteNumber(msg.timestamp);
+						addItem({ kind: "user", id: String(msg.uuid || uid()), text: userText.trim(), createdAt: userTs ?? undefined });
 					}
 				}
 			}

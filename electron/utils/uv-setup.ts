@@ -2,7 +2,6 @@ import { app } from 'electron';
 import { execSync, spawn } from 'child_process';
 import { existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
-import { homedir } from 'os';
 import { join } from 'path';
 import { getUvMirrorEnv } from './uv-env';
 import { logger } from './logger';
@@ -230,7 +229,10 @@ export async function setupManagedPython(): Promise<void> {
 }
 
 export async function setupClaudeCodeCli(): Promise<void> {
-  const claudeDir = join(homedir(), '.claude');
+  // Use the isolated config directory instead of ~/.claude/ to prevent
+  // cross-contamination with the user's locally installed Claude Code CLI.
+  const { getClaudeCodeConfigDir } = await import('./paths');
+  const claudeDir = getClaudeCodeConfigDir();
   await mkdir(claudeDir, { recursive: true });
-  logger.info(`Ensured Claude Code directory exists at: ${claudeDir}`);
+  logger.info(`Ensured Claude Code config directory exists at: ${claudeDir}`);
 }

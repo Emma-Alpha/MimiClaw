@@ -71,6 +71,39 @@ export function ensureDir(dir: string): void {
 }
 
 /**
+ * Get the isolated Claude Code config directory.
+ * This prevents MimiClaw's bundled Claude CLI from reading/writing
+ * the user's own ~/.claude/ config (used by their locally installed CLI).
+ */
+export function getClaudeCodeConfigDir(): string {
+  const dir = join(app.getPath('userData'), 'claude-code-config');
+  ensureDir(dir);
+  return dir;
+}
+
+/**
+ * Get the bundled Claude Code CLI binary path.
+ * - Packaged: from app.asar.unpacked/node_modules/@anthropic-ai/claude-code/
+ * - Development: from node_modules/@anthropic-ai/claude-code/
+ *
+ * Returns the path to cli-wrapper.cjs which resolves the correct
+ * platform-specific native binary at runtime.
+ */
+export function getBundledClaudeCliPath(): string {
+  if (app.isPackaged) {
+    return join(
+      process.resourcesPath,
+      'app.asar.unpacked',
+      'node_modules',
+      '@anthropic-ai',
+      'claude-code',
+      'cli-wrapper.cjs',
+    );
+  }
+  return join(__dirname, '..', '..', 'node_modules', '@anthropic-ai', 'claude-code', 'cli-wrapper.cjs');
+}
+
+/**
  * Get resources directory (for bundled assets)
  */
 export function getResourcesDir(): string {

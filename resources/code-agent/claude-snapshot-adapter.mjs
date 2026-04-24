@@ -309,10 +309,17 @@ export function normalizeRuntimeConfig(input) {
       : 'enabled';
   const fastMode = input?.fastMode === true;
 
+  // Resolve the CLI path: user override > bundled binary env > PATH fallback
+  const resolvedCliPath = (() => {
+    if (typeof input?.cliPath === 'string' && input.cliPath.trim()) return input.cliPath.trim();
+    const bundled = process.env.MIMICLAW_BUNDLED_CLI_PATH?.trim();
+    if (bundled && existsSync(bundled)) return bundled;
+    return 'claude';
+  })();
+
   return {
     executionMode,
-    cliPath:
-      typeof input?.cliPath === 'string' && input.cliPath.trim() ? input.cliPath.trim() : 'claude',
+    cliPath: resolvedCliPath,
     model: typeof input?.model === 'string' ? input.model.trim() : '',
     fallbackModel: typeof input?.fallbackModel === 'string' ? input.fallbackModel.trim() : '',
     effort,
@@ -333,7 +340,10 @@ export function normalizeRuntimeConfig(input) {
 
 function probeClaudeCli(cliPath) {
   try {
-    const versionResult = spawnSync(cliPath, ['--version'], {
+    const isNodeScript = /\.(c|m)?js$/.test(cliPath);
+    const probeCmd = isNodeScript ? process.execPath : cliPath;
+    const probeArgs = isNodeScript ? [cliPath, '--version'] : ['--version'];
+    const versionResult = spawnSync(probeCmd, probeArgs, {
       encoding: 'utf8',
       timeout: 10_000,
       maxBuffer: 1024 * 1024,
@@ -738,6 +748,10 @@ async function runClaudeCliTask({
     // Keep it enabled explicitly as a fallback to the CLI flag above.
     CLAUDE_CODE_INCLUDE_PARTIAL_MESSAGES: '1',
   };
+  // Isolate config directory so the bundled CLI doesn't read/write ~/.claude/
+  if (process.env.CLAUDE_CONFIG_DIR) {
+    env.CLAUDE_CONFIG_DIR = process.env.CLAUDE_CONFIG_DIR;
+  }
   if (cliConfig.baseUrl) {
     env.ANTHROPIC_BASE_URL = cliConfig.baseUrl;
   }
@@ -909,8 +923,14 @@ async function runClaudeCliTask({
     }
   }
 
+  // When cliPath points to a Node.js wrapper script (e.g. cli-wrapper.cjs),
+  // spawn it via `node <script>` instead of executing the script directly.
+  const isNodeScript = /\.(c|m)?js$/.test(cliConfig.cliPath);
+  const spawnCmd = isNodeScript ? process.execPath : cliConfig.cliPath;
+  const spawnArgs = isNodeScript ? [cliConfig.cliPath, ...args] : args;
+
   try {
-    child = spawn(cliConfig.cliPath, args, {
+    child = spawn(spawnCmd, spawnArgs, {
       cwd: workspaceRoot,
       env,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -980,11 +1000,11 @@ async function runClaudeCliTask({
         const content = parsed.message.content;
         if (Array.isArray(content)) {
           for (const block of content) {
-            if (block && block.type === 'text' && typeof block.text === 'string' && block.text) {
-              // text-delta fires BEFORE sdk-message so the renderer's store
-              // can accumulate the streaming text before the assistant flush.
-              emitTrace(onEvent, 'run:text-delta', { text: block.text });
-            }
+            // NOTE: text blocks are NOT emitted as run:text-delta here.
+            // The renderer accumulates streaming text from content_block_delta
+            // stream events via run:sdk-message. The store's assistant handler
+            // uses the content block text as a fallback only when streaming
+            // didn't populate assistantText (see !assistantText guard in store).
             if (block && block.type === 'tool_use' && typeof block.name === 'string') {
               emitTrace(onEvent, 'run:tool-activity', {
                 toolId: block.id || '',
