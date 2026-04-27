@@ -2,13 +2,13 @@
  * Sidebar — NavPanel 风格重写
  * 业务逻辑完整保留自 LegacySidebar，渲染层替换为 NavPanel UI 组件。
  */
-import { ActionIcon, Flexbox, Text } from "@lobehub/ui";
+import { ActionIcon, Flexbox } from "@lobehub/ui";
 import { createStyles, cssVar } from "antd-style";
 import {
+	ArrowDownUp,
 	ChevronDown,
-	ChevronRight,
-	Ellipsis,
-	FolderOpen,
+	ChevronsDownUp,
+	ChevronsUpDown,
 	Loader2,
 	Plus,
 	Puzzle,
@@ -188,6 +188,63 @@ const useStyles = createStyles(({ css, token }) => ({
       }
     }
   `,
+	sectionHeader: css`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 2px 8px 2px 12px;
+  `,
+	sectionLabel: css`
+    font-size: 12px;
+    font-weight: 500;
+    color: ${cssVar.colorTextTertiary};
+    flex: 1;
+    min-width: 0;
+    user-select: none;
+  `,
+	sectionActions: css`
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+  `,
+	groupHeader: css`
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px 6px 12px;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 10px;
+
+    &:hover {
+      background: color-mix(in oklab, ${cssVar.colorText} 4%, transparent);
+    }
+  `,
+	groupChevron: css`
+    flex-shrink: 0;
+    color: ${cssVar.colorTextTertiary};
+    transition: transform 0.15s ease;
+  `,
+	groupName: css`
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: ${cssVar.colorTextSecondary};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
+	groupCount: css`
+    flex-shrink: 0;
+    font-size: 11px;
+    color: ${cssVar.colorTextQuaternary};
+  `,
+	flatSessionItem: css`
+    padding-inline-start: 30px !important;
+  `,
 }));
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -343,6 +400,9 @@ export function Sidebar() {
 			codeAgentSessionState === "running"
 			|| codeAgentSessionState === "requires_action"
 		);
+
+	const [sortOrder, setSortOrder] = useState<"recent" | "alpha">("recent");
+	const [previouslyExpandedIds, setPreviouslyExpandedIds] = useState<string[]>([]);
 
 	const normalizedQuery = searchQuery.trim().toLowerCase();
 	const hasSearchQuery = normalizedQuery.length > 0;
@@ -772,11 +832,53 @@ export function Sidebar() {
 
 	// ── derived counts ────────────────────────────────────────────────────────
 
-	const getWorkspaceSecondaryLabel = (workspace: SidebarThreadWorkspace) => {
-		const sessions = filteredThreadSessionsByWorkspace[workspace.id] ?? [];
-		if (sessions.length === 0) return "";
-		return String(sessions.length);
-	};
+	const sortedVisibleWorkspaces = useMemo(() => {
+		if (sortOrder === "alpha") {
+			return [...visibleThreadWorkspaces].sort((a, b) =>
+				a.name.localeCompare(b.name),
+			);
+		}
+		return visibleThreadWorkspaces;
+	}, [sortOrder, visibleThreadWorkspaces]);
+
+	const expandedWorkspaceIds = useMemo(
+		() =>
+			threadWorkspaces
+				.filter((w) => sidebarThreadWorkspaceExpanded?.[w.id] !== false)
+				.map((w) => w.id),
+		[sidebarThreadWorkspaceExpanded, threadWorkspaces],
+	);
+
+	const collapseAllAction = useMemo<"collapse-all" | "reopen-previous" | null>(() => {
+		if (!isFolderExpanded("thread")) return null;
+		if (expandedWorkspaceIds.length > 1) return "collapse-all";
+		if (expandedWorkspaceIds.length === 0 && previouslyExpandedIds.length > 0)
+			return "reopen-previous";
+		return null;
+	}, [expandedWorkspaceIds, isFolderExpanded, previouslyExpandedIds]);
+
+	const handleCollapseAllToggle = useCallback(() => {
+		if (collapseAllAction === "collapse-all") {
+			setPreviouslyExpandedIds(expandedWorkspaceIds);
+			for (const id of expandedWorkspaceIds) {
+				setSidebarThreadWorkspaceExpanded(id, false);
+			}
+		} else if (collapseAllAction === "reopen-previous") {
+			for (const id of previouslyExpandedIds) {
+				setSidebarThreadWorkspaceExpanded(id, true);
+			}
+			setPreviouslyExpandedIds([]);
+		}
+	}, [
+		collapseAllAction,
+		expandedWorkspaceIds,
+		previouslyExpandedIds,
+		setSidebarThreadWorkspaceExpanded,
+	]);
+
+	const handleToggleSortOrder = useCallback(() => {
+		setSortOrder((prev) => (prev === "recent" ? "alpha" : "recent"));
+	}, []);
 
 	if (sidebarCollapsed) return null;
 
@@ -853,50 +955,67 @@ export function Sidebar() {
 	);
 
 	const bodyNode = (
-		<Flexbox gap={2} paddingBlock={4}>
-			{/* ── Thread 工作区 ────────────────────────────────────────────── */}
-			<NavItem
-				icon={FolderOpen}
-				iconSize={CHAT_NAV_ICON_SIZE}
-				iconHover={isFolderExpanded("thread") ? ChevronDown : ChevronRight}
-				title={t("sidebar.folder.thread", { defaultValue: "工作区" })}
-				active={false}
-				actions={
+		<Flexbox gap={4} paddingBlock={4}>
+			{/* ── Section Header: 项目 ─────────────────────────────────────── */}
+			<div className={styles.sectionHeader}>
+				<button
+					type="button"
+					className={styles.sectionLabel}
+					onClick={() => toggleFolder("thread")}
+					style={{ cursor: "pointer", background: "none", border: "none", padding: 0, textAlign: "left" }}
+				>
+					{t("sidebar.folder.thread", { defaultValue: "项目" })}
+				</button>
+				<div className={styles.sectionActions}>
+					{collapseAllAction && (
+						<ActionIcon
+							icon={collapseAllAction === "collapse-all" ? ChevronsDownUp : ChevronsUpDown}
+							size={{ blockSize: 22, size: 12 }}
+							title={
+								collapseAllAction === "collapse-all"
+									? t("sidebar.collapseAll", { defaultValue: "全部收起" })
+									: t("sidebar.reopenPrevious", { defaultValue: "恢复展开" })
+							}
+							style={{ opacity: 0.75 }}
+							onClick={handleCollapseAllToggle}
+						/>
+					)}
+					<ActionIcon
+						icon={ArrowDownUp}
+						size={{ blockSize: 22, size: 12 }}
+						title={
+							sortOrder === "recent"
+								? t("sidebar.sortAlpha", { defaultValue: "按名称排序" })
+								: t("sidebar.sortRecent", { defaultValue: "按最近排序" })
+						}
+						style={{ opacity: 0.75 }}
+						onClick={handleToggleSortOrder}
+					/>
 					<ActionIcon
 						icon={Plus}
-						size={{ blockSize: 20, size: 12 }}
+						size={{ blockSize: 22, size: 12 }}
 						title={t("sidebar.addWorkspace", { defaultValue: "添加工作区" })}
-						onClick={(e) => {
-							e.stopPropagation();
-							void handleAddWorkspace();
-						}}
+						style={{ opacity: 0.75 }}
+						onClick={() => void handleAddWorkspace()}
 					/>
-				}
-				onClick={() => {
-					toggleFolder("thread");
-					const first = threadWorkspaces[0];
-					if (first) {
-						setSidebarActiveContext({ kind: "thread", workspaceId: first.id });
-						void refreshWorkspaceSessions(first);
-					}
-				}}
-			/>
+				</div>
+			</div>
 
+			{/* ── Flat project list ────────────────────────────────────────── */}
 			{isFolderExpanded("thread") && (
-				<>
-					{visibleThreadWorkspaces.length === 0 && (
+				<Flexbox gap={2}>
+					{sortedVisibleWorkspaces.length === 0 && (
 						<div className={styles.emptyHint}>
 							{t("sidebar.empty.thread", { defaultValue: "无工作区" })}
 						</div>
 					)}
 
-					{visibleThreadWorkspaces.map((workspace) => {
+					{sortedVisibleWorkspaces.map((workspace) => {
 						const expanded =
 							sidebarThreadWorkspaceExpanded?.[workspace.id] !== false;
 						const availability = workspaceAvailabilityById[workspace.id] ?? {
 							available: true,
 						};
-						const secondaryLabel = getWorkspaceSecondaryLabel(workspace);
 						const sessionsInWorkspace =
 							filteredThreadSessionsByWorkspace[workspace.id] ?? [];
 						const isLoading = workspaceLoadingById[workspace.id] === true;
@@ -909,132 +1028,94 @@ export function Sidebar() {
 							canToggleSessions && !sessionsExpanded
 								? sessionsInWorkspace.slice(0, COLLAPSIBLE_SESSION_LIMIT)
 								: sessionsInWorkspace;
+						const sessionCount = sessionsInWorkspace.length;
 
 						const workspaceMenu: MenuProps = {
 							items: [
 								{
-									key: "rename",
-									label: t("sidebar.workspace.rename", {
-										defaultValue: "重命名",
-									}),
+									key: "newThread",
+									label: t("sidebar.newThread", { defaultValue: "新对话" }),
+									disabled: !availability.available,
 								},
+								{ type: "divider" },
 								{
-									key: "remove",
-									label: t("sidebar.workspace.remove", {
-										defaultValue: "从列表移除",
-									}),
+									key: "rename",
+									label: t("sidebar.workspace.rename", { defaultValue: "重命名" }),
 								},
 								{
 									key: "open",
-									label: t("sidebar.workspace.openInFinder", {
-										defaultValue: "在 Finder 中打开",
-									}),
+									label: t("sidebar.workspace.openInFinder", { defaultValue: "在 Finder 中打开" }),
+								},
+								{ type: "divider" },
+								{
+									key: "remove",
+									label: t("sidebar.workspace.remove", { defaultValue: "从列表移除" }),
+									danger: true,
 								},
 							],
 							onClick: ({ key }) => {
-								if (key === "rename") {
+								if (key === "newThread") {
+									handleWorkspaceNewThread(workspace);
+								} else if (key === "rename") {
 									handleWorkspaceRename(workspace);
-									return;
-								}
-								if (key === "remove") {
+								} else if (key === "remove") {
 									handleWorkspaceRemove(workspace);
-									return;
+								} else if (key === "open") {
+									handleWorkspaceOpenInFinder(workspace);
 								}
-								handleWorkspaceOpenInFinder(workspace);
 							},
 						};
 						const workspaceMenuTrigger: Array<"click" | "contextMenu"> =
-							contextMenuMode === "default"
-								? ["click", "contextMenu"]
-								: ["click"];
+							["contextMenu"];
 
 						return (
 							<div key={workspace.id}>
-								<NavItem
-									className={styles.subItemLevel1}
-									icon={FolderOpen}
-									iconSize={CHAT_NAV_ICON_SIZE}
-									iconHover={expanded ? ChevronDown : ChevronRight}
-									title={
-										<Flexbox
-											horizontal
-											align="center"
-											gap={4}
-											style={{ overflow: "hidden" }}
-										>
-											<Text ellipsis style={{ flex: 1 }}>
-												{workspace.name}
-											</Text>
-											{secondaryLabel && (
-												<Text
-													type="secondary"
-													style={{
-														fontSize: CHAT_SESSION_META_FONT_SIZE,
-														flexShrink: 0,
-													}}
-												>
-													{secondaryLabel}
-												</Text>
-											)}
+								{/* ── Group header (same level as sessions) ── */}
+								<Dropdown menu={workspaceMenu} trigger={workspaceMenuTrigger}>
+									<div
+										className={styles.groupHeader}
+										onClick={(e) => {
+											if ((e.target as HTMLElement).closest('[data-popup-open]')) return;
+											setSidebarThreadWorkspaceExpanded(workspace.id, !expanded);
+											setSidebarActiveContext({
+												kind: "thread",
+												workspaceId: workspace.id,
+											});
+											void refreshWorkspaceSessions(workspace);
+										}}
+									>
+										<span className={styles.groupChevron} style={{ transform: expanded ? "rotate(0deg)" : "rotate(-90deg)" }}>
+											<ChevronDown size={12} />
+										</span>
+										<span className={styles.groupName}>
+											{workspace.name}
 											{!availability.available && (
-												<span className={styles.unavailableTag}>
-													{t("sidebar.workspaceUnavailable", {
-														defaultValue: "不可用",
-													})}
+												<span className={styles.unavailableTag} style={{ marginInlineStart: 4 }}>
+													{t("sidebar.workspaceUnavailable", { defaultValue: "不可用" })}
 												</span>
 											)}
-										</Flexbox>
-									}
-									actions={
-										<Flexbox horizontal gap={2}>
-											<ActionIcon
-												icon={Plus}
-												size={{ blockSize: 20, size: 12 }}
-												disabled={!availability.available}
-												title={t("sidebar.newThread", {
-													defaultValue: "新对话",
-												})}
-												onClick={(e) => {
-													e.stopPropagation();
-													handleWorkspaceNewThread(workspace);
-												}}
-											/>
-											<Dropdown menu={workspaceMenu} trigger={workspaceMenuTrigger}>
-												<ActionIcon
-													icon={Ellipsis}
-													size={{ blockSize: 20, size: 12 }}
-													title={t("sidebar.workspace.more", {
-														defaultValue: "更多",
-													})}
-													onClick={(e) => e.stopPropagation()}
-												/>
-											</Dropdown>
-										</Flexbox>
-									}
-									onClick={() => {
-										setSidebarThreadWorkspaceExpanded(workspace.id, !expanded);
-										setSidebarActiveContext({
-											kind: "thread",
-											workspaceId: workspace.id,
-										});
-										void refreshWorkspaceSessions(workspace);
-									}}
-								/>
+										</span>
+										{sessionCount > 0 && (
+											<span className={styles.groupCount}>{sessionCount}</span>
+										)}
+									</div>
+								</Dropdown>
 
+								{/* ── Sessions (flat, same indent as group header) ── */}
 								{expanded && (
-									<div className={styles.workspaceChildren}>
+									<Flexbox gap={2}>
 										{isLoading && (
-											<div className={cx(styles.emptyHint, styles.emptyHintNested)}>
+											<div className={styles.emptyHint}>
 												{t("status.loading", { defaultValue: "加载中..." })}
 											</div>
 										)}
 										{!isLoading && error && (
-											<div className={cx(styles.warningText, styles.warningTextNested)}>
+											<div className={styles.warningText}>
 												{error}
 											</div>
 										)}
 										{!isLoading && !error && visibleSessions.length === 0 && (
-											<div className={cx(styles.emptyHint, styles.emptyHintNested)}>
+											<div className={styles.emptyHint}>
 												{t("sidebar.empty.thread", { defaultValue: "无工作区" })}
 											</div>
 										)}
@@ -1051,7 +1132,7 @@ export function Sidebar() {
 											return (
 												<NavItem
 													key={`${workspace.id}:${session.sessionId}`}
-													className={styles.subItemLevel2}
+													className={styles.flatSessionItem}
 													title={session.title}
 													active={isActive}
 													extra={
@@ -1089,10 +1170,7 @@ export function Sidebar() {
 										{canToggleSessions && (
 											<button
 												type="button"
-												className={cx(
-													styles.sessionListToggle,
-													styles.sessionListToggleNested,
-												)}
+												className={styles.sessionListToggle}
 												onClick={() =>
 													setWorkspaceSessionsExpanded((prev) => ({
 														...prev,
@@ -1101,20 +1179,16 @@ export function Sidebar() {
 												}
 											>
 												{sessionsExpanded
-													? t("sidebar.collapseList", {
-															defaultValue: "折叠显示",
-														})
-													: t("sidebar.expandList", {
-															defaultValue: "展开显示",
-														})}
+													? t("sidebar.collapseList", { defaultValue: "折叠显示" })
+													: t("sidebar.expandList", { defaultValue: "展开显示" })}
 											</button>
 										)}
-									</div>
+									</Flexbox>
 								)}
 							</div>
 						);
 					})}
-				</>
+				</Flexbox>
 			)}
 		</Flexbox>
 	);

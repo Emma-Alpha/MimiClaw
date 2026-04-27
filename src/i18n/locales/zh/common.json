@@ -52,7 +52,11 @@
         "deleteSessionConfirm": "确定要删除对话 \"{{label}}\" 吗？",
         "openClawPage": "OpenClaw 页面",
         "expandList": "展开显示",
-        "collapseList": "折叠显示"
+        "collapseList": "折叠显示",
+        "collapseAll": "全部收起",
+        "reopenPrevious": "恢复展开",
+        "sortAlpha": "按名称排序",
+        "sortRecent": "按最近排序"
     },
     "actions": {
         "save": "保存",
