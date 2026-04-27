@@ -1,5 +1,6 @@
 import type { RawMessage } from '@/stores/chat';
 import type { ModelUsage } from '@/components/ChatItem/types';
+import { normalizeUsageRecord } from '@/lib/usageAdapter';
 
 /**
  * Extract usage information from a RawMessage.
@@ -31,6 +32,9 @@ export function extractUsageFromMessage(message: RawMessage): ModelUsage | undef
   if (!usage) {
     return undefined;
   }
+
+  // Normalize provider-specific nested fields (e.g. OpenAI's prompt_tokens_details)
+  usage = normalizeUsageRecord(usage);
 
   // Helper to safely extract number
   const getNumber = (key: string): number | undefined => {

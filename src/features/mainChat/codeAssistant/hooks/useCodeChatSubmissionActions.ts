@@ -15,10 +15,8 @@ import { invokeIpc, toUserMessage } from "@/lib/api-client";
 import {
 	mergeComposerPaths,
 	toCliSubmission,
-	toCodeChatSubmission,
 	type ComposerPath,
 } from "@/lib/unified-composer";
-import { useChatStore } from "@/stores/chat";
 import { useSettingsStore } from "@/stores/settings";
 import { toast } from "sonner";
 import type {
@@ -33,16 +31,11 @@ import type {
 	SlashOption,
 	ToolActivityItem,
 } from "../types";
-import { parseSubmissionIntent } from "../utils";
 
 type Params = {
 	input: string;
 	attachments: FileAttachment[];
 	droppedPaths: ComposerPath[];
-	selectedMode: CodeChatTarget | null;
-	persistentMode: CodeChatTarget | null;
-	isReady: boolean;
-	sending: boolean;
 	codeSending: boolean;
 	codeWorkspaceRoot: string;
 	activeClaudeSessionId: string;
@@ -60,21 +53,10 @@ type Params = {
 	) => void;
 	pushSdkMessage: (payload: unknown) => void;
 	resetCodeAgentStreaming: () => void;
-	sendMessage: (
-		text: string,
-		attachments?: Array<{
-			fileName: string;
-			mimeType: string;
-			fileSize: number;
-			stagedPath: string;
-			preview: string | null;
-		}>,
-	) => Promise<void>;
 	clearComposer: () => void;
 	activeSkillsRef: MutableRefObject<SlashOption[]>;
 	richContentRef: MutableRefObject<Descendant[] | undefined>;
 	pendingCompletionActivitiesRef: MutableRefObject<ToolActivityItem[]>;
-	chatSubmitInFlightRef: MutableRefObject<boolean>;
 	forceFreshSessionOnNextSubmitRef: MutableRefObject<boolean>;
 };
 
@@ -82,10 +64,6 @@ export function useCodeChatSubmissionActions({
 	input,
 	attachments,
 	droppedPaths,
-	selectedMode,
-	persistentMode,
-	isReady,
-	sending,
 	codeSending,
 	codeWorkspaceRoot,
 	activeClaudeSessionId,
@@ -96,12 +74,10 @@ export function useCodeChatSubmissionActions({
 	pushUserMessage,
 	pushSdkMessage,
 	resetCodeAgentStreaming,
-	sendMessage,
 	clearComposer,
 	activeSkillsRef,
 	richContentRef,
 	pendingCompletionActivitiesRef,
-	chatSubmitInFlightRef,
 	forceFreshSessionOnNextSubmitRef,
 }: Params) {
 	const runMiniCodeTask = useCallback(
@@ -232,14 +208,10 @@ export function useCodeChatSubmissionActions({
 		async (
 			rawText: string,
 			attachmentOverride?: PetCodeChatSeedAttachment[],
-			forcedTarget?: CodeChatTarget,
+			_forcedTarget?: CodeChatTarget,
 			pathOverride?: ComposerPath[],
 		) => {
-			const parsedIntent = parseSubmissionIntent(rawText);
-			const target =
-				forcedTarget || selectedMode || persistentMode || parsedIntent.target;
-
-			const cleanText = parsedIntent.prompt;
+			const cleanText = rawText.trim();
 
 			const effectiveAttachments =
 				(attachmentOverride as FileAttachment[] | undefined) ?? attachments;
@@ -262,7 +234,7 @@ export function useCodeChatSubmissionActions({
 				(accumulator, attachment) => {
 					const absolutePath = attachment.stagedPath?.trim();
 					if (!absolutePath) return accumulator;
-					if (target === "code" && isImageMime(attachment.mimeType)) {
+					if (isImageMime(attachment.mimeType)) {
 						imageAttachments.push({
 							filePath: absolutePath,
 							mimeType: attachment.mimeType,
@@ -312,40 +284,16 @@ export function useCodeChatSubmissionActions({
 				}
 				return result;
 			})();
-			const prompt =
-				target === "code"
-					? toCliSubmission({
-							text: codeText,
-							paths: mergeComposerPaths(
-								effectivePaths,
-								codeAttachmentPaths,
-							),
-						}).prompt
-					: toCodeChatSubmission({
-							text: cleanText,
-							paths: effectivePaths,
-							attachments: effectiveAttachments,
-						}).prompt;
+			const prompt = toCliSubmission({
+				text: codeText,
+				paths: mergeComposerPaths(
+					effectivePaths,
+					codeAttachmentPaths,
+				),
+			}).prompt;
 
 			if (!prompt && effectiveAttachments.length === 0 && imageAttachments.length === 0) {
 				return false;
-			}
-
-			if (target === "chat") {
-				const { sending: sendingNow } = useChatStore.getState();
-				if (!isReady) {
-					toast.error("聊天服务未就绪，请稍后再试");
-					return false;
-				}
-				if (sendingNow || chatSubmitInFlightRef.current) return false;
-				chatSubmitInFlightRef.current = true;
-				clearComposer();
-				try {
-					await sendMessage(prompt, readyAttachments);
-					return true;
-				} finally {
-					chatSubmitInFlightRef.current = false;
-				}
 			}
 
 			if (!codeWorkspaceRoot.trim()) return false;
@@ -365,16 +313,11 @@ export function useCodeChatSubmissionActions({
 		[
 			activeSkillsRef,
 			attachments,
-			chatSubmitInFlightRef,
 			clearComposer,
 			codeWorkspaceRoot,
 			droppedPaths,
-			isReady,
-			persistentMode,
 			richContentRef,
 			runMiniCodeTask,
-			selectedMode,
-			sendMessage,
 		],
 	);
 
@@ -389,7 +332,6 @@ export function useCodeChatSubmissionActions({
 		if (
 			(!input.trim() && attachments.length === 0 && droppedPaths.length === 0)
 			|| !allComposerAttachmentsReady
-			|| sending
 			|| codeSending
 		) {
 			return;
@@ -401,7 +343,6 @@ export function useCodeChatSubmissionActions({
 		codeSending,
 		droppedPaths.length,
 		input,
-		sending,
 		submitPrompt,
 	]);
 

@@ -1,14 +1,7 @@
-import { useEffect } from 'react';
-import { useChatStore } from '@/stores/chat';
-import { useChatInputContext } from './ChatInputProvider';
-
+/**
+ * StoreUpdater — no-op after gateway chat removal.
+ * Previously synced the editor instance into useChatStore.
+ */
 export function StoreUpdater() {
-  const { editor } = useChatInputContext();
-  const setMainInputEditor = useChatStore((s) => s.setMainInputEditor);
-
-  useEffect(() => {
-    setMainInputEditor(editor);
-  }, [editor, setMainInputEditor]);
-
   return null;
 }

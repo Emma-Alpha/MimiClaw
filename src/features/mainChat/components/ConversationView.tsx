@@ -225,10 +225,8 @@ export function ConversationView({ messages, currentSessionKey, loading, sending
   const showInitialSkeleton = loading && messages.length === 0 && !sending;
 
   const timelineRows = useMemo<TimelineRenderRow[]>(() => {
-    console.log('[ConversationView] Building timeline rows, messages count:', messages.length);
     if (showInitialSkeleton || isEmpty) return [];
     const rows: TimelineRenderRow[] = messages.map((msg, idx) => {
-      console.log('[ConversationView] Creating row for message:', msg.id, 'role:', msg.role);
       return {
         key: msg.id || `msg-${idx}`,
         messageIndex: idx,

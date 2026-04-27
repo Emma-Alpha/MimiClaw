@@ -28,7 +28,6 @@ import { Setup } from "./pages/Setup";
 import { Login } from "./pages/Login";
 import { useSettingsStore } from "./stores/settings";
 import { useGatewayStore } from "./stores/gateway";
-import { useChatStore, chatStreamingSelectors } from "./stores/chat";
 import { applyGatewayTransportPreference, invokeIpc } from "./lib/api-client";
 import { ThemeWrapper } from "./components/theme/ThemeWrapper";
 import { UpdateBootstrap } from "@/components/update/UpdateBootstrap";
@@ -123,7 +122,6 @@ function App() {
 	const cloudLoggedIn = useSettingsStore((state) => state.cloudLoggedIn);
 	const hydrateCloudAuth = useSettingsStore((state) => state.hydrateCloudAuth);
 	const initGateway = useGatewayStore((state) => state.init);
-	const petUiActivity = useChatStore(chatStreamingSelectors.petActivity);
 	const isPetBubbleRoute = location.pathname.startsWith("/pet-bubble");
 	const isPetRoute =
 		location.pathname === "/pet" || location.pathname.startsWith("/pet/");
@@ -294,7 +292,7 @@ function App() {
 			isMainChatRoute
 		)
 			return;
-		void invokeIpc("pet:setUiActivity", { activity: petUiActivity }).catch(
+		void invokeIpc("pet:setUiActivity", { activity: "idle" }).catch(
 			() => {},
 		);
 	}, [
@@ -305,7 +303,6 @@ function App() {
 		isPetRoute,
 		isTrayRuntimeRoute,
 		isVoiceDialogRoute,
-		petUiActivity,
 	]);
 
 	return (

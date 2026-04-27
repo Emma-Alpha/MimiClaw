@@ -1,4 +1,5 @@
 import { invokeIpc } from '@/lib/api-client';
+import { deleteSessionMeta, getMessageMetaBulk, saveMessageMeta } from '@/lib/db';
 import type { AttachedFileMeta, ChatSession, ContentBlock, RawMessage, ToolStatus } from './types';
 
 // Module-level timestamp tracking the last chat event received.
@@ -827,10 +828,11 @@ function resetFirstDeltaAt(): void {
   _firstDeltaAt = 0;
 }
 
-// ── Usage metadata cache ─────────────────────────────────────
+// ── Usage metadata persistence (IndexedDB via Dexie) ─────────
 // The Gateway's chat.history doesn't return token usage or elapsed time,
-// so we cache these locally keyed by message ID.  Populated during
+// so we persist these in IndexedDB keyed by message ID.  Populated during
 // streaming (handleChatEvent) and merged back when history is loaded.
+
 interface UsageMeta {
   usage?: Record<string, unknown>;
   model?: string;
@@ -839,39 +841,14 @@ interface UsageMeta {
   elapsed?: number;
 }
 
-const USAGE_CACHE_KEY = 'mimiclaw:usage-cache';
-const USAGE_CACHE_MAX = 500;
-
-function loadUsageCache(): Map<string, UsageMeta> {
-  try {
-    const raw = localStorage.getItem(USAGE_CACHE_KEY);
-    if (raw) {
-      const entries = JSON.parse(raw) as Array<[string, UsageMeta]>;
-      return new Map(entries);
-    }
-  } catch { /* ignore */ }
-  return new Map();
-}
-
-function saveUsageCache(cache: Map<string, UsageMeta>): void {
-  try {
-    const entries = Array.from(cache.entries());
-    const trimmed = entries.length > USAGE_CACHE_MAX
-      ? entries.slice(entries.length - USAGE_CACHE_MAX)
-      : entries;
-    localStorage.setItem(USAGE_CACHE_KEY, JSON.stringify(trimmed));
-  } catch { /* ignore quota errors */ }
-}
-
-const _usageCache = loadUsageCache();
-
-function saveMessageUsageMeta(messageId: string, meta: UsageMeta): void {
-  _usageCache.set(messageId, meta);
-  saveUsageCache(_usageCache);
-}
-
-function getMessageUsageMeta(messageId: string): UsageMeta | undefined {
-  return _usageCache.get(messageId);
+async function saveMessageUsageMeta(messageId: string, sessionKey: string, meta: UsageMeta): Promise<void> {
+  await saveMessageMeta(messageId, sessionKey, {
+    usage: meta.usage,
+    model: meta.model,
+    provider: meta.provider,
+    performance: meta.performance as { ttft?: number; tps?: number } | undefined,
+    elapsed: meta.elapsed,
+  });
 }
 
 /**
@@ -937,11 +914,23 @@ function enrichWithComputedPerformance(messages: RawMessage[], sessionKey?: stri
   });
 }
 
-/** Merge cached usage metadata into messages that are missing it */
-function enrichWithCachedUsage(messages: RawMessage[]): RawMessage[] {
+/** Merge cached usage metadata from IndexedDB into messages that are missing it */
+async function enrichWithCachedUsage(messages: RawMessage[]): Promise<RawMessage[]> {
+  const idsToLookup = messages
+    .filter((msg) => msg.id && msg.role === 'assistant')
+    .map((msg) => msg.id!);
+
+  if (idsToLookup.length === 0) return messages;
+
+  const metaRecords = await getMessageMetaBulk(idsToLookup);
+  const metaMap = new Map<string, { usage?: Record<string, unknown>; model?: string; provider?: string; performance?: Record<string, unknown>; elapsed?: number }>();
+  for (const record of metaRecords) {
+    if (record) metaMap.set(record.id, record);
+  }
+
   return messages.map((msg) => {
     if (!msg.id) return msg;
-    const cached = _usageCache.get(msg.id);
+    const cached = metaMap.get(msg.id);
     if (!cached) return msg;
     const m = msg as unknown as Record<string, unknown>;
     const extras: Record<string, unknown> = {};
@@ -983,7 +972,7 @@ export {
   getFirstDeltaAt,
   resetFirstDeltaAt,
   saveMessageUsageMeta,
-  getMessageUsageMeta,
+  deleteSessionMeta,
   enrichWithCachedUsage,
   enrichWithComputedPerformance,
 };

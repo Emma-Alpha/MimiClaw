@@ -534,9 +534,9 @@ export class ChatRuntimeActionImpl {
               };
           });
 
-          // Persist usage metadata to local cache so it survives history reloads.
-          // The gateway's chat.history doesn't include usage/elapsed data.
-          {
+          // Persist usage metadata to IndexedDB, then reload history.
+          // Must await the DB write before loadHistory reads it back.
+          void (async () => {
             const fm = finalMessage as unknown as Record<string, unknown>;
             const meta: Record<string, unknown> = {};
             if (fm.usage) meta.usage = fm.usage;
@@ -545,14 +545,14 @@ export class ChatRuntimeActionImpl {
             if (fm.performance) meta.performance = fm.performance;
             if (fm.elapsed) meta.elapsed = fm.elapsed;
             if (Object.keys(meta).length > 0) {
-              saveMessageUsageMeta(preMessageId, meta);
+              const sessionKey = this.#get().currentSessionKey;
+              await saveMessageUsageMeta(preMessageId, sessionKey, meta);
             }
-          }
-
-          if (hasOutput && !toolOnly) {
-            clearHistoryPoll();
-            void this.#get().loadHistory(true);
-          }
+            if (hasOutput && !toolOnly) {
+              clearHistoryPoll();
+              await this.#get().loadHistory(true);
+            }
+          })();
         } else {
           this.#set({ streamingText: '', streamingMessage: null, pendingFinal: true });
           void this.#get().loadHistory();

@@ -25,6 +25,7 @@ describe('extractUsageFromMessage', () => {
       outputTokens: 567,
       inputCachedTokens: 100,
       inputWriteCacheTokens: 50,
+      totalInputTokens: 1384, // 1234 + 100 + 50 (Anthropic: input + cacheRead + cacheWrite)
       totalTokens: 1951, // 1234 + 567 + 100 + 50
     });
   });
@@ -49,6 +50,7 @@ describe('extractUsageFromMessage', () => {
       outputTokens: 567,
       inputCachedTokens: 100,
       inputWriteCacheTokens: 50,
+      totalInputTokens: 1384, // 1234 + 100 + 50 (Anthropic: input + cacheRead + cacheWrite)
       totalTokens: 1951, // 1234 + 567 + 100 + 50
     });
   });
@@ -149,6 +151,54 @@ describe('extractUsageFromMessage', () => {
       inputCachedTokens: 100,
       inputWriteCacheTokens: 50,
     });
+  });
+
+  it('should extract OpenAI nested prompt_tokens_details via adapter', () => {
+    const message: RawMessage = {
+      role: 'assistant',
+      content: 'test',
+      usage: {
+        input_tokens: 1000,
+        output_tokens: 500,
+        prompt_tokens_details: {
+          cached_tokens: 300,
+        },
+        completion_tokens_details: {
+          reasoning_tokens: 150,
+        },
+      },
+    } as any;
+
+    const usage = extractUsageFromMessage(message);
+    expect(usage).toMatchObject({
+      inputTokens: 1000,
+      outputTokens: 500,
+      inputCachedTokens: 300,
+      outputReasoningTokens: 150,
+    });
+  });
+
+  it('should handle GPT model with no cache_creation fields', () => {
+    const message: RawMessage = {
+      role: 'assistant',
+      content: 'test',
+      usage: {
+        input_tokens: 2000,
+        output_tokens: 800,
+        prompt_tokens_details: {
+          cached_tokens: 500,
+        },
+      },
+    } as any;
+
+    const usage = extractUsageFromMessage(message);
+    expect(usage).toMatchObject({
+      inputTokens: 2000,
+      outputTokens: 800,
+      inputCachedTokens: 500,
+    });
+    // cacheWrite doesn't exist in OpenAI — should not be in the result
+    expect(usage?.inputWriteCacheTokens).toBeUndefined();
   });
 });
 

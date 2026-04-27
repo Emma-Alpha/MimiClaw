@@ -1,34 +1,42 @@
-import { flattenActions } from '../utils/flattenActions';
-import {
-  createChatRuntimeSlice,
-  type ChatRuntimeAction,
-} from './slices/runtime';
-import {
-  createChatSessionHistorySlice,
-  type ChatSessionHistoryAction,
-} from './slices/session';
-import {
-  createChatTopicSlice,
-  type ChatTopicAction,
-} from './slices/topic';
-import type { ChatGet, ChatSet } from './store-api';
+/**
+ * Chat actions — stub after gateway chat removal.
+ * The store is kept as a minimal inert store so that existing component
+ * imports (e.g. ActionBar components) don't break at module-load time.
+ * None of the actions are expected to be called in production.
+ */
+import type { ChatState } from './types';
 
-type PublicActions<T> = { [K in keyof T]: T[K] };
+const noop = () => {};
+const asyncNoop = async () => {};
 
-export type ChatAction = PublicActions<
-  ChatSessionHistoryAction & ChatRuntimeAction & ChatTopicAction
->;
-
-export {
-  createChatRuntimeSlice,
-  createChatSessionHistorySlice,
-  createChatTopicSlice,
-};
-
-export function createChatActions(set: ChatSet, get: ChatGet, api?: unknown): ChatAction {
-  return flattenActions<ChatAction>([
-    createChatSessionHistorySlice(set, get, api),
-    createChatRuntimeSlice(set, get, api),
-    createChatTopicSlice(set, get, api),
-  ]);
+export function createChatActions(..._params: unknown[]): Partial<ChatState> {
+  return {
+    loadSessions: asyncNoop,
+    switchSession: noop,
+    newSession: noop,
+    deleteSession: asyncNoop,
+    cleanupEmptySession: noop,
+    loadHistory: asyncNoop,
+    sendMessage: asyncNoop,
+    abortRun: asyncNoop,
+    handleChatEvent: noop,
+    toggleThinking: noop,
+    refresh: asyncNoop,
+    clearError: noop,
+    createTopic: () => '',
+    switchTopic: noop,
+    summarizeTopic: noop,
+    deleteTopic: noop,
+    clearCurrentTopic: noop,
+    approveIntervention: noop,
+    rejectIntervention: noop,
+    enqueueMessage: () => '',
+    flushQueue: () => [],
+    setMainInputEditor: noop,
+    setChatMode: noop,
+    internal_dispatchTopic: noop,
+    internal_dispatchIntervention: noop,
+    internal_dispatchQueue: noop,
+    internal_createTopic: () => '',
+  };
 }

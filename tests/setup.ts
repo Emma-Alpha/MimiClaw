@@ -2,6 +2,7 @@
  * Vitest Test Setup
  * Global test configuration and mocks
  */
+import 'fake-indexeddb/auto';
 import { vi } from 'vitest';
 import '@testing-library/jest-dom';
 

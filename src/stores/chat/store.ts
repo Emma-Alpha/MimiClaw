@@ -1,20 +1,19 @@
-import type { StateCreator } from 'zustand';
-import { subscribeWithSelector } from 'zustand/middleware';
+/**
+ * useChatStore — inert stub after gateway chat removal.
+ * Kept so that component-level `useChatStore(...)` calls in ActionBar
+ * components (which are imported but not mounted in Code Agent mode)
+ * don't crash at module load time.
+ */
 import { shallow } from 'zustand/shallow';
 import { createWithEqualityFn } from 'zustand/traditional';
-import { createDevtools } from '../middleware/createDevtools';
 import { createChatActions } from './action';
 import { initialChatState } from './initialState';
 import type { ChatState } from './types';
 
-const devtools = createDevtools('chat');
-
-const storeCreator: StateCreator<ChatState, [['zustand/devtools', never]]> = (...params) => ({
-  ...initialChatState,
-  ...createChatActions(...params),
-});
-
 export const useChatStore = createWithEqualityFn<ChatState>()(
-  subscribeWithSelector(devtools(storeCreator)),
+  () => ({
+    ...initialChatState,
+    ...createChatActions(),
+  }),
   shallow,
 );

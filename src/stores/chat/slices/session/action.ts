@@ -2,6 +2,7 @@ import { invokeIpc } from '@/lib/api-client';
 import { hostApiFetch } from '@/lib/host-api';
 import {
   clearHistoryPoll,
+  deleteSessionMeta,
   enrichWithCachedImages,
   enrichWithCachedUsage,
   enrichWithComputedPerformance,
@@ -230,6 +231,9 @@ export class ChatSessionActionImpl {
       console.warn(`[deleteSession] IPC call failed for ${key}:`, err);
     }
 
+    // Clean up IndexedDB metadata for this session
+    void deleteSessionMeta(key);
+
     const { currentSessionKey, sessions } = this.#get();
     const remaining = sessions.filter((session) => session.key !== key);
 
@@ -319,14 +323,14 @@ export class ChatSessionActionImpl {
     const { currentSessionKey } = this.#get();
     if (!quiet) this.#set({ loading: true, error: null });
 
-    const applyLoadedMessages = (rawMessages: RawMessage[], thinkingLevel: string | null) => {
+    const applyLoadedMessages = async (rawMessages: RawMessage[], thinkingLevel: string | null) => {
       const messagesWithToolImages = enrichWithToolResultFiles(rawMessages);
       const filteredMessages = messagesWithToolImages.filter((msg) => !isToolResultRole(msg.role));
       const enrichedMessages = enrichWithCachedImages(filteredMessages);
 
-      // Merge locally-cached usage metadata (tokens, elapsed, model, etc.)
+      // Merge locally-cached usage metadata from IndexedDB (tokens, elapsed, model, etc.)
       // that the gateway's chat.history doesn't include.
-      const withUsage = enrichWithCachedUsage(enrichedMessages);
+      const withUsage = await enrichWithCachedUsage(enrichedMessages);
 
       // Compute elapsed/TPS from timestamps for messages that don't have them.
       // This handles the polling path where handleChatEvent never runs.
@@ -436,11 +440,11 @@ export class ChatSessionActionImpl {
         if (rawMessages.length === 0 && isCronSessionKey(currentSessionKey)) {
           rawMessages = await loadCronFallbackMessages(currentSessionKey, 200);
         }
-        applyLoadedMessages(rawMessages, thinkingLevel);
+        await applyLoadedMessages(rawMessages, thinkingLevel);
       } else {
         const fallbackMessages = await loadCronFallbackMessages(currentSessionKey, 200);
         if (fallbackMessages.length > 0) {
-          applyLoadedMessages(fallbackMessages, null);
+          await applyLoadedMessages(fallbackMessages, null);
         } else {
           this.#set({ messages: [], loading: false });
         }
@@ -449,7 +453,7 @@ export class ChatSessionActionImpl {
       console.warn('Failed to load chat history:', err);
       const fallbackMessages = await loadCronFallbackMessages(currentSessionKey, 200);
       if (fallbackMessages.length > 0) {
-        applyLoadedMessages(fallbackMessages, null);
+        await applyLoadedMessages(fallbackMessages, null);
       } else {
         this.#set({ messages: [], loading: false });
       }

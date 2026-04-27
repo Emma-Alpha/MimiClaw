@@ -5,59 +5,38 @@ import {
 	useCallback,
 } from "react";
 import { invokeIpc } from "@/lib/api-client";
-import type { CodeChatTarget } from "../types";
 import type { HeaderSessionOption } from "../session-title";
 
 type Params = {
-	draftTarget: CodeChatTarget;
 	activeClaudeSessionId: string;
 	setActiveClaudeSessionId: Dispatch<SetStateAction<string>>;
 	claudeSessions: HeaderSessionOption[];
-	currentSessionKey: string;
 	resetCodeTimelineState: () => void;
 	clearComposer: () => void;
 	resetChatSeenState: () => void;
 	lastHydratedClaudeSessionRef: MutableRefObject<string>;
-	newSession: () => void;
-	loadSessions: () => Promise<void>;
-	switchSession: (key: string) => void;
-	loadHistory: (quiet?: boolean) => Promise<void>;
 	setCodeWorkspaceRoot: Dispatch<SetStateAction<string>>;
 };
 
 export function useCodeChatSessionActions({
-	draftTarget,
 	activeClaudeSessionId,
 	setActiveClaudeSessionId,
 	claudeSessions,
-	currentSessionKey,
 	resetCodeTimelineState,
 	clearComposer,
 	resetChatSeenState,
 	lastHydratedClaudeSessionRef,
-	newSession,
-	loadSessions,
-	switchSession,
-	loadHistory,
 	setCodeWorkspaceRoot,
 }: Params) {
 	const handleNewConversation = useCallback(() => {
 		resetCodeTimelineState();
 		resetChatSeenState();
 		clearComposer();
-		if (draftTarget === "code") {
-			lastHydratedClaudeSessionRef.current = "";
-			setActiveClaudeSessionId("");
-			return;
-		}
-		newSession();
-		void loadSessions();
+		lastHydratedClaudeSessionRef.current = "";
+		setActiveClaudeSessionId("");
 	}, [
 		clearComposer,
-		draftTarget,
 		lastHydratedClaudeSessionRef,
-		loadSessions,
-		newSession,
 		resetCodeTimelineState,
 		resetChatSeenState,
 		setActiveClaudeSessionId,
@@ -66,38 +45,22 @@ export function useCodeChatSessionActions({
 	const handleSwitchSession = useCallback(
 		(key: string) => {
 			if (!key) return;
-
-			if (draftTarget === "code") {
-				if (key === activeClaudeSessionId) return;
-					lastHydratedClaudeSessionRef.current = "";
-					setActiveClaudeSessionId(key);
-					resetCodeTimelineState();
-					resetChatSeenState();
-					return;
-				}
-
-				if (key === currentSessionKey) return;
-
-				resetCodeTimelineState();
-				resetChatSeenState();
-				switchSession(key);
-				void loadHistory(true);
-			},
+			if (key === activeClaudeSessionId) return;
+			lastHydratedClaudeSessionRef.current = "";
+			setActiveClaudeSessionId(key);
+			resetCodeTimelineState();
+			resetChatSeenState();
+		},
 		[
 			activeClaudeSessionId,
-			currentSessionKey,
-			draftTarget,
-				lastHydratedClaudeSessionRef,
-				loadHistory,
-				resetCodeTimelineState,
-				resetChatSeenState,
-				setActiveClaudeSessionId,
-				switchSession,
-			],
+			lastHydratedClaudeSessionRef,
+			resetCodeTimelineState,
+			resetChatSeenState,
+			setActiveClaudeSessionId,
+		],
 	);
 
 	const handleRewindConversation = useCallback(() => {
-		if (draftTarget !== "code") return;
 		if (claudeSessions.length <= 1) {
 			void invokeIpc("pet:pushTerminalLine", "› 没有可回退的会话").catch(() => {});
 			return;
@@ -119,7 +82,6 @@ export function useCodeChatSessionActions({
 	}, [
 		activeClaudeSessionId,
 		claudeSessions,
-		draftTarget,
 		handleSwitchSession,
 	]);
 

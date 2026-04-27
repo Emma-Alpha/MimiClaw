@@ -7,6 +7,24 @@
 import { create } from "zustand";
 import type { Descendant } from "slate";
 import { buildUnifiedPatch } from "@/lib/diff-utils";
+import { saveCodeAgentSessionPerf } from "@/lib/db";
+import { normalizeUsageRecord } from "@/lib/usageAdapter";
+import type { CodeAgentUsageProtocol } from "../../../shared/code-agent";
+
+/** Lazily read the usage protocol from settings to avoid circular imports */
+function getUsageProtocol(): CodeAgentUsageProtocol {
+	try {
+		// Dynamic import avoidance: settings store is a simple Zustand store,
+		// safe to import at module level but kept lazy for loose coupling.
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		const { useSettingsStore } = require("@/stores/settings/store") as {
+			useSettingsStore: { getState: () => { codeAgent?: { usageProtocol?: CodeAgentUsageProtocol } } };
+		};
+		return useSettingsStore.getState().codeAgent?.usageProtocol ?? "auto";
+	} catch {
+		return "auto";
+	}
+}
 
 // ─── SDK message shape helpers ───────────────────────────────────────────────
 // We do not import the full Zod schemas here to keep the renderer bundle lean.
@@ -643,13 +661,19 @@ function extractLastIterationUsage(record: Record<string, unknown> | null): {
 	return null;
 }
 
-function extractUsageShape(record: Record<string, unknown> | null): {
+function extractUsageShape(
+	record: Record<string, unknown> | null,
+	protocol?: CodeAgentUsageProtocol,
+	model?: string | null,
+): {
 	inputTokens: number;
 	outputTokens: number;
 	cacheReadInputTokens: number;
 	cacheCreationInputTokens: number;
 } | null {
 	if (!record) return null;
+	// Normalize provider-specific nested fields (e.g. OpenAI's prompt_tokens_details)
+	record = normalizeUsageRecord(record, protocol, model);
 	const inputTokens = pickNumber(record, ["input_tokens", "inputTokens", "input"]);
 	const outputTokens = pickNumber(record, ["output_tokens", "outputTokens", "output"]);
 	const iterationUsage = extractLastIterationUsage(record);
@@ -1001,6 +1025,7 @@ function extractContextUsage(
 	msg: Record<string, unknown>,
 	fallbackModel: string | null,
 	previousUsage: CodeAgentContextWindowUsage | null,
+	protocol?: CodeAgentUsageProtocol,
 ): CodeAgentContextWindowUsage | null {
 	const message = asRecord(msg.message);
 	const request = asRecord(msg.request);
@@ -1040,22 +1065,22 @@ function extractContextUsage(
 	}
 	const streamEventUsage =
 		isStreamEventMessage && streamEventType === "message_start"
-			? extractUsageShape(asRecord(streamEventMessage?.usage))
+			? extractUsageShape(asRecord(streamEventMessage?.usage), protocol, preferredModel)
 			: isStreamEventMessage && streamEventType === "message_delta"
-				? extractUsageShape(asRecord(event?.usage))
+				? extractUsageShape(asRecord(event?.usage), protocol, preferredModel)
 				: null;
 	const usage =
-		extractUsageShape(asRecord(contextWindow?.current_usage))
+		extractUsageShape(asRecord(contextWindow?.current_usage), protocol, preferredModel)
 		?? streamEventUsage
 		?? (
 			!isStreamEventMessage
-				? extractUsageShape(asRecord(event?.usage))
-					?? extractUsageShape(asRecord(asRecord(event?.message)?.usage))
+				? extractUsageShape(asRecord(event?.usage), protocol, preferredModel)
+					?? extractUsageShape(asRecord(asRecord(event?.message)?.usage), protocol, preferredModel)
 				: null
 		)
-		?? extractUsageShape(asRecord(message?.usage))
-		?? extractUsageShape(asRecord(msg.usage))
-		?? extractUsageShape(modelUsageRecord.usage);
+		?? extractUsageShape(asRecord(message?.usage), protocol, preferredModel)
+		?? extractUsageShape(asRecord(msg.usage), protocol, preferredModel)
+		?? extractUsageShape(modelUsageRecord.usage, protocol, preferredModel);
 
 	if (!usage) return null;
 	const isDuplicateUsageSample =
@@ -1445,6 +1470,7 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 				msg,
 				get().sessionInit?.model ?? null,
 				get().contextUsage,
+				getUsageProtocol(),
 			);
 			if (contextUsage) {
 				set({ contextUsage });
@@ -1698,10 +1724,17 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 			// The assistant message itself often has zeroed-out usage; the real
 			// token counts arrive via message_start (input) and message_delta
 			// (output) stream events and are accumulated in streaming.accumulatedUsage.
-			const msgUsageRaw = asRecord(asRecord(msg.message)?.usage) ?? asRecord(msg.usage);
+			const msgUsageRawOriginal = asRecord(asRecord(msg.message)?.usage) ?? asRecord(msg.usage);
 			const msgModel = typeof (msg.message as Record<string, unknown>)?.model === "string"
 				? (msg.message as Record<string, unknown>).model as string
 				: typeof msg.model === "string" ? msg.model as string : undefined;
+			const msgUsageRaw = msgUsageRawOriginal
+				? normalizeUsageRecord(msgUsageRawOriginal, getUsageProtocol(), msgModel ?? get().sessionInit?.model ?? null)
+				: null;
+			if (msgUsageRawOriginal) {
+				console.debug("[code-agent] assistant usage raw:", JSON.stringify(msgUsageRawOriginal));
+				console.debug("[code-agent] assistant usage normalized:", JSON.stringify(msgUsageRaw));
+			}
 			const msgCostUsd = toFiniteNumber(msg.costUSD) ?? toFiniteNumber(msg.cost_usd) ?? undefined;
 			const msgDurationMs = toFiniteNumber(msg.duration_ms) ?? toFiniteNumber(msg.durationMs) ?? undefined;
 			const accUsage = streaming.accumulatedUsage;
@@ -1802,7 +1835,9 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 				}
 			}
 
-			// Emit a dedicated usage line for this assistant message
+			// Emit a dedicated usage line for this assistant message.
+			// Use msg.message.id (Claude API message ID) as stable key — it matches
+			// the ID captured in message_start during live streaming.
 			if (msgUsage && msgUsage.totalTokens > 0) {
 				addItem({
 					kind: "assistant-usage",
@@ -1929,7 +1964,14 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 				if (evType === "message_start") {
 					clearQueuedStreamingDeltas();
 					set({ perfTurnStartedAt: Date.now(), perfFirstTokenAt: 0 });
-					const startUsage = asRecord(asRecord(event.message)?.usage);
+					const startUsageRaw = asRecord(asRecord(event.message)?.usage);
+					const startUsage = startUsageRaw
+						? normalizeUsageRecord(startUsageRaw, getUsageProtocol(), get().sessionInit?.model ?? null)
+						: null;
+					if (startUsageRaw) {
+						console.debug("[code-agent] message_start usage raw:", JSON.stringify(startUsageRaw));
+						console.debug("[code-agent] message_start usage normalized:", JSON.stringify(startUsage));
+					}
 					const startInputTokens = startUsage ? Math.max(0, Math.round(
 						pickNumber(startUsage, ["input_tokens", "inputTokens", "input"]) ?? 0)) : 0;
 					const startCacheRead = startUsage ? Math.max(0, Math.round(
@@ -1960,7 +2002,14 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 				}
 
 				if (evType === "message_delta") {
-				const deltaUsage = asRecord(event.usage);
+				const deltaUsageRaw = asRecord(event.usage);
+				const deltaUsage = deltaUsageRaw
+					? normalizeUsageRecord(deltaUsageRaw, getUsageProtocol(), get().sessionInit?.model ?? null)
+					: null;
+				if (deltaUsageRaw) {
+					console.debug("[code-agent] message_delta usage raw:", JSON.stringify(deltaUsageRaw));
+					console.debug("[code-agent] message_delta usage normalized:", JSON.stringify(deltaUsage));
+				}
 				const deltaOutputTokens = deltaUsage ? Math.max(0, Math.round(
 					pickNumber(deltaUsage, ["output_tokens", "outputTokens", "output"]) ?? 0)) : 0;
 				const deltaInputTokens = deltaUsage ? Math.max(0, Math.round(
@@ -2008,6 +2057,7 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 						ttftMs,
 						tps,
 					});
+
 				}
 
 				set((state) => {
@@ -2075,7 +2125,14 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 
 			// The result message carries aggregate usage across all turns.
 			// Backfill any zero fields in the last assistant-usage item.
-			const resultUsage = asRecord(msg.usage);
+			const resultUsageRaw = asRecord(msg.usage);
+			const resultUsage = resultUsageRaw
+				? normalizeUsageRecord(resultUsageRaw, getUsageProtocol(), get().sessionInit?.model ?? null)
+				: null;
+			if (resultUsageRaw) {
+				console.debug("[code-agent] result usage raw:", JSON.stringify(resultUsageRaw));
+				console.debug("[code-agent] result usage normalized:", JSON.stringify(resultUsage));
+			}
 			if (resultUsage) {
 				const items = get().items;
 				for (let i = items.length - 1; i >= 0; i--) {
@@ -2105,6 +2162,24 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 
 			addItem({ kind: "result", id: uid(), isError, numTurns, totalCostUsd, durationMs });
 			set({ sessionState: "idle", streaming: initialStreaming(), lastUpdatedAt: Date.now() });
+
+			// Persist all assistant-usage TPS data to IndexedDB for the session
+			const sid = get().sessionId;
+			if (sid) {
+				const allItems = get().items;
+				const perfEntries = allItems
+					.filter((it): it is Extract<typeof it, { kind: "assistant-usage" }> =>
+						it.kind === "assistant-usage" && (!!it.tps || !!it.ttftMs || !!it.durationMs))
+					.map((it) => ({
+						outputTokens: it.usage.outputTokens,
+						tps: it.tps,
+						ttftMs: it.ttftMs,
+						durationMs: it.durationMs,
+					}));
+				if (perfEntries.length > 0) {
+					void saveCodeAgentSessionPerf(sid, perfEntries);
+				}
+			}
 				return;
 			}
 

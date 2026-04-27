@@ -1839,6 +1839,26 @@ export function Settings() {
                           </div>
 
                           <div className={styles.formField}>
+                            <Label htmlFor="code-agent-usage-protocol" className={styles.fieldLabelSmall}>
+                              {t('developer.codeAgentUsageProtocol')}
+                            </Label>
+                            <Select
+                              id="code-agent-usage-protocol"
+                              value={codeAgentConfigDraft.usageProtocol || 'auto'}
+                              onChange={(val) => setCodeAgentConfigDraft((prev) => ({ ...prev, usageProtocol: val as any }))}
+                              style={{ borderRadius: 12 }}
+                              options={[
+                                { value: 'auto', label: t('developer.codeAgentUsageProtocolAuto') },
+                                { value: 'anthropic-messages', label: t('developer.codeAgentUsageProtocolAnthropic') },
+                                { value: 'openai-completions', label: t('developer.codeAgentUsageProtocolOpenAI') },
+                              ]}
+                            />
+                            <div style={{ fontSize: 11, color: 'var(--ant-color-text-quaternary)', marginTop: 2 }}>
+                              {t('developer.codeAgentUsageProtocolDesc')}
+                            </div>
+                          </div>
+
+                          <div className={styles.formField}>
                             <Label htmlFor="code-agent-fallback-model" className={styles.fieldLabelSmall}>
                               {t('developer.codeAgentFallbackModel')}
                             </Label>

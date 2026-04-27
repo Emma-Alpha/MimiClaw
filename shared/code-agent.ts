@@ -6,6 +6,7 @@ export type CodeAgentExecutionMode = 'cli' | 'snapshot';
 export type CodeAgentPermissionMode = 'acceptEdits' | 'bypassPermissions' | 'default' | 'dontAsk' | 'plan' | 'auto';
 export type CodeAgentEffortLevel = 'low' | 'medium' | 'high' | 'max' | '';
 export type CodeAgentThinkingMode = 'enabled' | 'adaptive' | 'disabled';
+export type CodeAgentUsageProtocol = 'auto' | 'anthropic-messages' | 'openai-completions';
 
 export interface CodeAgentRuntimeConfig {
   executionMode: CodeAgentExecutionMode;
@@ -21,6 +22,7 @@ export interface CodeAgentRuntimeConfig {
   allowedTools: string[];
   disallowedTools: string[];
   appendSystemPrompt: string;
+  usageProtocol: CodeAgentUsageProtocol;
 }
 
 export const DEFAULT_CODE_AGENT_RUNTIME_CONFIG: CodeAgentRuntimeConfig = {
@@ -37,6 +39,7 @@ export const DEFAULT_CODE_AGENT_RUNTIME_CONFIG: CodeAgentRuntimeConfig = {
   allowedTools: [],
   disallowedTools: ['WebSearch', 'WebFetch'],
   appendSystemPrompt: '',
+  usageProtocol: 'auto',
 };
 
 export interface CodeAgentPermissionRequest {

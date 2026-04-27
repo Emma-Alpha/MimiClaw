@@ -10,72 +10,6 @@ type Getter = StoreGetter<GatewayStore>;
 
 let gatewayInitPromise: Promise<void> | null = null;
 let gatewayEventUnsubscribers: Array<() => void> | null = null;
-const gatewayEventDedupe = new Map<string, number>();
-const GATEWAY_EVENT_DEDUPE_TTL_MS = 30_000;
-const LOAD_SESSIONS_MIN_INTERVAL_MS = 1_200;
-const LOAD_HISTORY_MIN_INTERVAL_MS = 800;
-let lastLoadSessionsAt = 0;
-let lastLoadHistoryAt = 0;
-
-function pruneGatewayEventDedupe(now: number): void {
-  for (const [key, ts] of gatewayEventDedupe) {
-    if (now - ts > GATEWAY_EVENT_DEDUPE_TTL_MS) {
-      gatewayEventDedupe.delete(key);
-    }
-  }
-}
-
-function buildGatewayEventDedupeKey(event: Record<string, unknown>): string | null {
-  const runId = event.runId != null ? String(event.runId) : '';
-  const sessionKey = event.sessionKey != null ? String(event.sessionKey) : '';
-  const seq = event.seq != null ? String(event.seq) : '';
-  const state = event.state != null ? String(event.state) : '';
-  if (runId || sessionKey || seq || state) {
-    return [runId, sessionKey, seq, state].join('|');
-  }
-  const message = event.message;
-  if (message && typeof message === 'object') {
-    const msg = message as Record<string, unknown>;
-    const messageId = msg.id != null ? String(msg.id) : '';
-    const stopReason = msg.stopReason ?? msg.stop_reason;
-    if (messageId || stopReason) {
-      return `msg|${messageId}|${String(stopReason ?? '')}`;
-    }
-  }
-  return null;
-}
-
-function shouldProcessGatewayEvent(event: Record<string, unknown>): boolean {
-  const key = buildGatewayEventDedupeKey(event);
-  if (!key) return true;
-  const now = Date.now();
-  pruneGatewayEventDedupe(now);
-  if (gatewayEventDedupe.has(key)) {
-    return false;
-  }
-  gatewayEventDedupe.set(key, now);
-  return true;
-}
-
-function maybeLoadSessions(
-  state: { loadSessions: () => Promise<void> },
-  force = false,
-): void {
-  const now = Date.now();
-  if (!force && now - lastLoadSessionsAt < LOAD_SESSIONS_MIN_INTERVAL_MS) return;
-  lastLoadSessionsAt = now;
-  void state.loadSessions();
-}
-
-function maybeLoadHistory(
-  state: { loadHistory: (quiet?: boolean) => Promise<void> },
-  force = false,
-): void {
-  const now = Date.now();
-  if (!force && now - lastLoadHistoryAt < LOAD_HISTORY_MIN_INTERVAL_MS) return;
-  lastLoadHistoryAt = now;
-  void state.loadHistory(true);
-}
 
 function extractPetTerminalLine(message: Record<string, unknown>): string | null {
   const content = message.content;
@@ -169,109 +103,20 @@ export class GatewayActionImpl {
 
     const p = payload.params;
     const data = (p.data && typeof p.data === 'object') ? (p.data as Record<string, unknown>) : {};
-    const phase = data.phase ?? p.phase;
     const hasChatData = (p.state ?? data.state) || (p.message ?? data.message);
 
     if (hasChatData) {
       const normalizedEvent: Record<string, unknown> = {
         ...p,
         ...data,
-        runId: p.runId ?? data.runId,
-        sessionKey: p.sessionKey ?? data.sessionKey,
-        stream: p.stream ?? data.stream,
-        seq: p.seq ?? data.seq,
-        state: p.state ?? data.state,
         message: p.message ?? data.message,
       };
-      if (shouldProcessGatewayEvent(normalizedEvent)) {
-        import('../chat')
-          .then(({ useChatStore }) => {
-            useChatStore.getState().handleChatEvent(normalizedEvent);
-          })
-          .catch(() => {});
-      }
       pushPetLineFromMessage(normalizedEvent.message);
-    }
-
-    const runId = p.runId ?? data.runId;
-    const sessionKey = p.sessionKey ?? data.sessionKey;
-    if (phase === 'started' && runId != null && sessionKey != null) {
-      import('../chat')
-        .then(({ useChatStore }) => {
-          const state = useChatStore.getState();
-          const resolvedSessionKey = String(sessionKey);
-          const shouldRefreshSessions =
-            resolvedSessionKey !== state.currentSessionKey
-            || !state.sessions.some((session) => session.key === resolvedSessionKey);
-          if (shouldRefreshSessions) {
-            maybeLoadSessions(state, true);
-          }
-
-          state.handleChatEvent({
-            state: 'started',
-            runId,
-            sessionKey: resolvedSessionKey,
-          });
-        })
-        .catch(() => {});
-    }
-
-    if (phase === 'completed' || phase === 'done' || phase === 'finished' || phase === 'end') {
-      import('../chat')
-        .then(({ useChatStore }) => {
-          const state = useChatStore.getState();
-          const resolvedSessionKey = sessionKey != null ? String(sessionKey) : null;
-          const shouldRefreshSessions = resolvedSessionKey != null && (
-            resolvedSessionKey !== state.currentSessionKey
-            || !state.sessions.some((session) => session.key === resolvedSessionKey)
-          );
-          if (shouldRefreshSessions) {
-            maybeLoadSessions(state);
-          }
-
-          const matchesCurrentSession = resolvedSessionKey == null || resolvedSessionKey === state.currentSessionKey;
-          const matchesActiveRun = runId != null && state.activeRunId != null && String(runId) === state.activeRunId;
-
-          if (matchesCurrentSession || matchesActiveRun) {
-            maybeLoadHistory(state);
-          }
-          if ((matchesCurrentSession || matchesActiveRun) && state.sending) {
-            useChatStore.setState({
-              sending: false,
-              activeRunId: null,
-              pendingFinal: false,
-            });
-          }
-        })
-        .catch(() => {});
     }
   };
 
-  readonly #handleGatewayChatMessage = (data: unknown): void => {
-    console.log('[Gateway] Received chat message:', JSON.stringify(data, null, 2));
-    import('../chat').then(({ useChatStore }) => {
-      const chatData = data as Record<string, unknown>;
-      const payload = ('message' in chatData && typeof chatData.message === 'object')
-        ? chatData.message as Record<string, unknown>
-        : chatData;
-
-      if (payload.state) {
-        if (!shouldProcessGatewayEvent(payload)) return;
-        useChatStore.getState().handleChatEvent(payload);
-        pushPetLineFromMessage(payload.message ?? payload);
-        return;
-      }
-
-      const normalized: Record<string, unknown> = {
-        ...chatData,
-        state: 'final',
-        message: payload,
-        runId: chatData.runId ?? payload.runId,
-      };
-      if (!shouldProcessGatewayEvent(normalized)) return;
-      useChatStore.getState().handleChatEvent(normalized);
-      pushPetLineFromMessage(payload);
-    }).catch(() => {});
+  readonly #handleGatewayChatMessage = (_data: unknown): void => {
+    // Gateway chat messages are no longer consumed — Code Agent uses its own event stream.
   };
 
   init = async () => {

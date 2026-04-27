@@ -76,7 +76,7 @@ OpenClaw Gateway (port 18789)
 - **Token usage history**: The Models page reads OpenClaw session transcript `.jsonl` files from the local OpenClaw config directory. It does not parse console logs. It handles normal, `.deleted.jsonl`, and `.jsonl.reset.*` transcripts.
 - **Models page aggregation**: The 7-day/30-day filters are rolling windows, not calendar-month buckets. Chart bucketing keeps all days in the window; only model grouping is capped to top entries.
 - **OpenClaw Doctor**: Exposed via Settings > Advanced > Developer through the host-api routes. Renderer code must call the host route, not spawn CLI processes directly.
-- **No database**: The app uses `electron-store` (JSON files) and the OS keychain. No DB setup needed.
+- **IndexedDB for message metadata**: The app uses `electron-store` (JSON files) for settings, the OS keychain for secrets, and IndexedDB (via Dexie.js) in the renderer for persisting message usage/performance metadata that the Gateway doesn't return in `chat.history`. No external DB setup needed.
 
 ## Communication Changes
 

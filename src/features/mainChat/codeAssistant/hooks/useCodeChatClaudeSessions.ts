@@ -4,8 +4,10 @@ import {
 	fetchCodeAgentSessions,
 } from "@/lib/code-agent";
 import { toUserMessage } from "@/lib/api-client";
+import { getCodeAgentSessionPerf } from "@/lib/db";
 import {
 	deriveContextUsageFromRawMessages,
+	useCodeAgentStore,
 	type CodeAgentContextWindowUsage,
 } from "@/stores/code-agent";
 import {
@@ -103,6 +105,30 @@ export function useCodeChatClaudeSessions({
 					setContextUsage(replayContextUsage);
 				}
 				resetCodeAgentStreaming();
+
+				// Enrich assistant-usage items with cached TPS/TTFT from IndexedDB.
+				// Match by outputTokens count (stable between live and replay).
+				const cachedPerf = await getCodeAgentSessionPerf(sessionId);
+				if (cachedPerf && cachedPerf.entries.length > 0) {
+					const currentItems = useCodeAgentStore.getState().items;
+					// Build lookup: outputTokens → perf entry (use Map to handle duplicates by last occurrence)
+					const perfByTokens = new Map<number, (typeof cachedPerf.entries)[number]>();
+					for (const entry of cachedPerf.entries) {
+						perfByTokens.set(entry.outputTokens, entry);
+					}
+					let changed = false;
+					const updatedItems = currentItems.map((it) => {
+						if (it.kind !== "assistant-usage" || it.tps) return it;
+						const hit = perfByTokens.get(it.usage.outputTokens);
+						if (!hit) return it;
+						changed = true;
+						return { ...it, tps: hit.tps, ttftMs: hit.ttftMs, durationMs: it.durationMs ?? hit.durationMs };
+					});
+					if (changed) {
+						useCodeAgentStore.setState({ items: updatedItems });
+					}
+				}
+
 				return true;
 			} catch (error) {
 				pushUserMessage(`加载 Claude 会话失败：${toUserMessage(error)}`);

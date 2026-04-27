@@ -19,10 +19,7 @@ import {
 	ShieldAlert,
 } from "lucide-react";
 import type { ISlashOption } from "@lobehub/editor";
-import { ActionIcon, Tag } from "@lobehub/ui";
-import { Camera, Mic, MicOff, Paperclip } from "lucide-react";
 import { useVolcengineAsr } from "@/hooks/useVolcengineAsr";
-import { labPreferSelectors } from "@/stores/settings";
 import type {
 	FileAttachment,
 } from "@/features/mainChat/lib/composer-helpers";
@@ -50,7 +47,7 @@ import {
 	type ComposerPath,
 } from "@/lib/unified-composer";
 import i18n from "@/i18n";
-import { useChatStore, type RawMessage } from "@/stores/chat";
+import type { RawMessage } from "@/stores/chat";
 import { useGatewayStore } from "@/stores/gateway";
 import { useSettingsStore } from "@/stores/settings";
 import { useSkillsStore } from "@/stores/skills";
@@ -75,28 +72,11 @@ import { useCodeChatCodeAgentEvents } from "./hooks/useCodeChatCodeAgentEvents";
 import { useCodeChatSeedAndAutoSend } from "./hooks/useCodeChatSeedAndAutoSend";
 import { useCodeChatSessionActions } from "./hooks/useCodeChatSessionActions";
 import { useCodeChatSubmissionActions } from "./hooks/useCodeChatSubmissionActions";
-import { getChatSessionTitle } from "./session-title";
 import { useCodeChatStyles } from "./styles";
 import type {
-	CodeChatTarget,
 	SlashOption,
-	TimelineItem,
 	ToolActivityItem,
 } from "./types";
-import {
-	extractText,
-	isVisibleMessage,
-	normalizeTimestampMs,
-	parseSubmissionIntent,
-} from "./utils";
-
-const CODE_CHAT_RUNTIME_TIMESTAMP = Date.now();
-
-function getTimelineMessageKey(message: RawMessage, index: number) {
-	return message.id
-		? `chat:${message.role}:${message.id}`
-		: `chat:${message.role}:${index}:${extractText(message.content).slice(0, 40)}`;
-}
 
 const CODE_PERMISSION_MODE_LABELS: Record<CodeAgentPermissionMode, string> = {
 	default: "默认权限",
@@ -159,35 +139,14 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 	const language = useSettingsStore((state) => state.language);
 	const codeAgentConfig = useSettingsStore((state) => state.codeAgent);
 	const setCodeAgentConfig = useSettingsStore((state) => state.setCodeAgent);
-	const isSttEnabled = useSettingsStore(labPreferSelectors.enabled('stt'));
 	const initGateway = useGatewayStore((state) => state.init);
 	const gatewayStatus = useGatewayStore((state) => state.status);
 	const skills = useSkillsStore((state) => state.skills);
 	const fetchSkills = useSkillsStore((state) => state.fetchSkills);
-	const messages = useChatStore((state) => state.messages);
-	const sending = useChatStore((state) => state.sending);
-	const streamingText = useChatStore((state) => state.streamingText);
-	const streamingMessage = useChatStore((state) => state.streamingMessage);
-	const streamingTools = useChatStore((state) => state.streamingTools);
-	const pendingFinal = useChatStore((state) => state.pendingFinal);
-	const sessions = useChatStore((state) => state.sessions);
-	const currentSessionKey = useChatStore((state) => state.currentSessionKey);
-	const sessionLabels = useChatStore((state) => state.sessionLabels);
-	const sessionLastActivity = useChatStore((state) => state.sessionLastActivity);
-	const loadSessions = useChatStore((state) => state.loadSessions);
-	const loadHistory = useChatStore((state) => state.loadHistory);
-	const switchSession = useChatStore((state) => state.switchSession);
-	const newSession = useChatStore((state) => state.newSession);
-	const sendMessage = useChatStore((state) => state.sendMessage);
-	const abortRun = useChatStore((state) => state.abortRun);
 
 	const [input, setInput] = useState("");
 	const [attachments, setAttachments] = useState<FileAttachment[]>([]);
 	const [droppedPaths, setDroppedPaths] = useState<ComposerPath[]>([]);
-	const [selectedMode, setSelectedMode] = useState<CodeChatTarget | null>(null);
-	const [persistentMode, setPersistentMode] = useState<CodeChatTarget | null>(
-		embeddedCodeAssistant ? "code" : null,
-	);
 	const [codeSending, setCodeSending] = useState(false);
 	const [codeRunActive, setCodeRunActive] = useState(false);
 	// Ref keeps the latest activities accessible in callbacks without dep-array churn
@@ -256,10 +215,10 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 
 	// --- / skills (claude code skills) ---
 	const [claudeCodeSkills, setClaudeCodeSkills] = useState<{ global: ClaudeCodeSkillEntry[]; project: ClaudeCodeSkillEntry[] }>({ global: [], project: [] });
-	const [activeSkillTags, setActiveSkillTags] = useState<SlashOption[]>([]);
+	const [_activeSkillTags, setActiveSkillTags] = useState<SlashOption[]>([]);
 
 	// --- STT (voice recording) ---
-	const { cancelRecording: cancelSttRecording, isRecording: isSttRecording, isTranscribing: isSttTranscribing, toggleRecording: toggleSttRecording } = useVolcengineAsr({
+	const { cancelRecording: cancelSttRecording } = useVolcengineAsr({
 		onTranscriptReady: (text) => {
 			if (!text.trim()) return;
 			chatInputEditorRef.current?.insertTextAtCursor(text);
@@ -268,20 +227,16 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 
 	const pendingAutoSend = useRef<PetCodeChatSeed | null>(null);
 	const floatingTodoRef = useRef<HTMLDivElement | null>(null);
-	const [chatSeenAt, setChatSeenAt] = useState<Map<string, number>>(() => new Map());
-	const [floatingTodoHeight, setFloatingTodoHeight] = useState(0);
+	const [_floatingTodoHeight, setFloatingTodoHeight] = useState(0);
 	const [floatingTodoTool, setFloatingTodoTool] = useState<StreamingToolUse | null>(null);
 	const [todoPanelArmed, setTodoPanelArmed] = useState(false);
 	const [todoRunStartCursor, setTodoRunStartCursor] = useState<number | null>(null);
-	const chatSeenCounterRef = useRef(0);
 	const prevCodeSendingRef = useRef(codeSending);
 	const prevTodoSessionKeyRef = useRef("");
 	const lastHydratedClaudeSessionRef = useRef("");
 	const lastRequestedClaudeSessionRef = useRef("");
 	const lastRequestedNewThreadTokenRef = useRef("");
 	const forceFreshSessionOnNextSubmitRef = useRef(false);
-	const pushedToolIdsRef = useRef<Set<string>>(new Set());
-	const chatSubmitInFlightRef = useRef(false);
 	const gatewayState = gatewayStatus.state;
 	const isConnecting =
 		gatewayState === "starting" || gatewayState === "reconnecting";
@@ -303,44 +258,16 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 
 
 	useEffect(() => {
-		void loadSessions();
-	}, [loadSessions]);
-
-	useEffect(() => {
-		if (!isReady) return;
-		void loadSessions();
-	}, [isReady, loadSessions]);
-
-	useEffect(() => {
 		if (skills.length > 0) return;
 		void fetchSkills();
 	}, [fetchSkills, skills.length]);
-	const chatSessions = useMemo(
-		() =>
-			[...sessions]
-				.sort((left, right) => {
-					const rightUpdated =
-						sessionLastActivity[right.key] ?? right.updatedAt ?? 0;
-					const leftUpdated =
-						sessionLastActivity[left.key] ?? left.updatedAt ?? 0;
-					return rightUpdated - leftUpdated;
-				})
-				.map((session) => ({
-					key: session.key,
-					title: getChatSessionTitle(session, sessionLabels),
-					updatedAt:
-						sessionLastActivity[session.key] ?? session.updatedAt ?? null,
-				})),
-		[sessions, sessionLabels, sessionLastActivity],
-	);
 	const resetCodeTimelineState = useCallback(() => {
 		resetCodeAgent();
 		codeActivitiesRef.current = [];
 		pendingCompletionActivitiesRef.current = [];
 	}, [resetCodeAgent]);
 	const resetChatSeenState = useCallback(() => {
-		setChatSeenAt(new Map());
-		chatSeenCounterRef.current = 0;
+		// no-op: chat seen timestamps removed with gateway chat
 	}, []);
 
 
@@ -382,21 +309,6 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		return () => window.clearTimeout(timer);
 	}, [codeWorkspaceRoot, embeddedCodeAssistant, requestedWorkspaceRoot]);
 
-	const liveStreamingText = useMemo(() => {
-		const direct = streamingText.trim();
-		if (direct) return direct;
-		if (!streamingMessage || typeof streamingMessage !== "object") return "";
-
-		const raw = streamingMessage as Record<string, unknown>;
-		if (typeof raw.text === "string" && raw.text.trim()) {
-			return raw.text.trim();
-		}
-
-		if ("content" in raw) {
-			return extractText(raw.content);
-		}
-		return "";
-	}, [streamingMessage, streamingText]);
 
 	useEffect(() => {
 		void initSettings();
@@ -407,11 +319,6 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 			i18n.changeLanguage(language);
 		}
 	}, [language]);
-
-	useEffect(() => {
-		if (embeddedCodeAssistant) return;
-		newSession();
-	}, [embeddedCodeAssistant, newSession]);
 
 	useEffect(() => {
 		void initGateway();
@@ -488,7 +395,6 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 
 	const clearComposer = useCallback(() => {
 		setInput("");
-		setSelectedMode(null);
 		setAttachments([]);
 		setDroppedPaths([]);
 		activeSkillsRef.current = [];
@@ -515,7 +421,7 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		}
 	}, []);
 
-		const { applyDroppedPaths, handleUploadFile, handleScreenshot } = useCodeChatAttachmentActions({
+		const { applyDroppedPaths } = useCodeChatAttachmentActions({
 		setAttachments,
 		setDroppedPaths,
 	});
@@ -673,10 +579,6 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 			input,
 			attachments,
 			droppedPaths,
-			selectedMode,
-			persistentMode,
-			isReady,
-			sending,
 			codeSending,
 			codeWorkspaceRoot,
 			activeClaudeSessionId,
@@ -687,12 +589,10 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 			pushUserMessage,
 			pushSdkMessage,
 			resetCodeAgentStreaming,
-			sendMessage,
 			clearComposer,
 			activeSkillsRef,
 			richContentRef,
 			pendingCompletionActivitiesRef,
-			chatSubmitInFlightRef,
 			forceFreshSessionOnNextSubmitRef,
 		});
 
@@ -700,11 +600,11 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		async ({ getMarkdownContent }: ChatInputSendPayload) => {
 			const content = getMarkdownContent().trim();
 			if (!content && attachments.length === 0 && droppedPaths.length === 0) return;
-			if (sending || codeSending) return;
+			if (codeSending) return;
 			await submitPrompt(content);
 			// clearComposer (called inside submitPrompt) also calls chatInputEditorRef.current?.clearContent()
 		},
-		[attachments.length, codeSending, droppedPaths.length, sending, submitPrompt],
+		[attachments.length, codeSending, droppedPaths.length, submitPrompt],
 	);
 
 	const handlePermissionModeChange = useCallback(
@@ -722,71 +622,29 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 
 	useCodeChatSeedAndAutoSend({
 		pendingAutoSendRef: pendingAutoSend,
-		setPersistentMode,
-		setSelectedMode,
 		setAttachments,
 		setInput: setInputAndEditor,
 		setCaretIndex: () => {},
 		submitPrompt,
-		sending,
 		codeSending,
-		isReady,
 	});
 
 	useEffect(() => {
-		const activity =
-			!sending && !isCodeTurnInProgress
-				? "idle"
-				: isCodeTurnInProgress
-					? "working"
-					: pendingFinal || liveStreamingText || streamingTools.length > 0
-						? "working"
-						: "listening";
+		const activity = isCodeTurnInProgress ? "working" : "idle";
 		void invokeIpc("pet:setUiActivity", { activity }).catch(() => {});
-	}, [
-		isCodeTurnInProgress,
-		liveStreamingText,
-		pendingFinal,
-		sending,
-		streamingTools,
-	]);
+	}, [isCodeTurnInProgress]);
 
-	useEffect(() => {
-		if (streamingTools.length === 0) {
-			pushedToolIdsRef.current = new Set();
-			return;
-		}
-
-		for (const tool of streamingTools) {
-			const key = tool.id ?? tool.toolCallId ?? tool.name;
-			if (!pushedToolIdsRef.current.has(key)) {
-				pushedToolIdsRef.current.add(key);
-				void invokeIpc("pet:pushTerminalLine", `› ${tool.name}`).catch(
-					() => {},
-				);
-			}
-		}
-	}, [streamingTools]);
-
-	const draftIntent = useMemo(() => parseSubmissionIntent(input), [input]);
-	const draftTarget = embeddedCodeAssistant
-		? "code"
-		: selectedMode || persistentMode || draftIntent.target;
+	const draftTarget = "code" as const;
 	const terminalShortcutLabel = platform === "darwin" ? "⌘J" : "Ctrl+J";
 
 	const handleStop = useCallback(async () => {
 		try {
-			if (draftTarget === "code") {
-				await cancelCodeAgentRun();
-				return;
-			}
-
-			await abortRun();
+			await cancelCodeAgentRun();
 		} catch (error) {
 			console.error(error);
 			toast.error("停止生成失败");
 		}
-	}, [abortRun, draftTarget]);
+	}, []);
 
 	useEffect(() => {
 		if (!embeddedCodeAssistant || draftTarget !== "code") return;
@@ -814,19 +672,13 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		handleNewConversation,
 		handleSwitchSession,
 	} = useCodeChatSessionActions({
-		draftTarget,
 		activeClaudeSessionId,
 		setActiveClaudeSessionId,
 		claudeSessions,
-		currentSessionKey,
 		resetCodeTimelineState,
 		clearComposer,
 		resetChatSeenState,
 		lastHydratedClaudeSessionRef,
-		newSession,
-		loadSessions,
-		switchSession,
-		loadHistory,
 		setCodeWorkspaceRoot,
 	});
 
@@ -907,15 +759,8 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 
 
 
-	const visibleMessages = useMemo(
-		() => messages.filter(isVisibleMessage),
-		[messages],
-	);
-
 	// Convert codeAgentItems to RawMessage format for unified rendering
 	const codeAgentMessages = useMemo<RawMessage[]>(() => {
-		if (draftTarget !== "code") return [];
-
 		const converted: RawMessage[] = [];
 
 		for (const item of codeAgentItems) {
@@ -993,44 +838,13 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		}
 
 		return converted;
-	}, [codeAgentItems, draftTarget]);
+	}, [codeAgentItems]);
 
-	// Merge messages based on current mode
-	const unifiedMessages = useMemo(() => {
-		return draftTarget === "code" ? codeAgentMessages : visibleMessages;
-	}, [draftTarget, codeAgentMessages, visibleMessages]);
-
-	useEffect(() => {
-		setChatSeenAt((previous) => {
-			let changed = false;
-			const next = new Map(previous);
-			for (const [index, message] of visibleMessages.entries()) {
-				const key = getTimelineMessageKey(message, index);
-				if (next.has(key)) continue;
-				const normalizedTimestamp = normalizeTimestampMs(message.timestamp);
-				const fallbackTimestamp =
-					CODE_CHAT_RUNTIME_TIMESTAMP + chatSeenCounterRef.current;
-				chatSeenCounterRef.current += 1;
-				next.set(key, normalizedTimestamp ?? fallbackTimestamp);
-				changed = true;
-			}
-			return changed ? next : previous;
-		});
-	}, [visibleMessages]);
-
-	const disableComposer =
-		draftTarget === "chat"
-			? isConnecting || isError || sending || isCodeTurnInProgress
-			: sending || isCodeTurnInProgress;
-	const headerSessions =
-		draftTarget === "code" ? claudeSessions : chatSessions;
-	const headerSessionKey =
-		draftTarget === "code" ? activeClaudeSessionId : currentSessionKey;
+	const disableComposer = isCodeTurnInProgress;
+	const headerSessions = claudeSessions;
+	const headerSessionKey = activeClaudeSessionId;
 	const isHeaderGenerating =
-		sending ||
 		isCodeTurnInProgress ||
-		pendingFinal ||
-		Boolean(liveStreamingText) ||
 		codeStreaming.isStreaming;
 	const showEmbeddedComposerMeta = embeddedCodeAssistant && draftTarget === "code";
 	const embeddedPermissionLabel = useMemo(
@@ -1148,27 +962,10 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 
 	const handleOpenFull = useCallback(() => {
 		if (embeddedCodeAssistant) return;
-		void invokeIpc(
-			draftTarget === "code" ? "pet:openCodeAssistant" : "pet:openMainWindow",
-		);
+		void invokeIpc("pet:openCodeAssistant");
 		void invokeIpc("pet:closeQuickChat");
-	}, [draftTarget, embeddedCodeAssistant]);
+	}, [embeddedCodeAssistant]);
 
-	const timelineItems = useMemo<TimelineItem[]>(() => {
-		const chatItems = visibleMessages.map((message: RawMessage, index) => {
-			const key = getTimelineMessageKey(message, index);
-			return {
-				kind: "chat" as const,
-				key,
-				sortAt: chatSeenAt.get(key) ?? CODE_CHAT_RUNTIME_TIMESTAMP,
-				message,
-			};
-		});
-
-		return chatItems.sort((left, right) => {
-			return left.sortAt - right.sortAt;
-		});
-	}, [chatSeenAt, visibleMessages]);
 	const latestTodoToolInCurrentRun = useMemo(() => {
 		if (!todoPanelArmed) return null;
 		if (todoRunStartCursor == null) return null;
@@ -1182,16 +979,13 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		}
 		return null;
 	}, [codeAgentItems, todoPanelArmed, todoRunStartCursor]);
-	const todoSessionKey =
-		draftTarget === "code"
-			? activeClaudeSessionId.trim() || "__code_pending__"
-			: "__not_code__";
+	const todoSessionKey = activeClaudeSessionId.trim() || "__code_pending__";
 
 	useEffect(() => {
 		const previous = prevTodoSessionKeyRef.current;
 		const isPendingToActiveSession =
 			previous === "__code_pending__"
-			&& todoSessionKey !== "__not_code__"
+			&& todoSessionKey !== "__code_pending__"
 			&& isCodeTurnInProgress;
 		if (previous && previous !== todoSessionKey && !isPendingToActiveSession) {
 			setFloatingTodoTool(null);
@@ -1204,26 +998,20 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 
 	useEffect(() => {
 		const wasSending = prevCodeSendingRef.current;
-		if (draftTarget === "code" && codeSending && !wasSending) {
+		if (codeSending && !wasSending) {
 			setTodoPanelArmed(true);
 			setTodoRunStartCursor(codeAgentItems.length);
 			setFloatingTodoTool(null);
 			setFloatingTodoHeight(0);
 		}
 		prevCodeSendingRef.current = codeSending;
-	}, [codeAgentItems.length, codeSending, draftTarget]);
+	}, [codeAgentItems.length, codeSending]);
 
 	useEffect(() => {
-		if (draftTarget !== "code") return;
 		if (!todoPanelArmed) return;
 		if (!latestTodoToolInCurrentRun) return;
 		setFloatingTodoTool(latestTodoToolInCurrentRun);
-	}, [draftTarget, latestTodoToolInCurrentRun, todoPanelArmed]);
-
-	const floatingTodoOverlap = 18;
-	const timelineBottomReservedHeight = floatingTodoTool
-		? Math.max(0, floatingTodoHeight - floatingTodoOverlap + 12)
-		: 0;
+	}, [latestTodoToolInCurrentRun, todoPanelArmed]);
 
 	useEffect(() => {
 		if (!floatingTodoTool) {
@@ -1276,14 +1064,14 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 				/>
 
 			<ConversationView
-				messages={unifiedMessages}
-				currentSessionKey={draftTarget === "code" ? activeClaudeSessionId : currentSessionKey}
+				messages={codeAgentMessages}
+				currentSessionKey={activeClaudeSessionId}
 				loading={false}
-				sending={sending || codeSending}
+				sending={codeSending}
 				error={null}
 				showThinking={true}
 				streamingMessage={
-					draftTarget === "code" && (codeStreaming.assistantText || codeStreaming.thinkingText)
+					(codeStreaming.assistantText || codeStreaming.thinkingText)
 						? {
 							role: "assistant" as const,
 							content: [
@@ -1295,10 +1083,10 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 									: []),
 							],
 						}
-						: streamingMessage
+						: null
 				}
-				streamingTools={streamingTools}
-				pendingFinal={pendingFinal}
+				streamingTools={[]}
+				pendingFinal={false}
 				lastRunWasAborted={false}
 				clearError={() => {}}
 			/>
@@ -1373,10 +1161,10 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 				}}
 			>
 			<ChatInput
-				agentId={currentSessionKey ?? ''}
+				agentId={activeClaudeSessionId ?? ''}
 				allowExpand={false}
 				chatInputEditorRef={chatInputEditorRef}
-				disabled={disableComposer || sending || codeSending}
+				disabled={disableComposer || codeSending}
 				extraSlashItems={extraSlashItems}
 				leftActions={['model', 'thinking', 'fileUpload', 'screenshot', 'tools', 'stt']}
 				mentionItems={mentionItems}
@@ -1386,7 +1174,7 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 				onSend={handleCodeAssistantSend}
 				onStop={() => { void handleStop(); }}
 				// rightActions={['promptTransform']}
-				sending={sending || codeSending}
+				sending={codeSending}
 			/>
 			</div>
 				{showEmbeddedComposerMeta ? (
