@@ -20,6 +20,7 @@ import {
 import { useSettingsStore } from '@/stores/settings';
 import type { InstalledPlugin, MarketplacePlugin } from '@/types/claude-plugin';
 import type { ClaudeCodeSkillEntry } from '@/lib/code-agent';
+import { HERO_PLUGIN_NAMES } from './builtin-catalog';
 
 import CardGrid from './components/CardGrid';
 import HeroCarousel from './components/HeroCarousel';
@@ -194,10 +195,11 @@ const BrowsePluginsContent = memo(() => {
     return result;
   }, [allPlugins, selectedMarketplace, selectedCategory, searchQuery]);
 
-  const featured = useMemo(
-    () => allPlugins.slice(0, 5),
-    [allPlugins],
-  );
+  const featured = useMemo(() => {
+    const heroSet = new Set(HERO_PLUGIN_NAMES);
+    const matched = allPlugins.filter((p) => heroSet.has(p.id));
+    return matched.length > 0 ? matched : allPlugins.slice(0, 5);
+  }, [allPlugins]);
 
   const showHero =
     !searchQuery.trim() && !selectedCategory && featured.length > 0;

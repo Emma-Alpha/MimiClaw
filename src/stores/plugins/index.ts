@@ -8,6 +8,10 @@ import type {
   MarketplacePlugin,
   MarketplaceSourceDescriptor,
 } from '@/types/claude-plugin';
+import {
+  builtinCatalog,
+  BUILTIN_MARKETPLACE_NAME,
+} from '@/pages/Plugins/builtin-catalog';
 
 // ─── response shapes ─────────────────────────────────────────────────────────
 
@@ -131,10 +135,10 @@ export function getCategories(plugins: MarketplacePlugin[]): string[] {
 // ─── store ───────────────────────────────────────────────────────────────────
 
 export const usePluginsStore = create<PluginsStore>((set, get) => ({
-  // state
+  // state — built-in catalog pre-loaded so the page is never empty
   enabledPlugins: {},
   marketplaceSources: {},
-  catalogs: {},
+  catalogs: { [BUILTIN_MARKETPLACE_NAME]: builtinCatalog },
   loading: false,
   error: null,
   skills: { global: [], project: [] },

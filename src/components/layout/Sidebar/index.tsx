@@ -137,7 +137,7 @@ const useStyles = createStyles(({ css, token }) => ({
 	emptyHint: css`
     padding: 4px 8px 4px 20px;
     font-size: 12px;
-    color: ${cssVar.colorTextQuaternary};
+    color: ${cssVar.colorTextDescription};
   `,
 	emptyHintNested: css`
     padding-inline-start: 48px;
@@ -162,6 +162,10 @@ const useStyles = createStyles(({ css, token }) => ({
     color: ${token.colorWarningText};
   `,
 	sessionMarker: css`
+    position: absolute;
+    inset-inline-start: 10px;
+    top: 50%;
+    transform: translateY(-50%);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -217,6 +221,7 @@ const useStyles = createStyles(({ css, token }) => ({
     cursor: pointer;
     user-select: none;
     border-radius: 10px;
+	margin-bottom: 2px;
 
     &:hover {
       background: color-mix(in oklab, ${cssVar.colorText} 4%, transparent);
@@ -243,6 +248,7 @@ const useStyles = createStyles(({ css, token }) => ({
     color: ${cssVar.colorTextQuaternary};
   `,
 	flatSessionItem: css`
+    position: relative;
     padding-inline-start: 30px !important;
   `,
 }));
@@ -620,6 +626,18 @@ export function Sidebar() {
 		const clearThreadSessionRunning = (payload: CodeAgentRunRecord) => {
 			const target = resolveRunSessionTarget(payload);
 			if (target) {
+				// 当完成的会话不是当前激活会话，或窗口不在前台时，发送系统通知
+				const isCurrentSession =
+					target.sessionId === activeThreadSessionId
+					&& target.workspaceId === activeThreadWorkspaceIdFromRoute;
+				if (!isCurrentSession || document.hidden) {
+					const output = payload.result?.output || "";
+					const body = output.length > 200 ? `${output.slice(0, 200)}…` : output;
+					new Notification("MimiClaw", {
+						body: body || "AI 已回答完毕",
+					});
+				}
+
 				setRunningThreadSessionsByWorkspaceId((prev) => {
 					const currentWorkspaceSessions = prev[target.workspaceId];
 					if (!currentWorkspaceSessions?.[target.sessionId]) return prev;
@@ -662,6 +680,8 @@ export function Sidebar() {
 		resolveRunSessionTarget,
 		workspaceById,
 		workspaceIdByNormalizedRoot,
+		activeThreadSessionId,
+		activeThreadWorkspaceIdFromRoute,
 	]);
 
 	useEffect(() => {
