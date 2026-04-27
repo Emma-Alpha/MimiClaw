@@ -22,6 +22,8 @@ import { TrayRuntime } from "./pages/TrayRuntime";
 import { MiniChat } from "./pages/MiniChat";
 import { Setup } from "./pages/Setup";
 import { Login } from "./pages/Login";
+import { Plugins } from "./pages/Plugins";
+import { Cron } from "./pages/Cron";
 import { useSettingsStore } from "./stores/settings";
 import { invokeIpc } from "./lib/api-client";
 import { ThemeWrapper } from "./components/theme/ThemeWrapper";
@@ -314,6 +316,8 @@ function App() {
 							<Route path="/models" element={<Models />} />
 							<Route path="/code-agent/quick-chat" element={<LegacyCodeQuickChatRedirect />} />
 							<Route path="/code-agent" element={<CodeAgent />} />
+							<Route path="/plugins" element={<Plugins />} />
+							<Route path="/cron" element={<Cron />} />
 							<Route path="/settings/*" element={<Settings />} />
 						</Route>
 					</Routes>

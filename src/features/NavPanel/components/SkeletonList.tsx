@@ -4,13 +4,13 @@ import { cssVar } from 'antd-style';
 import { memo } from 'react';
 
 export const SkeletonItem = memo<{ avatarSize?: number } & Omit<FlexboxProps, 'children'>>(
-  ({ padding = 6, height = 36, style, avatarSize = 28, ...rest }) => {
+  ({ padding = 8, height = 30, style, avatarSize = 24, ...rest }) => {
     return (
       <Flexbox
         horizontal
         align={'center'}
         flex={1}
-        gap={8}
+        gap={6}
         height={height}
         padding={padding}
         style={style}

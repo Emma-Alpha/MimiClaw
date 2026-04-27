@@ -11,8 +11,11 @@ import {
 	FolderOpen,
 	Loader2,
 	Plus,
+	Puzzle,
+	Search,
 	Settings as SettingsIcon,
 	SquarePen,
+	Timer,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -47,6 +50,7 @@ import {
 import { SidebarUpdateAction } from "@/components/update/SidebarUpdateAction";
 
 import { NavItem, SideBarLayout } from "@/features/NavPanel";
+import { SearchInput } from "@/components/common/SearchInput";
 import { SettingsSidebar } from "./SettingsSidebar";
 
 // ─── types ────────────────────────────────────────────────────────────────────
@@ -88,19 +92,18 @@ const useStyles = createStyles(({ css, token }) => ({
   `,
 	footer: css`
     flex-shrink: 0;
-    padding: 4px 8px 8px;
+    padding: 4px 6px 8px;
   `,
 	subItemLevel1: css`
     padding-inline-start: 20px !important;
-    min-height: 32px !important;
+    min-height: 30px !important;
   `,
 	workspaceChildren: css`
     position: relative;
-    margin: 2px 0 6px 28px;
-    padding-inline-start: 12px;
+    margin: 2px 0 6px 0;
   `,
 	subItemLevel2: css`
-    padding-inline-start: 10px !important;
+    padding-inline-start: 48px !important;
   `,
 	timeLabel: css`
     font-size: 12px;
@@ -129,7 +132,7 @@ const useStyles = createStyles(({ css, token }) => ({
     }
   `,
 	sessionListToggleNested: css`
-    padding-inline-start: 10px;
+    padding-inline-start: 48px;
   `,
 	emptyHint: css`
     padding: 4px 8px 4px 20px;
@@ -137,7 +140,7 @@ const useStyles = createStyles(({ css, token }) => ({
     color: ${cssVar.colorTextQuaternary};
   `,
 	emptyHintNested: css`
-    padding: 4px 8px 4px 10px;
+    padding-inline-start: 48px;
   `,
 	warningText: css`
     padding: 4px 8px 4px 20px;
@@ -145,7 +148,7 @@ const useStyles = createStyles(({ css, token }) => ({
     color: ${token.colorWarning};
   `,
 	warningTextNested: css`
-    padding: 4px 8px 4px 10px;
+    padding-inline-start: 48px;
   `,
 	searchWrap: css`
     padding: 2px 8px;
@@ -259,7 +262,8 @@ export function Sidebar() {
 	const { t, i18n } = useTranslation(["common", "settings"]);
 
 	// ── local state ───────────────────────────────────────────────────────────
-	const [searchQuery] = useState("");
+	const [searchQuery, setSearchQuery] = useState("");
+	const [searchVisible, setSearchVisible] = useState(false);
 	const [workspaceSessionsExpanded, setWorkspaceSessionsExpanded] = useState<
 		Record<string, boolean>
 	>({});
@@ -791,7 +795,7 @@ export function Sidebar() {
 	// ── render ────────────────────────────────────────────────────────────────
 
 	const headerNode = (
-		<Flexbox gap={2} paddingInline={8} paddingBlock={4}>
+		<Flexbox gap={2} paddingBlock={4}>
 			{/* 新对话 */}
 			<NavItem
 				icon={SquarePen}
@@ -799,12 +803,57 @@ export function Sidebar() {
 				title={t("sidebar.newThread", { defaultValue: "新对话" })}
 				onClick={handleGlobalNewThread}
 			/>
-
+			{/* 搜索 */}
+			<NavItem
+				icon={Search}
+				iconSize={CHAT_NAV_ICON_SIZE}
+				title={t("actions.search", { defaultValue: "搜索" })}
+				active={searchVisible}
+				onClick={() => {
+					setSearchVisible((prev) => {
+						if (prev) setSearchQuery("");
+						return !prev;
+					});
+				}}
+			/>
+			{searchVisible && (
+				<div className={styles.searchWrap}>
+					<SearchInput
+						value={searchQuery}
+						onValueChange={setSearchQuery}
+						placeholder={t("actions.search", { defaultValue: "搜索" })}
+						clearable
+						autoFocus
+						onKeyDown={(e) => {
+							if (e.key === "Escape") {
+								setSearchVisible(false);
+								setSearchQuery("");
+							}
+						}}
+					/>
+				</div>
+			)}
+			{/* 插件 */}
+			<NavItem
+				icon={Puzzle}
+				iconSize={CHAT_NAV_ICON_SIZE}
+				title={t("sidebar.plugins", { defaultValue: "插件" })}
+				active={pathname === "/plugins"}
+				onClick={() => navigate("/plugins")}
+			/>
+			{/* 自动化 */}
+			<NavItem
+				icon={Timer}
+				iconSize={CHAT_NAV_ICON_SIZE}
+				title={t("sidebar.cronTasks", { defaultValue: "自动化" })}
+				active={pathname === "/cron"}
+				onClick={() => navigate("/cron")}
+			/>
 		</Flexbox>
 	);
 
 	const bodyNode = (
-		<Flexbox gap={2} paddingInline={8} paddingBlock={4}>
+		<Flexbox gap={2} paddingBlock={4}>
 			{/* ── Thread 工作区 ────────────────────────────────────────────── */}
 			<NavItem
 				icon={FolderOpen}
@@ -968,7 +1017,6 @@ export function Sidebar() {
 											kind: "thread",
 											workspaceId: workspace.id,
 										});
-										touchSidebarThreadWorkspace(workspace.id);
 										void refreshWorkspaceSessions(workspace);
 									}}
 								/>

@@ -72,7 +72,7 @@ export function SettingsSidebar() {
           />
         }
         body={
-          <Flexbox gap={2} paddingInline={8} paddingBlock={4}>
+          <Flexbox gap={2} paddingBlock={4}>
             {navItems.map(({ key, label, icon }) => (
               <NavItem
                 key={key}

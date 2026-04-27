@@ -15,13 +15,13 @@ const EmptyNavItem = memo<EmptyStatusProps>(({ title, onClick, className }) => {
       horizontal
       align={'center'}
       className={className}
-      gap={8}
-      height={32}
-      paddingInline={2}
+      gap={6}
+      height={30}
+      paddingInline={8}
       variant={'borderless'}
       onClick={onClick}
     >
-      <Center flex={'none'} height={28} width={28}>
+      <Center flex={'none'} height={24} width={24}>
         <Icon icon={PlusIcon} size={'small'} />
       </Center>
       <Text align={'center'} type={'secondary'}>

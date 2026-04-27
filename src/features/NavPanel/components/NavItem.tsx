@@ -15,18 +15,14 @@ const styles = createStaticStyles(({ css }) => ({
     user-select: none;
     overflow: hidden;
     min-width: 32px;
-    border-radius: 12px;
+    border-radius: 10px;
     border: 1px solid transparent;
-    transition:
-      background-color 0.16s ${cssVar.motionEaseOut},
-      border-color 0.16s ${cssVar.motionEaseOut},
-      box-shadow 0.16s ${cssVar.motionEaseOut};
 
     .${ACTION_CLASS_NAME} {
       width: 0;
       margin-inline-end: 2px;
       opacity: 0;
-      transition: opacity 0.2s ${cssVar.motionEaseOut};
+      transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 
       &:has([data-popup-open]) {
         width: unset;
@@ -37,12 +33,12 @@ const styles = createStaticStyles(({ css }) => ({
     .${ICON_HOVER_CLASS} {
       opacity: 0;
       position: absolute;
-      transition: opacity 0.15s ${cssVar.motionEaseOut};
+      transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .${ICON_DEFAULT_CLASS} {
       opacity: 1;
-      transition: opacity 0.15s ${cssVar.motionEaseOut};
+      transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     &:hover {
@@ -64,17 +60,17 @@ const styles = createStaticStyles(({ css }) => ({
     background: transparent;
 
     &:hover {
-      background: color-mix(in oklab, ${cssVar.colorText} 5%, transparent);
+      background: color-mix(in oklab, ${cssVar.colorText} 6%, transparent);
       border-color: transparent;
     }
   `,
   active: css`
-    background: color-mix(in oklab, ${cssVar.colorText} 10%, transparent);
+    background: color-mix(in oklab, ${cssVar.colorText} 8%, transparent);
     border-color: transparent;
     box-shadow: none;
 
     &:hover {
-      background: color-mix(in oklab, ${cssVar.colorText} 10%, transparent);
+      background: color-mix(in oklab, ${cssVar.colorText} 8%, transparent);
     }
   `,
   iconWrap: css`
@@ -130,7 +126,7 @@ const NavItem = memo<NavItemProps>(
     ...rest
   }) => {
     const iconColor = active ? cssVar.colorText : cssVar.colorTextSecondary;
-    const textColor = active ? cssVar.colorText : cssVar.colorTextSecondary;
+    const textColor = cssVar.colorText;
 
     const { titlePrefix, iconPostfix } = slots || {};
 
@@ -152,9 +148,9 @@ const NavItem = memo<NavItemProps>(
           className,
         )}
         clickable={!disabled}
-        gap={8}
-        height={34}
-        paddingInline={6}
+        gap={6}
+        height={30}
+        paddingInline={8}
         variant={'borderless'}
         onClick={(e) => {
           if (href && !(e.metaKey || e.ctrlKey)) {
@@ -167,7 +163,7 @@ const NavItem = memo<NavItemProps>(
         {...rest}
       >
         {icon && (
-          <Center flex={'none'} height={28} width={28} className={iconHover ? styles.iconWrap : undefined}>
+          <Center flex={'none'} height={24} width={24} className={iconHover ? styles.iconWrap : undefined}>
             {loading ? (
               <NeuralNetworkLoading size={iconSize} />
             ) : iconHover ? (
@@ -186,7 +182,7 @@ const NavItem = memo<NavItemProps>(
         )}
 
         {iconPostfix}
-        <Flexbox horizontal align={'center'} flex={1} gap={8} style={{ overflow: 'hidden' }}>
+        <Flexbox horizontal align={'center'} flex={1} gap={6} style={{ overflow: 'hidden' }}>
           {titlePrefix}
           <Text
             color={textColor}
