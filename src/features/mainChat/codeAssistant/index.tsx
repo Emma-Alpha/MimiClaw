@@ -94,12 +94,6 @@ function getPermissionModeLabel(mode: CodeAgentPermissionMode): string {
 	return CODE_PERMISSION_MODE_LABELS[mode] ?? mode;
 }
 
-function formatTokenCount(value: number): string {
-	if (!Number.isFinite(value)) return "0";
-	if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-	if (value >= 1_000) return `${(value / 1_000).toFixed(1).replace(/\.0$/, "")}k`;
-	return `${Math.round(value)}`;
-}
 
 function isTodoWriteToolName(name: string): boolean {
 	return name.trim().toLowerCase() === "todowrite";
@@ -1207,13 +1201,8 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 						</div>
 						<div className={styles.composerStatusRight}>
 							<ContextUsageTooltip
-								usedPercentage={embeddedContextSummary.usedPercentage}
-								remainingPercentage={embeddedContextSummary.remainingPercentage}
-								usedTokensLabel={formatTokenCount(embeddedContextSummary.usedTokens)}
-								remainingTokensLabel={formatTokenCount(embeddedContextSummary.remainingTokens)}
-								totalTokensLabel={formatTokenCount(embeddedContextSummary.contextWindowSize)}
-								ringColor={embeddedContextSummary.ringColor}
-								size={14}
+								usedTokens={embeddedContextSummary.usedTokens}
+								maxTokens={embeddedContextSummary.contextWindowSize}
 							/>
 							<StyledDropdown
 								menu={{

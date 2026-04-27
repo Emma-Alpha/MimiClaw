@@ -1,109 +1,163 @@
-import { Progress } from "antd";
-import { createStyles } from "antd-style";
-import { Tooltip } from "@/components/ui/tooltip";
+import { Center, Flexbox, Popover, Tooltip } from "@lobehub/ui";
+import { TokenTag } from "@lobehub/ui/chat";
+import { Divider } from "antd";
+import { cssVar } from "antd-style";
+import { memo } from "react";
 
 type ContextUsageTooltipProps = {
-	usedPercentage: number;
-	remainingPercentage: number;
-	usedTokensLabel: string;
-	remainingTokensLabel?: string;
-	totalTokensLabel: string;
-	ringColor: string;
-	size?: number;
+	usedTokens: number;
+	maxTokens: number;
 };
 
-const useStyles = createStyles(({ css, token }) => ({
-	ring: css`
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		line-height: 0;
-		cursor: help;
-	`,
-	content: css`
-		display: flex;
-		flex-direction: column;
-		gap: 1px;
-		font-size: 12px;
-		line-height: 1.35;
-		font-weight: 400;
-		color: ${token.colorTextSecondary};
-		min-width: 164px;
-	`,
-	title: css`
-		text-align: center;
-		color: ${token.colorTextTertiary};
-		font-weight: 400;
-		margin-bottom: 1px;
-	`,
-	line: css`
-		font-weight: 400;
-		color: ${token.colorText};
-	`,
-}));
+const formatToken = (value: number): string => {
+	if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+	if (value >= 1_000) return `${(value / 1_000).toFixed(1).replace(/\.0$/, "")}k`;
+	return `${Math.round(value)}`;
+};
 
-export function ContextUsageTooltip({
-	usedPercentage,
-	remainingPercentage,
-	usedTokensLabel,
-	remainingTokensLabel,
-	totalTokensLabel,
-	ringColor,
-	size = 14,
-}: ContextUsageTooltipProps) {
-	const { styles } = useStyles();
-	const clampedPercent = Math.max(0, Math.min(100, usedPercentage));
-	const clampedRemaining = Math.max(
-		0,
-		Math.min(100, Number.isFinite(remainingPercentage) ? remainingPercentage : 100 - clampedPercent),
-	);
-	const displayPercent = Number(clampedPercent.toFixed(1));
-	const displayRemaining = Number(clampedRemaining.toFixed(1));
-	const ringPercent =
-		displayPercent > 0 && displayPercent < 1
-			? 1
-			: displayPercent;
-	const percentLabel = Number.isInteger(displayPercent)
-		? `${displayPercent}`
-		: `${displayPercent.toFixed(1)}`;
-	const remainingLabel = Number.isInteger(displayRemaining)
-		? `${displayRemaining}`
-		: `${displayRemaining.toFixed(1)}`;
-
-	return (
-		<Tooltip
-			placement="top"
-			mouseEnterDelay={0.12}
-			arrow={false}
-			title={
-				<div className={styles.content}>
-					<div className={styles.title}>背景信息窗口：</div>
-					<div className={styles.line}>
-						{percentLabel}% 已用（剩余 {remainingLabel}%）
-					</div>
-					<div className={styles.line}>
-						已用 {usedTokensLabel} 标记，共 {totalTokensLabel}
-					</div>
-					{remainingTokensLabel ? (
-						<div className={styles.line}>
-							剩余 {remainingTokensLabel} 标记
-						</div>
-					) : null}
-				</div>
-			}
-		>
-			<span
-				className={styles.ring}
-				aria-label={`背景信息窗口已用 ${percentLabel}%`}
-			>
-				<Progress
-					type="circle"
-					size={size}
-					percent={ringPercent}
-					showInfo={false}
-					strokeColor={ringColor}
-				/>
-			</span>
-		</Tooltip>
-	);
+interface TokenProgressItem {
+	color: string;
+	id: string;
+	title: string;
+	value: number;
 }
+
+const TokenProgress = memo<{
+	data: TokenProgressItem[];
+	showTotal?: string;
+}>(({ data, showTotal }) => {
+	const total = data.reduce((acc, item) => acc + item.value, 0);
+	return (
+		<Flexbox gap={8} style={{ position: "relative" }} width="100%">
+			<Flexbox
+				horizontal
+				height={6}
+				width="100%"
+				style={{
+					background: total === 0 ? cssVar.colorFill : undefined,
+					borderRadius: 3,
+					overflow: "hidden",
+					position: "relative",
+				}}
+			>
+				{data.map((item) => (
+					<Flexbox
+						height="100%"
+						key={item.id}
+						style={{ background: item.color, flex: item.value }}
+					/>
+				))}
+			</Flexbox>
+			<Flexbox>
+				{data.map((item) => (
+					<Flexbox
+						horizontal
+						align="center"
+						gap={4}
+						justify="space-between"
+						key={item.id}
+					>
+						<Flexbox horizontal align="center" gap={4}>
+							<div
+								style={{
+									background: item.color,
+									borderRadius: "50%",
+									flex: "none",
+									height: 6,
+									width: 6,
+								}}
+							/>
+							<div style={{ color: cssVar.colorTextSecondary }}>
+								{item.title}
+							</div>
+						</Flexbox>
+						<div style={{ fontWeight: 500 }}>{formatToken(item.value)}</div>
+					</Flexbox>
+				))}
+				{showTotal && (
+					<>
+						<Divider style={{ marginBlock: 8 }} />
+						<Flexbox
+							horizontal
+							align="center"
+							gap={4}
+							justify="space-between"
+						>
+							<div style={{ color: cssVar.colorTextSecondary }}>
+								{showTotal}
+							</div>
+							<div style={{ fontWeight: 500 }}>{formatToken(total)}</div>
+						</Flexbox>
+					</>
+				)}
+			</Flexbox>
+		</Flexbox>
+	);
+});
+
+export const ContextUsageTooltip = memo<ContextUsageTooltipProps>(
+	({ usedTokens, maxTokens }) => {
+		const remaining = Math.max(0, maxTokens - usedTokens);
+
+		const content = (
+			<Flexbox gap={12} style={{ minWidth: 200 }}>
+				<Flexbox horizontal align="center" gap={4} justify="space-between" width="100%">
+					<div style={{ color: cssVar.colorTextDescription }}>上下文明细</div>
+					<Tooltip
+						styles={{ root: { maxWidth: "unset", pointerEvents: "none" } }}
+						title={`${maxTokens.toLocaleString()} tokens`}
+					>
+						<Center
+							height={20}
+							paddingInline={4}
+							style={{
+								background: cssVar.colorFillTertiary,
+								borderRadius: 4,
+								color: cssVar.colorTextSecondary,
+								fontFamily: cssVar.fontFamilyCode,
+								fontSize: 11,
+							}}
+						>
+							TOKEN
+						</Center>
+					</Tooltip>
+				</Flexbox>
+				<TokenProgress
+					showTotal="总计"
+					data={[
+						{
+							color: cssVar.colorSuccess,
+							id: "used",
+							title: "已用",
+							value: usedTokens,
+						},
+						{
+							color: cssVar.colorFill,
+							id: "rest",
+							title: "剩余",
+							value: remaining,
+						},
+					]}
+				/>
+			</Flexbox>
+		);
+
+		return (
+			<Popover
+				placement="top"
+				content={content}
+			>
+				<TokenTag
+					maxValue={maxTokens}
+					mode="used"
+					value={usedTokens}
+					text={{
+						overload: "超出",
+						remained: "剩余",
+						used: "已用",
+					}}
+				/>
+			</Popover>
+		);
+	},
+);
