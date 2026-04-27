@@ -183,10 +183,7 @@ export class GatewayActionImpl {
         state: p.state ?? data.state,
         message: p.message ?? data.message,
       };
-      console.log('[Gateway:notification] hasChatData, state:', normalizedEvent.state, 'hasUsage:', !!normalizedEvent.usage, 'phase:', phase);
-      const accepted = shouldProcessGatewayEvent(normalizedEvent);
-      console.log('[Gateway:notification] dedup accepted:', accepted);
-      if (accepted) {
+      if (shouldProcessGatewayEvent(normalizedEvent)) {
         import('../chat')
           .then(({ useChatStore }) => {
             useChatStore.getState().handleChatEvent(normalizedEvent);
@@ -259,9 +256,7 @@ export class GatewayActionImpl {
         : chatData;
 
       if (payload.state) {
-        const accepted = shouldProcessGatewayEvent(payload);
-        console.log('[Gateway:chatMessage] has state:', payload.state, 'hasUsage:', !!payload.usage, 'dedup accepted:', accepted);
-        if (!accepted) return;
+        if (!shouldProcessGatewayEvent(payload)) return;
         useChatStore.getState().handleChatEvent(payload);
         pushPetLineFromMessage(payload.message ?? payload);
         return;
@@ -273,9 +268,7 @@ export class GatewayActionImpl {
         message: payload,
         runId: chatData.runId ?? payload.runId,
       };
-      const accepted = shouldProcessGatewayEvent(normalized);
-      console.log('[Gateway:chatMessage] normalized, hasUsage:', !!normalized.usage, 'dedup accepted:', accepted);
-      if (!accepted) return;
+      if (!shouldProcessGatewayEvent(normalized)) return;
       useChatStore.getState().handleChatEvent(normalized);
       pushPetLineFromMessage(payload);
     }).catch(() => {});

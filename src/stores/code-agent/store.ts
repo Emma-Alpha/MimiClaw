@@ -282,7 +282,7 @@ export type CodeAgentTimelineItem =
 	| { kind: "init"; id: string; model: string; permissionMode: string; toolCount: number; mcpCount: number; cwd: string }
 	| { kind: "thinking"; id: string; data: ThinkingBlockData }
 	| { kind: "assistant-text"; id: string; text: string; isStreaming: boolean; createdAt?: number }
-	| { kind: "assistant-usage"; id: string; usage: { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; totalTokens: number }; model?: string; costUsd?: number; durationMs?: number }
+	| { kind: "assistant-usage"; id: string; usage: { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; totalTokens: number }; model?: string; costUsd?: number; durationMs?: number; ttftMs?: number; tps?: number }
 	| { kind: "tool-use"; id: string; tool: StreamingToolUse }
 	| { kind: "diff"; id: string; files: DiffFile[] }
 	| {
@@ -393,6 +393,12 @@ export interface CodeAgentStore {
 		vendorStatusSource: VendorStatusSource;
 		/** Active tool uses keyed by tool_use_id */
 		toolUses: Map<string, StreamingToolUse>;
+		/** Accumulated usage from message_start + message_delta stream events */
+		accumulatedUsage: { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number } | null;
+		/** Timestamp (ms) when message_start arrived */
+		turnStartedAt: number;
+		/** Timestamp (ms) when first content_block_delta text arrived */
+		firstTokenAt: number;
 	};
 
 	// Pending user interactions
@@ -405,6 +411,10 @@ export interface CodeAgentStore {
 	// Rate limit state
 	rateLimitInfo: RateLimitInfo | null;
 	contextUsage: CodeAgentContextWindowUsage | null;
+
+	// Performance timing for current turn (top-level to avoid streaming spread issues)
+	perfTurnStartedAt: number;
+	perfFirstTokenAt: number;
 
 	// Session-level auto-approved tool types (cleared on reset)
 	sessionAllowedTools: Set<string>;
@@ -1172,6 +1182,12 @@ function initialStreaming() {
 		vendorStatusText: "",
 		vendorStatusSource: null as VendorStatusSource,
 		toolUses: new Map<string, StreamingToolUse>(),
+		/** Accumulated usage from message_start + message_delta stream events */
+		accumulatedUsage: null as { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number } | null,
+		/** Timestamp (ms) when message_start arrived — marks start of this turn */
+		turnStartedAt: 0,
+		/** Timestamp (ms) when the first content_block_delta text arrived */
+		firstTokenAt: 0,
 	};
 }
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -1287,6 +1303,8 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 	activeTasks: new Map(),
 	rateLimitInfo: null,
 	contextUsage: null,
+	perfTurnStartedAt: 0,
+	perfFirstTokenAt: 0,
 	sessionAllowedTools: new Set(),
 
 	reset: () => {
@@ -1676,14 +1694,18 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 				const thinkingText = streaming.thinkingText;
 			const toolUses = streaming.toolUses;
 
-			// Extract per-message usage from the raw SDK message
+			// Extract per-message usage from the raw SDK message.
+			// The assistant message itself often has zeroed-out usage; the real
+			// token counts arrive via message_start (input) and message_delta
+			// (output) stream events and are accumulated in streaming.accumulatedUsage.
 			const msgUsageRaw = asRecord(asRecord(msg.message)?.usage) ?? asRecord(msg.usage);
 			const msgModel = typeof (msg.message as Record<string, unknown>)?.model === "string"
 				? (msg.message as Record<string, unknown>).model as string
 				: typeof msg.model === "string" ? msg.model as string : undefined;
 			const msgCostUsd = toFiniteNumber(msg.costUSD) ?? toFiniteNumber(msg.cost_usd) ?? undefined;
 			const msgDurationMs = toFiniteNumber(msg.duration_ms) ?? toFiniteNumber(msg.durationMs) ?? undefined;
-			const msgUsage = msgUsageRaw ? {
+			const accUsage = streaming.accumulatedUsage;
+			let msgUsage = msgUsageRaw ? {
 				inputTokens: Math.max(0, Math.round(
 					pickNumber(msgUsageRaw, ["input_tokens", "inputTokens", "input"]) ?? 0)),
 				outputTokens: Math.max(0, Math.round(
@@ -1694,6 +1716,17 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 					pickNumber(msgUsageRaw, ["cache_creation_input_tokens", "cacheCreationInputTokens", "cacheWrite"]) ?? 0)),
 				totalTokens: 0,
 			} : undefined;
+			// Merge accumulated streaming usage when message usage is zero
+			if (accUsage) {
+				if (!msgUsage) {
+					msgUsage = { ...accUsage, totalTokens: 0 };
+				} else {
+					if (msgUsage.inputTokens === 0 && accUsage.inputTokens > 0) msgUsage.inputTokens = accUsage.inputTokens;
+					if (msgUsage.outputTokens === 0 && accUsage.outputTokens > 0) msgUsage.outputTokens = accUsage.outputTokens;
+					if (msgUsage.cacheReadTokens === 0 && accUsage.cacheReadTokens > 0) msgUsage.cacheReadTokens = accUsage.cacheReadTokens;
+					if (msgUsage.cacheWriteTokens === 0 && accUsage.cacheWriteTokens > 0) msgUsage.cacheWriteTokens = accUsage.cacheWriteTokens;
+				}
+			}
 			if (msgUsage) {
 				msgUsage.totalTokens = msgUsage.inputTokens + msgUsage.outputTokens + msgUsage.cacheReadTokens + msgUsage.cacheWriteTokens;
 			}
@@ -1869,6 +1902,9 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 						queueThinkingStreamingDelta(text);
 					} else if (deltaType === "text_delta") {
 						const text = String(delta.text || "");
+						if (get().perfFirstTokenAt === 0) {
+							set({ perfFirstTokenAt: Date.now() });
+						}
 						get().appendStreamingText(text);
 					}
 					return;
@@ -1892,6 +1928,14 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 
 				if (evType === "message_start") {
 					clearQueuedStreamingDeltas();
+					set({ perfTurnStartedAt: Date.now(), perfFirstTokenAt: 0 });
+					const startUsage = asRecord(asRecord(event.message)?.usage);
+					const startInputTokens = startUsage ? Math.max(0, Math.round(
+						pickNumber(startUsage, ["input_tokens", "inputTokens", "input"]) ?? 0)) : 0;
+					const startCacheRead = startUsage ? Math.max(0, Math.round(
+						pickNumber(startUsage, ["cache_read_input_tokens", "cacheReadInputTokens", "cacheRead"]) ?? 0)) : 0;
+					const startCacheWrite = startUsage ? Math.max(0, Math.round(
+						pickNumber(startUsage, ["cache_creation_input_tokens", "cacheCreationInputTokens", "cacheWrite"]) ?? 0)) : 0;
 					set((state) => ({
 						streaming: {
 							...(state.streaming.assistantText
@@ -1906,26 +1950,92 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 									: formatVendorStatusLabel(buildFallbackVendorStatus("requesting")),
 							vendorStatusSource:
 								state.streaming.vendorStatusSource === "vendor" ? "vendor" : "fallback",
+							accumulatedUsage: (startInputTokens > 0 || startCacheRead > 0 || startCacheWrite > 0)
+								? { inputTokens: startInputTokens, outputTokens: 0, cacheReadTokens: startCacheRead, cacheWriteTokens: startCacheWrite }
+								: null,
+							turnStartedAt: Date.now(),
+							firstTokenAt: 0,
 						},
 					}));
 				}
 
-			if (evType === "message_delta") {
-				set((state) => ({
-					streaming: {
-						...state.streaming,
-						spinnerMode: "responding",
-						vendorStatusText:
-							state.streaming.vendorStatusSource === "vendor"
-								? state.streaming.vendorStatusText
-								: formatVendorStatusLabel(buildFallbackVendorStatus("responding")),
-						vendorStatusSource:
-							state.streaming.vendorStatusSource === "vendor" ? "vendor" : "fallback",
-					},
-				}));
+				if (evType === "message_delta") {
+				const deltaUsage = asRecord(event.usage);
+				const deltaOutputTokens = deltaUsage ? Math.max(0, Math.round(
+					pickNumber(deltaUsage, ["output_tokens", "outputTokens", "output"]) ?? 0)) : 0;
+				const deltaInputTokens = deltaUsage ? Math.max(0, Math.round(
+					pickNumber(deltaUsage, ["input_tokens", "inputTokens", "input"]) ?? 0)) : 0;
+				const deltaCacheRead = deltaUsage ? Math.max(0, Math.round(
+					pickNumber(deltaUsage, ["cache_read_input_tokens", "cacheReadInputTokens"]) ?? 0)) : 0;
+				const deltaCacheWrite = deltaUsage ? Math.max(0, Math.round(
+					pickNumber(deltaUsage, ["cache_creation_input_tokens", "cacheCreationInputTokens"]) ?? 0)) : 0;
+
+				// message_delta arrives AFTER the assistant message, so we
+				// emit the assistant-usage item here when we finally have data.
+				const totalDelta = deltaOutputTokens + deltaInputTokens + deltaCacheRead + deltaCacheWrite;
+				if (totalDelta > 0) {
+					const streamState = get().streaming;
+					const prev = streamState.accumulatedUsage;
+					const finalUsage = {
+						inputTokens: Math.max(prev?.inputTokens ?? 0, deltaInputTokens),
+						outputTokens: Math.max(prev?.outputTokens ?? 0, deltaOutputTokens),
+						cacheReadTokens: Math.max(prev?.cacheReadTokens ?? 0, deltaCacheRead),
+						cacheWriteTokens: Math.max(prev?.cacheWriteTokens ?? 0, deltaCacheWrite),
+						totalTokens: 0,
+					};
+					finalUsage.totalTokens = finalUsage.inputTokens + finalUsage.outputTokens + finalUsage.cacheReadTokens + finalUsage.cacheWriteTokens;
+
+					// Extract model from the stream event's message context
+					const streamMsg = asRecord(msg.message) ?? asRecord((msg as Record<string,unknown>).streamEventMessage);
+					const deltaModel = typeof streamMsg?.model === "string" ? streamMsg.model as string : undefined;
+
+					// Compute elapsed (ms) and performance metrics
+					const now = Date.now();
+					const turnStart = get().perfTurnStartedAt;
+					const firstToken = get().perfFirstTokenAt;
+					const elapsedMs = turnStart > 0 ? (now - turnStart) : undefined;
+					const ttftMs = (firstToken > 0 && turnStart > 0) ? (firstToken - turnStart) : undefined;
+					const tps = (elapsedMs && elapsedMs > 0 && finalUsage.outputTokens > 0)
+						? finalUsage.outputTokens / (elapsedMs / 1000)
+						: undefined;
+
+					addItem({
+						kind: "assistant-usage",
+						id: uid(),
+						usage: finalUsage,
+						model: deltaModel,
+						durationMs: elapsedMs,
+						ttftMs,
+						tps,
+					});
+				}
+
+				set((state) => {
+					const prev = state.streaming.accumulatedUsage;
+					return {
+						streaming: {
+							...state.streaming,
+							spinnerMode: "responding",
+							vendorStatusText:
+								state.streaming.vendorStatusSource === "vendor"
+									? state.streaming.vendorStatusText
+									: formatVendorStatusLabel(buildFallbackVendorStatus("responding")),
+							vendorStatusSource:
+								state.streaming.vendorStatusSource === "vendor" ? "vendor" : "fallback",
+							accumulatedUsage: totalDelta > 0
+								? {
+									inputTokens: Math.max(prev?.inputTokens ?? 0, deltaInputTokens),
+									outputTokens: Math.max(prev?.outputTokens ?? 0, deltaOutputTokens),
+									cacheReadTokens: Math.max(prev?.cacheReadTokens ?? 0, deltaCacheRead),
+									cacheWriteTokens: Math.max(prev?.cacheWriteTokens ?? 0, deltaCacheWrite),
+								}
+								: prev,
+						},
+					};
+				});
+				}
+				return;
 			}
-			return;
-		}
 
 		// ── tool_progress ─────────────────────────────────────────────────────
 		if (type === "tool_progress") {
@@ -1962,6 +2072,37 @@ export const useCodeAgentStore = create<CodeAgentStore>((set, get) => {
 				const numTurns = Number(msg.num_turns ?? 0);
 				const totalCostUsd = Number(msg.total_cost_usd ?? 0);
 			const durationMs = Number(msg.duration_ms ?? 0);
+
+			// The result message carries aggregate usage across all turns.
+			// Backfill any zero fields in the last assistant-usage item.
+			const resultUsage = asRecord(msg.usage);
+			if (resultUsage) {
+				const items = get().items;
+				for (let i = items.length - 1; i >= 0; i--) {
+					const it = items[i];
+					if (it.kind === "assistant-usage") {
+						let updated = false;
+						const u = { ...it.usage };
+						const rInput = Math.max(0, Math.round(
+							pickNumber(resultUsage, ["input_tokens", "inputTokens"]) ?? 0));
+						const rCacheRead = Math.max(0, Math.round(
+							pickNumber(resultUsage, ["cache_read_input_tokens", "cacheReadInputTokens"]) ?? 0));
+						const rCacheWrite = Math.max(0, Math.round(
+							pickNumber(resultUsage, ["cache_creation_input_tokens", "cacheCreationInputTokens"]) ?? 0));
+						if (u.inputTokens === 0 && rInput > 0) { u.inputTokens = rInput; updated = true; }
+						if (u.cacheReadTokens === 0 && rCacheRead > 0) { u.cacheReadTokens = rCacheRead; updated = true; }
+						if (u.cacheWriteTokens === 0 && rCacheWrite > 0) { u.cacheWriteTokens = rCacheWrite; updated = true; }
+						if (updated) {
+							u.totalTokens = u.inputTokens + u.outputTokens + u.cacheReadTokens + u.cacheWriteTokens;
+							const newItems = [...items];
+							newItems[i] = { ...it, usage: u, durationMs: it.durationMs ?? (durationMs || undefined) };
+							set({ items: newItems });
+						}
+						break;
+					}
+				}
+			}
+
 			addItem({ kind: "result", id: uid(), isError, numTurns, totalCostUsd, durationMs });
 			set({ sessionState: "idle", streaming: initialStreaming(), lastUpdatedAt: Date.now() });
 				return;

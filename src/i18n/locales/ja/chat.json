@@ -53,28 +53,28 @@
     },
     "tokenDetails": {
         "inputTitle": "入力",
-        "outputTitle": "出力",
-        "inputText": "テキスト",
-        "inputAudio": "音声",
-        "inputCitation": "引用",
-        "inputCached": "キャッシュ",
+        "outputTitle": "出力明細",
+        "inputText": "テキスト入力",
+        "inputAudio": "音声入力",
+        "inputCitation": "引用入力",
+        "inputCached": "キャッシュ入力",
         "inputWriteCached": "キャッシュ書き込み",
-        "inputUncached": "入力",
-        "inputTool": "ツール",
-        "reasoning": "推論",
-        "outputText": "テキスト",
-        "outputImage": "画像",
-        "outputAudio": "音声",
+        "inputUncached": "非キャッシュ入力",
+        "inputTool": "ツール入力",
+        "reasoning": "深い思考",
+        "outputText": "テキスト出力",
+        "outputImage": "画像出力",
+        "outputAudio": "音声出力",
         "output": "出力",
-        "total": "合計",
+        "total": "総消費",
         "speed": {
             "tps": {
-                "title": "生成速度",
-                "tooltip": "1秒あたりのトークン数"
+                "title": "TPS",
+                "tooltip": "1秒あたりのトークン数（Tokens Per Second）"
             },
             "ttft": {
-                "title": "初回トークン遅延",
-                "tooltip": "最初のトークンを受け取るまでの時間"
+                "title": "TTFT",
+                "tooltip": "最初のトークンまでの時間（Time To First Token）"
             }
         }
     }

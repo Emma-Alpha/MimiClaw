@@ -54,6 +54,16 @@ export class ChatRuntimeActionImpl {
     const currentSessionKey = this.#get().currentSessionKey;
     console.log('[sendMessage] Current session key:', currentSessionKey);
 
+    // Ensure gateway events are connected so we receive usage data
+    try {
+      const { useGatewayStore } = await import('@/stores/gateway');
+      const gwState = useGatewayStore.getState();
+      console.log('[sendMessage] Gateway initialized:', gwState.isInitialized);
+      if (!gwState.isInitialized) {
+        await gwState.init();
+      }
+    } catch (e) { console.warn('[sendMessage] Gateway init check failed:', e); }
+
     const nowMs = Date.now();
     const userMsg: RawMessage = {
       role: 'user',
@@ -81,6 +91,12 @@ export class ChatRuntimeActionImpl {
       lastUserMessageAt: nowMs,
       lastRunWasAborted: false,
     }));
+
+    // Persist send timestamp so enrichWithComputedPerformance can compute
+    // elapsed/TPS even when messages arrive via polling (not real-time events).
+    try {
+      localStorage.setItem(`mimiclaw:sendTs:${currentSessionKey}`, String(nowMs));
+    } catch { /* ignore quota errors */ }
 
     const { sessionLabels, messages } = this.#get();
     const isFirstMessage = !messages.slice(0, -1).some((m) => m.role === 'user');
@@ -528,12 +544,6 @@ export class ChatRuntimeActionImpl {
             if (fm.provider) meta.provider = fm.provider;
             if (fm.performance) meta.performance = fm.performance;
             if (fm.elapsed) meta.elapsed = fm.elapsed;
-            console.log('[handleChatEvent] Usage cache save:', {
-              messageId: preMessageId,
-              hasUsage: !!fm.usage,
-              usage: fm.usage,
-              metaKeys: Object.keys(meta),
-            });
             if (Object.keys(meta).length > 0) {
               saveMessageUsageMeta(preMessageId, meta);
             }

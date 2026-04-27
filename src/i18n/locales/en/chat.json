@@ -53,28 +53,28 @@
     },
     "tokenDetails": {
         "inputTitle": "Input",
-        "outputTitle": "Output",
-        "inputText": "Text",
-        "inputAudio": "Audio",
-        "inputCitation": "Citation",
-        "inputCached": "Cached",
+        "outputTitle": "Output Details",
+        "inputText": "Text Input",
+        "inputAudio": "Audio Input",
+        "inputCitation": "Citation Input",
+        "inputCached": "Cached Input",
         "inputWriteCached": "Write Cache",
-        "inputUncached": "Input",
-        "inputTool": "Tool",
+        "inputUncached": "Uncached Input",
+        "inputTool": "Tool Input",
         "reasoning": "Reasoning",
-        "outputText": "Text",
-        "outputImage": "Image",
-        "outputAudio": "Audio",
+        "outputText": "Text Output",
+        "outputImage": "Image Output",
+        "outputAudio": "Audio Output",
         "output": "Output",
         "total": "Total",
         "speed": {
             "tps": {
-                "title": "Speed",
-                "tooltip": "Tokens generated per second"
+                "title": "TPS",
+                "tooltip": "Tokens Per Second"
             },
             "ttft": {
-                "title": "First Token",
-                "tooltip": "Time to receive the first token"
+                "title": "TTFT",
+                "tooltip": "Time To First Token"
             }
         }
     }

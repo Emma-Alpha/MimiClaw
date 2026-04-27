@@ -982,6 +982,10 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 						};
 						if (item.model) target.model = item.model;
 						if (item.durationMs) target.elapsed = item.durationMs;
+						const perf: Record<string, number> = {};
+						if (item.tps != null && item.tps > 0) perf.tps = item.tps;
+						if (item.ttftMs != null && item.ttftMs > 0) perf.ttft = item.ttftMs;
+						if (Object.keys(perf).length > 0) target.performance = perf;
 						break;
 					}
 				}

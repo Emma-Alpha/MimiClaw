@@ -874,18 +874,75 @@ function getMessageUsageMeta(messageId: string): UsageMeta | undefined {
   return _usageCache.get(messageId);
 }
 
+/**
+ * Compute elapsed time and TPS for assistant messages from timestamps.
+ * Uses a locally persisted send timestamp when available, falling back
+ * to the preceding user message timestamp from gateway history.
+ */
+function enrichWithComputedPerformance(messages: RawMessage[], sessionKey?: string): RawMessage[] {
+  let localSendTs: number | undefined;
+  if (sessionKey) {
+    try {
+      const raw = localStorage.getItem(`mimiclaw:sendTs:${sessionKey}`);
+      if (raw) {
+        const n = Number(raw);
+        if (Number.isFinite(n) && n > 0) localSendTs = n;
+      }
+    } catch { /* ignore */ }
+  }
+
+  return messages.map((msg, idx) => {
+    try {
+      if (msg.role !== 'assistant') return msg;
+      const m = msg as unknown as Record<string, unknown>;
+      if (m.elapsed && m.performance) return msg;
+
+      let userTs: number | undefined;
+      for (let i = idx - 1; i >= 0; i--) {
+        if (messages[i].role === 'user' && messages[i].timestamp) {
+          userTs = toMs(messages[i].timestamp!);
+          break;
+        }
+      }
+
+      const isLastAssistant = !messages.slice(idx + 1).some((x) => x.role === 'assistant');
+      const sendTs = (isLastAssistant && localSendTs) ? localSendTs : userTs;
+      if (!sendTs || !msg.timestamp) return msg;
+
+      const elapsed = toMs(msg.timestamp) - sendTs;
+      if (!Number.isFinite(elapsed) || elapsed <= 0) return msg;
+
+      const extras: Record<string, unknown> = {};
+      if (!m.elapsed) extras.elapsed = elapsed;
+
+      if (!m.performance) {
+        const usage = m.usage as Record<string, unknown> | undefined;
+        if (usage && typeof usage === 'object') {
+          const outputTokens = (
+            usage.output_tokens ?? usage.outputTokens ??
+            usage.output ?? usage.completionTokens ??
+            usage.total_output_tokens ?? usage.totalOutputTokens
+          ) as number | undefined;
+          if (typeof outputTokens === 'number' && outputTokens > 0 && elapsed > 0) {
+            extras.performance = { tps: outputTokens / (elapsed / 1000) };
+          }
+        }
+      }
+
+      if (Object.keys(extras).length === 0) return msg;
+      return { ...msg, ...extras } as RawMessage;
+    } catch {
+      return msg;
+    }
+  });
+}
+
 /** Merge cached usage metadata into messages that are missing it */
 function enrichWithCachedUsage(messages: RawMessage[]): RawMessage[] {
-  console.log('[enrichWithCachedUsage] cache size:', _usageCache.size, 'cache keys:', [..._usageCache.keys()]);
   return messages.map((msg) => {
     if (!msg.id) return msg;
     const cached = _usageCache.get(msg.id);
-    if (!cached) {
-      if (msg.role === 'assistant') {
-        console.log('[enrichWithCachedUsage] MISS for assistant msg:', msg.id, 'hasUsage:', !!(msg as unknown as Record<string, unknown>).usage);
-      }
-      return msg;
-    }
+    if (!cached) return msg;
     const m = msg as unknown as Record<string, unknown>;
     const extras: Record<string, unknown> = {};
     if (cached.usage && !m.usage) extras.usage = cached.usage;
@@ -928,4 +985,5 @@ export {
   saveMessageUsageMeta,
   getMessageUsageMeta,
   enrichWithCachedUsage,
+  enrichWithComputedPerformance,
 };

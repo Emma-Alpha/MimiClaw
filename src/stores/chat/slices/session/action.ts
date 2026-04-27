@@ -4,6 +4,7 @@ import {
   clearHistoryPoll,
   enrichWithCachedImages,
   enrichWithCachedUsage,
+  enrichWithComputedPerformance,
   enrichWithToolResultFiles,
   getCanonicalPrefixFromSessions,
   getMessageText,
@@ -327,7 +328,11 @@ export class ChatSessionActionImpl {
       // that the gateway's chat.history doesn't include.
       const withUsage = enrichWithCachedUsage(enrichedMessages);
 
-      let finalMessages = withUsage;
+      // Compute elapsed/TPS from timestamps for messages that don't have them.
+      // This handles the polling path where handleChatEvent never runs.
+      const withPerformance = enrichWithComputedPerformance(withUsage, currentSessionKey);
+
+      let finalMessages = withPerformance;
       const userMsgAt = this.#get().lastUserMessageAt;
       if (this.#get().sending && userMsgAt) {
         const userMsMs = toMs(userMsgAt);
@@ -422,11 +427,11 @@ export class ChatSessionActionImpl {
         const data = result.result;
         let rawMessages = Array.isArray(data.messages) ? data.messages as RawMessage[] : [];
         const thinkingLevel = data.thinkingLevel ? String(data.thinkingLevel) : null;
-        // Debug: check if gateway returns usage in messages
-        const lastAssistant = [...rawMessages].reverse().find((m) => m.role === 'assistant');
-        if (lastAssistant) {
-          const m = lastAssistant as unknown as Record<string, unknown>;
-          console.log('[loadHistory] last assistant msg keys:', Object.keys(m), 'hasUsage:', !!m.usage, 'id:', m.id);
+        // Check if gateway returns usage data with messages
+        const lastAssist = [...rawMessages].reverse().find((m) => m.role === 'assistant');
+        if (lastAssist) {
+          const la = lastAssist as unknown as Record<string, unknown>;
+          console.log('[loadHistory] assistant msg keys:', Object.keys(la), 'hasUsage:', !!la.usage, 'hasModel:', !!la.model);
         }
         if (rawMessages.length === 0 && isCronSessionKey(currentSessionKey)) {
           rawMessages = await loadCronFallbackMessages(currentSessionKey, 200);

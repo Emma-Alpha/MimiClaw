@@ -54,29 +54,29 @@
         "older": "一个月之前"
     },
     "tokenDetails": {
-        "inputTitle": "输入",
-        "outputTitle": "输出",
-        "inputText": "文本",
-        "inputAudio": "音频",
-        "inputCitation": "引用",
-        "inputCached": "缓存命中",
+        "inputTitle": "输入明细",
+        "outputTitle": "输出明细",
+        "inputText": "文本输入",
+        "inputAudio": "音频输入",
+        "inputCitation": "引用输入",
+        "inputCached": "缓存输入",
         "inputWriteCached": "写入缓存",
-        "inputUncached": "输入",
-        "inputTool": "工具",
-        "reasoning": "推理",
-        "outputText": "文本",
-        "outputImage": "图像",
-        "outputAudio": "音频",
+        "inputUncached": "未缓存输入",
+        "inputTool": "工具输入",
+        "reasoning": "深度思考",
+        "outputText": "文本输出",
+        "outputImage": "图像输出",
+        "outputAudio": "音频输出",
         "output": "输出",
-        "total": "合计",
+        "total": "总消耗",
         "speed": {
             "tps": {
-                "title": "生成速度",
-                "tooltip": "每秒生成的 Token 数"
+                "title": "TPS",
+                "tooltip": "每秒生成的 Token 数（Tokens Per Second）"
             },
             "ttft": {
-                "title": "首 Token 延迟",
-                "tooltip": "收到第一个 Token 所需的时间"
+                "title": "TTFT",
+                "tooltip": "首 Token 延迟（Time To First Token）"
             }
         }
     }
