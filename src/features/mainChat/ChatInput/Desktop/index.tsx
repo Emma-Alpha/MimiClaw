@@ -15,6 +15,7 @@ import { fileChatSelectors, useFileStore } from '@/stores/file';
 
 const useStyles = createStyles(({ css, cssVar }) => ({
   container: css`
+    box-sizing: border-box;
     width: 100%;
     max-width: calc(var(--chat-window-content-width, 800px) + (var(--chat-window-side-gap, 16px) * 2));
     margin: 0 auto;
