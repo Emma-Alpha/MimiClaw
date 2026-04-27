@@ -200,6 +200,7 @@ type TitleBarProps = {
 	hideManagementMenu?: boolean;
 	hideSidebarToggle?: boolean;
 	rightContent?: ReactNode;
+	sidebarWidth?: number;
 };
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -290,6 +291,7 @@ export function TitleBar({
 	hideManagementMenu = false,
 	hideSidebarToggle = false,
 	rightContent,
+	sidebarWidth = 0,
 }: TitleBarProps) {
 	const { styles, cx } = useStyles();
 	const platform = window.electron?.platform;
@@ -346,21 +348,17 @@ export function TitleBar({
 		top: `${TITLEBAR_CONTROL_TOP}px`,
 	} as const;
 
+	const titleBarTransitionStyle = {
+		transition: 'left 0.25s cubic-bezier(0.25, 0.1, 0.25, 1)',
+	};
+
 	if (platform === "darwin") {
 		return (
 			<>
 				<div
 					className={cx(styles.macTitleBar, className)}
-					style={{ WebkitAppRegion: 'drag', ...style } as any}
+					style={{ WebkitAppRegion: 'drag', left: sidebarWidth, ...titleBarTransitionStyle, ...style } as any}
 				>
-					{hideSidebarToggle || sidebarCollapsed ? null : (
-						<div
-							className={styles.macSidebarToggleArea}
-							style={macSidebarToggleAreaStyle as React.CSSProperties}
-						>
-							{sidebarToggleControl}
-						</div>
-					)}
 					<div
 						className={styles.macRightArea}
 						style={macRightAreaStyle as React.CSSProperties}
@@ -369,9 +367,9 @@ export function TitleBar({
 						{hideManagementMenu ? null : <ManagementMenu />}
 					</div>
 				</div>
-				{hideSidebarToggle || !sidebarCollapsed ? null : (
+				{hideSidebarToggle ? null : (
 					<div
-						className={styles.macFloatingSidebarToggle}
+						className={sidebarCollapsed ? styles.macFloatingSidebarToggle : styles.macSidebarToggleArea}
 						style={macSidebarToggleAreaStyle as React.CSSProperties}
 					>
 						{sidebarToggleControl}
@@ -383,7 +381,16 @@ export function TitleBar({
 
 	if (platform !== "win32") {
 		return (
-			<div className={cx(styles.linuxTitleBar, className)} style={style}>
+			<>
+				<div className={cx(styles.linuxTitleBar, className)} style={{ left: sidebarWidth, ...titleBarTransitionStyle, ...style }}>
+					<div
+						className={styles.linuxRightArea}
+						style={{ WebkitAppRegion: 'no-drag' } as any}
+					>
+						{rightContent}
+						{hideManagementMenu ? null : <ManagementMenu />}
+					</div>
+				</div>
 				{hideSidebarToggle ? null : (
 					<div
 						className={styles.linuxSidebarToggleArea}
@@ -392,14 +399,7 @@ export function TitleBar({
 						{sidebarToggleControl}
 					</div>
 				)}
-				<div
-					className={styles.linuxRightArea}
-					style={{ WebkitAppRegion: 'no-drag' } as any}
-				>
-					{rightContent}
-					{hideManagementMenu ? null : <ManagementMenu />}
-				</div>
-			</div>
+			</>
 		);
 	}
 
@@ -412,6 +412,7 @@ export function TitleBar({
 			hideManagementMenu={hideManagementMenu}
 			hideSidebarToggle={hideSidebarToggle}
 			rightContent={rightContent}
+			sidebarWidth={sidebarWidth}
 		/>
 	);
 }
@@ -424,12 +425,14 @@ function WindowsTitleBar({
 	hideManagementMenu,
 	hideSidebarToggle,
 	rightContent,
+	sidebarWidth = 0,
 }: TitleBarProps & {
 	sidebarCollapsed: boolean;
 	onToggleSidebar: () => void;
 	sidebarToggleAriaLabel: string;
 	hideManagementMenu: boolean;
 	hideSidebarToggle?: boolean;
+	sidebarWidth?: number;
 }) {
 	const { styles, cx } = useStyles();
 	const [maximized, setMaximized] = useState(false);
@@ -461,7 +464,7 @@ function WindowsTitleBar({
 			className={cx(styles.winTitleBar, className)}
 			style={{ WebkitAppRegion: 'drag' } as any}
 		>
-			<div className={styles.winLeft} style={{ WebkitAppRegion: 'no-drag' } as any}>
+			<div className={styles.winLeft} style={{ WebkitAppRegion: 'no-drag', paddingLeft: sidebarWidth, transition: 'padding-left 0.25s cubic-bezier(0.25, 0.1, 0.25, 1)' } as any}>
 				{hideSidebarToggle ? null : (
 					<SidebarToggleButton
 						sidebarCollapsed={sidebarCollapsed}

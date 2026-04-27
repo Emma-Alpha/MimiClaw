@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { createStyles } from 'antd-style';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useChatHeaderInsets } from '@/lib/titlebar-safe-area';
 import { clampSidebarWidth } from '@/lib/sidebar-layout';
 import { useSettingsStore } from '@/stores/settings';
@@ -100,6 +101,11 @@ const useStyles = createStyles(({ token, css }) => ({
     overflow: hidden;
     position: relative;
     background: ${token.colorBgContainer};
+    transition: border-radius 0.25s ease;
+  `,
+  mainWithSidebar: css`
+    border-start-start-radius: 16px;
+    border-end-start-radius: 16px;
   `,
   mainCodexChrome: css`
     background: var(--mimi-sidebar-main-surface, ${token.colorBgContainer});
@@ -120,6 +126,8 @@ const useStyles = createStyles(({ token, css }) => ({
 }));
 
 const FULL_BLEED_PATHS = new Set(['/chat/jizhi']);
+
+const sidebarTransition = { duration: 0.25, ease: [0.25, 0.1, 0.25, 1] as const };
 
 export function MainLayout() {
   const { styles, cx } = useStyles();
@@ -252,35 +260,49 @@ export function MainLayout() {
       <TitleBar
         hideManagementMenu={hideTitleBarManagementMenu}
         hideSidebarToggle={usesInlineCollapsedSidebarToggle && sidebarCollapsed}
+        sidebarWidth={sidebarCollapsed ? 0 : sidebarWidth}
       />
       <div className={cx(styles.body, translucentSidebar && styles.bodyTranslucent)}>
-        {!sidebarCollapsed && (
-          <>
-            <div className={styles.sidebarPane} style={{ width: sidebarWidth }}>
-              <Sidebar />
-            </div>
-            <div
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="Resize sidebar"
-              className={cx(styles.sidebarResizer, sidebarResizing && styles.sidebarResizerActive)}
-              onPointerDown={handleSidebarResizeStart}
-              onPointerMove={handleSidebarResizeMove}
-              onPointerUp={handleSidebarResizeEnd}
-              onPointerCancel={handleSidebarResizeEnd}
+        <AnimatePresence initial={false}>
+          {!sidebarCollapsed && (
+            <motion.div
+              key="sidebar-pane"
+              className={styles.sidebarPane}
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: sidebarWidth, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={sidebarTransition}
+              style={{ overflow: 'hidden' }}
             >
-              <div
-                className={cx(
-                  styles.sidebarResizerLine,
-                  sidebarResizing && styles.sidebarResizerLineVisible,
-                )}
-              />
-            </div>
-          </>
+              <div style={{ width: sidebarWidth, minWidth: sidebarWidth, height: '100%' }}>
+                <Sidebar />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {!sidebarCollapsed && (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize sidebar"
+            className={cx(styles.sidebarResizer, sidebarResizing && styles.sidebarResizerActive)}
+            onPointerDown={handleSidebarResizeStart}
+            onPointerMove={handleSidebarResizeMove}
+            onPointerUp={handleSidebarResizeEnd}
+            onPointerCancel={handleSidebarResizeEnd}
+          >
+            <div
+              className={cx(
+                styles.sidebarResizerLine,
+                sidebarResizing && styles.sidebarResizerLineVisible,
+              )}
+            />
+          </div>
         )}
         <main
           className={cx(
             styles.main,
+            !sidebarCollapsed && styles.mainWithSidebar,
             fullBleed && styles.mainFullBleed,
           )}
           style={contentSafeAreaStyle}
