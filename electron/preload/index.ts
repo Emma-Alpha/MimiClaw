@@ -159,6 +159,9 @@ const electronAPI = {
         'media:saveImage',
         // Chat send with media (reads staged files in main process)
         'chat:sendWithMedia',
+        // Direct chat (AI API calls from main process)
+        'chat:send',
+        'chat:abort',
         // Session management
         'session:delete',
         // OpenClaw extras
@@ -192,6 +195,7 @@ const electronAPI = {
         'gateway:notification',
         'gateway:channel-status',
         'gateway:chat-message',
+        'chat:stream-event',
         'channel:whatsapp-qr',
         'channel:whatsapp-success',
         'channel:whatsapp-error',
@@ -268,6 +272,7 @@ const electronAPI = {
         'gateway:notification',
         'gateway:channel-status',
         'gateway:chat-message',
+        'chat:stream-event',
         'channel:whatsapp-qr',
         'channel:whatsapp-success',
         'channel:whatsapp-error',

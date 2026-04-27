@@ -8,7 +8,16 @@ import type { Server } from 'node:http';
 import { join, resolve } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import { CodeAgentManager } from '../code-agent/manager';
-import { GatewayManager } from '../gateway/manager';
+// GatewayManager removed — using stub for compatibility
+class GatewayManager {
+  on(_event: string, _handler: (...args: unknown[]) => void) { return this; }
+  async start() {}
+  async stop() {}
+  async restart() {}
+  async rpc(_method: string, _params?: unknown) { return {}; }
+  debouncedRestart() {}
+  debouncedReload() {}
+}
 import { registerIpcHandlers } from './ipc-handlers';
 import {
   createTray,
@@ -29,9 +38,13 @@ import { logger } from '../utils/logger';
 import { warmupNetworkOptimization } from '../utils/uv-env';
 import { initTelemetry } from '../utils/telemetry';
 
-import { SkillsCliRunner } from '../gateway/skills-cli';
-import { ensureMimiClawContext, repairMimiClawOnlyBootstrapFiles } from '../utils/openclaw-workspace';
-import { autoInstallCliIfNeeded, generateCompletionCache, installCompletionToProfile } from '../utils/openclaw-cli';
+// OpenClaw utilities removed — using stubs
+class SkillsCliRunner {}
+const ensureMimiClawContext = async () => {};
+const repairMimiClawOnlyBootstrapFiles = async () => {};
+const autoInstallCliIfNeeded = async () => {};
+const generateCompletionCache = async () => {};
+const installCompletionToProfile = async () => {};
 import { isInstallingUpdate, isQuitting, setInstallingUpdate, setQuitting } from './app-state';
 import { applyProxySettings } from './proxy';
 import { syncLaunchAtStartupSettingFromStore } from './launch-at-startup';
@@ -54,15 +67,18 @@ import { createSignalQuitHandler } from './signal-quit';
 import { acquireProcessInstanceFileLock } from './process-instance-lock';
 import { getSetting } from '../utils/store';
 import { setSetting } from '../utils/store';
-import { ensureBuiltinSkillsInstalled, ensurePreinstalledSkillsInstalled } from '../utils/skill-config';
-import { ensureAllBundledPluginsInstalled } from '../utils/plugin-install';
-import { isOpenClawPresent } from '../utils/paths';
+// Skills/plugins/OpenClaw presence checks removed — using stubs
+const ensureBuiltinSkillsInstalled = async () => {};
+const ensurePreinstalledSkillsInstalled = async () => {};
+const ensureAllBundledPluginsInstalled = async () => {};
+const isOpenClawPresent = () => false;
 import { startHostApiServer } from '../api/server';
 import { HostEventBus } from '../api/event-bus';
 import { deviceOAuthManager } from '../utils/device-oauth';
 import { browserOAuthManager } from '../utils/browser-oauth';
 import { whatsAppLoginManager } from '../utils/whatsapp-login';
-import { syncAllProviderAuthToRuntime } from '../services/providers/provider-runtime-sync';
+// Provider runtime sync removed — OpenClaw no longer exists
+const syncAllProviderAuthToRuntime = async () => {};
 import { completeXiaojiuAuthCallback } from '../utils/xiaojiu-auth';
 import type { CloudSession } from '../../shared/cloud-auth';
 import { isBenignDevWindowLoadRejection, loadWindowRoute, type WindowLoadRoute } from './window-loader';

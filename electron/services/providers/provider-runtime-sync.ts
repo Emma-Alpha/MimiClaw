@@ -1,4 +1,8 @@
-import type { GatewayManager } from '../../gateway/manager';
+// GatewayManager type stub — gateway removed
+type GatewayManager = {
+  debouncedRestart: () => void;
+  debouncedReload: () => void;
+};
 import { getProviderAccount, listProviderAccounts } from './provider-store';
 import { getProviderSecret } from '../secrets/secret-store';
 import type { ProviderConfig } from '../../utils/secure-storage';

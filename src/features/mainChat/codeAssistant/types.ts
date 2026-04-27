@@ -1,7 +1,7 @@
 import type { Descendant } from "slate";
 import type { RawMessage } from "@/stores/chat";
 import type { CodeAgentRunStatus } from "../../../../shared/code-agent";
-export type { CodeAgentTimelineItem } from "@/stores/code-agent";
+export type { CodeAgentTimelineItem } from "@/stores/chat";
 
 export type CodeChatTarget = "chat" | "code";
 

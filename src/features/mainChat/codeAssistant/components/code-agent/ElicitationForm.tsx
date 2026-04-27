@@ -7,7 +7,7 @@
 import { createStyles } from "antd-style";
 import { X } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { PendingElicitation } from "@/stores/code-agent";
+import type { PendingElicitation } from "@/stores/chat";
 
 interface Props {
 	elicitation: PendingElicitation;

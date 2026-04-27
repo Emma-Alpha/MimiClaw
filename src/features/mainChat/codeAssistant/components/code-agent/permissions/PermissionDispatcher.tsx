@@ -1,4 +1,4 @@
-import type { PendingPermission } from "@/stores/code-agent";
+import type { PendingPermission } from "@/stores/chat";
 import type { PermissionDecision } from "./PermissionCardShell";
 import { BashPermissionCard } from "./BashPermissionCard";
 import { FileEditPermissionCard } from "./FileEditPermissionCard";

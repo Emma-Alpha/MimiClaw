@@ -13,9 +13,6 @@ import {
 	Copy,
 	Ellipsis,
 	Cpu,
-	Blocks,
-	Puzzle,
-	Clock,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { createStyles } from "antd-style";
@@ -238,21 +235,6 @@ function ManagementMenu({
 				to: "/models",
 				label: t("sidebar.models"),
 				icon: <Cpu style={{ width: 15, height: 15 }} strokeWidth={2} />,
-			},
-			{
-				to: "/plugins",
-				label: t("sidebar.plugins"),
-				icon: <Blocks style={{ width: 15, height: 15 }} strokeWidth={2} />,
-			},
-			{
-				to: "/skills",
-				label: t("sidebar.skills"),
-				icon: <Puzzle style={{ width: 15, height: 15 }} strokeWidth={2} />,
-			},
-			{
-				to: "/cron",
-				label: t("sidebar.cronTasks"),
-				icon: <Clock style={{ width: 15, height: 15 }} strokeWidth={2} />,
 			},
 		],
 		[t],

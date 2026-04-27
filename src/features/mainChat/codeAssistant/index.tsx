@@ -41,16 +41,14 @@ import {
 	type ProjectMentionEntry,
 } from "@/lib/code-agent";
 import { invokeIpc } from "@/lib/api-client";
-import { useCodeAgentStore, type StreamingToolUse } from "@/stores/code-agent";
+import { useChatStore, type StreamingToolUse } from "@/stores/chat";
 import {
 	extractComposerPathsFromTransfer,
 	type ComposerPath,
 } from "@/lib/unified-composer";
 import i18n from "@/i18n";
 import type { RawMessage } from "@/stores/chat";
-import { useGatewayStore } from "@/stores/gateway";
 import { useSettingsStore } from "@/stores/settings";
-import { useSkillsStore } from "@/stores/skills";
 import { toast } from "sonner";
 import type {
 	CodeAgentStatus,
@@ -133,10 +131,6 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 	const language = useSettingsStore((state) => state.language);
 	const codeAgentConfig = useSettingsStore((state) => state.codeAgent);
 	const setCodeAgentConfig = useSettingsStore((state) => state.setCodeAgent);
-	const initGateway = useGatewayStore((state) => state.init);
-	const gatewayStatus = useGatewayStore((state) => state.status);
-	const skills = useSkillsStore((state) => state.skills);
-	const fetchSkills = useSkillsStore((state) => state.fetchSkills);
 
 	const [input, setInput] = useState("");
 	const [attachments, setAttachments] = useState<FileAttachment[]>([]);
@@ -151,29 +145,29 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 	const pendingCompletionActivitiesRef = useRef<ToolActivityItem[]>([]);
 
 	// New SDK-message driven store
-	const pushSdkMessage = useCodeAgentStore((s) => s.pushSdkMessage);
-	const pushUserMessage = useCodeAgentStore((s) => s.pushUserMessage);
-	const resetCodeAgent = useCodeAgentStore((s) => s.reset);
-	const resetCodeAgentStreaming = useCodeAgentStore((s) => s.resetStreaming);
-	const codeAgentItems = useCodeAgentStore((s) => s.items);
-	const codeStreaming = useCodeAgentStore((s) => s.streaming);
-	const codeAgentPendingPermission = useCodeAgentStore(
+	const pushSdkMessage = useChatStore((s) => s.pushSdkMessage);
+	const pushUserMessage = useChatStore((s) => s.pushUserMessage);
+	const resetCodeAgent = useChatStore((s) => s.reset);
+	const resetCodeAgentStreaming = useChatStore((s) => s.resetStreaming);
+	const codeAgentItems = useChatStore((s) => s.items);
+	const codeStreaming = useChatStore((s) => s.streaming);
+	const codeAgentPendingPermission = useChatStore(
 		(s) => s.pendingPermission,
 	);
-	const setCodeAgentPendingPermission = useCodeAgentStore(
+	const setCodeAgentPendingPermission = useChatStore(
 		(s) => s.setPendingPermission,
 	);
-	const resolveCodeAgentPermission = useCodeAgentStore(
+	const resolveCodeAgentPermission = useChatStore(
 		(s) => s.resolvePermission,
 	);
-	const addSessionAllowedTool = useCodeAgentStore((s) => s.addSessionAllowedTool);
-	const pendingElicitation = useCodeAgentStore((s) => s.pendingElicitation);
-	const resolveElicitation = useCodeAgentStore((s) => s.resolveElicitation);
-	const sessionInit = useCodeAgentStore((s) => s.sessionInit);
-	const sessionTitle = useCodeAgentStore((s) => s.sessionTitle);
-	const codeSessionState = useCodeAgentStore((s) => s.sessionState);
-	const contextUsage = useCodeAgentStore((s) => s.contextUsage);
-	const setCodeAgentContextUsage = useCodeAgentStore((s) => s.setContextUsage);
+	const addSessionAllowedTool = useChatStore((s) => s.addSessionAllowedTool);
+	const pendingElicitation = useChatStore((s) => s.pendingElicitation);
+	const resolveElicitation = useChatStore((s) => s.resolveElicitation);
+	const sessionInit = useChatStore((s) => s.sessionInit);
+	const sessionTitle = useChatStore((s) => s.sessionTitle);
+	const codeSessionState = useChatStore((s) => s.sessionState);
+	const contextUsage = useChatStore((s) => s.contextUsage);
+	const setCodeAgentContextUsage = useChatStore((s) => s.setContextUsage);
 	const [codeAgentStatus, setCodeAgentStatus] =
 		useState<CodeAgentStatus | null>(null);
 	const [codeWorkspaceRoot, setCodeWorkspaceRoot] = useState(() =>
@@ -231,11 +225,10 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 	const lastRequestedClaudeSessionRef = useRef("");
 	const lastRequestedNewThreadTokenRef = useRef("");
 	const forceFreshSessionOnNextSubmitRef = useRef(false);
-	const gatewayState = gatewayStatus.state;
-	const isConnecting =
-		gatewayState === "starting" || gatewayState === "reconnecting";
-	const isError = gatewayState === "error";
-	const isReady = gatewayState === "running";
+	// Gateway removed — always ready
+	const isConnecting = false;
+	const isError = false;
+	const isReady = true;
 	const isCodeTurnInProgress =
 		codeSending
 		|| codeRunActive
@@ -251,10 +244,6 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 	}, [branchDropdownOpen]);
 
 
-	useEffect(() => {
-		if (skills.length > 0) return;
-		void fetchSkills();
-	}, [fetchSkills, skills.length]);
 	const resetCodeTimelineState = useCallback(() => {
 		resetCodeAgent();
 		codeActivitiesRef.current = [];
@@ -314,9 +303,6 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		}
 	}, [language]);
 
-	useEffect(() => {
-		void initGateway();
-	}, [initGateway]);
 
 	// Sync initial workspace root + status — re-runs only when codeWorkspaceRoot changes.
 	useEffect(() => {

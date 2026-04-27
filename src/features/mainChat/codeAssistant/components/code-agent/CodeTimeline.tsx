@@ -3,7 +3,7 @@ import type { Descendant } from "slate";
 import { ChatItem } from "@lobehub/ui/chat";
 import { Clock, Coins, File as FileIcon, Folder } from "lucide-react";
 import { ModelIcon } from "@lobehub/icons";
-import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/code-agent";
+import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/chat";
 import { StreamingText } from "./StreamingText";
 import { ThinkingBlock } from "./ThinkingBlock";
 import { ToolUseLine } from "./ToolUseLine";

@@ -1,7 +1,7 @@
 import { createStyles } from "antd-style";
 import { ChevronRight, Terminal } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { StreamingToolUse } from "@/stores/code-agent";
+import type { StreamingToolUse } from "@/stores/chat";
 
 interface Props {
 	tool: StreamingToolUse;

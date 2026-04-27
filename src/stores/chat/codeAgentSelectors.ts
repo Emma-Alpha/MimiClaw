@@ -1,4 +1,4 @@
-import type { CodeAgentStore } from './types';
+import type { CodeAgentStore } from './store';
 
 export const codeAgentSelectors = {
   items: (state: CodeAgentStore) => state.items,

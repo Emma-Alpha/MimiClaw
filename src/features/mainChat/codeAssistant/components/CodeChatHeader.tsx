@@ -20,7 +20,7 @@ import type { CodeAgentStatus } from "../../../../../shared/code-agent";
 import type {
 	SessionInitInfo,
 	CodeAgentContextWindowUsage,
-} from "@/stores/code-agent";
+} from "@/stores/chat";
 import { SearchInput } from "@/components/common/SearchInput";
 import {
 	CHAT_NAV_ICON_SIZE,

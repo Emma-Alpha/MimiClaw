@@ -4,7 +4,6 @@ import { Eraser, Send, Upload } from 'lucide-react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { preferenceSelectors, useSettingsStore } from '@/stores/settings';
-import { useSkillsStore } from '@/stores/skills';
 import { usePasteFile, useUploadFiles } from '@/components/DragUploadZone';
 import { useChatInputContext } from '../ChatInputProvider';
 import { fromEditorMarkdown } from '../hooks/useChatInputEditor';
@@ -126,27 +125,6 @@ export function InputEditor() {
     });
   }, [mentionItems]);
 
-  const skills = useSkillsStore((s) => s.skills);
-
-  const skillSlashOptions = useMemo<ISlashOption[]>(() => {
-    return skills.map((skill) => ({
-      desc: skill.description,
-      key: `skill:${skill.id}`,
-      label: skill.name,
-      metadata: { group: 'skills', icon: skill.icon, skillId: skill.id },
-      onSelect: (activeEditor: IEditor) => {
-        activeEditor.dispatchCommand(INSERT_MENTION_COMMAND, {
-          label: skill.name,
-          metadata: {
-            icon: skill.icon,
-            id: skill.id,
-            kind: 'skill',
-          },
-        });
-      },
-    }));
-  }, [skills]);
-
   const builtinSlashOptions = useMemo<ISlashOption[]>(() => ([
     {
       desc: t('input.slash.send.description', { defaultValue: 'Send current message' }),
@@ -191,8 +169,8 @@ export function InputEditor() {
   }, [builtinSlashOptions, extraSlashItems]);
 
   const slashOptions = useMemo<ISlashOption[]>(
-    () => [...skillSlashOptions, ...commandSlashOptions],
-    [skillSlashOptions, commandSlashOptions],
+    () => commandSlashOptions,
+    [commandSlashOptions],
   );
 
   const handleEditorInit = useCallback((activeEditor: IEditor) => {

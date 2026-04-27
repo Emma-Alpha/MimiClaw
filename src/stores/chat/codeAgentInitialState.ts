@@ -1,4 +1,4 @@
-import type { CodeAgentStore, SpinnerMode, StreamingToolUse, VendorStatusSource } from './types';
+import type { CodeAgentStore, SpinnerMode, StreamingToolUse, VendorStatusSource } from './store';
 
 export function createInitialCodeAgentStreamingState(): CodeAgentStore['streaming'] {
   return {
@@ -10,6 +10,9 @@ export function createInitialCodeAgentStreamingState(): CodeAgentStore['streamin
     vendorStatusText: '',
     vendorStatusSource: null as VendorStatusSource,
     toolUses: new Map<string, StreamingToolUse>(),
+    accumulatedUsage: null,
+    turnStartedAt: 0,
+    firstTokenAt: 0,
   };
 }
 

@@ -12,10 +12,6 @@ import { MainLayout } from "./components/layout/MainLayout";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Models } from "./pages/Models";
 import { UnifiedChatPage } from "./features/chat/pages/UnifiedChatPage";
-import { Plugins } from "./pages/Plugins";
-import { Skills } from "./pages/Skills";
-import { SkillsStorePage } from "./pages/Skills/store";
-import { Cron } from "./pages/Cron";
 import { Settings } from "./pages/Settings";
 import { CodeAgent } from "./pages/CodeAgent";
 import { PetFloating } from "./pages/PetFloating";
@@ -27,8 +23,7 @@ import { MiniChat } from "./pages/MiniChat";
 import { Setup } from "./pages/Setup";
 import { Login } from "./pages/Login";
 import { useSettingsStore } from "./stores/settings";
-import { useGatewayStore } from "./stores/gateway";
-import { applyGatewayTransportPreference, invokeIpc } from "./lib/api-client";
+import { invokeIpc } from "./lib/api-client";
 import { ThemeWrapper } from "./components/theme/ThemeWrapper";
 import { UpdateBootstrap } from "@/components/update/UpdateBootstrap";
 
@@ -121,7 +116,6 @@ function App() {
 	const setupComplete = useSettingsStore((state) => state.setupComplete);
 	const cloudLoggedIn = useSettingsStore((state) => state.cloudLoggedIn);
 	const hydrateCloudAuth = useSettingsStore((state) => state.hydrateCloudAuth);
-	const initGateway = useGatewayStore((state) => state.init);
 	const isPetBubbleRoute = location.pathname.startsWith("/pet-bubble");
 	const isPetRoute =
 		location.pathname === "/pet" || location.pathname.startsWith("/pet/");
@@ -146,27 +140,6 @@ function App() {
 		}
 	}, [language]);
 
-	// Initialize Gateway connection on mount
-	useEffect(() => {
-		if (
-			!isPetRoute &&
-			!isPetBubbleRoute &&
-			!isCodeChatRoute &&
-			!isPetCompanionRoute &&
-			!isVoiceDialogRoute &&
-			!isTrayRuntimeRoute
-		) {
-			initGateway();
-		}
-	}, [
-		initGateway,
-		isCodeChatRoute,
-		isPetCompanionRoute,
-		isPetBubbleRoute,
-		isPetRoute,
-		isTrayRuntimeRoute,
-		isVoiceDialogRoute,
-	]);
 
 	// Gate 1: Must be logged in first in all environments.
 	useEffect(() => {
@@ -277,9 +250,6 @@ function App() {
 		}
 	}, [theme]);
 
-	useEffect(() => {
-		applyGatewayTransportPreference();
-	}, []);
 
 	useEffect(() => {
 		if (
@@ -342,12 +312,6 @@ function App() {
 							<Route path="/chat" element={<Navigate to="/chat/code" replace />} />
 							<Route path="/chat/:kind" element={<UnifiedChatPage />} />
 							<Route path="/models" element={<Models />} />
-							<Route path="/plugins" element={<Plugins />} />
-							<Route path="/agents" element={<Navigate to="/plugins" replace />} />
-							<Route path="/channels" element={<Navigate to="/plugins" replace />} />
-							<Route path="/skills" element={<Skills />} />
-							<Route path="/skills/store" element={<SkillsStorePage />} />
-							<Route path="/cron" element={<Cron />} />
 							<Route path="/code-agent/quick-chat" element={<LegacyCodeQuickChatRedirect />} />
 							<Route path="/code-agent" element={<CodeAgent />} />
 							<Route path="/settings/*" element={<Settings />} />

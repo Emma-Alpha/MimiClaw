@@ -2,7 +2,7 @@ import type { CodeAgentStatus } from "../../../../../shared/code-agent";
 import type {
 	SessionInitInfo,
 	CodeAgentContextWindowUsage,
-} from "@/stores/code-agent";
+} from "@/stores/chat";
 import type { CodeChatTarget } from "../types";
 
 const MAX_SESSION_TITLE_LENGTH = 28;

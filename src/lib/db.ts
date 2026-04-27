@@ -1,16 +1,37 @@
 import Dexie from 'dexie';
 
-// ── Gateway chat metadata (useChatStore path) ────────────────────────────────
+// ── Session ─────────────────────────────────────────────────────────────────
 
-export interface DBMessageMeta {
+export interface DBSession {
+  key: string;
+  label?: string;
+  displayName?: string;
+  thinkingLevel?: string;
+  model?: string;
+  updatedAt: number;
+  createdAt: number;
+}
+
+// ── Message ─────────────────────────────────────────────────────────────────
+
+export interface DBMessage {
   id: string;
   sessionKey: string;
+  role: 'user' | 'assistant' | 'system' | 'toolresult';
+  content: unknown; // string | ContentBlock[]
+  timestamp: number; // ms epoch
+  // Metadata (formerly in separate messageMetadata table)
   usage?: Record<string, unknown>;
-  performance?: { ttft?: number; tps?: number };
   model?: string;
   provider?: string;
+  performance?: { ttft?: number; tps?: number };
   elapsed?: number;
-  createdAt: number;
+  // Message-specific fields
+  toolCallId?: string;
+  toolName?: string;
+  details?: unknown;
+  isError?: boolean;
+  attachedFiles?: string; // JSON-stringified AttachedFileMeta[]
 }
 
 // ── Code Agent usage (useCodeAgentStore path) ────────────────────────────────
@@ -32,7 +53,8 @@ export interface DBCodeAgentSessionPerf {
 // ── Database ─────────────────────────────────────────────────────────────────
 
 class MimiClawDB extends Dexie {
-  messageMetadata!: Dexie.Table<DBMessageMeta, string>;
+  sessions!: Dexie.Table<DBSession, string>;
+  messages!: Dexie.Table<DBMessage, string>;
   codeAgentSessionPerf!: Dexie.Table<DBCodeAgentSessionPerf, string>;
 
   constructor() {
@@ -46,41 +68,106 @@ class MimiClawDB extends Dexie {
       codeAgentUsage: null, // drop old table
       codeAgentSessionPerf: 'sessionId',
     });
+    // v4: add sessions + messages tables, drop old messageMetadata
+    this.version(4).stores({
+      messageMetadata: null, // drop old metadata-only table
+      sessions: 'key, updatedAt, createdAt',
+      messages: 'id, sessionKey, timestamp, [sessionKey+timestamp]',
+      codeAgentSessionPerf: 'sessionId',
+    });
   }
 }
 
 export const db = new MimiClawDB();
 
-// ── Gateway chat helpers ─────────────────────────────────────────────────────
+// ── Session helpers ─────────────────────────────────────────────────────────
 
-export async function saveMessageMeta(
-  id: string,
+export async function saveSession(session: DBSession): Promise<void> {
+  try {
+    await db.sessions.put(session);
+  } catch (err) {
+    console.warn('[db] saveSession failed:', err);
+  }
+}
+
+export async function listSessions(): Promise<DBSession[]> {
+  try {
+    return await db.sessions.orderBy('updatedAt').reverse().toArray();
+  } catch (err) {
+    console.warn('[db] listSessions failed:', err);
+    return [];
+  }
+}
+
+export async function getSession(key: string): Promise<DBSession | undefined> {
+  try {
+    return await db.sessions.get(key);
+  } catch (err) {
+    console.warn('[db] getSession failed:', err);
+    return undefined;
+  }
+}
+
+export async function deleteSession(key: string): Promise<void> {
+  try {
+    await db.transaction('rw', db.sessions, db.messages, async () => {
+      await db.sessions.delete(key);
+      await db.messages.where('sessionKey').equals(key).delete();
+    });
+  } catch (err) {
+    console.warn('[db] deleteSession failed:', err);
+  }
+}
+
+// ── Message helpers ─────────────────────────────────────────────────────────
+
+export async function saveMessage(message: DBMessage): Promise<void> {
+  try {
+    await db.messages.put(message);
+  } catch (err) {
+    console.warn('[db] saveMessage failed:', err);
+  }
+}
+
+export async function saveMessages(messages: DBMessage[]): Promise<void> {
+  try {
+    await db.messages.bulkPut(messages);
+  } catch (err) {
+    console.warn('[db] saveMessages failed:', err);
+  }
+}
+
+export async function getSessionMessages(
   sessionKey: string,
-  meta: Omit<DBMessageMeta, 'id' | 'sessionKey' | 'createdAt'>,
-): Promise<void> {
+  limit?: number,
+): Promise<DBMessage[]> {
   try {
-    await db.messageMetadata.put({ id, sessionKey, ...meta, createdAt: Date.now() });
+    const collection = db.messages
+      .where('[sessionKey+timestamp]')
+      .between([sessionKey, Dexie.minKey], [sessionKey, Dexie.maxKey]);
+    if (limit) {
+      return await collection.limit(limit).toArray();
+    }
+    return await collection.toArray();
   } catch (err) {
-    console.warn('[db] saveMessageMeta failed:', err);
+    console.warn('[db] getSessionMessages failed:', err);
+    return [];
   }
 }
 
-export async function getMessageMetaBulk(
-  ids: string[],
-): Promise<Array<DBMessageMeta | undefined>> {
+export async function deleteMessage(id: string): Promise<void> {
   try {
-    return await db.messageMetadata.bulkGet(ids);
+    await db.messages.delete(id);
   } catch (err) {
-    console.warn('[db] getMessageMetaBulk failed:', err);
-    return ids.map(() => undefined);
+    console.warn('[db] deleteMessage failed:', err);
   }
 }
 
-export async function deleteSessionMeta(sessionKey: string): Promise<void> {
+export async function deleteSessionMessages(sessionKey: string): Promise<void> {
   try {
-    await db.messageMetadata.where('sessionKey').equals(sessionKey).delete();
+    await db.messages.where('sessionKey').equals(sessionKey).delete();
   } catch (err) {
-    console.warn('[db] deleteSessionMeta failed:', err);
+    console.warn('[db] deleteSessionMessages failed:', err);
   }
 }
 
@@ -107,43 +194,5 @@ export async function getCodeAgentSessionPerf(
   } catch (err) {
     console.warn('[db] getCodeAgentSessionPerf failed:', err);
     return undefined;
-  }
-}
-
-// ── Migration ────────────────────────────────────────────────────────────────
-
-export async function migrateFromLocalStorage(): Promise<void> {
-  const LEGACY_KEY = 'mimiclaw:usage-cache';
-  const MIGRATED_FLAG = 'mimiclaw:usage-cache-migrated';
-
-  if (localStorage.getItem(MIGRATED_FLAG)) return;
-
-  try {
-    const raw = localStorage.getItem(LEGACY_KEY);
-    if (!raw) {
-      localStorage.setItem(MIGRATED_FLAG, '1');
-      return;
-    }
-
-    const entries = JSON.parse(raw) as Array<
-      [string, { usage?: Record<string, unknown>; model?: string; provider?: string; performance?: Record<string, unknown>; elapsed?: number }]
-    >;
-
-    const records: DBMessageMeta[] = entries.map(([id, meta]) => ({
-      id,
-      sessionKey: '__migrated__',
-      usage: meta.usage,
-      model: meta.model,
-      provider: meta.provider,
-      performance: meta.performance as DBMessageMeta['performance'],
-      elapsed: meta.elapsed,
-      createdAt: Date.now(),
-    }));
-
-    await db.messageMetadata.bulkPut(records);
-    localStorage.removeItem(LEGACY_KEY);
-    localStorage.setItem(MIGRATED_FLAG, '1');
-  } catch (err) {
-    console.warn('[db] Migration from localStorage failed:', err);
   }
 }

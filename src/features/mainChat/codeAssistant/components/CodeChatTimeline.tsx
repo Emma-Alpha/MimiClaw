@@ -14,7 +14,7 @@ import { useFileReferenceMarkdownProps } from "./file-reference-markdown";
 import { BackBottomButton } from "@/components/common/BackBottomButton";
 import { MessageMarkdown } from "@/components/MessageMarkdown";
 import { UserMessage } from "@/features/mainChat/components/messages/UserMessage";
-import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/code-agent";
+import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/chat";
 import { useSettingsStore } from "@/stores/settings";
 
 type CodeChatTimelineProps = {

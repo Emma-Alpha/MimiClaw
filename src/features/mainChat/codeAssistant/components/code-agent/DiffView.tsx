@@ -2,7 +2,7 @@ import { createStyles } from "antd-style";
 import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { LobePatchDiff } from "@/components/common/LobePatchDiff";
-import type { DiffFile } from "@/stores/code-agent";
+import type { DiffFile } from "@/stores/chat";
 
 interface Props {
 	files: DiffFile[];

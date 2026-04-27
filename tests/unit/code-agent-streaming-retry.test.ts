@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { useCodeAgentStore } from "@/stores/code-agent";
+import { useCodeAgentStore } from "@/stores/chat";
 
 function getAssistantTextItems(): string[] {
 	return useCodeAgentStore

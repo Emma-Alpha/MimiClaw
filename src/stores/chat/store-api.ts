@@ -6,13 +6,3 @@ export type ChatSet = (
 ) => void;
 
 export type ChatGet = () => ChatState;
-
-export type SessionHistoryActions = Pick<
-  ChatState,
-  'loadSessions' | 'switchSession' | 'newSession' | 'deleteSession' | 'cleanupEmptySession' | 'loadHistory'
->;
-
-export type RuntimeActions = Pick<
-  ChatState,
-  'sendMessage' | 'abortRun' | 'handleChatEvent' | 'toggleThinking' | 'refresh' | 'clearError'
->;

@@ -5,19 +5,15 @@ import type { HostApiContext } from './context';
 import { handleAppRoutes } from './routes/app';
 import { handleAuthRoutes } from './routes/auth';
 import { handleCodeAgentRoutes } from './routes/code-agent';
-import { handleGatewayRoutes } from './routes/gateway';
 import { handleSettingsRoutes } from './routes/settings';
 import { handleProviderRoutes } from './routes/providers';
 import { handleAgentRoutes } from './routes/agents';
-import { handleChannelRoutes } from './routes/channels';
 import { handlePluginRoutes } from './routes/plugins';
 import { handleLogRoutes } from './routes/logs';
 import { handleUsageRoutes } from './routes/usage';
-import { handleSkillRoutes } from './routes/skills';
 import { handleFileRoutes } from './routes/files';
 import { handleSpeechRoutes } from './routes/speech';
 import { handleSessionRoutes } from './routes/sessions';
-import { handleCronRoutes } from './routes/cron';
 import { handleLocalExecutorRoutes } from './routes/local-executor';
 import { handleJizhiRoutes } from './routes/jizhi';
 import { handleVoiceChatRoutes } from './routes/voice-chat';
@@ -36,13 +32,10 @@ const routeHandlers: RouteHandler[] = [
   handleAppRoutes,
   handleAuthRoutes,
   handleCodeAgentRoutes,
-  handleGatewayRoutes,
   handleSettingsRoutes,
   handleProviderRoutes,
   handleAgentRoutes,
-  handleChannelRoutes,
   handlePluginRoutes,
-  handleSkillRoutes,
   handleLocalExecutorRoutes,
   handleFileRoutes,
   handleSpeechRoutes,
@@ -51,7 +44,6 @@ const routeHandlers: RouteHandler[] = [
   handleXiaojiuRoutes,
   handleVoiceChatRoutes,
   handleFallbackConfigRoutes,
-  handleCronRoutes,
   handleLogRoutes,
   handleUsageRoutes,
 ];

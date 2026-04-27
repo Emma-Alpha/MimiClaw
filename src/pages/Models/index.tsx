@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AnimatedNumber from '@/components/ui/animated-number';
-import { useGatewayStore } from '@/stores/gateway';
 import { useSettingsStore } from '@/stores/settings';
 import { hostApiFetch } from '@/lib/host-api';
 import { trackUiEvent } from '@/lib/telemetry';
@@ -29,9 +28,8 @@ const USAGE_FETCH_RETRY_DELAY_MS = 1500;
 export function Models() {
   const { t } = useTranslation(['dashboard', 'settings']);
   const { styles } = useModelsStyles();
-  const gatewayStatus = useGatewayStore((state) => state.status);
   const devModeUnlocked = useSettingsStore((state) => state.devModeUnlocked);
-  const isGatewayRunning = gatewayStatus.state === 'running';
+  const isGatewayRunning = true; // Gateway removed — always ready
   const usageFetchMaxAttempts = window.electron.platform === 'win32'
     ? WINDOWS_USAGE_FETCH_MAX_ATTEMPTS
     : DEFAULT_USAGE_FETCH_MAX_ATTEMPTS;
@@ -87,7 +85,7 @@ export function Models() {
     dispatchFetch({ type: 'start' });
     const generation = usageFetchGenerationRef.current + 1;
     usageFetchGenerationRef.current = generation;
-    const restartMarker = `${gatewayStatus.pid ?? 'na'}:${gatewayStatus.connectedAt ?? 'na'}`;
+    const restartMarker = 'local';
     trackUiEvent('models.token_usage_fetch_started', {
       generation,
       restartMarker,
@@ -183,7 +181,7 @@ export function Models() {
         usageFetchTimerRef.current = null;
       }
     };
-  }, [isGatewayRunning, gatewayStatus.connectedAt, gatewayStatus.pid, usageFetchMaxAttempts]);
+  }, [isGatewayRunning, usageFetchMaxAttempts]);
 
   const usageHistory = fetchState.data;
   const visibleUsageHistory = isGatewayRunning ? usageHistory : [];

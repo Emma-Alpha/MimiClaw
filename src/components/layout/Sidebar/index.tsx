@@ -5,13 +5,10 @@
 import { ActionIcon, Flexbox, Text } from "@lobehub/ui";
 import { createStyles, cssVar } from "antd-style";
 import {
-	Blocks,
 	ChevronDown,
 	ChevronRight,
-	Clock,
 	Ellipsis,
 	FolderOpen,
-	Hexagon,
 	Loader2,
 	Plus,
 	Settings as SettingsIcon,
@@ -27,7 +24,7 @@ import {
 	useSettingsStore,
 	type SidebarThreadWorkspace,
 } from "@/stores/settings";
-import { useCodeAgentStore } from "@/stores/code-agent";
+import { useChatStore } from "@/stores/chat";
 import {
 	fetchCodeAgentSessions,
 	fetchWorkspaceAvailability,
@@ -252,8 +249,8 @@ export function Sidebar() {
 	);
 
 	// ── chat store ────────────────────────────────────────────────────────────
-	const codeAgentSessionId = useCodeAgentStore((s) => s.sessionId);
-	const codeAgentSessionState = useCodeAgentStore((s) => s.sessionState);
+	const codeAgentSessionId = useChatStore((s) => s.sessionId);
+	const codeAgentSessionState = useChatStore((s) => s.sessionState);
 
 	// ── router ────────────────────────────────────────────────────────────────
 	const navigate = useNavigate();
@@ -803,32 +800,6 @@ export function Sidebar() {
 				onClick={handleGlobalNewThread}
 			/>
 
-			{/* 技能 */}
-			<NavItem
-				icon={Hexagon}
-				iconSize={CHAT_NAV_ICON_SIZE}
-				title={t("sidebar.skills", { defaultValue: "技能" })}
-				active={pathname === "/skills" || pathname.startsWith("/skills/")}
-				onClick={() => navigate("/skills")}
-			/>
-
-			{/* Agents */}
-			<NavItem
-				icon={Blocks}
-				iconSize={CHAT_NAV_ICON_SIZE}
-				title={t("sidebar.plugins", { defaultValue: "Plugins" })}
-				active={pathname === "/plugins" || pathname.startsWith("/plugins/")}
-				onClick={() => navigate("/plugins")}
-			/>
-
-			{/* 自动化 */}
-			<NavItem
-				icon={Clock}
-				iconSize={CHAT_NAV_ICON_SIZE}
-				title={t("sidebar.cronTasks", { defaultValue: "自动化" })}
-				active={pathname === "/cron"}
-				onClick={() => navigate("/cron")}
-			/>
 		</Flexbox>
 	);
 

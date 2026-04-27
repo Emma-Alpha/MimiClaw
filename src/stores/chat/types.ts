@@ -47,7 +47,7 @@ export interface ChatSession {
   updatedAt?: number;
 }
 
-export interface ToolStatus {
+export interface ChatToolStatus {
   id?: string;
   toolCallId?: string;
   name: string;
@@ -129,7 +129,7 @@ export interface ChatState {
   activeRunId: string | null;
   streamingText: string;
   streamingMessage: unknown | null;
-  streamingTools: ToolStatus[];
+  streamingTools: ChatToolStatus[];
   pendingFinal: boolean;
   lastUserMessageAt: number | null;
   /** True when the last run was aborted by the user — cleared on next sendMessage */

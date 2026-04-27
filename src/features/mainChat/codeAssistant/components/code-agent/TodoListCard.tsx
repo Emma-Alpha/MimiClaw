@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createStyles } from "antd-style";
 import { CircleCheck, Circle, ListTodo, Minimize2, Maximize2 } from "lucide-react";
-import type { StreamingToolUse } from "@/stores/code-agent";
+import type { StreamingToolUse } from "@/stores/chat";
 
 interface TodoItem {
 	content: string;

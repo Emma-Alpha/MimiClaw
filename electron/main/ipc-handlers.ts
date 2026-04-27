@@ -15,7 +15,13 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, extname, basename } from "node:path";
 import crypto from "node:crypto";
-import { GatewayManager } from "../gateway/manager";
+// GatewayManager stub — gateway removed
+type GatewayManager = {
+  rpc: (method: string, params?: unknown, timeout?: number) => Promise<unknown>;
+  debouncedRestart: () => void;
+  debouncedReload: () => void;
+  on: (event: string, handler: (...args: unknown[]) => void) => void;
+};
 import { type ProviderConfig } from "../utils/secure-storage";
 import {
 	getOpenClawStatus,
@@ -986,6 +992,9 @@ export function registerIpcHandlers(
 
 	// Session handlers
 	registerSessionHandlers();
+
+	// Direct chat handlers (AI API calls from main process)
+	registerChatHandlers(mainWindow);
 
 	// App handlers
 	registerAppHandlers();
@@ -3993,6 +4002,37 @@ function registerSessionHandlers(): void {
 			return { success: true };
 		} catch (err) {
 			logger.error(`[session:delete] Unexpected error for ${sessionKey}:`, err);
+			return { success: false, error: String(err) };
+		}
+	});
+}
+
+function registerChatHandlers(mainWindow: BrowserWindow): void {
+	const { getChatAiService } = require("../services/chat") as typeof import("../services/chat");
+	const chatService = getChatAiService();
+	chatService.setMainWindow(mainWindow);
+
+	ipcMain.handle("chat:send", async (_, params: {
+		sessionKey: string;
+		messages: Array<{ role: string; content: unknown; toolCallId?: string; toolName?: string }>;
+		model?: string;
+		providerId?: string;
+		thinkingLevel?: string;
+		maxTokens?: number;
+	}) => {
+		try {
+			const result = await chatService.send(params);
+			return { success: true, result };
+		} catch (err) {
+			return { success: false, error: String(err) };
+		}
+	});
+
+	ipcMain.handle("chat:abort", async (_, params: { runId: string }) => {
+		try {
+			await chatService.abort(params.runId);
+			return { success: true };
+		} catch (err) {
 			return { success: false, error: String(err) };
 		}
 	});

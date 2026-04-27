@@ -7,9 +7,9 @@ import { toUserMessage } from "@/lib/api-client";
 import { getCodeAgentSessionPerf } from "@/lib/db";
 import {
 	deriveContextUsageFromRawMessages,
-	useCodeAgentStore,
+	useChatStore,
 	type CodeAgentContextWindowUsage,
-} from "@/stores/code-agent";
+} from "@/stores/chat";
 import {
 	type HeaderSessionOption,
 	toDisplaySessionTitle,
@@ -110,7 +110,7 @@ export function useCodeChatClaudeSessions({
 				// Match by outputTokens count (stable between live and replay).
 				const cachedPerf = await getCodeAgentSessionPerf(sessionId);
 				if (cachedPerf && cachedPerf.entries.length > 0) {
-					const currentItems = useCodeAgentStore.getState().items;
+					const currentItems = useChatStore.getState().items;
 					// Build lookup: outputTokens → perf entry (use Map to handle duplicates by last occurrence)
 					const perfByTokens = new Map<number, (typeof cachedPerf.entries)[number]>();
 					for (const entry of cachedPerf.entries) {
@@ -125,7 +125,7 @@ export function useCodeChatClaudeSessions({
 						return { ...it, tps: hit.tps, ttftMs: hit.ttftMs, durationMs: it.durationMs ?? hit.durationMs };
 					});
 					if (changed) {
-						useCodeAgentStore.setState({ items: updatedItems });
+						useChatStore.setState({ items: updatedItems });
 					}
 				}
 

@@ -26,7 +26,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useSettingsStore } from '@/stores/settings';
-import { useGatewayStore } from '@/stores/gateway';
+// Gateway store removed — stub for compatibility
+const useGatewayStore = () => ({
+  status: { state: 'running', port: 0, pid: 0, connectedAt: 0 },
+  restart: async () => {},
+});
 import { useUpdateStore } from '@/stores/update';
 import { UpdateSettings } from '@/features/settings/components/UpdateSettings';
 import {

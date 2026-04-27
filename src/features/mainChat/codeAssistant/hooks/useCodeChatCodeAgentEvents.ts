@@ -6,7 +6,7 @@ import {
 } from "react";
 import { invokeIpc } from "@/lib/api-client";
 import { subscribeHostEvent } from "@/lib/host-events";
-import { useCodeAgentStore, type PendingPermission } from "@/stores/code-agent";
+import { useChatStore, type PendingPermission } from "@/stores/chat";
 import type {
 	CodeAgentStatus,
 	CodeAgentPermissionRequest,
@@ -73,7 +73,7 @@ export function useCodeChatCodeAgentEvents({
 			);
 		});
 
-		const appendStreamingText = useCodeAgentStore.getState().appendStreamingText;
+		const appendStreamingText = useChatStore.getState().appendStreamingText;
 		const unsubscribeToken = subscribeHostEvent<{ text: string }>(
 			"code-agent:token",
 			(payload) => {
@@ -133,7 +133,7 @@ export function useCodeChatCodeAgentEvents({
 			"code-agent:permission-request",
 			(payload) => {
 				if (!payload || typeof payload.requestId !== "string") return;
-				const allowed = useCodeAgentStore.getState().sessionAllowedTools;
+				const allowed = useChatStore.getState().sessionAllowedTools;
 				if (allowed.has(payload.toolName.toLowerCase())) {
 					void invokeIpc("code-agent:respond-permission", {
 						requestId: payload.requestId,

@@ -1,5 +1,8 @@
 import { BrowserWindow } from 'electron';
-import type { GatewayManager } from '../gateway/manager';
+// GatewayManager type stub — gateway removed
+type GatewayManager = {
+  on: (event: string, handler: (...args: unknown[]) => void) => void;
+};
 import {
   DEFAULT_PET_ANIMATION,
   PET_IDLE_ANIMATIONS,
