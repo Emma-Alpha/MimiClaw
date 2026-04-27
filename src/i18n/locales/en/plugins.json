@@ -1,10 +1,56 @@
 {
   "title": "Plugins",
-  "notice": "This page currently focuses on two things: installing plugins and surfacing MCP-capable plugins. Broader plugin management can come later.",
-  "descriptionFallback": "No description available",
   "tabs": {
-    "publicMcp": "Public MCP",
-    "openclaw": "OpenClaw Plugins"
+    "discover": "Discover",
+    "installed": "Installed",
+    "marketplaces": "Marketplaces"
+  },
+  "discover": {
+    "recommendedMcp": "Recommended MCP",
+    "marketplacePlugins": "Marketplace Plugins",
+    "marketplacePluginsDescription": "Browse available plugins from registered marketplaces.",
+    "noMarketplaces": "No marketplace sources added yet. Go to the Marketplaces tab to add one.",
+    "fetchingCatalog": "Loading marketplace catalog…",
+    "fetchFailed": "Failed to load marketplace catalog",
+    "noPlugins": "No plugins available in this marketplace",
+    "allCategories": "All",
+    "searchPlaceholder": "Search plugins…",
+    "enable": "Enable",
+    "enabled": "Enabled",
+    "viewHomepage": "Homepage"
+  },
+  "installed": {
+    "title": "Installed Plugins",
+    "description": "Manage enabledPlugins in Claude Code settings.json.",
+    "empty": "No plugins installed yet",
+    "pluginKey": "Key",
+    "marketplace": "Source",
+    "disable": "Disable",
+    "enable": "Enable",
+    "uninstall": "Uninstall"
+  },
+  "marketplaces": {
+    "title": "Marketplace Sources",
+    "description": "Add remote marketplace.json URLs. The Discover tab will automatically fetch their catalogs.",
+    "empty": "No marketplace sources yet. Click the button below to add one.",
+    "addSource": "Add Marketplace",
+    "remove": "Remove",
+    "sourceType": "Type",
+    "catalogUrl": "Catalog URL",
+    "addDialog": {
+      "title": "Add Marketplace Source",
+      "nameLabel": "Name",
+      "namePlaceholder": "e.g. my-plugins",
+      "sourceTypeLabel": "Source type",
+      "urlLabel": "URL",
+      "urlPlaceholder": "e.g. https://example.com/marketplace.json",
+      "repoLabel": "GitHub Repo",
+      "repoPlaceholder": "e.g. owner/repo",
+      "catalogUrlLabel": "Catalog URL (optional)",
+      "catalogUrlPlaceholder": "Remote marketplace.json URL",
+      "cancel": "Cancel",
+      "confirm": "Add"
+    }
   },
   "publicMcp": {
     "title": "Public MCP Integrations",
@@ -58,49 +104,29 @@
     }
   },
   "actions": {
-    "install": "Install",
-    "installing": "Installing",
-    "openExtensionsFolder": "Open Plugins Folder",
-    "openFolder": "Open Folder",
-    "refresh": "Refresh",
-    "copyMcpTemplate": "Copy MCP Template"
-  },
-  "section": {
-    "catalog": {
-      "title": "Plugin Install",
-      "description": "Browse the OpenClaw plugins currently supported by MimiClaw and install them directly."
-    },
-    "mcp": {
-      "title": "MCP Plugins",
-      "description": "Quickly review plugins that expose MCP capabilities."
-    }
-  },
-  "status": {
-    "available": "Available",
-    "enabled": "Enabled",
-    "installed": "Installed"
-  },
-  "source": {
-    "bundled": "Bundled",
-    "detected": "Detected",
-    "npm": "NPM",
-    "path": "Local Path"
+    "refresh": "Refresh"
   },
   "badge": {
-    "mcp": "MCP"
-  },
-  "empty": {
-    "catalog": "No plugins to show yet",
-    "mcp": "No MCP plugins found"
+    "mcp": "MCP",
+    "skills": "Skills",
+    "hooks": "Hooks",
+    "agents": "Agents",
+    "lsp": "LSP",
+    "monitors": "Monitors"
   },
   "toast": {
-    "failedOpenFolder": "Failed to open plugin folder: {{error}}",
-    "failedRefresh": "Failed to refresh plugin list",
-    "installFailed": "Failed to install {{name}}: {{error}}",
-    "installed": "{{name}} installed",
+    "failedRefresh": "Refresh failed",
+    "pluginEnabled": "Enabled {{key}}",
+    "pluginDisabled": "Disabled {{key}}",
+    "pluginRemoved": "Uninstalled {{key}}",
+    "toggleFailed": "Toggle failed: {{error}}",
+    "removeFailed": "Uninstall failed: {{error}}",
+    "marketplaceAdded": "Added marketplace {{name}}",
+    "marketplaceRemoved": "Removed marketplace {{name}}",
+    "marketplaceAddFailed": "Failed to add marketplace: {{error}}",
+    "marketplaceRemoveFailed": "Failed to remove marketplace: {{error}}",
     "copiedTemplate": "MCP template copied",
     "failedCopyTemplate": "Failed to copy MCP template: {{error}}",
-    "connectedByCopy": "One-click setup complete: template copied, paste it as instructed",
     "clipboardMcpInvalid": "No valid MCP config found in clipboard. Please click Copy MCP config first.",
     "connectedReady": "Connected: {{server}} was written to {{filePath}}",
     "connectedFailed": "One-click setup failed: {{error}}"

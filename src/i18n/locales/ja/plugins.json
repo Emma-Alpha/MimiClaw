@@ -1,10 +1,56 @@
 {
   "title": "Plugins",
-  "notice": "このページでは当面、プラグインのインストールと MCP 対応プラグインの確認に絞っています。より広い管理機能は後続で追加します。",
-  "descriptionFallback": "説明はまだありません",
   "tabs": {
-    "publicMcp": "Public MCP",
-    "openclaw": "OpenClaw プラグイン"
+    "discover": "探す",
+    "installed": "インストール済み",
+    "marketplaces": "マーケットプレイス"
+  },
+  "discover": {
+    "recommendedMcp": "おすすめ MCP",
+    "marketplacePlugins": "マーケットプレイス プラグイン",
+    "marketplacePluginsDescription": "登録済みマーケットプレイスのプラグインを閲覧します。",
+    "noMarketplaces": "マーケットプレイスが未登録です。「マーケットプレイス」タブから追加してください。",
+    "fetchingCatalog": "マーケットプレイスカタログを読み込み中…",
+    "fetchFailed": "マーケットプレイスカタログの読み込みに失敗しました",
+    "noPlugins": "このマーケットプレイスにはまだプラグインがありません",
+    "allCategories": "すべて",
+    "searchPlaceholder": "プラグインを検索…",
+    "enable": "有効化",
+    "enabled": "有効",
+    "viewHomepage": "ホームページ"
+  },
+  "installed": {
+    "title": "インストール済みプラグイン",
+    "description": "Claude Code settings.json の enabledPlugins を管理します。",
+    "empty": "インストール済みのプラグインはまだありません",
+    "pluginKey": "キー",
+    "marketplace": "ソース",
+    "disable": "無効化",
+    "enable": "有効化",
+    "uninstall": "アンインストール"
+  },
+  "marketplaces": {
+    "title": "マーケットプレイスソース管理",
+    "description": "リモートの marketplace.json URL を追加すると、「探す」タブが自動的にカタログを取得します。",
+    "empty": "マーケットプレイスソースがまだありません。下のボタンから追加してください。",
+    "addSource": "マーケットプレイスを追加",
+    "remove": "削除",
+    "sourceType": "タイプ",
+    "catalogUrl": "カタログ URL",
+    "addDialog": {
+      "title": "マーケットプレイスソースを追加",
+      "nameLabel": "名前",
+      "namePlaceholder": "例: my-plugins",
+      "sourceTypeLabel": "ソースタイプ",
+      "urlLabel": "URL",
+      "urlPlaceholder": "例: https://example.com/marketplace.json",
+      "repoLabel": "GitHub リポジトリ",
+      "repoPlaceholder": "例: owner/repo",
+      "catalogUrlLabel": "カタログ URL（オプション）",
+      "catalogUrlPlaceholder": "リモート marketplace.json URL",
+      "cancel": "キャンセル",
+      "confirm": "追加"
+    }
   },
   "publicMcp": {
     "title": "Public MCP 連携センター",
@@ -58,49 +104,29 @@
     }
   },
   "actions": {
-    "install": "インストール",
-    "installing": "インストール中",
-    "openExtensionsFolder": "プラグインフォルダーを開く",
-    "openFolder": "フォルダーを開く",
-    "refresh": "更新",
-    "copyMcpTemplate": "MCP テンプレートをコピー"
-  },
-  "section": {
-    "catalog": {
-      "title": "プラグインのインストール",
-      "description": "MimiClaw が現在サポートしている OpenClaw プラグインを確認し、そのままインストールできます。"
-    },
-    "mcp": {
-      "title": "MCP プラグイン",
-      "description": "MCP 機能を持つプラグインをまとめて確認できます。"
-    }
-  },
-  "status": {
-    "available": "インストール可能",
-    "enabled": "有効",
-    "installed": "インストール済み"
-  },
-  "source": {
-    "bundled": "同梱",
-    "detected": "検出済み",
-    "npm": "NPM",
-    "path": "ローカルパス"
+    "refresh": "更新"
   },
   "badge": {
-    "mcp": "MCP"
-  },
-  "empty": {
-    "catalog": "表示できるプラグインはまだありません",
-    "mcp": "MCP プラグインは見つかりませんでした"
+    "mcp": "MCP",
+    "skills": "Skills",
+    "hooks": "Hooks",
+    "agents": "Agents",
+    "lsp": "LSP",
+    "monitors": "Monitors"
   },
   "toast": {
-    "failedOpenFolder": "プラグインフォルダーを開けませんでした: {{error}}",
-    "failedRefresh": "プラグイン一覧の更新に失敗しました",
-    "installFailed": "{{name}} のインストールに失敗しました: {{error}}",
-    "installed": "{{name}} をインストールしました",
+    "failedRefresh": "更新に失敗しました",
+    "pluginEnabled": "{{key}} を有効化しました",
+    "pluginDisabled": "{{key}} を無効化しました",
+    "pluginRemoved": "{{key}} をアンインストールしました",
+    "toggleFailed": "切り替えに失敗: {{error}}",
+    "removeFailed": "アンインストールに失敗: {{error}}",
+    "marketplaceAdded": "マーケットプレイス {{name}} を追加しました",
+    "marketplaceRemoved": "マーケットプレイス {{name}} を削除しました",
+    "marketplaceAddFailed": "マーケットプレイスの追加に失敗: {{error}}",
+    "marketplaceRemoveFailed": "マーケットプレイスの削除に失敗: {{error}}",
     "copiedTemplate": "MCP テンプレートをコピーしました",
     "failedCopyTemplate": "MCP テンプレートのコピーに失敗しました: {{error}}",
-    "connectedByCopy": "ワンクリック接続が完了しました。テンプレートを貼り付けてください",
     "clipboardMcpInvalid": "クリップボードに有効な MCP 設定がありません。先に Copy MCP config を実行してください。",
     "connectedReady": "接続完了: {{server}} を {{filePath}} に書き込みました",
     "connectedFailed": "ワンクリック接続に失敗しました: {{error}}"

@@ -4,8 +4,20 @@ import { join, resolve } from 'node:path';
 
 import type { HostApiContext } from '../context';
 import { parseJsonBody, sendJson } from '../route-utils';
-import { installPlugin, listPluginsSnapshot } from '../../utils/plugins';
 import { getAllSettings } from '../../utils/store';
+import {
+  addMarketplaceSource,
+  getEnabledPlugins,
+  getMarketplaceSources,
+  removeMarketplaceSource,
+  removePlugin,
+  setPluginEnabled,
+} from '../../utils/claude-plugin-settings';
+import { proxyAwareFetch } from '../../utils/proxy-fetch';
+
+// ---------------------------------------------------------------------------
+// Public-MCP helpers (kept as-is)
+// ---------------------------------------------------------------------------
 
 type ConnectPublicMcpBody = {
   serverConfig?: unknown;
@@ -196,33 +208,134 @@ async function readPublicMcpConnectionSnapshot(
   };
 }
 
-function scheduleGatewayReload(ctx: HostApiContext): void {
-  if (ctx.gatewayManager.getStatus().state === 'stopped') return;
-  ctx.gatewayManager.debouncedReload();
-}
+// ---------------------------------------------------------------------------
+// Route handler
+// ---------------------------------------------------------------------------
 
 export async function handlePluginRoutes(
   req: IncomingMessage,
   res: ServerResponse,
   url: URL,
-  ctx: HostApiContext,
+  _ctx: HostApiContext,
 ): Promise<boolean> {
-  if (url.pathname === '/api/plugins' && req.method === 'GET') {
-    sendJson(res, 200, { success: true, ...(await listPluginsSnapshot()) });
-    return true;
-  }
+  // -----------------------------------------------------------------------
+  // Claude Code plugin management
+  // -----------------------------------------------------------------------
 
-  if (url.pathname === '/api/plugins/install' && req.method === 'POST') {
+  // GET /api/plugins/claude/installed — list enabled plugins
+  if (url.pathname === '/api/plugins/claude/installed' && req.method === 'GET') {
     try {
-      const body = await parseJsonBody<{ key: string }>(req);
-      const snapshot = await installPlugin(body.key);
-      scheduleGatewayReload(ctx);
-      sendJson(res, 200, { success: true, ...snapshot });
+      const enabledPlugins = await getEnabledPlugins();
+      sendJson(res, 200, { success: true, enabledPlugins });
     } catch (error) {
       sendJson(res, 500, { success: false, error: String(error) });
     }
     return true;
   }
+
+  // PUT /api/plugins/claude/toggle — enable or disable a plugin
+  if (url.pathname === '/api/plugins/claude/toggle' && req.method === 'PUT') {
+    try {
+      const body = await parseJsonBody<{ key?: string; enabled?: boolean }>(req);
+      const key = typeof body.key === 'string' ? body.key.trim() : '';
+      if (!key) throw new Error('key is required');
+      const enabled = body.enabled !== false;
+      const enabledPlugins = await setPluginEnabled(key, enabled);
+      sendJson(res, 200, { success: true, enabledPlugins });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
+  // DELETE /api/plugins/claude/uninstall — remove a plugin entry
+  if (url.pathname === '/api/plugins/claude/uninstall' && req.method === 'DELETE') {
+    try {
+      const body = await parseJsonBody<{ key?: string }>(req);
+      const key = typeof body.key === 'string' ? body.key.trim() : '';
+      if (!key) throw new Error('key is required');
+      const enabledPlugins = await removePlugin(key);
+      sendJson(res, 200, { success: true, enabledPlugins });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
+  // GET /api/plugins/claude/marketplaces — list marketplace sources
+  if (url.pathname === '/api/plugins/claude/marketplaces' && req.method === 'GET') {
+    try {
+      const marketplaces = await getMarketplaceSources();
+      sendJson(res, 200, { success: true, marketplaces });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
+  // POST /api/plugins/claude/marketplaces — add a marketplace source
+  if (url.pathname === '/api/plugins/claude/marketplaces' && req.method === 'POST') {
+    try {
+      const body = await parseJsonBody<{
+        name?: string;
+        source?: unknown;
+        catalogUrl?: string;
+      }>(req);
+      const name = typeof body.name === 'string' ? body.name.trim() : '';
+      if (!name) throw new Error('name is required');
+      if (!isRecord(body.source)) throw new Error('source must be a JSON object');
+      const marketplaces = await addMarketplaceSource(name, {
+        source: body.source as { source: 'github' | 'git' | 'url' | 'local'; repo?: string; url?: string; path?: string },
+        catalogUrl: typeof body.catalogUrl === 'string' ? body.catalogUrl.trim() : undefined,
+      });
+      sendJson(res, 200, { success: true, marketplaces });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
+  // DELETE /api/plugins/claude/marketplaces — remove a marketplace source
+  if (url.pathname === '/api/plugins/claude/marketplaces' && req.method === 'DELETE') {
+    try {
+      const body = await parseJsonBody<{ name?: string }>(req);
+      const name = typeof body.name === 'string' ? body.name.trim() : '';
+      if (!name) throw new Error('name is required');
+      const marketplaces = await removeMarketplaceSource(name);
+      sendJson(res, 200, { success: true, marketplaces });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
+  // POST /api/plugins/claude/catalog — fetch a marketplace catalog from a remote URL
+  if (url.pathname === '/api/plugins/claude/catalog' && req.method === 'POST') {
+    try {
+      const body = await parseJsonBody<{ catalogUrl?: string }>(req);
+      const catalogUrl = typeof body.catalogUrl === 'string' ? body.catalogUrl.trim() : '';
+      if (!catalogUrl) throw new Error('catalogUrl is required');
+
+      const response = await proxyAwareFetch(catalogUrl, {
+        headers: { Accept: 'application/json' },
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch catalog: ${response.status} ${response.statusText}`);
+      }
+      const catalog: unknown = await response.json();
+      if (!isRecord(catalog)) {
+        throw new Error('Catalog response is not a valid JSON object');
+      }
+      sendJson(res, 200, { success: true, catalog });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
+  // -----------------------------------------------------------------------
+  // Public MCP routes (preserved)
+  // -----------------------------------------------------------------------
 
   if (url.pathname === '/api/plugins/public-mcp/connect' && req.method === 'POST') {
     try {

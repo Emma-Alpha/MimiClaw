@@ -13,6 +13,8 @@ export const usePluginsStyles = createStyles(({ token, css }) => ({
   contentInnerInset: css`
     padding-inline-start: max(var(--skills-inline-padding, 0px), var(--plugins-safe-start, 0px));
   `,
+
+  /* ---- Tab shell ---- */
   tabsShell: css`
     --tab-shell-border: ${token.colorBorderSecondary};
     --tab-shell-bg: ${token.colorFillQuaternary};
@@ -40,7 +42,7 @@ export const usePluginsStyles = createStyles(({ token, css }) => ({
     justify-content: center;
     gap: 8px;
     height: 38px;
-    min-width: 170px;
+    min-width: 140px;
     padding: 0 18px;
     border-radius: 12px;
     border: 1px solid transparent;
@@ -75,6 +77,27 @@ export const usePluginsStyles = createStyles(({ token, css }) => ({
     box-shadow: 0 10px 18px rgba(0, 0, 0, 0.1);
     transform: translateY(-1px);
   `,
+
+  /* ---- Section / panel shared ---- */
+  sectionBlock: css`
+    & + & {
+      margin-top: 28px;
+    }
+  `,
+  sectionTitle: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: ${token.colorText};
+  `,
+  sectionDescription: css`
+    margin-top: 6px;
+    font-size: 13px;
+    color: ${token.colorTextSecondary};
+    line-height: 1.6;
+  `,
   noticeBanner: css`
     margin-bottom: 24px;
     display: flex;
@@ -93,16 +116,8 @@ export const usePluginsStyles = createStyles(({ token, css }) => ({
     flex-shrink: 0;
     color: ${token.colorPrimary};
   `,
-  sectionBlock: css`
-    & + & {
-      margin-top: 28px;
-    }
-  `,
-  pencilPanel: css`
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  `,
+
+  /* ---- MCP card grid (Discover tab) ---- */
   mcpCatalogPanel: css`
     display: flex;
     flex-direction: column;
@@ -160,9 +175,11 @@ export const usePluginsStyles = createStyles(({ token, css }) => ({
     background: ${token.colorPrimaryBg};
   `,
   mcpCardBadgeConnected: css`
-    color: ${token.colorSuccess};
-    border-color: ${token.colorSuccessBorder};
-    background: ${token.colorSuccessBg};
+    && {
+      color: ${token.colorSuccess};
+      border-color: ${token.colorSuccessBorder};
+      background: ${token.colorSuccessBg};
+    }
   `,
   mcpCardTitle: css`
     margin-top: 12px;
@@ -189,8 +206,17 @@ export const usePluginsStyles = createStyles(({ token, css }) => ({
     background: ${token.colorPrimaryBg};
   `,
   mcpCardActionConnected: css`
-    color: ${token.colorSuccess};
-    background: ${token.colorSuccessBg};
+    && {
+      color: ${token.colorSuccess};
+      background: ${token.colorSuccessBg};
+    }
+  `,
+
+  /* ---- MCP detail (pencil panel) ---- */
+  pencilPanel: css`
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
   `,
   mcpBackRow: css`
     display: flex;
@@ -272,14 +298,18 @@ export const usePluginsStyles = createStyles(({ token, css }) => ({
     border: 1px solid ${token.colorBorderSecondary};
   `,
   connectionBadgeConnected: css`
-    color: ${token.colorSuccess};
-    border-color: ${token.colorSuccessBorder};
-    background: ${token.colorSuccessBg};
+    && {
+      color: ${token.colorSuccess};
+      border-color: ${token.colorSuccessBorder};
+      background: ${token.colorSuccessBg};
+    }
   `,
   connectionBadgePending: css`
-    color: ${token.colorWarning};
-    border-color: ${token.colorWarningBorder};
-    background: ${token.colorWarningBg};
+    && {
+      color: ${token.colorWarning};
+      border-color: ${token.colorWarningBorder};
+      background: ${token.colorWarningBg};
+    }
   `,
   connectionPanel: css`
     display: flex;
@@ -291,12 +321,16 @@ export const usePluginsStyles = createStyles(({ token, css }) => ({
     background: ${token.colorBgContainer};
   `,
   connectionPanelConnected: css`
-    border-color: ${token.colorSuccessBorder};
-    background: linear-gradient(180deg, ${token.colorSuccessBg} 0%, ${token.colorBgContainer} 100%);
+    && {
+      border-color: ${token.colorSuccessBorder};
+      background: linear-gradient(180deg, ${token.colorSuccessBg} 0%, ${token.colorBgContainer} 100%);
+    }
   `,
   connectionPanelPending: css`
-    border-color: ${token.colorWarningBorder};
-    background: linear-gradient(180deg, ${token.colorWarningBg} 0%, ${token.colorBgContainer} 100%);
+    && {
+      border-color: ${token.colorWarningBorder};
+      background: linear-gradient(180deg, ${token.colorWarningBg} 0%, ${token.colorBgContainer} 100%);
+    }
   `,
   connectionPanelHeader: css`
     display: flex;
@@ -392,59 +426,6 @@ export const usePluginsStyles = createStyles(({ token, css }) => ({
     color: ${token.colorText};
     font-family: SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   `,
-  sectionDescription: css`
-    margin-top: 6px;
-    font-size: 13px;
-    color: ${token.colorTextSecondary};
-    line-height: 1.6;
-  `,
-  pluginRow: css`
-    cursor: default !important;
-  `,
-  pluginImage: css`
-    width: 28px;
-    height: 28px;
-    object-fit: contain;
-  `,
-  maskedBrandIcon: css`
-    width: 28px;
-    height: 28px;
-    display: block;
-    mask-position: center;
-    mask-repeat: no-repeat;
-    mask-size: contain;
-    -webkit-mask-position: center;
-    -webkit-mask-repeat: no-repeat;
-    -webkit-mask-size: contain;
-  `,
-  generatedIcon: css`
-    width: 28px;
-    height: 28px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: ${token.colorWhite};
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
-    overflow: hidden;
-  `,
-  generatedIconLabel: css`
-    font-size: 14px;
-    line-height: 1;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    text-transform: uppercase;
-  `,
-  metaFooter: css`
-    margin-top: 6px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-    font-size: 12px;
-    color: ${token.colorTextTertiary};
-  `,
   pathText: css`
     display: inline-block;
     max-width: 100%;
@@ -453,51 +434,8 @@ export const usePluginsStyles = createStyles(({ token, css }) => ({
     white-space: nowrap;
     font-family: monospace;
   `,
-  actionRow: css`
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 8px;
-  `,
-  rowActionButton: css`
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    height: 34px;
-    padding: 0 14px;
-    border-radius: 999px;
-    border: 1px solid ${token.colorBorderSecondary};
-    background: transparent;
-    color: ${token.colorTextSecondary};
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 
-    &:hover {
-      border-color: ${token.colorBorder};
-      background: ${token.colorFillTertiary};
-      color: ${token.colorText};
-    }
-
-    &:disabled {
-      cursor: not-allowed;
-      opacity: 0.55;
-    }
-  `,
-  rowActionPrimary: css`
-    border-color: ${token.colorPrimaryBorder};
-    background: ${token.colorPrimary};
-    color: ${token.colorTextLightSolid};
-
-    &:hover {
-      border-color: ${token.colorPrimaryHover};
-      background: ${token.colorPrimaryHover};
-      color: ${token.colorTextLightSolid};
-    }
-  `,
+  /* ---- Header actions ---- */
   headerActions: css`
     display: flex;
     align-items: center;
@@ -531,15 +469,309 @@ export const usePluginsStyles = createStyles(({ token, css }) => ({
       opacity: 0.55;
     }
   `,
-  headerButtonPrimary: css`
-    border-color: ${token.colorPrimaryBorder};
-    background: ${token.colorPrimary};
-    color: ${token.colorTextLightSolid};
+  /* ---- Installed / Marketplace list rows ---- */
+  listRow: css`
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    border-radius: ${token.borderRadiusLG}px;
+    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorBgContainer};
+    transition: border-color 0.15s ease;
+
+    & + & {
+      margin-top: 8px;
+    }
 
     &:hover {
-      border-color: ${token.colorPrimaryHover};
-      background: ${token.colorPrimaryHover};
-      color: ${token.colorTextLightSolid};
+      border-color: ${token.colorBorder};
     }
+  `,
+  listRowMeta: css`
+    flex: 1;
+    min-width: 0;
+  `,
+  listRowName: css`
+    font-size: 14px;
+    font-weight: 600;
+    color: ${token.colorText};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
+  listRowSub: css`
+    margin-top: 4px;
+    font-size: 12px;
+    color: ${token.colorTextTertiary};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: monospace;
+  `,
+  listRowActions: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  `,
+  rowActionButton: css`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid ${token.colorBorderSecondary};
+    background: transparent;
+    color: ${token.colorTextSecondary};
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+
+    &:hover {
+      border-color: ${token.colorBorder};
+      background: ${token.colorFillTertiary};
+      color: ${token.colorText};
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+  `,
+  rowActionDanger: css`
+    &&:hover {
+      border-color: ${token.colorErrorBorder};
+      color: ${token.colorError};
+    }
+  `,
+  enabledBadge: css`
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: ${token.colorSuccess};
+    border: 1px solid ${token.colorSuccessBorder};
+    background: ${token.colorSuccessBg};
+  `,
+  disabledBadge: css`
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: ${token.colorTextQuaternary};
+    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorFillQuaternary};
+  `,
+
+  /* ---- Empty state ---- */
+  emptyState: css`
+    padding: 40px 0;
+    text-align: center;
+    color: ${token.colorTextSecondary};
+    font-size: 13px;
+  `,
+
+  /* ---- Search bar ---- */
+  searchBar: css`
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  `,
+  searchInput: css`
+    flex: 1;
+    min-width: 160px;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorBgContainer};
+    color: ${token.colorText};
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s ease;
+
+    &::placeholder {
+      color: ${token.colorTextQuaternary};
+    }
+
+    &:focus {
+      border-color: ${token.colorPrimary};
+    }
+  `,
+  categoryChip: css`
+    display: inline-flex;
+    align-items: center;
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid ${token.colorBorderSecondary};
+    background: transparent;
+    color: ${token.colorTextSecondary};
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+      border-color: ${token.colorBorder};
+      color: ${token.colorText};
+    }
+  `,
+  categoryChipActive: css`
+    border-color: ${token.colorPrimaryBorder};
+    background: ${token.colorPrimaryBg};
+    color: ${token.colorPrimary};
+  `,
+
+  /* ---- Marketplace plugin card (Discover tab) ---- */
+  pluginCard: css`
+    text-align: left;
+    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorBgContainer};
+    border-radius: ${token.borderRadiusLG}px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+
+    &:hover {
+      border-color: ${token.colorPrimaryBorder};
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+    }
+  `,
+  pluginCardHeader: css`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  `,
+  pluginCardName: css`
+    font-size: 14px;
+    font-weight: 700;
+    color: ${token.colorText};
+  `,
+  pluginCardAuthor: css`
+    font-size: 12px;
+    color: ${token.colorTextTertiary};
+  `,
+  pluginCardDescription: css`
+    font-size: 13px;
+    line-height: 1.6;
+    color: ${token.colorTextSecondary};
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  `,
+  pluginCardFooter: css`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: auto;
+  `,
+  pluginCardTags: css`
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  `,
+  componentTag: css`
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    color: ${token.colorPrimary};
+    background: ${token.colorPrimaryBg};
+  `,
+
+  /* ---- Add marketplace dialog ---- */
+  dialogOverlay: css`
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+  `,
+  dialogBox: css`
+    width: 420px;
+    max-width: calc(100vw - 32px);
+    border-radius: ${token.borderRadiusLG}px;
+    background: ${token.colorBgContainer};
+    border: 1px solid ${token.colorBorderSecondary};
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    padding: 24px;
+  `,
+  dialogTitle: css`
+    font-size: 16px;
+    font-weight: 700;
+    color: ${token.colorText};
+    margin-bottom: 18px;
+  `,
+  dialogField: css`
+    margin-bottom: 14px;
+  `,
+  dialogLabel: css`
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: ${token.colorText};
+  `,
+  dialogInput: css`
+    width: 100%;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorBgContainer};
+    color: ${token.colorText};
+    font-size: 13px;
+    outline: none;
+
+    &::placeholder {
+      color: ${token.colorTextQuaternary};
+    }
+
+    &:focus {
+      border-color: ${token.colorPrimary};
+    }
+  `,
+  dialogSelect: css`
+    width: 100%;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorBgContainer};
+    color: ${token.colorText};
+    font-size: 13px;
+    outline: none;
+
+    &:focus {
+      border-color: ${token.colorPrimary};
+    }
+  `,
+  dialogActions: css`
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
   `,
 }));

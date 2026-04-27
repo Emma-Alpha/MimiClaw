@@ -1,10 +1,56 @@
 {
   "title": "Plugins",
-  "notice": "当前页面先聚焦两件事：安装插件，以及查看带有 MCP 能力的插件。更完整的插件管理能力后续再补。",
-  "descriptionFallback": "暂无描述",
   "tabs": {
-    "publicMcp": "公共 MCP",
-    "openclaw": "OpenClaw 插件"
+    "discover": "发现",
+    "installed": "已安装",
+    "marketplaces": "市场源"
+  },
+  "discover": {
+    "recommendedMcp": "推荐 MCP",
+    "marketplacePlugins": "市场插件",
+    "marketplacePluginsDescription": "浏览已注册市场中的可用插件。",
+    "noMarketplaces": "尚未添加市场源，请前往「市场源」Tab 添加。",
+    "fetchingCatalog": "正在加载市场目录…",
+    "fetchFailed": "加载市场目录失败",
+    "noPlugins": "该市场暂无可用插件",
+    "allCategories": "全部",
+    "searchPlaceholder": "搜索插件…",
+    "enable": "启用",
+    "enabled": "已启用",
+    "viewHomepage": "主页"
+  },
+  "installed": {
+    "title": "已安装的插件",
+    "description": "管理 Claude Code settings.json 中的 enabledPlugins。",
+    "empty": "暂无已安装的插件",
+    "pluginKey": "标识",
+    "marketplace": "来源",
+    "disable": "禁用",
+    "enable": "启用",
+    "uninstall": "卸载"
+  },
+  "marketplaces": {
+    "title": "市场源管理",
+    "description": "添加远端 marketplace.json URL，发现 Tab 会自动拉取对应目录。",
+    "empty": "暂无市场源，点击下方按钮添加。",
+    "addSource": "添加市场源",
+    "remove": "删除",
+    "sourceType": "类型",
+    "catalogUrl": "Catalog URL",
+    "addDialog": {
+      "title": "添加市场源",
+      "nameLabel": "名称",
+      "namePlaceholder": "如：my-plugins",
+      "sourceTypeLabel": "源类型",
+      "urlLabel": "URL",
+      "urlPlaceholder": "如：https://example.com/marketplace.json",
+      "repoLabel": "GitHub Repo",
+      "repoPlaceholder": "如：owner/repo",
+      "catalogUrlLabel": "Catalog URL（可选）",
+      "catalogUrlPlaceholder": "远端 marketplace.json 地址",
+      "cancel": "取消",
+      "confirm": "添加"
+    }
   },
   "publicMcp": {
     "title": "公共 MCP 集成中心",
@@ -36,10 +82,10 @@
         "badge": "官方",
         "summary": "Figma Desktop 本地 MCP，适合在不走远程授权的前提下把设计稿、节点与布局信息带进代码工作流。",
         "detailTitle": "Figma 本地 MCP 快速接入",
-        "detailDescription": "点击“一键接入”后会把本地 MCP 地址写入当前工作区；你只需要在 Figma Desktop 里开启 Dev Mode MCP Server 并保持运行。",
+        "detailDescription": "点击「一键接入」后会把本地 MCP 地址写入当前工作区；你只需要在 Figma Desktop 里开启 Dev Mode MCP Server 并保持运行。",
         "steps": {
           "open": "打开 Figma Desktop，在 Dev Mode 设置里开启 MCP Server",
-          "copy": "点击“一键接入”，把 figma-desktop 写入当前工作区 .mcp.json",
+          "copy": "点击「一键接入」，把 figma-desktop 写入当前工作区 .mcp.json",
           "paste": "保持 Figma Desktop 运行后，在对话里提供文件、页面或节点链接开始读取设计上下文"
         }
       },
@@ -48,7 +94,7 @@
         "badge": "推荐",
         "summary": "设计到代码一体化 MCP，适合把 UI 稿快速转换成可执行工程。",
         "detailTitle": "Pencil MCP 快速接入",
-        "detailDescription": "点击“一键接入”后会复制模板，然后按三步完成粘贴即可。",
+        "detailDescription": "点击「一键接入」后会复制模板，然后按三步完成粘贴即可。",
         "steps": {
           "open": "打开 Pencil → Settings → MCP",
           "copy": "点击 Copy MCP config（或直接使用下方模板）",
@@ -58,50 +104,30 @@
     }
   },
   "actions": {
-    "install": "安装",
-    "installing": "安装中",
-    "openExtensionsFolder": "打开插件目录",
-    "openFolder": "打开文件夹",
-    "refresh": "刷新",
-    "copyMcpTemplate": "复制 MCP 模板"
-  },
-  "section": {
-    "catalog": {
-      "title": "插件安装",
-      "description": "查看当前支持的 OpenClaw 插件，并直接完成安装。"
-    },
-    "mcp": {
-      "title": "MCP 插件",
-      "description": "聚合展示具备 MCP 能力的插件，便于快速确认可用扩展。"
-    }
-  },
-  "status": {
-    "available": "可安装",
-    "enabled": "已启用",
-    "installed": "已安装"
-  },
-  "source": {
-    "bundled": "内置",
-    "detected": "已检测",
-    "npm": "NPM",
-    "path": "本地路径"
+    "refresh": "刷新"
   },
   "badge": {
-    "mcp": "MCP"
-  },
-  "empty": {
-    "catalog": "暂无可展示的插件",
-    "mcp": "暂无 MCP 插件"
+    "mcp": "MCP",
+    "skills": "Skills",
+    "hooks": "Hooks",
+    "agents": "Agents",
+    "lsp": "LSP",
+    "monitors": "Monitors"
   },
   "toast": {
-    "failedOpenFolder": "打开插件目录失败：{{error}}",
-    "failedRefresh": "刷新插件列表失败",
-    "installFailed": "安装 {{name}} 失败：{{error}}",
-    "installed": "{{name}} 安装完成",
+    "failedRefresh": "刷新失败",
+    "pluginEnabled": "已启用 {{key}}",
+    "pluginDisabled": "已禁用 {{key}}",
+    "pluginRemoved": "已卸载 {{key}}",
+    "toggleFailed": "切换失败：{{error}}",
+    "removeFailed": "卸载失败：{{error}}",
+    "marketplaceAdded": "已添加市场源 {{name}}",
+    "marketplaceRemoved": "已删除市场源 {{name}}",
+    "marketplaceAddFailed": "添加市场源失败：{{error}}",
+    "marketplaceRemoveFailed": "删除市场源失败：{{error}}",
     "copiedTemplate": "MCP 模板已复制",
     "failedCopyTemplate": "复制 MCP 模板失败：{{error}}",
-    "connectedByCopy": "已完成一键接入：模板已复制，按提示粘贴即可",
-    "clipboardMcpInvalid": "剪贴板里没有可识别的 MCP 配置，请先在服务端点“Copy MCP config”",
+    "clipboardMcpInvalid": "剪贴板里没有可识别的 MCP 配置，请先在服务端点 Copy MCP config",
     "connectedReady": "接入成功：{{server}} 已写入 {{filePath}}",
     "connectedFailed": "一键接入失败：{{error}}"
   }
