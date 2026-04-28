@@ -25,6 +25,10 @@ export interface MarketplacePlugin {
   skills?: PluginSkillEntry[];
   /** Default prompt for "Try in chat" */
   defaultPrompt?: string;
+  /** Capability labels */
+  capabilities?: string[];
+  /** Developer name override */
+  developerName?: string;
   /** Marketplace name this plugin belongs to (injected at fetch time) */
   marketplace: string;
 }

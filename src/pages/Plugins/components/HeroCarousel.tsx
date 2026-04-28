@@ -1,8 +1,9 @@
 import { createStyles, cssVar } from 'antd-style';
+import { Sparkles } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
-import PluginAvatar from '@/components/Plugins/PluginAvatar';
 import type { MarketplacePlugin } from '@/types/claude-plugin';
+import { HERO_PROMPTS } from '../builtin-catalog';
 
 const CAROUSEL_HEIGHT = 275;
 const AUTO_ROTATE_MS = 5000;
@@ -15,25 +16,32 @@ const useStyles = createStyles(({ css, token }) => ({
     overflow: hidden;
     box-shadow: inset 0 0 0 1px ${token.colorBorderSecondary};
   `,
-  bgGradient: css`
+
+  /* layer 1: aurora gradient */
+  bg: css`
+    pointer-events: none;
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-      135deg,
-      ${token.colorPrimaryBg} 0%,
-      ${token.colorBgLayout} 50%,
-      ${token.colorPrimaryBgHover} 100%
-    );
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 80%, rgba(180, 140, 255, 0.35) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 80% at 80% 20%, rgba(140, 180, 255, 0.3) 0%, transparent 70%),
+      radial-gradient(ellipse 90% 50% at 50% 50%, rgba(200, 160, 255, 0.2) 0%, transparent 80%),
+      linear-gradient(135deg, #e8dff5 0%, #f0eaf8 30%, #e0d8f0 60%, #d8d0ea 100%);
   `,
-  bgOverlay: css`
+
+  /* layer 2: surface overlay */
+  overlay: css`
+    pointer-events: none;
     position: absolute;
     inset: 0;
     background: color-mix(in srgb, ${cssVar.colorBgLayout} 70%, transparent);
   `,
-  slidesWrapper: css`
-    position: relative;
-    width: 100%;
-    height: 100%;
+
+  /* sliding area — only prompt cards slide */
+  slideArea: css`
+    position: absolute;
+    inset: 0;
+    bottom: 60px;
     overflow: hidden;
   `,
   slideTrack: css`
@@ -47,49 +55,65 @@ const useStyles = createStyles(({ css, token }) => ({
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 24px 32px;
+    padding: 0 48px;
   `,
-  slideContent: css`
-    max-width: 640px;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 12px;
+
+  /* prompt card (frosted glass) */
+  promptCard: css`
+    max-width: 77%;
+    border-radius: 16px;
+    background: color-mix(in srgb, ${cssVar.colorBgLayout} 75%, transparent);
+    backdrop-filter: blur(12px);
+    padding: 10px 16px;
+    box-shadow: 0 0 0 1px ${token.colorBorderSecondary};
+    font-size: 14px;
+    color: ${cssVar.colorText};
+    word-break: break-word;
+    line-height: 1.6;
     z-index: 1;
   `,
-  pluginName: css`
-    font-size: 18px;
-    font-weight: 600;
-    color: ${cssVar.colorText};
+  promptBadge: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: ${token.colorSuccessBg};
+    color: ${token.colorSuccess};
+    font-size: 12px;
+    font-weight: 500;
+    margin-inline-end: 8px;
+    vertical-align: middle;
   `,
-  pluginDesc: css`
-    font-size: 13px;
-    color: ${cssVar.colorTextSecondary};
-    line-height: 1.5;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  `,
-  ctaButton: css`
-    margin-top: 4px;
+
+  /* CTA button — fixed at bottom center */
+  cta: css`
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     padding: 8px 20px;
-    border-radius: 8px;
+    border-radius: 999px;
     border: none;
-    background: ${token.colorPrimary};
-    color: ${token.colorWhite};
+    background: ${cssVar.colorText};
+    color: ${cssVar.colorBgLayout};
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
+    z-index: 1;
     transition: opacity 0.15s;
+    white-space: nowrap;
 
     &:hover {
-      opacity: 0.9;
+      opacity: 0.85;
     }
   `,
-  dotsDesktop: css`
+
+  /* dots — fixed at right center */
+  dots: css`
     position: absolute;
     right: 16px;
     top: 50%;
@@ -121,8 +145,8 @@ const useStyles = createStyles(({ css, token }) => ({
 }));
 
 interface HeroCarouselProps {
-  plugins: MarketplacePlugin[];
   onTryInChat?: (plugin: MarketplacePlugin) => void;
+  plugins: MarketplacePlugin[];
 }
 
 const HeroCarousel = memo<HeroCarouselProps>(({ plugins, onTryInChat }) => {
@@ -132,6 +156,7 @@ const HeroCarousel = memo<HeroCarouselProps>(({ plugins, onTryInChat }) => {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const count = plugins.length;
+  const activePlugin = plugins[activeIndex];
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
@@ -152,10 +177,9 @@ const HeroCarousel = memo<HeroCarouselProps>(({ plugins, onTryInChat }) => {
   }, [paused, count, clearTimer]);
 
   useEffect(() => {
-    const onVisibilityChange = () => setPaused(document.hidden);
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    return () =>
-      document.removeEventListener('visibilitychange', onVisibilityChange);
+    const onVisChange = () => setPaused(document.hidden);
+    document.addEventListener('visibilitychange', onVisChange);
+    return () => document.removeEventListener('visibilitychange', onVisChange);
   }, []);
 
   if (count === 0) return null;
@@ -166,43 +190,46 @@ const HeroCarousel = memo<HeroCarouselProps>(({ plugins, onTryInChat }) => {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className={styles.bgGradient} />
-      <div className={styles.bgOverlay} />
+      {/* Layer 1: bg */}
+      <div className={styles.bg} />
+      {/* Layer 2: overlay */}
+      <div className={styles.overlay} />
 
-      <div className={styles.slidesWrapper}>
+      {/* Sliding prompt cards only */}
+      <div className={styles.slideArea}>
         <div
           className={styles.slideTrack}
           style={{ transform: `translateY(-${activeIndex * 100}%)` }}
         >
-          {plugins.map((plugin) => (
-            <div key={plugin.id} className={styles.slide}>
-              <div className={styles.slideContent}>
-                <PluginAvatar
-                  avatar={plugin.icon || 'MCP_AVATAR'}
-                  size={56}
-                  style={{ borderRadius: 12 }}
-                />
-                <span className={styles.pluginName}>{plugin.name}</span>
-                <span className={styles.pluginDesc}>
-                  {plugin.description}
-                </span>
-                {onTryInChat && (
-                  <button
-                    type="button"
-                    className={styles.ctaButton}
-                    onClick={() => onTryInChat(plugin)}
-                  >
-                    在对话中试用
-                  </button>
-                )}
+          {plugins.map((plugin) => {
+            const prompt = HERO_PROMPTS[plugin.id] ?? plugin.description;
+            return (
+              <div key={plugin.id} className={styles.slide}>
+                <div className={styles.promptCard}>
+                  <span className={styles.promptBadge}>
+                    🎨 {plugin.name}
+                  </span>
+                  {prompt}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
+      {/* Fixed CTA button */}
+      <button
+        type="button"
+        className={styles.cta}
+        onClick={() => activePlugin && onTryInChat?.(activePlugin)}
+      >
+        <Sparkles size={14} />
+        在对话中试用
+      </button>
+
+      {/* Fixed dots */}
       {count > 1 && (
-        <div className={styles.dotsDesktop}>
+        <div className={styles.dots}>
           {plugins.map((_, i) => (
             <button
               key={i}

@@ -1,11 +1,11 @@
 /**
- * Built-in plugin catalog — extracted from Codex (openai-curated marketplace).
+ * Built-in plugin catalog for MimiClaw.
  * Used as default data source so the plugins page is never empty.
  */
 
 import type { MarketplaceCatalog } from '@/types/claude-plugin';
 
-export const BUILTIN_MARKETPLACE_NAME = 'Codex official';
+export const BUILTIN_MARKETPLACE_NAME = 'MimiClaw official';
 
 export const FEATURED_PLUGIN_IDS = [
   'computer-use',
@@ -23,30 +23,44 @@ export const HERO_PLUGIN_NAMES = [
   'linear',
 ];
 
+/** Prompt text shown in the hero carousel card for each plugin */
+export const HERO_PROMPTS: Record<string, string> = {
+  'computer-use': '播放一个播放列表，帮我进入专注状态',
+  'gmail': '帮我回复所有未读邮件',
+  'slack': '每天早上帮我准备站会内容',
+  'google-calendar': '安排一个定期的 1:1 会议',
+  'google-drive': '每周五帮我写周报',
+  'linear': '为这些 bug bash 发现创建工单',
+};
+
 export const builtinCatalog: MarketplaceCatalog = {
   name: BUILTIN_MARKETPLACE_NAME,
-  description: 'Codex official plugin catalog',
+  description: 'MimiClaw official plugin catalog',
   plugins: [
     // ── Featured ─────────────────────────────────────────────────────
     {
       id: 'computer-use',
       name: 'Computer Use',
-      description: 'Control Mac apps from Codex',
+      description: 'Control Mac apps from MimiClaw',
       longDescription:
         'Use Computer Use to interact with native Mac applications. It can click, drag, type, scroll, and read accessibility information from any running app.',
       categories: ['Featured'],
       components: ['mcp'],
       author: 'OpenAI',
+      developerName: 'OpenAI',
+      capabilities: ['Click', 'Drag', 'Type', 'Scroll', 'Read accessibility'],
     },
     {
       id: 'browser-use',
       name: 'Browser Use',
-      description: 'Control the in-app browser with Codex',
+      description: 'Control the in-app browser with MimiClaw',
       longDescription:
-        'Browse the web, fill forms, click buttons, and extract information from any website — all within Codex.',
+        'Browse the web, fill forms, click buttons, and extract information from any website — all within MimiClaw.',
       categories: ['Featured'],
       components: ['mcp'],
       author: 'OpenAI',
+      developerName: 'OpenAI',
+      capabilities: ['Web Browsing', 'Form Filling', 'Data Extraction'],
     },
     {
       id: 'spreadsheets',
@@ -87,7 +101,7 @@ export const builtinCatalog: MarketplaceCatalog = {
     {
       id: 'statsig',
       name: 'Statsig',
-      description: 'Bring your Statsig workspace into Codex',
+      description: 'Bring your Statsig workspace into MimiClaw',
       categories: ['Developer Tools'],
       components: ['mcp'],
       author: 'OpenAI',
@@ -207,6 +221,8 @@ export const builtinCatalog: MarketplaceCatalog = {
       categories: ['Coding'],
       components: ['skills'],
       author: 'OpenAI',
+      developerName: 'OpenAI',
+      capabilities: ['2D Games', '3D Games', 'Playtesting', 'Asset Pipeline', 'Game UI'],
       defaultPrompt: 'Design a browser game and plan the core loop',
       skills: [
         {

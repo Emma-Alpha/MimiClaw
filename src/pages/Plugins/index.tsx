@@ -1,6 +1,6 @@
 import { ActionIcon, Flexbox, Text } from '@lobehub/ui';
 import { createStyles, cssVar } from 'antd-style';
-import { Dropdown, type MenuProps, Segmented, Switch } from 'antd';
+import { Dropdown, type MenuProps, Switch } from 'antd';
 import {
   ChevronDown,
   RefreshCw,
@@ -40,9 +40,6 @@ const useStyles = createStyles(({ css, token }) => ({
     align-items: center;
     justify-content: space-between;
     padding: 12px 24px;
-    max-width: 720px;
-    margin: 0 auto;
-    width: 100%;
   `,
   scrollContent: css`
     max-width: 720px;
@@ -534,7 +531,7 @@ const ManageContent = memo(() => {
 // ─── page ────────────────────────────────────────────────────────────────────
 
 export function Plugins() {
-  const { styles } = useStyles();
+  const { styles, cx } = useStyles();
   const { t } = useTranslation('plugins');
 
   const mode = usePluginsStore((s) => s.mode);
@@ -685,15 +682,28 @@ export function Plugins() {
     <div className={styles.page}>
       {/* Top tab bar */}
       <div className={styles.topBar}>
-        <Segmented
-          size="small"
-          options={[
-            { label: t('tabs.discover'), value: 'plugins' },
-            { label: 'Skills', value: 'skills' },
-          ]}
-          value={activeTab}
-          onChange={(val) => setActiveTab(val as 'plugins' | 'skills')}
-        />
+        <div className={styles.manageTabBar}>
+          <button
+            type="button"
+            className={cx(
+              styles.manageTabButton,
+              activeTab === 'plugins' && styles.manageTabActive,
+            )}
+            onClick={() => setActiveTab('plugins')}
+          >
+            {t('tabs.discover')}
+          </button>
+          <button
+            type="button"
+            className={cx(
+              styles.manageTabButton,
+              activeTab === 'skills' && styles.manageTabActive,
+            )}
+            onClick={() => setActiveTab('skills')}
+          >
+            Skills
+          </button>
+        </div>
         <Flexbox horizontal align="center" gap={6}>
           <ActionIcon
             icon={RefreshCw}
@@ -713,7 +723,7 @@ export function Plugins() {
 
       <div className={styles.scrollContent}>
         {/* Title */}
-        <span className={styles.title}>让 Codex 按你的方式工作</span>
+        <span className={styles.title}>让 MimiClaw 按你的方式工作</span>
 
         {/* Controls bar */}
         {activeTab === 'plugins' && (
@@ -766,6 +776,6 @@ export function Plugins() {
   );
 }
 
-const BUILTIN_MARKETPLACE_NAME_LABEL = 'Codex official';
+const BUILTIN_MARKETPLACE_NAME_LABEL = 'MimiClaw official';
 
 export default Plugins;

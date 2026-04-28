@@ -1,6 +1,5 @@
-import { Flexbox, Text } from '@lobehub/ui';
+import { Button, Flexbox, Modal, Text } from '@lobehub/ui';
 import { createStyles, cssVar } from 'antd-style';
-import { Modal } from 'antd';
 import { Copy } from 'lucide-react';
 import { memo, useCallback } from 'react';
 import { toast } from 'sonner';
@@ -53,39 +52,12 @@ const useStyles = createStyles(({ css, token }) => ({
     border-radius: 10px;
     background: ${token.colorFillQuaternary};
   `,
-  footerButton: css`
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    border-radius: 8px;
-    border: 1px solid ${token.colorBorder};
-    background: transparent;
-    color: ${cssVar.colorText};
-    font-size: 13px;
-    cursor: pointer;
-    transition: border-color 0.15s;
-
-    &:hover {
-      border-color: ${token.colorPrimary};
-    }
-  `,
-  footerPrimary: css`
-    background: ${token.colorPrimary};
-    color: ${token.colorWhite};
-    border-color: ${token.colorPrimary};
-
-    &:hover {
-      opacity: 0.9;
-      border-color: ${token.colorPrimary};
-    }
-  `,
 }));
 
 interface SkillDetailModalProps {
+  onClose: () => void;
   open: boolean;
   skill: PluginSkillEntry | null;
-  onClose: () => void;
 }
 
 const SkillDetailModal = memo<SkillDetailModalProps>(
@@ -104,17 +76,26 @@ const SkillDetailModal = memo<SkillDetailModalProps>(
 
     return (
       <Modal
-        open={open}
+        footer={
+          <Flexbox horizontal justify="flex-end" gap={8}>
+            <Button onClick={onClose}>关闭</Button>
+            {skill.overview && (
+              <Button
+                icon={<Copy size={14} />}
+                onClick={handleCopy}
+              >
+                复制内容
+              </Button>
+            )}
+          </Flexbox>
+        }
+        maskClosable
         onCancel={onClose}
-        closable={false}
-        footer={null}
+        open={open}
+        title="包含内容"
         width={560}
-        centered
-        styles={{
-          body: { padding: 24 },
-        }}
       >
-        <Flexbox gap={16}>
+        <Flexbox gap={16} style={{ padding: '8px 0' }}>
           {/* Header */}
           <div className={styles.header}>
             <div className={styles.iconBox}>🛠</div>
@@ -140,32 +121,6 @@ const SkillDetailModal = memo<SkillDetailModalProps>(
               <div className={styles.overview}>{skill.overview}</div>
             </>
           )}
-
-          {/* Footer */}
-          <Flexbox
-            horizontal
-            justify="flex-end"
-            gap={8}
-            style={{ marginTop: 8 }}
-          >
-            <button
-              type="button"
-              className={styles.footerButton}
-              onClick={onClose}
-            >
-              关闭
-            </button>
-            {skill.overview && (
-              <button
-                type="button"
-                className={styles.footerButton}
-                onClick={handleCopy}
-              >
-                <Copy size={14} />
-                复制内容
-              </button>
-            )}
-          </Flexbox>
         </Flexbox>
       </Modal>
     );

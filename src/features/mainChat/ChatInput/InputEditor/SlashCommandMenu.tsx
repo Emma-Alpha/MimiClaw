@@ -1,126 +1,14 @@
 import { flip, offset, shift, useFloating } from '@floating-ui/react';
 import type { ISlashMenuOption, ISlashOption } from '@lobehub/editor';
 import { Icon, type IconProps } from '@lobehub/ui';
-import { createStyles } from 'antd-style';
 import { Puzzle } from 'lucide-react';
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { CommandMenu, type CommandMenuGroup, type CommandMenuItem } from '@/components/CommandMenu';
 
 const LOBE_THEME_APP_ID = 'lobe-ui-theme-app';
-const DEFAULT_VISIBLE_COUNT = 3;
-
-const useStyles = createStyles(({ css, token }) => ({
-  container: css`
-    z-index: 9999;
-    width: max-content;
-  `,
-  divider: css`
-    height: 1px;
-    margin: 4px 8px;
-    background: ${token.colorBorderSecondary};
-  `,
-  groupHeader: css`
-    padding: 8px 12px 4px;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    color: ${token.colorTextQuaternary};
-    user-select: none;
-  `,
-  item: css`
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 10px;
-    padding: 7px 12px;
-    margin: 1px 4px;
-    border-radius: ${token.borderRadiusSM}px;
-    cursor: pointer;
-    transition: background 120ms ${token.motionEaseOut};
-
-    &:hover,
-    &[data-active='true'] {
-      background: ${token.colorFillSecondary};
-    }
-
-    &:active {
-      background: ${token.colorFillTertiary};
-    }
-  `,
-  itemContent: css`
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    min-width: 0;
-    flex: 1;
-  `,
-  itemDesc: css`
-    font-size: 12px;
-    line-height: 16px;
-    color: ${token.colorTextQuaternary};
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  `,
-  itemIcon: css`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    width: 32px;
-    height: 32px;
-    border-radius: ${token.borderRadiusSM}px;
-    background: ${token.colorFillTertiary};
-    font-size: 18px;
-    line-height: 1;
-    color: ${token.colorTextSecondary};
-
-    img {
-      width: 20px;
-      height: 20px;
-      object-fit: contain;
-      border-radius: 4px;
-    }
-  `,
-  itemLabel: css`
-    font-size: 13px;
-    line-height: 18px;
-    color: ${token.colorText};
-    font-weight: 500;
-  `,
-  popup: css`
-    scrollbar-width: thin;
-    overflow-y: auto;
-    min-width: 300px;
-    max-width: 420px;
-    max-height: min(50vh, 420px);
-    padding: 4px 0;
-    border-radius: ${token.borderRadiusLG}px;
-    background: ${token.colorBgElevated};
-    outline: none;
-    box-shadow:
-      0 4px 24px 0 rgba(0, 0, 0, 0.08),
-      0 1px 4px 0 rgba(0, 0, 0, 0.04),
-      0 0 0 1px ${token.colorBorderSecondary};
-  `,
-  showMore: css`
-    padding: 5px 12px;
-    margin: 0 4px;
-    font-size: 12px;
-    color: ${token.colorTextTertiary};
-    cursor: pointer;
-    user-select: none;
-    border-radius: ${token.borderRadiusSM}px;
-    transition: all 120ms ${token.motionEaseOut};
-
-    &:hover {
-      color: ${token.colorText};
-      background: ${token.colorFillQuaternary};
-    }
-  `,
-}));
+const IMAGE_ICON_RE = /^(https?:\/\/|data:image\/|\/)/i;
 
 export interface SlashCommandMenuProps {
   activeKey: string | null;
@@ -131,18 +19,10 @@ export interface SlashCommandMenuProps {
   setActiveKey: (key: string | null) => void;
 }
 
-interface GroupedItems {
-  commands: ISlashMenuOption[];
-  skills: ISlashMenuOption[];
-}
-
-const IMAGE_ICON_RE = /^(https?:\/\/|data:image\/|\/)/i;
-
 function renderItemIcon(item: ISlashMenuOption): ReactNode {
   const meta = item.metadata as Record<string, unknown> | undefined;
   const iconStr = meta?.icon as string | undefined;
 
-  // Skill items: use icon from metadata (emoji or image URL)
   if (meta?.group === 'skills') {
     if (iconStr && IMAGE_ICON_RE.test(iconStr)) {
       return <img alt="" src={iconStr} />;
@@ -150,32 +30,71 @@ function renderItemIcon(item: ISlashMenuOption): ReactNode {
     if (iconStr) {
       return <span>{iconStr}</span>;
     }
-    return <Icon icon={Puzzle} size={{ fontSize: 16 }} />;
+    return <Icon icon={Puzzle} size={{ size: 16 }} />;
   }
 
-  // Command items: use the icon field (lucide component)
   if (item.icon) {
-    return <Icon icon={item.icon as IconProps['icon']} size={{ fontSize: 16 }} />;
+    return <Icon icon={item.icon as IconProps['icon']} size={{ size: 16 }} />;
   }
 
   return null;
 }
 
-function groupOptions(options: ISlashOption[]): GroupedItems {
-  const skills: ISlashMenuOption[] = [];
-  const commands: ISlashMenuOption[] = [];
+/**
+ * Convert @lobehub/editor options into CommandMenuGroup[] + build a flat
+ * item list for mapping activeIndex ↔ activeKey.
+ */
+function useSlashGroups(options: ISlashOption[], t: (key: string, opts?: Record<string, unknown>) => string) {
+  return useMemo(() => {
+    const skills: ISlashMenuOption[] = [];
+    const commands: ISlashMenuOption[] = [];
 
-  for (const opt of options) {
-    if ('type' in opt && opt.type === 'divider') continue;
-    const item = opt as ISlashMenuOption;
-    if (item.metadata?.group === 'skills') {
-      skills.push(item);
-    } else {
-      commands.push(item);
+    for (const opt of options) {
+      if ('type' in opt && opt.type === 'divider') continue;
+      const item = opt as ISlashMenuOption;
+      if (item.metadata?.group === 'skills') {
+        skills.push(item);
+      } else {
+        commands.push(item);
+      }
     }
-  }
 
-  return { commands, skills };
+    // Build flat list for index ↔ key mapping
+    const flatItems: ISlashMenuOption[] = [];
+    const groups: CommandMenuGroup[] = [];
+
+    if (skills.length > 0) {
+      groups.push({
+        title: t('input.slash.groupSkills', { defaultValue: 'Skills' }),
+        items: skills.map((item) => {
+          flatItems.push(item);
+          return {
+            id: String(item.key),
+            icon: renderItemIcon(item),
+            label: `/${String(item.label)}`,
+            description: item.desc ? String(item.desc) : undefined,
+          } satisfies CommandMenuItem;
+        }),
+      });
+    }
+
+    if (commands.length > 0) {
+      groups.push({
+        title: t('input.slash.groupCommands', { defaultValue: 'Commands' }),
+        items: commands.map((item) => {
+          flatItems.push(item);
+          return {
+            id: String(item.key),
+            icon: renderItemIcon(item),
+            label: `/${String(item.label)}`,
+            description: item.desc ? String(item.desc) : undefined,
+          } satisfies CommandMenuItem;
+        }),
+      });
+    }
+
+    return { groups, flatItems };
+  }, [options, t]);
 }
 
 export const SlashCommandMenu = memo<SlashCommandMenuProps>(({
@@ -186,14 +105,34 @@ export const SlashCommandMenu = memo<SlashCommandMenuProps>(({
   options,
   setActiveKey,
 }) => {
-  const { styles } = useStyles();
   const { t } = useTranslation('chatInput');
-  const [skillsExpanded, setSkillsExpanded] = useState(false);
-  const [commandsExpanded, setCommandsExpanded] = useState(false);
-  const activeItemRef = useRef<HTMLDivElement | null>(null);
+  const { groups, flatItems } = useSlashGroups(options, t);
   const floatingNodeRef = useRef<HTMLElement | null>(null);
 
-  // Get cursor position for anchoring
+  // Map activeKey ↔ flat index
+  const activeIndex = useMemo(() => {
+    if (activeKey == null) return 0;
+    const idx = flatItems.findIndex((item) => String(item.key) === activeKey);
+    return idx >= 0 ? idx : 0;
+  }, [activeKey, flatItems]);
+
+  const handleActiveIndexChange = useCallback(
+    (index: number) => {
+      const item = flatItems[index];
+      setActiveKey(item ? String(item.key) : null);
+    },
+    [flatItems, setActiveKey],
+  );
+
+  const handleSelect = useCallback(
+    (menuItem: CommandMenuItem) => {
+      const item = flatItems.find((f) => String(f.key) === menuItem.id);
+      if (item) onSelect?.(item);
+    },
+    [flatItems, onSelect],
+  );
+
+  // ── Floating UI positioning ──────────────────────────────────
   const getRectRef = useRef<() => DOMRect>(() => {
     const sel = window.getSelection();
     if (sel && sel.rangeCount > 0) {
@@ -211,7 +150,6 @@ export const SlashCommandMenu = memo<SlashCommandMenuProps>(({
     strategy: 'fixed',
   });
 
-  // Sync the floating ref via effect to avoid accessing refs during render
   useEffect(() => {
     refs.setFloating(floatingNodeRef.current);
   });
@@ -241,110 +179,26 @@ export const SlashCommandMenu = memo<SlashCommandMenuProps>(({
     return () => window.removeEventListener('scroll', onScroll, { capture: true });
   }, [open, update]);
 
-  // Scroll active item into view
-  useEffect(() => {
-    activeItemRef.current?.scrollIntoView({ block: 'nearest' });
-  }, [activeKey]);
-
-  const handleItemClick = useCallback((item: ISlashMenuOption) => {
-    onSelect?.(item);
-  }, [onSelect]);
-
-  const { skills, commands } = useMemo(() => groupOptions(options), [options]);
-
-  const visibleSkills = skillsExpanded ? skills : skills.slice(0, DEFAULT_VISIBLE_COUNT);
-  const hiddenSkillsCount = skills.length - DEFAULT_VISIBLE_COUNT;
-  const visibleCommands = commandsExpanded ? commands : commands.slice(0, DEFAULT_VISIBLE_COUNT);
-  const hiddenCommandsCount = commands.length - DEFAULT_VISIBLE_COUNT;
-
-  const shouldShow = open && (skills.length > 0 || commands.length > 0 || loading);
-
+  const shouldShow = open && (flatItems.length > 0 || loading);
   if (!shouldShow) return null;
 
   const portalContainer = document.getElementById(LOBE_THEME_APP_ID) || document.body;
 
-  const renderItem = (item: ISlashMenuOption) => {
-    const isActive = activeKey === item.key;
-    const iconNode = renderItemIcon(item);
-    return (
-      <div
-        className={styles.item}
-        data-active={isActive}
-        key={String(item.key)}
-        onClick={() => handleItemClick(item)}
-        onMouseEnter={() => setActiveKey(String(item.key))}
-        ref={isActive ? activeItemRef : undefined}
-      >
-        {iconNode && <div className={styles.itemIcon}>{iconNode}</div>}
-        <div className={styles.itemContent}>
-          <div className={styles.itemLabel}>/{String(item.label)}</div>
-          {item.desc ? <div className={styles.itemDesc}>{String(item.desc)}</div> : null}
-        </div>
-      </div>
-    );
-  };
-
   const node = (
     <div
-      className={styles.container}
       ref={floatingRefCallback}
-      style={floatingStyles}
+      style={{ ...floatingStyles, zIndex: 9999, width: 'max-content' }}
     >
-      <div className={styles.popup}>
-        {loading ? (
-          <div className={styles.item}>
-            <div className={styles.itemLabel}>Loading...</div>
-          </div>
-        ) : (
-          <>
-            {skills.length > 0 && (
-              <>
-                <div className={styles.groupHeader}>
-                  {t('input.slash.groupSkills', { defaultValue: 'Skills' })}
-                </div>
-                {visibleSkills.map(renderItem)}
-                {hiddenSkillsCount > 0 && (
-                  <div
-                    className={styles.showMore}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSkillsExpanded((prev) => !prev);
-                    }}
-                  >
-                    {skillsExpanded
-                      ? t('input.slash.showLess', { defaultValue: 'Show less' })
-                      : t('input.slash.showMore', { count: hiddenSkillsCount, defaultValue: `Show ${hiddenSkillsCount} more` })}
-                  </div>
-                )}
-              </>
-            )}
-            {skills.length > 0 && commands.length > 0 && (
-              <div className={styles.divider} />
-            )}
-            {commands.length > 0 && (
-              <>
-                <div className={styles.groupHeader}>
-                  {t('input.slash.groupCommands', { defaultValue: 'Commands' })}
-                </div>
-                {visibleCommands.map(renderItem)}
-                {hiddenCommandsCount > 0 && (
-                  <div
-                    className={styles.showMore}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCommandsExpanded((prev) => !prev);
-                    }}
-                  >
-                    {commandsExpanded
-                      ? t('input.slash.showLess', { defaultValue: 'Show less' })
-                      : t('input.slash.showMore', { count: hiddenCommandsCount, defaultValue: `Show ${hiddenCommandsCount} more` })}
-                  </div>
-                )}
-              </>
-            )}
-          </>
-        )}
-      </div>
+      {loading ? (
+        <div style={{ padding: '7px 14px', fontSize: 13 }}>Loading...</div>
+      ) : (
+        <CommandMenu
+          groups={groups}
+          activeIndex={activeIndex}
+          onActiveIndexChange={handleActiveIndexChange}
+          onSelect={handleSelect}
+        />
+      )}
     </div>
   );
 

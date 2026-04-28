@@ -25,6 +25,7 @@ import {
 	Sparkles,
 	ChevronDown,
 } from "lucide-react";
+import { CommandMenu, type CommandMenuItem, type CommandMenuGroup } from "@/components/CommandMenu";
 import { Button, type MenuProps } from "antd";
 import {
 	ComposerInputField,
@@ -104,7 +105,7 @@ export function CodeAssistantInput({
 	onScreenshot,
 	stageBufferFiles,
 	showMentionPanel,
-	showMentionPicker,
+	showMentionPicker: _showMentionPicker,
 	mentionOptions,
 	mentionEmptyState,
 	activeMentionIndex,
@@ -113,7 +114,7 @@ export function CodeAssistantInput({
 	onPickWorkspace,
 	showSlashPicker,
 	slashOptions,
-	claudeCodeSkills,
+	claudeCodeSkills: _claudeCodeSkills,
 	activeSlashIndex,
 	onActiveSlashIndexChange,
 	onApplySlashOption,
@@ -196,8 +197,6 @@ export function CodeAssistantInput({
 		}),
 		[input, droppedPaths],
 	);
-	const hasProjectSkills = claudeCodeSkills.project.length > 0;
-	const hasGlobalSkills = claudeCodeSkills.global.length > 0;
 	const updateIsMultiline = useCallback((next: boolean) => {
 		setIsMultiline((previous) => (previous === next ? previous : next));
 	}, []);
@@ -375,29 +374,139 @@ export function CodeAssistantInput({
 		return () => { unsubscribe?.(); };
 	}, []);
 
-	const mentionItemNodesRef = useRef<Array<HTMLButtonElement | null>>([]);
-	const mentionListRef = useRef<HTMLDivElement>(null);
+	// ── Build CommandMenu groups for "/" slash picker ────────────
+	const slashMenuGroups = useMemo<CommandMenuGroup[]>(() => {
+		const groups: CommandMenuGroup[] = [];
 
-	useEffect(() => {
-		if (!showMentionPicker) return;
-		const mentionList = mentionListRef.current;
-		const activeItem = mentionItemNodesRef.current[activeMentionIndex];
-		if (!mentionList || !activeItem) return;
-
-		const itemTop = activeItem.offsetTop;
-		const itemBottom = itemTop + activeItem.offsetHeight;
-		const visibleTop = mentionList.scrollTop;
-		const visibleBottom = visibleTop + mentionList.clientHeight;
-
-		if (itemTop < visibleTop) {
-			mentionList.scrollTop = itemTop;
-			return;
+		const projectSkills = slashOptions.filter((o) => o.scope === "project");
+		if (projectSkills.length > 0) {
+			groups.push({
+				title: "Project Skills",
+				items: projectSkills.map((o) => ({
+					id: o.id,
+					icon: <Sparkles style={{ width: 14, height: 14, opacity: 0.45 }} />,
+					label: o.command,
+					description: o.description,
+					data: o,
+				})),
+			});
 		}
 
-		if (itemBottom > visibleBottom) {
-			mentionList.scrollTop = itemBottom - mentionList.clientHeight;
+		const globalSkills = slashOptions.filter((o) => o.scope === "global");
+		if (globalSkills.length > 0) {
+			groups.push({
+				title: "Global Skills",
+				items: globalSkills.map((o) => ({
+					id: o.id,
+					icon: <Sparkles style={{ width: 14, height: 14, opacity: 0.45 }} />,
+					label: o.command,
+					description: o.description,
+					data: o,
+				})),
+			});
 		}
-	}, [activeMentionIndex, showMentionPicker]);
+
+		groups.push({
+			title: "Commands",
+			items: [
+				{ id: "cmd:attach", label: "Attach file..." },
+				{ id: "cmd:clear", label: "Clear conversation" },
+				{ id: "cmd:rewind", label: "Rewind" },
+				{ id: "cmd:model", label: "Switch model...", description: modelLabel },
+			],
+		});
+
+		return groups;
+	}, [slashOptions, modelLabel]);
+
+	const handleSlashSelect = useCallback(
+		(item: CommandMenuItem) => {
+			switch (item.id) {
+				case "cmd:attach":
+					onUploadFile();
+					onInputChange("");
+					return;
+				case "cmd:clear":
+					onClearConversation?.();
+					onInputChange("");
+					return;
+				case "cmd:rewind":
+					onRewind();
+					return;
+				case "cmd:model":
+					onCycleModel();
+					return;
+				default:
+					if (item.data) {
+						onApplySlashOption(item.data as typeof slashOptions[number]);
+					}
+			}
+		},
+		[onUploadFile, onInputChange, onClearConversation, onRewind, onCycleModel, onApplySlashOption],
+	);
+
+	// ── Build CommandMenu groups for "@" mention picker ──────────
+	const mentionMenuGroups = useMemo<CommandMenuGroup[]>(() => {
+		if (!showMentionPanel) return [];
+
+		return [{
+			title: "文件",
+			items: mentionOptions.map((o) => {
+				const lastSlash = o.relativePath.lastIndexOf("/");
+				const parentDir = lastSlash >= 0 ? o.relativePath.slice(0, lastSlash) : undefined;
+				return {
+					id: o.id,
+					icon: o.isDirectory ? <Folder size={16} /> : <File size={16} />,
+					label: o.label,
+					tag: parentDir || undefined,
+					data: o,
+				};
+			}),
+			emptyText: !mentionEmptyState ? "输入内容搜索文件" : undefined,
+		}];
+	}, [showMentionPanel, mentionOptions, mentionEmptyState]);
+
+	const handleMentionSelect = useCallback(
+		(item: CommandMenuItem) => {
+			if (item.data) {
+				onApplyMention(item.data as typeof mentionOptions[number]);
+			}
+		},
+		[onApplyMention],
+	);
+
+	const mentionEmptyNode = useMemo<ReactNode>(() => {
+		if (!mentionEmptyState) return null;
+		return (
+			<>
+				<div style={{ fontSize: "var(--mimi-font-size-sm)", fontWeight: 600 }}>
+					{mentionEmptyState.title}
+				</div>
+				<div style={{ fontSize: "var(--mimi-font-size-xs)", lineHeight: 1.5, color: "var(--ant-color-text-secondary)" }}>
+					{mentionEmptyState.description}
+				</div>
+				{mentionEmptyState.actionLabel ? (
+					<button
+						type="button"
+						style={{
+							alignSelf: "flex-start",
+							padding: 0,
+							border: "none",
+							background: "transparent",
+							color: "var(--ant-color-primary)",
+							fontSize: "var(--mimi-font-size-xs)",
+							fontWeight: 600,
+							cursor: "pointer",
+						}}
+						onMouseDown={(e) => e.preventDefault()}
+						onClick={onPickWorkspace}
+					>
+						{mentionEmptyState.actionLabel}
+					</button>
+				) : null}
+			</>
+		);
+	}, [mentionEmptyState, onPickWorkspace]);
 
 	const hasInput =
 		input.trim().length > 0 || attachments.length > 0 || droppedPaths.length > 0;
@@ -738,199 +847,24 @@ export function CodeAssistantInput({
 					dragOver={isDragOver}
 					dragOverClassName={styles.pillDragOver}
 					overlay={showSlashPicker ? (
-						<div className={styles.claudeSlashPanel}>
-							{/* Project Skills */}
-							{hasProjectSkills && slashOptions.filter((o) => o.scope === "project").length > 0 && (
-								<div className={styles.claudeSlashSection}>
-									<div className={styles.claudeSlashSectionTitle}>Project Skills</div>
-									{slashOptions
-										.filter((o) => o.scope === "project")
-										.map((option) => {
-											const globalIdx = slashOptions.indexOf(option);
-											return (
-												<button
-													key={option.id}
-													type="button"
-													className={cx(
-														styles.claudeSlashItem,
-														styles.claudeSlashItemAction,
-														globalIdx === activeSlashIndex && styles.claudeSlashItemStatic,
-													)}
-													onMouseEnter={() => onActiveSlashIndexChange(globalIdx)}
-													onMouseDown={(event) => {
-														event.preventDefault();
-														onApplySlashOption(option);
-													}}
-												>
-													<Sparkles style={{ width: 14, height: 14, flexShrink: 0, opacity: 0.45, marginTop: 2 }} />
-													<div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, minWidth: 0, overflow: "hidden" }}>
-														<span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{option.command}</span>
-														{option.description && (
-															<span className={styles.claudeSlashItemHint}>{option.description}</span>
-														)}
-													</div>
-												</button>
-											);
-										})}
-								</div>
-							)}
-
-							{/* Global Skills */}
-							{hasGlobalSkills && slashOptions.filter((o) => o.scope === "global").length > 0 && (
-								<>
-									{hasProjectSkills && slashOptions.filter((o) => o.scope === "project").length > 0 && (
-										<div className={styles.claudeSlashDivider} />
-									)}
-									<div className={styles.claudeSlashSection}>
-										<div className={styles.claudeSlashSectionTitle}>Global Skills</div>
-										{slashOptions
-											.filter((o) => o.scope === "global")
-											.map((option) => {
-												const globalIdx = slashOptions.indexOf(option);
-												return (
-													<button
-														key={option.id}
-														type="button"
-														className={cx(
-															styles.claudeSlashItem,
-															styles.claudeSlashItemAction,
-															globalIdx === activeSlashIndex && styles.claudeSlashItemStatic,
-														)}
-														onMouseEnter={() => onActiveSlashIndexChange(globalIdx)}
-														onMouseDown={(event) => {
-															event.preventDefault();
-															onApplySlashOption(option);
-														}}
-													>
-														<Sparkles style={{ width: 14, height: 14, flexShrink: 0, opacity: 0.45, marginTop: 2 }} />
-														<div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, minWidth: 0, overflow: "hidden" }}>
-															<span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{option.command}</span>
-															{option.description && (
-																<span className={styles.claudeSlashItemHint}>{option.description}</span>
-															)}
-														</div>
-													</button>
-												);
-											})}
-									</div>
-								</>
-							)}
-
-							{/* Commands */}
-							{(hasProjectSkills || hasGlobalSkills) && slashOptions.length > 0 && (
-								<div className={styles.claudeSlashDivider} />
-							)}
-							<div className={styles.claudeSlashSection}>
-								<div className={styles.claudeSlashSectionTitle}>Commands</div>
-								<button
-									type="button"
-									className={cx(styles.claudeSlashItem, styles.claudeSlashItemAction)}
-									onMouseDown={(e) => e.preventDefault()}
-									onClick={() => {
-										onUploadFile();
-										onInputChange("");
-									}}
-									disabled={disabled}
-								>
-									<span>Attach file...</span>
-								</button>
-								<button
-									type="button"
-									className={cx(styles.claudeSlashItem, styles.claudeSlashItemAction)}
-									onMouseDown={(e) => e.preventDefault()}
-									onClick={() => {
-										onClearConversation?.();
-										onInputChange("");
-									}}
-								>
-									<span>Clear conversation</span>
-								</button>
-								<button
-									type="button"
-									className={cx(styles.claudeSlashItem, styles.claudeSlashItemAction)}
-									onMouseDown={(e) => e.preventDefault()}
-									onClick={onRewind}
-								>
-									<span>Rewind</span>
-								</button>
-								<button
-									type="button"
-									className={cx(styles.claudeSlashItem, styles.claudeSlashItemAction)}
-									onMouseDown={(e) => e.preventDefault()}
-									onClick={onCycleModel}
-								>
-									<span>Switch model...</span>
-									<span className={styles.claudeSlashItemHint}>{modelLabel}</span>
-								</button>
-							</div>
-						</div>
+						<CommandMenu
+							groups={slashMenuGroups}
+							activeIndex={activeSlashIndex}
+							onActiveIndexChange={onActiveSlashIndexChange}
+							onSelect={handleSlashSelect}
+						/>
 					) : null}
 				>
 					{/* Mention Overlay */}
-					{showMentionPanel &&
-						(showMentionPicker ? (
-							<div ref={mentionListRef} className={styles.mentionResultList}>
-								{mentionOptions.map((option, index) => {
-									const lastSlash = option.relativePath.lastIndexOf("/");
-									const parentDir = lastSlash >= 0
-										? option.relativePath.slice(0, lastSlash)
-										: "";
-									return (
-										<button
-											key={option.id}
-											ref={(node) => {
-												mentionItemNodesRef.current[index] = node;
-											}}
-											type="button"
-											onMouseEnter={() => {
-												onActiveMentionIndexChange(index);
-											}}
-											onMouseDown={(event) => {
-												event.preventDefault();
-												onApplyMention(option);
-											}}
-											className={cx(
-												styles.mentionResultItem,
-												index === activeMentionIndex && styles.mentionResultItemActive,
-											)}
-										>
-											<div className={styles.mentionResultMeta}>
-												<div className={styles.mentionResultIcon}>
-													{option.isDirectory ? <Folder size={16} /> : <File size={16} />}
-												</div>
-												<div className={styles.mentionResultText}>
-													<div className={styles.mentionResultTitle}>{option.label}</div>
-												</div>
-												{parentDir && (
-													<div className={styles.mentionResultPath}>{parentDir}</div>
-												)}
-											</div>
-										</button>
-									);
-								})}
-							</div>
-						) : mentionEmptyState ? (
-							<div className={styles.mentionEmptyState}>
-								<div className={styles.mentionEmptyStateTitle}>
-									{mentionEmptyState.title}
-								</div>
-								<div className={styles.mentionEmptyStateDescription}>
-									{mentionEmptyState.description}
-								</div>
-								{mentionEmptyState.actionLabel ? (
-									<button
-										type="button"
-										className={styles.mentionEmptyStateAction}
-										onMouseDown={(event) => {
-											event.preventDefault();
-										}}
-										onClick={onPickWorkspace}
-									>
-										{mentionEmptyState.actionLabel}
-									</button>
-								) : null}
-							</div>
-						) : null)}
+					{showMentionPanel && (
+						<CommandMenu
+							groups={mentionMenuGroups}
+							activeIndex={activeMentionIndex}
+							onActiveIndexChange={onActiveMentionIndexChange}
+							onSelect={handleMentionSelect}
+							emptyState={mentionEmptyNode}
+						/>
+					)}
 
 					{/* Recording / Transcribing Pill */}
 					{(isRecording || isTranscribing) && (

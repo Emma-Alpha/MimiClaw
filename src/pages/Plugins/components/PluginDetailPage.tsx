@@ -1,7 +1,7 @@
 import { Flexbox, Text } from '@lobehub/ui';
 import { createStyles, cssVar } from 'antd-style';
-import { ChevronRight } from 'lucide-react';
-import { memo, useCallback, useState } from 'react';
+import { ChevronRight, ExternalLink } from 'lucide-react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
@@ -11,98 +11,123 @@ import type { MarketplacePlugin, PluginSkillEntry } from '@/types/claude-plugin'
 
 import SkillDetailModal from './SkillDetailModal';
 
+// ─── styles ──────────────────────────────────────────────────────────────────
+
 const useStyles = createStyles(({ css, token }) => ({
   page: css`
     height: 100%;
     overflow-y: auto;
     scrollbar-gutter: stable;
   `,
+
+  /* ── toolbar ── */
+  toolbar: css`
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+    grid-template-columns: 1fr auto;
+    padding: 8px 24px;
+  `,
+  breadcrumb: css`
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    font-size: 13px;
+  `,
+  breadcrumbLink: css`
+    color: ${cssVar.colorTextDescription};
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    transition: background-color 0.12s;
+
+    &:hover {
+      background: color-mix(in oklab, ${cssVar.colorText} 5%, transparent);
+      color: ${cssVar.colorText};
+    }
+  `,
+  breadcrumbCurrent: css`
+    color: ${cssVar.colorText};
+    padding: 4px 8px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
+  actionButton: css`
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: none;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+
+    &:hover {
+      opacity: 0.9;
+    }
+  `,
+  addButton: css`
+    background: ${token.colorPrimary};
+    color: ${token.colorWhite};
+  `,
+  addedButton: css`
+    background: color-mix(in oklab, ${cssVar.colorText} 8%, transparent);
+    color: ${cssVar.colorText};
+  `,
+
+  /* ── content ── */
   content: css`
     max-width: 720px;
     margin: 0 auto;
     padding: 0 24px 48px;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 32px;
   `,
-  breadcrumb: css`
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    padding: 16px 24px 0;
-    max-width: 720px;
-    margin: 0 auto;
-    width: 100%;
-  `,
-  breadcrumbLink: css`
-    color: ${cssVar.colorTextSecondary};
-    cursor: pointer;
-    border: none;
-    background: none;
-    padding: 0;
-    font-size: 13px;
 
-    &:hover {
-      color: ${cssVar.colorText};
-    }
-  `,
-  breadcrumbCurrent: css`
-    color: ${cssVar.colorText};
-    font-weight: 500;
-  `,
-  headerRow: css`
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-  `,
-  pluginInfo: css`
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  `,
-  pluginName: css`
-    font-size: 24px;
-    font-weight: 600;
-    color: ${cssVar.colorText};
-  `,
-  pluginDesc: css`
-    font-size: 14px;
-    color: ${cssVar.colorTextSecondary};
-    line-height: 1.5;
-  `,
-  addButton: css`
+  /* ── section 1: hero ── */
+  logo: css`
+    width: 48px;
+    height: 48px;
     flex-shrink: 0;
-    padding: 8px 16px;
-    border-radius: 8px;
-    border: 1px solid ${token.colorBorder};
-    background: transparent;
-    color: ${cssVar.colorText};
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: border-color 0.15s;
-
-    &:hover {
-      border-color: ${token.colorPrimary};
-    }
-  `,
-  addedButton: css`
-    background: ${token.colorPrimary};
-    color: ${token.colorWhite};
-    border-color: ${token.colorPrimary};
-  `,
-  heroBanner: css`
-    width: 100%;
-    height: 180px;
-    border-radius: 16px;
-    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+    border-radius: 12px;
+    border: 1px solid ${token.colorBorderSecondary};
+    background: transparent;
+  `,
+  pluginName: css`
+    font-size: 22px;
+    font-weight: 600;
+    color: ${cssVar.colorText};
+    word-break: break-word;
+  `,
+  shortDesc: css`
+    font-size: 16px;
+    color: ${cssVar.colorTextSecondary};
+  `,
+  heroBanner: css`
     position: relative;
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 16px;
+    padding: 48px 32px;
+    box-shadow: inset 0 0 0 1px ${token.colorBorderSecondary};
+  `,
+  heroBg: css`
+    position: absolute;
+    inset: 0;
     background: linear-gradient(
       135deg,
       ${token.colorPrimaryBg} 0%,
@@ -113,42 +138,66 @@ const useStyles = createStyles(({ css, token }) => ({
   heroOverlay: css`
     position: absolute;
     inset: 0;
-    background: color-mix(in srgb, ${cssVar.colorBgLayout} 50%, transparent);
+    background: color-mix(in srgb, ${cssVar.colorBgLayout} 70%, transparent);
   `,
-  heroText: css`
+  heroPrompt: css`
     position: relative;
     z-index: 1;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    max-width: 77%;
+    border-radius: 16px;
+    background: color-mix(in srgb, ${cssVar.colorBgLayout} 75%, transparent);
+    padding: 8px 16px;
+    box-shadow: 0 0 0 1px ${token.colorBorderSecondary};
     font-size: 14px;
     color: ${cssVar.colorText};
+    word-break: break-word;
+  `,
+  heroPromptBadge: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: ${token.colorSuccessBg};
+    color: ${token.colorSuccess};
+    font-size: 12px;
     font-weight: 500;
-    padding: 8px 16px;
-    border-radius: 8px;
-    background: color-mix(in srgb, ${cssVar.colorBgLayout} 60%, transparent);
+    margin-inline-end: 6px;
   `,
   longDesc: css`
+    max-width: 960px;
     font-size: 14px;
-    color: ${cssVar.colorTextSecondary};
+    color: ${cssVar.colorText};
     line-height: 1.7;
   `,
+
+  /* ── section 2: includes ── */
   sectionTitle: css`
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
     color: ${cssVar.colorText};
   `,
-  skillRow: css`
+  cardList: css`
+    border: 1px solid ${token.colorBorderSecondary};
+    border-radius: 10px;
+    overflow: hidden;
+    background: ${token.colorFillQuaternary};
+  `,
+  cardRow: css`
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 10px 12px;
-    border-radius: 10px;
+    min-height: 56px;
+    padding: 8px 12px;
     cursor: pointer;
     transition: background-color 0.12s;
 
+    &:not(:last-child) {
+      border-bottom: 0.5px solid ${token.colorBorderSecondary};
+    }
+
     &:hover {
-      background: color-mix(in oklab, ${cssVar.colorText} 5%, transparent);
+      background: color-mix(in oklab, ${cssVar.colorText} 3%, transparent);
     }
   `,
   skillIcon: css`
@@ -170,7 +219,49 @@ const useStyles = createStyles(({ css, token }) => ({
     color: ${cssVar.colorTextSecondary};
     flex-shrink: 0;
   `,
+
+  /* ── section 3: information ── */
+  infoRow: css`
+    display: grid;
+    align-items: center;
+    min-height: 56px;
+    gap: 4px;
+    padding: 8px 16px;
+
+    @media (min-width: 640px) {
+      grid-template-columns: 160px minmax(0, 1fr);
+      gap: 24px;
+    }
+
+    &:not(:last-child) {
+      border-bottom: 0.5px solid ${token.colorBorderSecondary};
+    }
+  `,
+  infoLabel: css`
+    font-size: 13px;
+    color: ${cssVar.colorTextSecondary};
+    min-width: 0;
+  `,
+  infoValue: css`
+    font-size: 13px;
+    color: ${cssVar.colorText};
+    min-width: 0;
+  `,
+  externalLink: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: ${token.colorPrimary};
+    text-decoration: none;
+    font-size: 13px;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  `,
 }));
+
+// ─── component ───────────────────────────────────────────────────────────────
 
 interface PluginDetailPageProps {
   plugin: MarketplacePlugin;
@@ -196,104 +287,182 @@ const PluginDetailPage = memo<PluginDetailPageProps>(({ plugin, onBack }) => {
     toast.success(t('toast.pluginEnabled', { key: plugin.name }));
   }, [isAdded, togglePlugin, pluginKey, t, plugin.name]);
 
+  // build information items
+  const infoItems = useMemo(() => {
+    const items: { label: string; value: string; href?: string }[] = [];
+    const cats = plugin.categories?.join(', ');
+    if (cats) items.push({ label: '类别', value: cats });
+    const caps = plugin.capabilities?.join(', ');
+    if (caps) items.push({ label: '功能', value: caps });
+    const dev = plugin.developerName || plugin.author;
+    if (dev) items.push({ label: '开发者', value: dev });
+    if (plugin.homepage)
+      items.push({ label: '网站', value: plugin.homepage, href: plugin.homepage });
+    return items;
+  }, [plugin]);
+
+  const showLongDesc =
+    plugin.longDescription &&
+    plugin.longDescription !== plugin.description;
+
   return (
     <div className={styles.page}>
-      {/* Breadcrumb */}
-      <div className={styles.breadcrumb}>
-        <button
-          type="button"
-          className={styles.breadcrumbLink}
-          onClick={onBack}
-        >
-          插件
-        </button>
-        <ChevronRight size={14} style={{ opacity: 0.4 }} />
-        <span className={styles.breadcrumbCurrent}>{plugin.name}</span>
-      </div>
-
-      <div className={styles.content}>
-        {/* Header */}
-        <div className={styles.headerRow}>
-          <Flexbox horizontal align="flex-start" gap={16}>
-            <PluginAvatar
-              avatar={plugin.icon || 'MCP_AVATAR'}
-              size={56}
-              style={{ borderRadius: 14 }}
-            />
-            <div className={styles.pluginInfo}>
-              <span className={styles.pluginName}>{plugin.name}</span>
-              <span className={styles.pluginDesc}>{plugin.description}</span>
-            </div>
-          </Flexbox>
+      {/* ── Toolbar ── */}
+      <div className={styles.toolbar}>
+        <div className={styles.breadcrumb}>
           <button
             type="button"
-            className={cx(
-              styles.addButton,
-              isAdded && styles.addedButton,
-            )}
-            onClick={handleAdd}
+            className={styles.breadcrumbLink}
+            onClick={onBack}
           >
-            {isAdded ? '已添加' : `添加到 Codex`}
+            插件
           </button>
+          <ChevronRight size={14} style={{ opacity: 0.4, flexShrink: 0 }} />
+          <span className={styles.breadcrumbCurrent}>{plugin.name}</span>
         </div>
+        <button
+          type="button"
+          className={cx(
+            styles.actionButton,
+            isAdded ? styles.addedButton : styles.addButton,
+          )}
+          onClick={handleAdd}
+        >
+          {isAdded ? '已添加' : '添加到 MimiClaw'}
+        </button>
+      </div>
 
-        {/* Hero banner */}
-        {plugin.defaultPrompt && (
-          <div className={styles.heroBanner}>
-            <div className={styles.heroOverlay} />
-            <span className={styles.heroText}>
-              🎮 {plugin.name} &nbsp;{plugin.defaultPrompt}
-            </span>
-          </div>
-        )}
+      {/* ── Scrollable content ── */}
+      <div className={styles.content}>
+        {/* ── SECTION 1: Hero ── */}
+        <section>
+          <Flexbox gap={20}>
+            {/* Logo */}
+            <div className={styles.logo}>
+              <PluginAvatar
+                avatar={plugin.icon || 'MCP_AVATAR'}
+                size={40}
+                style={{ borderRadius: 8 }}
+              />
+            </div>
 
-        {/* Long description */}
-        {plugin.longDescription && (
-          <span className={styles.longDesc}>{plugin.longDescription}</span>
-        )}
-
-        {/* Included skills */}
-        {plugin.skills && plugin.skills.length > 0 && (
-          <Flexbox gap={12}>
-            <span className={styles.sectionTitle}>包含内容</span>
-            <Flexbox gap={2}>
-              {plugin.skills.map((skill) => (
-                <div
-                  key={skill.name}
-                  className={styles.skillRow}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setSelectedSkill(skill)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setSelectedSkill(skill);
-                    }
-                  }}
-                >
-                  <div className={styles.skillIcon}>🛠</div>
-                  <Flexbox flex={1} gap={1}>
-                    <Flexbox horizontal align="center" gap={6}>
-                      <Text weight={500} style={{ fontSize: 13 }}>
-                        {skill.name}
-                      </Text>
-                      {skill.badge && (
-                        <span className={styles.skillBadge}>
-                          {skill.badge}
-                        </span>
-                      )}
-                    </Flexbox>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      {skill.description}
-                    </Text>
-                  </Flexbox>
-                </div>
-              ))}
+            {/* Name + Description */}
+            <Flexbox gap={4}>
+              <span className={styles.pluginName}>{plugin.name}</span>
+              <span className={styles.shortDesc}>{plugin.description}</span>
             </Flexbox>
+
+            {/* Hero Banner */}
+            {plugin.defaultPrompt && (
+              <div className={styles.heroBanner}>
+                <div className={styles.heroBg} />
+                <div className={styles.heroOverlay} />
+                <div className={styles.heroPrompt}>
+                  <span className={styles.heroPromptBadge}>
+                    🎮 {plugin.name}
+                  </span>
+                  {plugin.defaultPrompt}
+                </div>
+              </div>
+            )}
+
+            {/* Long description */}
+            {showLongDesc && (
+              <span className={styles.longDesc}>
+                {plugin.longDescription}
+              </span>
+            )}
           </Flexbox>
+        </section>
+
+        {/* ── SECTION 2: Includes / 包含内容 ── */}
+        {plugin.skills && plugin.skills.length > 0 && (
+          <section>
+            <Flexbox gap={12}>
+              <span className={styles.sectionTitle}>包含内容</span>
+              <div className={styles.cardList}>
+                {plugin.skills.map((skill) => (
+                  <div
+                    key={skill.name}
+                    className={styles.cardRow}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedSkill(skill)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedSkill(skill);
+                      }
+                    }}
+                  >
+                    <div className={styles.skillIcon}>🛠</div>
+                    <Flexbox flex={1} gap={1} style={{ minWidth: 0 }}>
+                      <Flexbox horizontal align="center" gap={6}>
+                        <Text
+                          weight={500}
+                          style={{ fontSize: 13 }}
+                          ellipsis
+                        >
+                          {skill.name}
+                        </Text>
+                        {skill.badge && (
+                          <span className={styles.skillBadge}>
+                            {skill.badge}
+                          </span>
+                        )}
+                      </Flexbox>
+                      <Text
+                        type="secondary"
+                        style={{ fontSize: 12 }}
+                        ellipsis
+                      >
+                        {skill.description}
+                      </Text>
+                    </Flexbox>
+                  </div>
+                ))}
+              </div>
+            </Flexbox>
+          </section>
+        )}
+
+        {/* ── SECTION 3: Information / 信息 ── */}
+        {infoItems.length > 0 && (
+          <section>
+            <Flexbox gap={12}>
+              <span className={styles.sectionTitle}>信息</span>
+              <div className={styles.cardList}>
+                {infoItems.map((item) => (
+                  <div key={item.label} className={styles.infoRow}>
+                    <span className={styles.infoLabel}>{item.label}</span>
+                    {item.href ? (
+                      <a
+                        className={styles.externalLink}
+                        href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {(() => {
+                          try {
+                            return new URL(item.href).hostname;
+                          } catch {
+                            return item.value;
+                          }
+                        })()}
+                        <ExternalLink size={12} />
+                      </a>
+                    ) : (
+                      <span className={styles.infoValue}>{item.value}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Flexbox>
+          </section>
         )}
       </div>
 
+      {/* Skill detail modal */}
       <SkillDetailModal
         open={!!selectedSkill}
         skill={selectedSkill}
