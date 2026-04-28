@@ -18,8 +18,9 @@ import SkillDetailModal from './SkillDetailModal';
 const useStyles = createStyles(({ css, token }) => ({
   page: css`
     height: 100%;
-    overflow-y: auto;
-    scrollbar-gutter: stable;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   `,
 
   /* ── toolbar ── */
@@ -31,6 +32,8 @@ const useStyles = createStyles(({ css, token }) => ({
     gap: 8px;
     grid-template-columns: 1fr auto;
     padding: 8px 24px;
+    box-sizing: border-box;
+    flex-shrink: 0;
   `,
   breadcrumb: css`
     display: flex;
@@ -95,6 +98,11 @@ const useStyles = createStyles(({ css, token }) => ({
   `,
 
   /* ── content ── */
+  contentScroll: css`
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  `,
   content: css`
     max-width: 720px;
     margin: 0 auto;
@@ -317,17 +325,24 @@ const PluginDetailPage = memo<PluginDetailPageProps>(({ plugin, onBack }) => {
   }, [plugin.mcpServerName, workspaceRoot, fetchMcpStatus]);
 
   const handleAdd = useCallback(async () => {
-    if (isAdded) return;
+    // Allow reconnect for MCP plugins that are added but not connected
+    if (isAdded && (!isMcpPlugin || mcpConnected)) return;
     try {
-      if (isMcpPlugin && plugin.mcpServerName && plugin.mcpServerConfig && workspaceRoot) {
+      if (isMcpPlugin && plugin.mcpServerName && plugin.mcpServerConfig) {
+        if (!workspaceRoot) {
+          toast.error(t('toast.noWorkspace', '请先打开一个项目目录'));
+          return;
+        }
         await connectMcp(plugin.mcpServerName, plugin.mcpServerConfig, workspaceRoot);
       }
-      await togglePlugin(pluginKey, true);
+      if (!isAdded) {
+        await togglePlugin(pluginKey, true);
+      }
       toast.success(t('toast.pluginEnabled', { key: plugin.name }));
     } catch (error) {
       toast.error(t('toast.connectedFailed', { error: String(error) }));
     }
-  }, [isAdded, isMcpPlugin, plugin, workspaceRoot, connectMcp, togglePlugin, pluginKey, t]);
+  }, [isAdded, isMcpPlugin, mcpConnected, plugin, workspaceRoot, connectMcp, togglePlugin, pluginKey, t]);
 
   const handleRemove = useCallback(async () => {
     try {
@@ -397,17 +412,22 @@ const PluginDetailPage = memo<PluginDetailPageProps>(({ plugin, onBack }) => {
             type="button"
             className={cx(
               styles.actionButton,
-              isAdded ? styles.addedButton : styles.addButton,
+              isAdded && (!isMcpPlugin || mcpConnected) ? styles.addedButton : styles.addButton,
             )}
-            disabled={isAdded || (isMcpPlugin && !workspaceRoot)}
+            disabled={(isAdded && (!isMcpPlugin || mcpConnected)) || (isMcpPlugin && !workspaceRoot)}
             onClick={handleAdd}
           >
-            {isAdded ? t('discover.enabled') : t('detail.addToApp', '添加到 MimiClaw')}
+            {isAdded
+              ? (isMcpPlugin && !mcpConnected
+                ? t('publicMcp.status.reconnect', '重新连接')
+                : t('discover.enabled'))
+              : t('detail.addToApp', '添加到 MimiClaw')}
           </button>
         </Flexbox>
       </div>
 
       {/* ── Scrollable content ── */}
+      <div className={styles.contentScroll}>
       <div className={styles.content}>
         {/* ── SECTION 1: Hero ── */}
         <section>
@@ -546,6 +566,7 @@ const PluginDetailPage = memo<PluginDetailPageProps>(({ plugin, onBack }) => {
             </Flexbox>
           </section>
         )}
+      </div>
       </div>
 
       {/* Skill detail modal */}

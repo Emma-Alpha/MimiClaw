@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'http';
+import { app } from 'electron';
 import { stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
@@ -67,6 +68,36 @@ async function pathIsFile(pathLike: string): Promise<boolean> {
 
 function normalizeWorkspaceRootCandidate(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+/**
+ * Replace __RESOURCES_PATH__ placeholder in MCP server config with the actual
+ * resources path. In development this is the project root `resources/` dir;
+ * in production it is `process.resourcesPath/resources/`.
+ */
+function resolveResourcesPlaceholder(config: McpServerConfig): McpServerConfig {
+  const resourcesDir = app.isPackaged
+    ? join(process.resourcesPath, 'resources')
+    : join(__dirname, '../../../resources');
+
+  const replacePlaceholder = (value: unknown): unknown => {
+    if (typeof value === 'string') {
+      return value.replaceAll('__RESOURCES_PATH__', resourcesDir);
+    }
+    if (Array.isArray(value)) {
+      return value.map(replacePlaceholder);
+    }
+    if (isRecord(value)) {
+      const result: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(value)) {
+        result[k] = replacePlaceholder(v);
+      }
+      return result;
+    }
+    return value;
+  };
+
+  return replacePlaceholder(config) as McpServerConfig;
 }
 
 function resolveWorkspaceRoot(
@@ -354,11 +385,14 @@ export async function handlePluginRoutes(
         : {};
       const existed = Object.prototype.hasOwnProperty.call(existingServers, body.serverName);
 
+      // Resolve __RESOURCES_PATH__ placeholder in MCP server config args
+      const resolvedConfig = resolveResourcesPlaceholder(body.serverConfig);
+
       const nextConfig: McpConfigFile = {
         ...existingConfig,
         mcpServers: {
           ...existingServers,
-          [body.serverName]: body.serverConfig,
+          [body.serverName]: resolvedConfig,
         },
       };
 

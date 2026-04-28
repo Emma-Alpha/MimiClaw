@@ -131,5 +131,13 @@
         "characterUsername": "输入账号时，大家都会靠过来看看。",
         "characterSecret": "输入密码时，它们会认真把视线挪开。",
         "characterVisible": "密码可见时，紫色的小家伙会偷偷瞄一眼。"
+    },
+    "browserUse": {
+        "panelTitle": "浏览器",
+        "togglePanel": "切换浏览器面板",
+        "loading": "加载中...",
+        "navigationBlocked": "导航被阻止：URL 不在允许列表中",
+        "close": "关闭",
+        "reload": "刷新"
     }
 }

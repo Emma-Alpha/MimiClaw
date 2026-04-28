@@ -8,6 +8,7 @@ import type { Server } from 'node:http';
 import { join, resolve } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import { CodeAgentManager } from '../code-agent/manager';
+import { browserUseManager } from '../browser-use/manager';
 // GatewayManager removed — using stub for compatibility
 class GatewayManager {
   on(_event: string, _handler: (...args: unknown[]) => void) { return this; }
@@ -1036,6 +1037,45 @@ async function initialize(): Promise<void> {
   ipcMain.handle('code-agent:respond-elicitation', async (_event, payload: { elicitationId: string; action: string; content?: Record<string, unknown> }) => {
     await codeAgentManager.respondElicitation(payload.elicitationId, payload.action, payload.content);
     return { ok: true };
+  });
+
+  // ─── Browser-Use event wiring ───────────────────────────────────────────────
+
+  browserUseManager.on('status', (status: unknown) => {
+    hostEventBus.emit('browser-use:status', status);
+    const wins = [mainWindow, getCodeChatWindow(), getPetWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('browser-use:status-changed', status);
+      }
+    }
+  });
+
+  browserUseManager.on('cursor', (cursorEvent: unknown) => {
+    const wins = [mainWindow, getCodeChatWindow(), getPetWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('browser-use:cursor', cursorEvent);
+      }
+    }
+  });
+
+  browserUseManager.on('error', (error: unknown) => {
+    const wins = [mainWindow, getCodeChatWindow(), getPetWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('browser-use:error', error);
+      }
+    }
+  });
+
+  browserUseManager.on('request-open', () => {
+    const wins = [mainWindow, getCodeChatWindow(), getPetWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('browser-use:request-open');
+      }
+    }
   });
 
   deviceOAuthManager.on('oauth:code', (payload) => {

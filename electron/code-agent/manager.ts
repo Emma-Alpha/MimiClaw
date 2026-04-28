@@ -647,6 +647,9 @@ export class CodeAgentManager extends EventEmitter {
       if (message.method === 'permission') {
         this.emit('run:permission-request', message.payload);
       }
+      if (message.method === 'browser-use.execute') {
+        void this.handleBrowserUseRequest(message.payload as { requestId: string; command: import('../../shared/browser-use').BrowserUseCommand });
+      }
       return;
     }
 
@@ -716,6 +719,21 @@ export class CodeAgentManager extends EventEmitter {
 
   async respondElicitation(elicitationId: string, action: string, content?: Record<string, unknown>): Promise<void> {
     await this.sendRequest<{ ok: boolean }>('run.respond-elicitation', { elicitationId, action, content }, 10_000);
+  }
+
+  private async handleBrowserUseRequest(payload: { requestId: string; command: import('../../shared/browser-use').BrowserUseCommand }): Promise<void> {
+    try {
+      const { browserUseManager } = await import('../browser-use/manager');
+      const result = await browserUseManager.executeCommand(payload.command);
+      await this.sendRequest('browser-use.respond', { requestId: payload.requestId, result }, 10_000);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('[code-agent] browser-use request failed:', error);
+      await this.sendRequest('browser-use.respond', {
+        requestId: payload.requestId,
+        result: { commandId: payload.command.commandId, success: false, error: errorMessage },
+      }, 10_000).catch(() => {});
+    }
   }
 
   private buildRequestRecord(input: CodeAgentRunRequest): CodeAgentRunRecord['request'] {

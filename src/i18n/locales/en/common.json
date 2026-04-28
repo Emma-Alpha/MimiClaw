@@ -108,5 +108,13 @@
         "characterUsername": "Start typing your username and everyone leans in.",
         "characterSecret": "While you type a hidden password, they politely look away.",
         "characterVisible": "Reveal the password and the purple one gets curious."
+    },
+    "browserUse": {
+        "panelTitle": "Browser",
+        "togglePanel": "Toggle browser panel",
+        "loading": "Loading...",
+        "navigationBlocked": "Navigation blocked: URL not in allowlist",
+        "close": "Close",
+        "reload": "Reload"
     }
 }

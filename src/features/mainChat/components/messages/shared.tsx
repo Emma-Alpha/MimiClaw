@@ -4,8 +4,6 @@ import { ActionIconGroup } from '@lobehub/ui';
 import {
   AlertCircle,
   CheckCircle2,
-  ChevronDown,
-  ChevronRight,
   Check,
   Copy,
   File,
@@ -25,63 +23,6 @@ import { invokeIpc } from '@/lib/api-client';
 import type { AttachedFileMeta } from '@/stores/chat';
 import { useMessageStyles } from './styles';
 import type { StreamingToolStatus } from './types';
-
-/**
- * Returns a concise one-line summary of tool input for the collapsed header.
- * Shows up to 2 key=value pairs from object inputs; truncates long values.
- */
-function getInputSummary(input: unknown): string {
-  if (input == null) return '';
-  if (typeof input === 'string') return input.slice(0, 50);
-  if (typeof input !== 'object' || Array.isArray(input)) return '';
-
-  const entries = Object.entries(input as Record<string, unknown>);
-  if (entries.length === 0) return '';
-
-  const parts = entries.slice(0, 2).map(([k, v]) => {
-    const raw = typeof v === 'string' ? v : JSON.stringify(v);
-    const val = raw.length > 30 ? `${raw.slice(0, 30)}…` : raw;
-    return `${k}=${val}`;
-  });
-
-  return parts.join(', ');
-}
-
-export function ToolCard({ name, input }: { name: string; input: unknown }) {
-  const { styles } = useMessageStyles();
-  const [expanded, setExpanded] = useState(false);
-
-  const summary = getInputSummary(input);
-
-  return (
-    <div className={styles.toolCard}>
-      <button
-        type="button"
-        className={styles.toolCardHeader}
-        onClick={() => setExpanded(!expanded)}
-      >
-        <CheckCircle2
-          style={{ width: 14, height: 14, color: '#22c55e', flexShrink: 0 }}
-        />
-        <Wrench style={{ width: 12, height: 12, flexShrink: 0, opacity: 0.6 }} />
-        <span className={styles.toolLabel}>{name}</span>
-        {!expanded && summary && (
-          <span className={styles.toolInputSummary}>{summary}</span>
-        )}
-        {expanded ? (
-          <ChevronDown style={{ width: 12, height: 12, marginLeft: 'auto' }} />
-        ) : (
-          <ChevronRight style={{ width: 12, height: 12, marginLeft: 'auto' }} />
-        )}
-      </button>
-      {expanded && input != null && (
-        <pre className={styles.toolCardBody}>
-          {typeof input === 'string' ? input : JSON.stringify(input, null, 2)}
-        </pre>
-      )}
-    </div>
-  );
-}
 
 function formatDuration(durationMs?: number): string | null {
   if (!durationMs || !Number.isFinite(durationMs)) return null;

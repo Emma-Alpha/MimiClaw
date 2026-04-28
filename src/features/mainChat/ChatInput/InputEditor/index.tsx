@@ -49,6 +49,7 @@ export function InputEditor() {
       clearContent: editor.clearContent,
       getMarkdownContent: editor.getMarkdownContent,
       getEditorData: editor.getEditorData,
+      getMentions: editor.getMentions,
     });
   }, [attachments, clearAttachments, disabled, editor, onSend]);
 
@@ -185,7 +186,7 @@ export function InputEditor() {
       slashOption={{
         fuseOptions: {
           keys: ['key', 'label', 'desc'],
-          threshold: 0.4,
+          threshold: 0.2,
         },
         items: slashOptions,
         renderComp: SlashCommandMenu,

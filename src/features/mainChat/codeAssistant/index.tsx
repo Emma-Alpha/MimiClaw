@@ -19,7 +19,7 @@ import {
 	Shield,
 	ShieldAlert,
 } from "lucide-react";
-import type { ISlashOption } from "@lobehub/editor";
+import { INSERT_MENTION_COMMAND, type ISlashOption, type IEditor } from "@lobehub/editor";
 import { useVolcengineAsr } from "@/hooks/useVolcengineAsr";
 import type {
 	FileAttachment,
@@ -62,6 +62,7 @@ import type {
 import { CodeChatHeader } from "./components/CodeChatHeader";
 import { ConversationView } from "@/features/mainChat/components/ConversationView";
 import { ThreadTerminalPanel } from "./components/ThreadTerminalPanel";
+import { BrowserUsePanel } from "./components/BrowserUsePanel";
 import { ElicitationForm } from "./components/code-agent/ElicitationForm";
 import { PermissionDispatcher } from "./components/code-agent/permissions/PermissionDispatcher";
 import { TodoListCard } from "./components/code-agent/TodoListCard";
@@ -180,6 +181,15 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 	const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
 	const [branchSearchValue, setBranchSearchValue] = useState("");
 	const [showThreadTerminal, setShowThreadTerminal] = useState(false);
+	const [showBrowserUse, setShowBrowserUse] = useState(false);
+
+	// Auto-open browser panel when AI requests it
+	useEffect(() => {
+		const cleanup = window.electron?.ipcRenderer?.on?.("browser-use:request-open", () => {
+			setShowBrowserUse(true);
+		});
+		return typeof cleanup === "function" ? cleanup : undefined;
+	}, []);
 	const branchSearchInputRef = useRef<HTMLInputElement>(null);
 	const requestedWorkspaceRoot = useMemo(() => {
 		if (!embeddedCodeAssistant) return "";
@@ -518,9 +528,17 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		[projectMentionEntries],
 	);
 
-	// Map enabled MCP plugins to MentionItem[] so they appear in the @ dropdown
+	// Map enabled MCP plugins to MentionItem[] so they appear in the @ dropdown.
+	// Eagerly fetch installed plugins so they are available without visiting Plugins page first.
+	const fetchInstalledPlugins = usePluginsStore((s) => s.fetchInstalledPlugins);
+	const fetchMarketplaceSources = usePluginsStore((s) => s.fetchMarketplaceSources);
 	const catalogs = usePluginsStore((s) => s.catalogs);
 	const enabledPlugins = usePluginsStore((s) => s.enabledPlugins);
+
+	useEffect(() => {
+		void fetchInstalledPlugins();
+		void fetchMarketplaceSources();
+	}, [fetchInstalledPlugins, fetchMarketplaceSources]);
 
 	const pluginMentionItems = useMemo<MentionItem[]>(() => {
 		const allPlugins = getAllMarketplacePlugins(catalogs);
@@ -557,7 +575,17 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 			key: `${entry.scope}:${entry.name}`,
 			label: entry.command,
 			metadata: { scope: entry.scope, source: entry.source },
-			onSelect: () => {
+			onSelect: (activeEditor: IEditor) => {
+				// Insert a skill pill/tag into the editor (strip leading "/" since markdownWriter adds it)
+				activeEditor.dispatchCommand(INSERT_MENTION_COMMAND, {
+					label: entry.command.replace(/^\//, ''),
+					metadata: {
+						id: `${entry.scope}:${entry.name}`,
+						kind: 'skill',
+						description: entry.description,
+					},
+				});
+
 				const skill: SlashOption = {
 					id: `${entry.scope}:${entry.name}`,
 					command: entry.command,
@@ -610,7 +638,6 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 			if (!content && attachments.length === 0 && droppedPaths.length === 0) return;
 			if (codeSending) return;
 			await submitPrompt(content);
-			// clearComposer (called inside submitPrompt) also calls chatInputEditorRef.current?.clearContent()
 		},
 		[attachments.length, codeSending, droppedPaths.length, submitPrompt],
 	);
@@ -1069,8 +1096,15 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 					onToggleTerminal={() => {
 						setShowThreadTerminal((previous) => !previous);
 					}}
+					showBrowserToggle={embeddedCodeAssistant && draftTarget === "code"}
+					isBrowserVisible={showBrowserUse}
+					onToggleBrowser={() => {
+						setShowBrowserUse((previous) => !previous);
+					}}
 				/>
 
+			<div className={showBrowserUse ? styles.browserUseMainContent : undefined} style={showBrowserUse ? undefined : { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+			<div className={showBrowserUse ? styles.browserUseChatColumn : undefined} style={showBrowserUse ? undefined : { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
 			<ConversationView
 				messages={codeAgentMessages}
 				currentSessionKey={activeClaudeSessionId}
@@ -1161,6 +1195,7 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 			{/* biome-ignore lint/a11y/noStaticElementInteractions: drag-drop zone, no keyboard equivalent needed */}
 			<div
 				className={styles.chatInputWrapper}
+				data-menu-anchor
 				onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
 				onDrop={(e) => {
 					e.preventDefault();
@@ -1352,6 +1387,18 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 					/>
 				) : null}
 		</div>
+			{/* end chatColumn */}
+			</div>
+			{/* Browser panel: right side */}
+			{embeddedCodeAssistant && draftTarget === "code" && showBrowserUse ? (
+				<BrowserUsePanel
+					onClose={() => {
+						setShowBrowserUse(false);
+					}}
+				/>
+			) : null}
+			{/* end mainContent */}
+			</div>
 		</div>
 	);
 }

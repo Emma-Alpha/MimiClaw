@@ -353,49 +353,6 @@ export const useMessageStyles = createStyles(({ token, css }) => {
       transform: translateY(-1px);
     }
   `,
-  toolCard: css`
-    border-radius: ${unifiedCardRadius}px;
-    border: 1px solid ${unifiedCardBorder};
-    background: ${unifiedCardBackground};
-    overflow: hidden;
-  `,
-  toolCardHeader: css`
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    box-sizing: border-box;
-    padding: 8px 12px;
-    color: ${token.colorTextSecondary};
-    cursor: pointer;
-    background: none;
-    border: none;
-    text-align: left;
-    transition: color 0.2s ease, background 0.2s ease;
-
-    &:hover {
-      color: ${token.colorText};
-      background: ${unifiedCardBackgroundHover};
-    }
-  `,
-  toolLabel: css`
-    font-family: ${token.fontFamilyCode};
-    font-size: ${token.fontSizeSM}px;
-    font-weight: var(--mimi-font-weight-medium);
-  `,
-  toolCardBody: css`
-    margin: 0;
-    padding: 0 12px 12px;
-    border-top: 1px solid ${unifiedCardBorder};
-    background: ${unifiedCardBackgroundHover};
-    font-family: ${token.fontFamilyCode};
-    font-size: calc(${token.fontSizeSM}px - 1px);
-    line-height: ${token.lineHeightLG};
-    color: ${token.colorTextSecondary};
-    overflow-x: auto;
-    white-space: pre-wrap;
-    word-break: break-word;
-  `,
   toolStatusBar: css`
     width: 100%;
     box-sizing: border-box;
@@ -645,57 +602,6 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     color: ${token.colorTextTertiary};
     font-size: ${token.fontSizeSM}px;
     background: ${token.colorFillQuaternary};
-  `,
-  toolInputSummary: css`
-    font-size: calc(${token.fontSizeSM}px - 1px);
-    color: ${token.colorTextTertiary};
-    font-family: ${token.fontFamilyCode};
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 220px;
-  `,
-  toolResultCard: css`
-    border-radius: ${unifiedCardRadius}px;
-    border: 1px solid ${unifiedCardBorder};
-    background: ${unifiedCardBackground};
-    overflow: hidden;
-  `,
-  toolResultCardError: css`
-    border-color: ${token.colorErrorBorder};
-  `,
-  toolResultHeader: css`
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    width: 100%;
-    box-sizing: border-box;
-    padding: 8px 12px;
-    color: ${token.colorTextSecondary};
-    background: none;
-    border: none;
-    text-align: left;
-    transition: color 0.15s ease, background 0.15s ease;
-
-    &:hover {
-      color: ${token.colorText};
-      background: ${unifiedCardBackgroundHover};
-    }
-  `,
-  toolResultBody: css`
-    padding: 10px 12px 12px;
-    font-family: ${token.fontFamilyCode};
-    font-size: calc(${token.fontSizeSM}px - 1px);
-    color: ${token.colorTextSecondary};
-    overflow-x: auto;
-    max-height: 400px;
-    overflow-y: auto;
-    white-space: pre-wrap;
-    word-break: break-word;
-    margin: 0;
-    line-height: ${token.lineHeightLG};
-    border-top: 1px solid ${unifiedCardBorder};
-    background: ${unifiedCardBackgroundHover};
   `,
   };
 });

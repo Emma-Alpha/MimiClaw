@@ -119,6 +119,9 @@ const useStyles = createStyles(({ css, token }) => ({
     font-weight: 500;
     color: ${cssVar.colorText};
   `,
+  searchInput: css`
+    flex: 1;
+  `,
   filterButton: css`
     display: inline-flex;
     align-items: center;
@@ -754,23 +757,26 @@ export function Plugins() {
               placeholder={t('discover.searchPlaceholder')}
               clearable
               style={{ flex: 1, minWidth: 160 }}
+              className={styles.searchInput}
             />
-            {marketplaceNames.length > 0 && (
+            <Flexbox horizontal gap={8}>
+              {marketplaceNames.length > 0 && (
               <Dropdown menu={marketplaceMenu} trigger={['click']}>
                 <button type="button" className={styles.filterButton}>
                   {selectedMarketplace ?? BUILTIN_MARKETPLACE_NAME_LABEL}
                   <ChevronDown size={12} />
                 </button>
               </Dropdown>
-            )}
-            {categories.length > 0 && (
-              <Dropdown menu={categoryMenu} trigger={['click']}>
-                <button type="button" className={styles.filterButton}>
-                  {selectedCategory ?? t('discover.allCategories')}
-                  <ChevronDown size={12} />
-                </button>
-              </Dropdown>
-            )}
+              )}
+              {categories.length > 0 && (
+                <Dropdown menu={categoryMenu} trigger={['click']}>
+                  <button type="button" className={styles.filterButton}>
+                    {selectedCategory ?? t('discover.allCategories')}
+                    <ChevronDown size={12} />
+                  </button>
+                </Dropdown>
+              )}
+            </Flexbox>
           </div>
         )}
         {activeTab === 'skills' && (

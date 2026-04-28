@@ -1849,5 +1849,140 @@ export const useCodeChatStyles = createStyles(
 			}
 		}
 	`,
+
+	// ─── Browser-Use Panel (right-side split) ─────────────────────────────────
+
+	/** Wraps ConversationView + bottomDock + BrowserUsePanel in a horizontal row */
+	browserUseMainContent: css`
+		display: flex;
+		flex-direction: row;
+		flex: 1;
+		min-height: 0;
+		overflow: hidden;
+	`,
+	/** Left column: conversation + input + terminal (fills remaining space) */
+	browserUseChatColumn: css`
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		overflow: hidden;
+	`,
+	/** The right-side browser panel container */
+	browserUsePanel: css`
+		flex-shrink: 0;
+		display: flex;
+		flex-direction: row;
+		height: 100%;
+		box-sizing: border-box;
+	`,
+	browserUseResizeHandle: css`
+		width: 12px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: ew-resize;
+		user-select: none;
+		flex-shrink: 0;
+	`,
+	browserUseResizeGrip: css`
+		width: 4px;
+		height: 40px;
+		border-radius: 999px;
+		background: ${token.colorBorder};
+		transition: background 0.16s ease;
+	`,
+	browserUseCard: css`
+		border-left: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorBgContainer};
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		min-width: 0;
+	`,
+	browserUseHeader: css`
+		height: 36px;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		padding: 0 6px 0 10px;
+		border-bottom: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorBgContainer};
+		flex-shrink: 0;
+	`,
+	browserUseUrlBar: css`
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		height: 24px;
+		padding: 0 8px;
+		border-radius: 6px;
+		background: ${token.colorFillQuaternary};
+		overflow: hidden;
+	`,
+	browserUseUrlIcon: css`
+		flex-shrink: 0;
+		color: ${token.colorTextTertiary};
+	`,
+	browserUseUrlText: css`
+		flex: 1;
+		min-width: 0;
+		font-size: 12px;
+		color: ${token.colorTextSecondary};
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		user-select: all;
+	`,
+	browserUseHeaderRight: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+	`,
+	browserUseBody: css`
+		position: relative;
+		flex: 1;
+		min-height: 0;
+		display: flex;
+		overflow: hidden;
+	`,
+	browserUseWebview: css`
+		width: 100%;
+		height: 100%;
+		border: none;
+	`,
+	browserUseCursor: css`
+		position: absolute;
+		pointer-events: none;
+		z-index: 10;
+		transform: translate(-4px, -4px);
+		transition: left 0.15s ease-out, top 0.15s ease-out;
+	`,
+	browserUseCursorDot: css`
+		width: 20px;
+		height: 20px;
+		border-radius: 50%;
+		background: rgba(59, 130, 246, 0.35);
+		border: 2px solid rgba(59, 130, 246, 0.8);
+		animation: browserUseCursorPulse 1.2s ease-in-out infinite;
+
+		@keyframes browserUseCursorPulse {
+			0%, 100% { transform: scale(1); opacity: 0.8; }
+			50% { transform: scale(1.3); opacity: 0.5; }
+		}
+	`,
+	browserUseCursorClick: css`
+		animation: browserUseCursorClickAnim 0.3s ease-out;
+
+		@keyframes browserUseCursorClickAnim {
+			0% { transform: scale(1); }
+			50% { transform: scale(0.6); }
+			100% { transform: scale(1); }
+		}
+	`,
 	}),
 );

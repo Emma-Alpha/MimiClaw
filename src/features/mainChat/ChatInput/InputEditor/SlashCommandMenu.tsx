@@ -153,8 +153,11 @@ export const SlashCommandMenu = memo<SlashCommandMenuProps>(({
     flip(),
     shift({ padding: 8 }),
     size({
-      apply({ rects, elements }) {
-        Object.assign(elements.floating.style, { width: `${rects.reference.width}px` });
+      apply({ rects, elements, availableHeight }) {
+        Object.assign(elements.floating.style, {
+          width: `${rects.reference.width}px`,
+          maxHeight: `${Math.max(120, availableHeight - 8)}px`,
+        });
       },
     }),
   ], []);
@@ -177,16 +180,15 @@ export const SlashCommandMenu = memo<SlashCommandMenuProps>(({
 
   useLayoutEffect(() => {
     if (!open) return;
-    // Walk up from contenteditable to find ChatInput root (the bordered container)
-    const editable = document.querySelector<HTMLElement>('[contenteditable="true"]');
-    let container = editable?.parentElement;
-    while (container) {
-      const style = getComputedStyle(container);
-      if (style.borderStyle !== 'none' && style.borderWidth !== '0px' && style.borderRadius !== '0px') break;
-      container = container.parentElement;
-    }
-    if (container) {
-      refs.setPositionReference(container);
+    // From the cursor, walk up to find the nearest [data-menu-anchor] ancestor
+    const sel = window.getSelection();
+    const node = sel?.anchorNode;
+    const fromCursor = node
+      ? (node instanceof HTMLElement ? node : node.parentElement)?.closest<HTMLElement>('[data-menu-anchor]')
+      : null;
+    const anchor = fromCursor ?? document.querySelector<HTMLElement>('[data-menu-anchor]');
+    if (anchor) {
+      refs.setPositionReference(anchor);
     }
   }, [open, refs]);
 
@@ -194,7 +196,7 @@ export const SlashCommandMenu = memo<SlashCommandMenuProps>(({
     if (!open) return;
     const frame = requestAnimationFrame(() => update());
     return () => cancelAnimationFrame(frame);
-  }, [open, update]);
+  }, [open, update, flatItems.length]);
 
   useEffect(() => {
     if (!open) return;

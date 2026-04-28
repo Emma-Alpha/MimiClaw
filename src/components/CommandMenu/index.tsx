@@ -12,7 +12,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		display: flex;
 		flex-direction: column;
 		width: 100%;
-		max-height: 340px;
+		max-height: inherit;
 		overflow-x: hidden;
 		overflow-y: auto;
 		scrollbar-width: thin;

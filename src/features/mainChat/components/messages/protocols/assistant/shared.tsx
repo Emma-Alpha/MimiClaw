@@ -7,9 +7,9 @@ import { imageSrc } from '../../media-utils';
 import {
   FileCard,
   ImagePreviewCard,
-  ToolCard,
   ToolStatusBar,
 } from '../../shared';
+import { ToolAccordionItem } from '../../ToolAccordion';
 import { useMessageStyles } from '../../styles';
 import type {
   AssistantProtocolAboveProps,
@@ -52,7 +52,7 @@ export function AssistantStandardAbove({
       {tools.length > 0 && (
         <div className={styles.assistantToolStack}>
           {tools.map((tool, i) => (
-            <ToolCard key={tool.id || i} name={tool.name} input={tool.input} />
+            <ToolAccordionItem key={tool.id || i} id={tool.id} name={tool.name} input={tool.input} />
           ))}
         </div>
       )}

@@ -1,6 +1,6 @@
 import type { IEditor } from '@lobehub/editor';
 import { useRef, useState, type MutableRefObject } from 'react';
-import type { ChatInputEditorApi, ChatInputEditorInstance, ChatInputTextareaAdapter } from '../types';
+import type { ChatInputEditorApi, ChatInputEditorInstance, ChatInputTextareaAdapter, MentionMeta } from '../types';
 
 function isRichEditor(instance: ChatInputEditorInstance | null): instance is IEditor {
   return Boolean(instance && 'getDocument' in instance && 'getLexicalEditor' in instance);
@@ -78,6 +78,34 @@ export function useChatInputEditor(markdownRef: MutableRefObject<string>, setMar
         return getCurrentMarkdown();
       },
       getEditorData: () => ({ markdown: getCurrentMarkdown() }),
+      getMentions: (): MentionMeta[] => {
+        const instance = stateRef.current.instance;
+        if (!isRichEditor(instance)) return [];
+        const lexicalEditor = instance.getLexicalEditor();
+        if (!lexicalEditor) return [];
+
+        // Walk the editor state JSON to find mention nodes
+        const state = lexicalEditor.getEditorState();
+        const json = state.toJSON();
+        const mentions: MentionMeta[] = [];
+
+        const walk = (node: Record<string, unknown>) => {
+          if (node.type === 'mention') {
+            mentions.push({
+              label: (node.label as string) ?? '',
+              metadata: node.metadata as Record<string, unknown> | undefined,
+            });
+          }
+          const children = node.children as Record<string, unknown>[] | undefined;
+          if (Array.isArray(children)) {
+            for (const child of children) walk(child);
+          }
+          const root = node.root as Record<string, unknown> | undefined;
+          if (root && typeof root === 'object') walk(root);
+        };
+        walk(json as unknown as Record<string, unknown>);
+        return mentions;
+      },
       setMarkdownContent: (value) => {
         const instance = stateRef.current.instance;
         updateMarkdown(value);

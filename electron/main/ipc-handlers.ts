@@ -15,6 +15,7 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, extname, basename } from "node:path";
 import crypto from "node:crypto";
+import { browserUseManager } from "../browser-use/manager";
 // GatewayManager stub — gateway removed
 type GatewayManager = {
   rpc: (method: string, params?: unknown, timeout?: number) => Promise<unknown>;
@@ -1037,6 +1038,9 @@ export function registerIpcHandlers(
 
 	// Screenshot handlers
 	registerScreenshotHandlers();
+
+	// Browser-use handlers (AI-controlled in-app browser)
+	registerBrowserUseHandlers();
 }
 
 type HostApiFetchRequest = {
@@ -4035,5 +4039,58 @@ function registerChatHandlers(mainWindow: BrowserWindow): void {
 		} catch (err) {
 			return { success: false, error: String(err) };
 		}
+	});
+}
+
+// ─── Browser-Use Handlers ────────────────────────────────────────────────────
+
+function registerBrowserUseHandlers(): void {
+
+	ipcMain.handle("browser-use:attach", async (_, webContentsId: number) => {
+		try {
+			browserUseManager.attachToWebContents(webContentsId);
+			return { success: true };
+		} catch (err) {
+			return { success: false, error: String(err) };
+		}
+	});
+
+	ipcMain.handle("browser-use:detach", async () => {
+		try {
+			browserUseManager.detach();
+			return { success: true };
+		} catch (err) {
+			return { success: false, error: String(err) };
+		}
+	});
+
+	ipcMain.handle("browser-use:navigate", async (_, url: string) => {
+		try {
+			const result = await browserUseManager.executeCommand({
+				commandId: crypto.randomUUID(),
+				kind: "navigate",
+				params: { url },
+			});
+			return result;
+		} catch (err) {
+			return { success: false, error: String(err) };
+		}
+	});
+
+	ipcMain.handle("browser-use:execute", async (_, command: import("../../shared/browser-use").BrowserUseCommand) => {
+		try {
+			return await browserUseManager.executeCommand(command);
+		} catch (err) {
+			return { commandId: command.commandId, success: false, error: String(err) };
+		}
+	});
+
+	ipcMain.handle("browser-use:status", async () => {
+		return browserUseManager.getStatus();
+	});
+
+	ipcMain.handle("browser-use:set-nav-config", async (_, config: import("../../shared/browser-use").BrowserUseNavigationConfig) => {
+		browserUseManager.setNavigationConfig(config);
+		return { success: true };
 	});
 }

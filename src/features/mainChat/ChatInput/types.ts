@@ -92,11 +92,17 @@ export interface ChatInputTextareaAdapter {
 
 export type ChatInputEditorInstance = IEditor | HTMLTextAreaElement | ChatInputTextareaAdapter;
 
+export interface MentionMeta {
+  label: string;
+  metadata?: Record<string, unknown>;
+}
+
 export interface ChatInputSendPayload {
   clearAttachments: () => void;
   clearContent: () => void;
   getMarkdownContent: () => string;
   getEditorData: () => Record<string, unknown> | null;
+  getMentions: () => MentionMeta[];
   attachments: ChatInputAttachment[];
 }
 
@@ -105,6 +111,7 @@ export interface ChatInputEditorApi {
   clearContent: () => void;
   getMarkdownContent: () => string;
   getEditorData: () => Record<string, unknown> | null;
+  getMentions: () => MentionMeta[];
   setMarkdownContent: (value: string) => void;
   insertTextAtCursor: (value: string) => void;
   setInstance: (instance: ChatInputEditorInstance | null) => void;

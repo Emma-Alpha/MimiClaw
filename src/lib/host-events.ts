@@ -29,6 +29,10 @@ const HOST_EVENT_TO_IPC_CHANNEL: Record<string, string> = {
   'code-agent:permission-request': 'code-agent:permission-request',
   'thread-terminal:data': 'thread-terminal:data',
   'thread-terminal:exit': 'thread-terminal:exit',
+  // Browser-use events
+  'browser-use:status': 'browser-use:status-changed',
+  'browser-use:cursor': 'browser-use:cursor',
+  'browser-use:error': 'browser-use:error',
   'channel:whatsapp-qr': 'channel:whatsapp-qr',
   'channel:whatsapp-success': 'channel:whatsapp-success',
   'channel:whatsapp-error': 'channel:whatsapp-error',

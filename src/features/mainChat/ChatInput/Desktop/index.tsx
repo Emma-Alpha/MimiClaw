@@ -80,6 +80,7 @@ export function DesktopChatInput() {
 
   const content = (
     <Flexbox className={cx(styles.container, expanded && styles.fullscreen)} gap={8}>
+      <div data-menu-anchor>
       <ChatInput
         className={styles.editorWrapper}
         footer={
@@ -111,6 +112,7 @@ export function DesktopChatInput() {
       >
         <InputEditor />
       </ChatInput>
+      </div>
     </Flexbox>
   );
 

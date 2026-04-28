@@ -13,6 +13,7 @@ import {
 	Cpu,
 	ShieldAlert,
 	SquareTerminal,
+	Globe,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useSettingsStore } from "@/stores/settings";
@@ -65,6 +66,9 @@ type CodeChatHeaderProps = {
 	isTerminalToggleDisabled?: boolean;
 	terminalShortcutLabel?: string;
 	onToggleTerminal?: () => void;
+	showBrowserToggle?: boolean;
+	isBrowserVisible?: boolean;
+	onToggleBrowser?: () => void;
 };
 const HEADER_SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
 
@@ -131,6 +135,9 @@ function CodeChatHeaderImpl({
 	isTerminalToggleDisabled = false,
 	terminalShortcutLabel = "",
 	onToggleTerminal,
+	showBrowserToggle = false,
+	isBrowserVisible = false,
+	onToggleBrowser,
 }: CodeChatHeaderProps) {
 	const { t } = useTranslation("common");
 	const sidebarCollapsed = useSettingsStore((state) => state.sidebarCollapsed);
@@ -366,6 +373,26 @@ function CodeChatHeaderImpl({
 										onClick={(event) => {
 											event.stopPropagation();
 											onToggleTerminal?.();
+										}}
+										size="small"
+									/>
+								</span>
+							</Tooltip>
+						) : null}
+						{showBrowserToggle ? (
+							<Tooltip placement="bottom" title="Browser">
+								<span className={styles.tooltipTrigger}>
+									<ActionIcon
+										aria-label="Toggle browser panel"
+										aria-pressed={isBrowserVisible}
+										className={cx(
+											styles.embeddedToolbarButton,
+											isBrowserVisible && styles.embeddedToolbarButtonActive,
+										)}
+										icon={Globe}
+										onClick={(event) => {
+											event.stopPropagation();
+											onToggleBrowser?.();
 										}}
 										size="small"
 									/>

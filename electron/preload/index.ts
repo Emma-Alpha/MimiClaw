@@ -176,6 +176,13 @@ const electronAPI = {
         'thread-terminal:input',
         'thread-terminal:resize',
         'thread-terminal:close',
+        // Browser-use (AI-controlled in-app browser)
+        'browser-use:attach',
+        'browser-use:detach',
+        'browser-use:navigate',
+        'browser-use:execute',
+        'browser-use:status',
+        'browser-use:set-nav-config',
       ];
 
       if (validChannels.includes(channel)) {
@@ -244,6 +251,11 @@ const electronAPI = {
         'skills:runtime-progress',
         'thread-terminal:data',
         'thread-terminal:exit',
+        // Browser-use events
+        'browser-use:status-changed',
+        'browser-use:cursor',
+        'browser-use:error',
+        'browser-use:request-open',
       ];
 
       if (validChannels.includes(channel)) {
@@ -315,6 +327,11 @@ const electronAPI = {
         'skills:runtime-progress',
         'thread-terminal:data',
         'thread-terminal:exit',
+        // Browser-use events
+        'browser-use:status-changed',
+        'browser-use:cursor',
+        'browser-use:error',
+        'browser-use:request-open',
       ];
 
       if (validChannels.includes(channel)) {

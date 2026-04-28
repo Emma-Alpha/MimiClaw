@@ -25,6 +25,7 @@ export function SendArea() {
       clearContent: editor.clearContent,
       getMarkdownContent: editor.getMarkdownContent,
       getEditorData: editor.getEditorData,
+      getMentions: editor.getMentions,
     });
   }, [attachments, clearAttachments, editor, onSend]);
 

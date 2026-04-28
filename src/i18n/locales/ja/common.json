@@ -108,5 +108,13 @@
         "characterUsername": "ユーザー名を入力すると、みんなが少し身を乗り出します。",
         "characterSecret": "パスワード入力中は、きちんと目線をそらしてくれます。",
         "characterVisible": "パスワードを表示すると、紫の子がこっそりのぞきます。"
+    },
+    "browserUse": {
+        "panelTitle": "ブラウザ",
+        "togglePanel": "ブラウザパネルの切り替え",
+        "loading": "読み込み中...",
+        "navigationBlocked": "ナビゲーションがブロックされました：URLが許可リストにありません",
+        "close": "閉じる",
+        "reload": "再読み込み"
     }
 }

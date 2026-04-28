@@ -70,9 +70,14 @@ export const builtinCatalog: MarketplaceCatalog = {
         'Browse the web, fill forms, click buttons, and extract information from any website — all within MimiClaw.',
       categories: ['Featured'],
       components: ['mcp'],
-      author: 'OpenAI',
-      developerName: 'OpenAI',
+      author: 'MimiClaw',
+      developerName: 'MimiClaw',
       capabilities: ['Web Browsing', 'Form Filling', 'Data Extraction'],
+      mcpServerName: 'browser-use',
+      mcpServerConfig: {
+        command: 'node',
+        args: ['__RESOURCES_PATH__/mcp-servers/browser-use-mcp.mjs'],
+      },
     },
     {
       id: 'spreadsheets',

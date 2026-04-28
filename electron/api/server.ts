@@ -19,6 +19,7 @@ import { handleJizhiRoutes } from './routes/jizhi';
 import { handleVoiceChatRoutes } from './routes/voice-chat';
 import { handleXiaojiuRoutes } from './routes/xiaojiu';
 import { handleFallbackConfigRoutes } from './routes/fallback-config';
+import { handleBrowserUseRoutes } from './routes/browser-use';
 import { sendJson } from './route-utils';
 
 type RouteHandler = (
@@ -44,6 +45,7 @@ const routeHandlers: RouteHandler[] = [
   handleXiaojiuRoutes,
   handleVoiceChatRoutes,
   handleFallbackConfigRoutes,
+  handleBrowserUseRoutes,
   handleLogRoutes,
   handleUsageRoutes,
 ];
