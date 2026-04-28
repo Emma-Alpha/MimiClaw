@@ -39,6 +39,7 @@ export function BrowserUsePanel({ onClose }: BrowserUsePanelProps) {
 	const resizingRef = useRef(false);
 	const startXRef = useRef(0);
 	const startWidthRef = useRef(DEFAULT_PANEL_WIDTH);
+	const attachedRef = useRef(false);
 
 	// ─── Webview lifecycle ─────────────────────────────────────────────────────
 
@@ -50,6 +51,7 @@ export function BrowserUsePanel({ onClose }: BrowserUsePanelProps) {
 			try {
 				const webContentsId = (webview as unknown as { getWebContentsId(): number }).getWebContentsId();
 				void invokeIpc("browser-use:attach", webContentsId).then(() => {
+					attachedRef.current = true;
 					setAttached(true);
 				}).catch((err) => {
 					console.error("[BrowserUsePanel] Failed to attach:", err);
@@ -63,7 +65,10 @@ export function BrowserUsePanel({ onClose }: BrowserUsePanelProps) {
 
 		return () => {
 			webview.removeEventListener("dom-ready", handleDomReady);
-			void invokeIpc("browser-use:detach").catch(() => {});
+			if (attachedRef.current) {
+				attachedRef.current = false;
+				void invokeIpc("browser-use:detach").catch(() => {});
+			}
 			setAttached(false);
 		};
 	}, []);
@@ -128,7 +133,10 @@ export function BrowserUsePanel({ onClose }: BrowserUsePanelProps) {
 	}, [attached]);
 
 	const handleClose = useCallback(() => {
-		void invokeIpc("browser-use:detach").catch(() => {});
+		if (attachedRef.current) {
+			attachedRef.current = false;
+			void invokeIpc("browser-use:detach").catch(() => {});
+		}
 		onClose?.();
 	}, [onClose]);
 

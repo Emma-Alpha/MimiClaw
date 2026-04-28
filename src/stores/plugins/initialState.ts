@@ -56,7 +56,7 @@ export const builtinCatalog: MarketplaceCatalog = {
       developerName: 'GitHub',
       homepage: 'https://github.com/github/computer-use-mcp',
       capabilities: ['Click', 'Drag', 'Type', 'Scroll', 'Read accessibility'],
-      mcpServerName: 'computer-use',
+      mcpServerName: 'github-computer-use',
       mcpServerConfig: {
         command: 'npx',
         args: ['-y', '@github/computer-use-mcp'],

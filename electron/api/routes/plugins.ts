@@ -100,6 +100,74 @@ function resolveResourcesPlaceholder(config: McpServerConfig): McpServerConfig {
   return replacePlaceholder(config) as McpServerConfig;
 }
 
+/**
+ * Register an MCP server in the CLI's project config inside `.claude.json`.
+ *
+ * Project-scoped MCP servers (from `.mcp.json`) require an interactive trust
+ * dialog that the non-interactive sidecar cannot handle, so they appear as
+ * "disabled". By writing the server config into `.claude.json`'s project-level
+ * `mcpServers` field, the CLI treats it as a user-approved server.
+ */
+async function registerMcpServerInCliSettings(
+  serverName: string,
+  serverConfig: McpServerConfig,
+  workspaceRoot: string,
+): Promise<void> {
+  const { readFile, writeFile } = await import('node:fs/promises');
+  const { getClaudeCodeConfigDir } = await import('../../utils/paths');
+  const claudeJsonPath = join(getClaudeCodeConfigDir(), '.claude.json');
+
+  let claudeJson: Record<string, unknown> = {};
+  try {
+    const raw = await readFile(claudeJsonPath, 'utf8');
+    const parsed: unknown = JSON.parse(raw);
+    if (isRecord(parsed)) claudeJson = parsed;
+  } catch { /* file may not exist yet */ }
+
+  const resolvedRoot = resolve(workspaceRoot);
+  const projects = (isRecord(claudeJson.projects) ? claudeJson.projects : {}) as Record<string, Record<string, unknown>>;
+  const project = (isRecord(projects[resolvedRoot]) ? { ...projects[resolvedRoot] } : {}) as Record<string, unknown>;
+  const mcpServers = (isRecord(project.mcpServers) ? { ...project.mcpServers } : {}) as Record<string, McpServerConfig>;
+
+  mcpServers[serverName] = serverConfig;
+  project.mcpServers = mcpServers;
+  project.hasTrustDialogAccepted = true;
+  projects[resolvedRoot] = project;
+  claudeJson.projects = projects;
+
+  await writeFile(claudeJsonPath, `${JSON.stringify(claudeJson, null, 2)}\n`, 'utf8');
+  console.log(`[plugins] MCP server "${serverName}" registered in .claude.json for project ${resolvedRoot}`);
+}
+
+/** Remove an MCP server from the CLI's project config in `.claude.json`. */
+async function unregisterMcpServerFromCliSettings(
+  serverName: string,
+  workspaceRoot: string,
+): Promise<void> {
+  const { readFile, writeFile } = await import('node:fs/promises');
+  const { getClaudeCodeConfigDir } = await import('../../utils/paths');
+  const claudeJsonPath = join(getClaudeCodeConfigDir(), '.claude.json');
+
+  let claudeJson: Record<string, unknown> = {};
+  try {
+    const raw = await readFile(claudeJsonPath, 'utf8');
+    const parsed: unknown = JSON.parse(raw);
+    if (isRecord(parsed)) claudeJson = parsed;
+  } catch { return; }
+
+  const resolvedRoot = resolve(workspaceRoot);
+  const projects = claudeJson.projects as Record<string, Record<string, unknown>> | undefined;
+  const project = projects?.[resolvedRoot];
+  if (!project || !isRecord(project.mcpServers)) return;
+
+  const mcpServers = { ...project.mcpServers as Record<string, unknown> };
+  delete mcpServers[serverName];
+  project.mcpServers = mcpServers;
+
+  await writeFile(claudeJsonPath, `${JSON.stringify(claudeJson, null, 2)}\n`, 'utf8');
+  console.log(`[plugins] MCP server "${serverName}" unregistered from .claude.json for project ${resolvedRoot}`);
+}
+
 function resolveWorkspaceRoot(
   requestedWorkspaceRoot: string,
   settings: Awaited<ReturnType<typeof getAllSettings>>,
@@ -397,6 +465,16 @@ export async function handlePluginRoutes(
       };
 
       await writeMcpConfig(mcpConfigPath, nextConfig);
+
+      // Also register the MCP server in the CLI's user-level settings.json
+      // so the CLI trusts it without needing an interactive approval dialog.
+      // Project-level .mcp.json servers are "disabled" by default if not pre-approved.
+      try {
+        await registerMcpServerInCliSettings(body.serverName, resolvedConfig, workspaceRoot);
+      } catch (cliError) {
+        console.warn('[plugins] Failed to register MCP server in CLI settings (non-fatal):', cliError);
+      }
+
       sendJson(res, 200, {
         success: true,
         existed,
@@ -438,6 +516,14 @@ export async function handlePluginRoutes(
       };
 
       await writeMcpConfig(mcpConfigPath, nextConfig);
+
+      // Also remove the MCP server from the CLI's project config in .claude.json
+      try {
+        await unregisterMcpServerFromCliSettings(serverName, resolvedRoot);
+      } catch (cliError) {
+        console.warn('[plugins] Failed to unregister MCP server from CLI settings (non-fatal):', cliError);
+      }
+
       sendJson(res, 200, {
         success: true,
         existed,

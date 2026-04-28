@@ -18,7 +18,14 @@ import {
 	SquarePen,
 	Timer,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	type KeyboardEvent,
+} from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Dropdown, type MenuProps } from "antd";
 import { useTranslation } from "react-i18next";
@@ -36,6 +43,7 @@ import {
 	writeStoredCodeAgentWorkspaceRoot,
 } from "@/lib/code-agent";
 import { invokeIpc } from "@/lib/api-client";
+import { saveSession } from "@/lib/db";
 import { writeMiniChatPendingSession } from "@/pages/MiniChat";
 import { subscribeHostEvent } from "@/lib/host-events";
 import {
@@ -114,9 +122,9 @@ const useStyles = createStyles(({ css, token }) => ({
     flex-shrink: 0;
     opacity: 0.9;
   `,
-  sessionListToggle: css`
+	sessionListToggle: css`
     width: 100%;
-    padding: 2px 4px 2px 20px;
+    padding: 2px 4px 2px 30px;
     font-size: ${CHAT_SESSION_META_FONT_SIZE}px;
     color: ${cssVar.colorTextTertiary};
     cursor: pointer;
@@ -137,7 +145,7 @@ const useStyles = createStyles(({ css, token }) => ({
     padding-inline-start: 48px;
   `,
 	emptyHint: css`
-    padding: 4px 8px 4px 20px;
+    padding: 4px 8px 4px 30px;
     font-size: 12px;
     color: ${cssVar.colorTextDescription};
   `,
@@ -302,7 +310,6 @@ function formatRelativeTime(timestamp: number, language: string): string {
 	return isZh ? `${days} 天` : `${days}d`;
 }
 
-
 // ─── component ────────────────────────────────────────────────────────────────
 
 export function Sidebar() {
@@ -372,11 +379,20 @@ export function Sidebar() {
 	const [workspaceAvailabilityById, setWorkspaceAvailabilityById] = useState<
 		Record<string, WorkspaceAvailability>
 	>({});
-	const [runningThreadSessionsByWorkspaceId, setRunningThreadSessionsByWorkspaceId] =
-		useState<RunningThreadSessionMap>({});
+	const [
+		runningThreadSessionsByWorkspaceId,
+		setRunningThreadSessionsByWorkspaceId,
+	] = useState<RunningThreadSessionMap>({});
 	const didRunMigrationRef = useRef(false);
 	const didInitialWorkspaceFetchRef = useRef(false);
 	const fetchedWorkspaceIdsRef = useRef<Set<string>>(new Set());
+
+	// ── inline rename state ──────────────────────────────────────────────────
+	/** "workspaceId:sessionId" of the session currently being renamed, or null */
+	const [renamingSessionKey, setRenamingSessionKey] = useState<string | null>(
+		null,
+	);
+	const renameInputRef = useRef<HTMLInputElement>(null);
 
 	// ── effects ───────────────────────────────────────────────────────────────
 
@@ -431,14 +447,14 @@ export function Sidebar() {
 			? workspaceIdByNormalizedRoot[normalizeWorkspacePath(routeWorkspaceRoot)]
 			: undefined) ?? null;
 	const isThreadSessionGenerating =
-		pathname.startsWith("/chat/code")
-		&& (
-			codeAgentSessionState === "running"
-			|| codeAgentSessionState === "requires_action"
-		);
+		pathname.startsWith("/chat/code") &&
+		(codeAgentSessionState === "running" ||
+			codeAgentSessionState === "requires_action");
 
 	const [sortOrder, setSortOrder] = useState<"recent" | "alpha">("recent");
-	const [previouslyExpandedIds, setPreviouslyExpandedIds] = useState<string[]>([]);
+	const [previouslyExpandedIds, setPreviouslyExpandedIds] = useState<string[]>(
+		[],
+	);
 
 	const normalizedQuery = searchQuery.trim().toLowerCase();
 	const hasSearchQuery = normalizedQuery.length > 0;
@@ -501,11 +517,16 @@ export function Sidebar() {
 				);
 				const mapped = [...sessionsInWorkspace]
 					.sort((a, b) => b.updatedAt - a.updatedAt)
-					.map((s) => ({
-						sessionId: s.sessionId,
-						title: s.title?.trim() || s.sessionId,
-						updatedAt: s.updatedAt,
-					}));
+					.map((s) => {
+						// Apply custom title from localStorage if the user has renamed this session
+						const customTitleKey = `mimiclaw:session-title:${workspace.id}:${s.sessionId}`;
+						const customTitle = localStorage.getItem(customTitleKey);
+						return {
+							sessionId: s.sessionId,
+							title: customTitle?.trim() || s.title?.trim() || s.sessionId,
+							updatedAt: s.updatedAt,
+						};
+					});
 				setWorkspaceSessionsById((prev) => ({
 					...prev,
 					[workspace.id]: mapped,
@@ -532,7 +553,8 @@ export function Sidebar() {
 			if (!request || typeof request !== "object") return null;
 
 			const workspaceRoot =
-				typeof (request as { workspaceRoot?: unknown }).workspaceRoot === "string"
+				typeof (request as { workspaceRoot?: unknown }).workspaceRoot ===
+				"string"
 					? (request as { workspaceRoot: string }).workspaceRoot.trim()
 					: "";
 			if (!workspaceRoot) return null;
@@ -554,7 +576,8 @@ export function Sidebar() {
 						: null;
 				sessionId =
 					metadata && typeof metadata === "object"
-						? typeof (metadata as { sessionId?: unknown }).sessionId === "string"
+						? typeof (metadata as { sessionId?: unknown }).sessionId ===
+							"string"
 							? (metadata as { sessionId: string }).sessionId.trim()
 							: ""
 						: "";
@@ -658,11 +681,12 @@ export function Sidebar() {
 			if (target) {
 				// 当完成的会话不是当前激活会话，或窗口不在前台时，发送系统通知
 				const isCurrentSession =
-					target.sessionId === activeThreadSessionId
-					&& target.workspaceId === activeThreadWorkspaceIdFromRoute;
+					target.sessionId === activeThreadSessionId &&
+					target.workspaceId === activeThreadWorkspaceIdFromRoute;
 				if (!isCurrentSession || document.hidden) {
 					const output = payload.result?.output || "";
-					const body = output.length > 200 ? `${output.slice(0, 200)}…` : output;
+					const body =
+						output.length > 200 ? `${output.slice(0, 200)}…` : output;
 					new Notification("MimiClaw", {
 						body: body || "AI 已回答完毕",
 					});
@@ -671,10 +695,8 @@ export function Sidebar() {
 				setRunningThreadSessionsByWorkspaceId((prev) => {
 					const currentWorkspaceSessions = prev[target.workspaceId];
 					if (!currentWorkspaceSessions?.[target.sessionId]) return prev;
-					const {
-						[target.sessionId]: _removed,
-						...remainingSessions
-					} = currentWorkspaceSessions;
+					const { [target.sessionId]: _removed, ...remainingSessions } =
+						currentWorkspaceSessions;
 					if (Object.keys(remainingSessions).length === 0) {
 						const { [target.workspaceId]: _workspaceRemoved, ...rest } = prev;
 						return rest;
@@ -882,24 +904,44 @@ export function Sidebar() {
 
 	const handleSessionRename = useCallback(
 		(workspace: SidebarThreadWorkspace, session: CliSessionItem) => {
-			const nextTitle = window.prompt(
-				t("sidebar.session.renamePrompt", { defaultValue: "重命名对话" }),
-				session.title,
-			);
-			if (!nextTitle) return;
-			const trimmed = nextTitle.trim();
+			setRenamingSessionKey(`${workspace.id}:${session.sessionId}`);
+			// Focus the input in next tick after it renders
+			requestAnimationFrame(() => {
+				renameInputRef.current?.focus();
+				renameInputRef.current?.select();
+			});
+		},
+		[],
+	);
+
+	const commitSessionRename = useCallback(
+		(
+			workspace: SidebarThreadWorkspace,
+			session: CliSessionItem,
+			newTitle: string,
+		) => {
+			setRenamingSessionKey(null);
+			const trimmed = newTitle.trim();
 			if (!trimmed || trimmed === session.title) return;
-			// Persist custom title and update local state
-			const key = `mimiclaw:session-title:${workspace.id}:${session.sessionId}`;
-			localStorage.setItem(key, trimmed);
+			// Persist custom title to localStorage and IndexedDB, then refresh
+			const lsKey = `mimiclaw:session-title:${workspace.id}:${session.sessionId}`;
+			localStorage.setItem(lsKey, trimmed);
+			void saveSession({
+				key: session.sessionId,
+				displayName: trimmed,
+				updatedAt: Date.now(),
+				createdAt: session.updatedAt || Date.now(),
+			});
 			void refreshWorkspaceSessions(workspace);
 		},
-		[refreshWorkspaceSessions, t],
+		[refreshWorkspaceSessions],
 	);
 
 	const handleSessionOpenInFinder = useCallback(
 		(workspace: SidebarThreadWorkspace) => {
-			void invokeIpc("shell:showItemInFolder", workspace.rootPath).catch(() => {});
+			void invokeIpc("shell:showItemInFolder", workspace.rootPath).catch(
+				() => {},
+			);
 		},
 		[],
 	);
@@ -934,7 +976,9 @@ export function Sidebar() {
 		[sidebarThreadWorkspaceExpanded, threadWorkspaces],
 	);
 
-	const collapseAllAction = useMemo<"collapse-all" | "reopen-previous" | null>(() => {
+	const collapseAllAction = useMemo<
+		"collapse-all" | "reopen-previous" | null
+	>(() => {
 		if (!isFolderExpanded("thread")) return null;
 		if (expandedWorkspaceIds.length > 1) return "collapse-all";
 		if (expandedWorkspaceIds.length === 0 && previouslyExpandedIds.length > 0)
@@ -1047,14 +1091,24 @@ export function Sidebar() {
 					type="button"
 					className={styles.sectionLabel}
 					onClick={() => toggleFolder("thread")}
-					style={{ cursor: "pointer", background: "none", border: "none", padding: 0, textAlign: "left" }}
+					style={{
+						cursor: "pointer",
+						background: "none",
+						border: "none",
+						padding: 0,
+						textAlign: "left",
+					}}
 				>
 					{t("sidebar.folder.thread", { defaultValue: "项目" })}
 				</button>
 				<div className={styles.sectionActions}>
 					{collapseAllAction && (
 						<ActionIcon
-							icon={collapseAllAction === "collapse-all" ? ChevronsDownUp : ChevronsUpDown}
+							icon={
+								collapseAllAction === "collapse-all"
+									? ChevronsDownUp
+									: ChevronsUpDown
+							}
 							size={{ blockSize: 22, size: 12 }}
 							title={
 								collapseAllAction === "collapse-all"
@@ -1125,16 +1179,22 @@ export function Sidebar() {
 								{ type: "divider" },
 								{
 									key: "rename",
-									label: t("sidebar.workspace.rename", { defaultValue: "重命名" }),
+									label: t("sidebar.workspace.rename", {
+										defaultValue: "重命名",
+									}),
 								},
 								{
 									key: "open",
-									label: t("sidebar.workspace.openInFinder", { defaultValue: "在 Finder 中打开" }),
+									label: t("sidebar.workspace.openInFinder", {
+										defaultValue: "在 Finder 中打开",
+									}),
 								},
 								{ type: "divider" },
 								{
 									key: "remove",
-									label: t("sidebar.workspace.remove", { defaultValue: "从列表移除" }),
+									label: t("sidebar.workspace.remove", {
+										defaultValue: "从列表移除",
+									}),
 									danger: true,
 								},
 							],
@@ -1150,23 +1210,30 @@ export function Sidebar() {
 								}
 							},
 						};
-						const workspaceMenuTrigger: Array<"click" | "contextMenu"> =
-							["contextMenu"];
+						const workspaceMenuTrigger: Array<"click" | "contextMenu"> = [
+							"contextMenu",
+						];
 
 						const workspaceMoreMenu: MenuProps = {
 							items: [
 								{
 									key: "rename",
-									label: t("sidebar.workspace.rename", { defaultValue: "重命名" }),
+									label: t("sidebar.workspace.rename", {
+										defaultValue: "重命名",
+									}),
 								},
 								{
 									key: "open",
-									label: t("sidebar.workspace.openInFinder", { defaultValue: "在 Finder 中打开" }),
+									label: t("sidebar.workspace.openInFinder", {
+										defaultValue: "在 Finder 中打开",
+									}),
 								},
 								{ type: "divider" },
 								{
 									key: "remove",
-									label: t("sidebar.workspace.remove", { defaultValue: "从列表移除" }),
+									label: t("sidebar.workspace.remove", {
+										defaultValue: "从列表移除",
+									}),
 									danger: true,
 								},
 							],
@@ -1180,8 +1247,14 @@ export function Sidebar() {
 									<div
 										className={styles.groupHeader}
 										onClick={(e) => {
-											if ((e.target as HTMLElement).closest('[data-popup-open]')) return;
-											setSidebarThreadWorkspaceExpanded(workspace.id, !expanded);
+											if (
+												(e.target as HTMLElement).closest("[data-popup-open]")
+											)
+												return;
+											setSidebarThreadWorkspaceExpanded(
+												workspace.id,
+												!expanded,
+											);
 											setSidebarActiveContext({
 												kind: "thread",
 												workspaceId: workspace.id,
@@ -1189,30 +1262,28 @@ export function Sidebar() {
 											void refreshWorkspaceSessions(workspace);
 										}}
 									>
-										<span className={styles.groupChevron} style={{ transform: expanded ? "rotate(0deg)" : "rotate(-90deg)" }}>
+										<span
+											className={styles.groupChevron}
+											style={{
+												transform: expanded ? "rotate(0deg)" : "rotate(-90deg)",
+											}}
+										>
 											<ChevronDown size={12} />
 										</span>
 										<span className={styles.groupName}>
 											{workspace.name}
 											{!availability.available && (
-												<span className={styles.unavailableTag} style={{ marginInlineStart: 4 }}>
-													{t("sidebar.workspaceUnavailable", { defaultValue: "不可用" })}
+												<span
+													className={styles.unavailableTag}
+													style={{ marginInlineStart: 4 }}
+												>
+													{t("sidebar.workspaceUnavailable", {
+														defaultValue: "不可用",
+													})}
 												</span>
 											)}
 										</span>
 										<span className={`${styles.groupActions} group-actions`}>
-											{availability.available && (
-												<span
-													className={styles.groupActionBtn}
-													title={t("sidebar.newThread", { defaultValue: "新对话" })}
-													onClick={(e) => {
-														e.stopPropagation();
-														handleWorkspaceNewThread(workspace);
-													}}
-												>
-													<Plus size={14} />
-												</span>
-											)}
 											<Dropdown menu={workspaceMoreMenu} trigger={["click"]}>
 												<span
 													className={styles.groupActionBtn}
@@ -1221,6 +1292,20 @@ export function Sidebar() {
 													<Ellipsis size={14} />
 												</span>
 											</Dropdown>
+											{availability.available && (
+												<span
+													className={styles.groupActionBtn}
+													title={t("sidebar.newThread", {
+														defaultValue: "新对话",
+													})}
+													onClick={(e) => {
+														e.stopPropagation();
+														handleWorkspaceNewThread(workspace);
+													}}
+												>
+													<Plus size={14} />
+												</span>
+											)}
 										</span>
 									</div>
 								</Dropdown>
@@ -1234,13 +1319,13 @@ export function Sidebar() {
 											</div>
 										)}
 										{!isLoading && error && (
-											<div className={styles.warningText}>
-												{error}
-											</div>
+											<div className={styles.warningText}>{error}</div>
 										)}
 										{!isLoading && !error && visibleSessions.length === 0 && (
 											<div className={styles.emptyHint}>
-												{t("sidebar.empty.thread", { defaultValue: "无工作区" })}
+												{t("sidebar.empty.thread", {
+													defaultValue: "无工作区",
+												})}
 											</div>
 										)}
 										{visibleSessions.map((session) => {
@@ -1251,21 +1336,30 @@ export function Sidebar() {
 											const isRunning =
 												runningThreadSessionsByWorkspaceId[workspace.id]?.[
 													session.sessionId
-												] === true
-												|| (isActive && isThreadSessionGenerating);
+												] === true ||
+												(isActive && isThreadSessionGenerating);
+											const isRenaming =
+												renamingSessionKey ===
+												`${workspace.id}:${session.sessionId}`;
 											const sessionMenu: MenuProps = {
 												items: [
 													{
 														key: "rename",
-														label: t("sidebar.session.rename", { defaultValue: "重命名对话" }),
+														label: t("sidebar.session.rename", {
+															defaultValue: "重命名对话",
+														}),
 													},
 													{
 														key: "openInFinder",
-														label: t("sidebar.session.openInFinder", { defaultValue: "在访达中打开" }),
+														label: t("sidebar.session.openInFinder", {
+															defaultValue: "在访达中打开",
+														}),
 													},
 													{
 														key: "openInMiniWindow",
-														label: t("sidebar.session.openInMiniWindow", { defaultValue: "在迷你窗口中打开" }),
+														label: t("sidebar.session.openInMiniWindow", {
+															defaultValue: "在迷你窗口中打开",
+														}),
 													},
 												],
 												onClick: ({ key }) => {
@@ -1274,12 +1368,64 @@ export function Sidebar() {
 													} else if (key === "openInFinder") {
 														handleSessionOpenInFinder(workspace);
 													} else if (key === "openInMiniWindow") {
-														handleSessionOpenInMiniWindow(workspace, session.sessionId);
+														handleSessionOpenInMiniWindow(
+															workspace,
+															session.sessionId,
+														);
 													}
 												},
 											};
+											if (isRenaming) {
+												return (
+													<div
+														key={`${workspace.id}:${session.sessionId}`}
+														className={styles.flatSessionItem}
+														style={{
+															padding: "0 8px",
+															height: 30,
+															display: "flex",
+															alignItems: "center",
+														}}
+													>
+														<input
+															ref={renameInputRef}
+															defaultValue={session.title}
+															style={{
+																width: "100%",
+																background: "transparent",
+																border: "1px solid var(--ant-color-primary)",
+																borderRadius: 4,
+																padding: "2px 6px",
+																fontSize: "inherit",
+																color: "inherit",
+																outline: "none",
+															}}
+															onBlur={(e) =>
+																commitSessionRename(
+																	workspace,
+																	session,
+																	e.currentTarget.value,
+																)
+															}
+															onKeyDown={(
+																e: KeyboardEvent<HTMLInputElement>,
+															) => {
+																if (e.key === "Enter") {
+																	e.currentTarget.blur();
+																} else if (e.key === "Escape") {
+																	setRenamingSessionKey(null);
+																}
+															}}
+														/>
+													</div>
+												);
+											}
 											return (
-												<Dropdown key={`${workspace.id}:${session.sessionId}`} menu={sessionMenu} trigger={["contextMenu"]}>
+												<Dropdown
+													key={`${workspace.id}:${session.sessionId}`}
+													menu={sessionMenu}
+													trigger={["contextMenu"]}
+												>
 													<div>
 														<NavItem
 															className={styles.flatSessionItem}
@@ -1312,7 +1458,10 @@ export function Sidebar() {
 																	: undefined
 															}
 															onClick={() =>
-																handleThreadSession(workspace, session.sessionId)
+																handleThreadSession(
+																	workspace,
+																	session.sessionId,
+																)
 															}
 														/>
 													</div>
@@ -1331,8 +1480,12 @@ export function Sidebar() {
 												}
 											>
 												{sessionsExpanded
-													? t("sidebar.collapseList", { defaultValue: "折叠显示" })
-													: t("sidebar.expandList", { defaultValue: "展开显示" })}
+													? t("sidebar.collapseList", {
+															defaultValue: "折叠显示",
+														})
+													: t("sidebar.expandList", {
+															defaultValue: "展开显示",
+														})}
 											</button>
 										)}
 									</Flexbox>

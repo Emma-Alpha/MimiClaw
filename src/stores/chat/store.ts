@@ -7,7 +7,7 @@
 import { create } from "zustand";
 import type { Descendant } from "slate";
 import { buildUnifiedPatch } from "@/lib/diff-utils";
-import { saveCodeAgentSessionPerf, saveMessage, updateMessagePerformance, type DBMessage } from "@/lib/db";
+import { saveCodeAgentSessionPerf, saveMessage, saveSession, updateMessagePerformance, type DBMessage } from "@/lib/db";
 import { normalizeUsageRecord } from "@/lib/usageAdapter";
 import type { CodeAgentUsageProtocol } from "../../../shared/code-agent";
 
@@ -1465,6 +1465,30 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 		const msg = raw as Record<string, unknown>;
 		const type = msg.type as string | undefined;
 		if (!type) return;
+
+		// ── MCP diagnostics: log control_request and elicitation events ──
+		if (type === "control_request") {
+			const request = msg.request as Record<string, unknown> | undefined;
+			const subtype = (msg.subtype || request?.subtype) as string | undefined;
+			if (subtype === "elicitation") {
+				console.log(
+					"%c[MCP-DIAG] ✅ Elicitation received (adapter auto-responds)",
+					"color: #22c55e; font-weight: bold; font-size: 13px",
+					{
+						requestId: msg.request_id,
+						mcpServerName: request?.mcp_server_name,
+						message: typeof request?.message === "string" ? request.message.substring(0, 120) : undefined,
+						schema: request?.requested_schema,
+					},
+				);
+			} else {
+				console.log(
+					"%c[MCP-DIAG] control_request in store",
+					"color: #f59e0b; font-weight: bold",
+					{ subtype, requestId: msg.request_id },
+				);
+			}
+		}
 		if (type !== "stream_event") {
 			flushQueuedStreamingDeltasNow();
 		}
@@ -1503,6 +1527,28 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 				const mcpServers = Array.isArray(msg.mcp_servers)
 					? (msg.mcp_servers as Array<{ name: string; status: string }>)
 					: [];
+
+				// ── MCP diagnostics: log init info to browser console ──
+				const mcpTools = tools.filter((t) => t.includes("__"));
+				console.log(
+					"%c[MCP-DIAG] system.init",
+					"color: #0ea5e9; font-weight: bold",
+					{
+						totalTools: tools.length,
+						mcpTools: mcpTools.length > 0 ? mcpTools : "(none)",
+						mcpServers: mcpServers.length > 0 ? mcpServers : "(none)",
+						allTools: tools,
+						model: msg.model,
+						cwd: msg.cwd,
+					},
+				);
+				if (mcpTools.length === 0 && mcpServers.length === 0) {
+					console.warn(
+						"%c[MCP-DIAG] ⚠ No MCP tools or servers detected! MCP plugins will not work.",
+						"color: #f59e0b; font-weight: bold",
+					);
+				}
+
 				const init: SessionInitInfo = {
 					model: String(msg.model || ""),
 					permissionMode: String(msg.permissionMode || "default"),
@@ -1511,10 +1557,23 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 					cwd: String(msg.cwd || ""),
 					claudeCodeVersion: String(msg.claude_code_version || ""),
 				};
+				const sid = String(msg.session_id || "");
 				set({
-					sessionId: String(msg.session_id || ""),
+					sessionId: sid,
 					sessionInit: init,
 				});
+
+				// Persist session metadata to IndexedDB
+				if (sid) {
+					const now = Date.now();
+					void saveSession({
+						key: sid,
+						model: init.model || undefined,
+						updatedAt: now,
+						createdAt: now,
+					});
+				}
+
 				addItem({
 					kind: "init",
 					id: uid(),
@@ -2224,6 +2283,22 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 			addItem({ kind: "result", id: uid(), isError, numTurns, totalCostUsd, durationMs });
 			set({ sessionState: "idle", streaming: initialStreaming(), lastUpdatedAt: Date.now() });
 
+			// Update session updatedAt in IndexedDB when a result is received
+			{
+				const sid = get().sessionId;
+				const title = get().sessionTitle;
+				const model = get().sessionInit?.model;
+				if (sid) {
+					void saveSession({
+						key: sid,
+						displayName: title || undefined,
+						model: model || undefined,
+						updatedAt: Date.now(),
+						createdAt: Date.now(),
+					});
+				}
+			}
+
 			// Persist all assistant-usage TPS data to IndexedDB for the session
 			const sid = get().sessionId;
 			if (sid) {
@@ -2280,6 +2355,11 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 			if (!get().sessionTitle && typeof content === "string" && content.trim()) {
 				const title = content.trim().slice(0, 20);
 				set({ sessionTitle: title });
+				// Update session in IndexedDB with the derived title
+				const sid = get().sessionId;
+				if (sid) {
+					void saveSession({ key: sid, displayName: title, updatedAt: Date.now(), createdAt: Date.now() });
+				}
 			} else if (!get().sessionTitle && Array.isArray(content)) {
 				const textBlock = (content as Array<Record<string, unknown>>).find(
 					(b) => b.type === "text" && typeof b.text === "string" && (b.text as string).trim(),
@@ -2287,6 +2367,11 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 				if (textBlock) {
 					const title = (textBlock.text as string).trim().slice(0, 20);
 					set({ sessionTitle: title });
+					// Update session in IndexedDB with the derived title
+					const sid = get().sessionId;
+					if (sid) {
+						void saveSession({ key: sid, displayName: title, updatedAt: Date.now(), createdAt: Date.now() });
+					}
 				}
 			}
 			

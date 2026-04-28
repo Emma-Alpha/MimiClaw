@@ -756,6 +756,28 @@ async function runClaudeCliTask({
     args.push('--add-dir', vendorPath);
   }
 
+  const mcpJsonPath = join(workspaceRoot, '.mcp.json');
+
+  // ── Explicitly pass .mcp.json via --mcp-config so the CLI trusts and
+  //    enables MCP servers without requiring an interactive trust dialog.
+  //    We read and re-serialize the JSON to resolve __RESOURCES_PATH__
+  //    placeholders that may still be present on disk.
+  if (existsSync(mcpJsonPath)) {
+    try {
+      const raw = readFileSync(mcpJsonPath, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && parsed.mcpServers) {
+        // Resolve __RESOURCES_PATH__ placeholder to the actual resources dir
+        const resourcesDir = join(__dirname, '..');
+        const resolvedJson = JSON.stringify(parsed).replaceAll('__RESOURCES_PATH__', resourcesDir);
+        args.push('--mcp-config', resolvedJson);
+        console.error('[MCP-DIAG] Passing --mcp-config with resolved JSON');
+      }
+    } catch (e) {
+      console.error('[MCP-DIAG] Failed to read .mcp.json for --mcp-config:', e.message);
+    }
+  }
+
   const env = {
     ...process.env,
     // Older/newer Claude CLI builds gate partial stream chunks behind this env.
@@ -897,8 +919,10 @@ async function runClaudeCliTask({
   }
 
   async function handlePermissionEvent(parsed) {
+    console.error('[MCP-DIAG] Permission request raw:', JSON.stringify(parsed));
     const normalized = normalizePermissionRequest(parsed);
     if (!normalized) return;
+    console.error('[MCP-DIAG] Permission normalized:', JSON.stringify(normalized));
 
     if (typeof onPermissionRequest !== 'function') {
       // No handler: auto-allow so the task can proceed
@@ -926,6 +950,7 @@ async function runClaudeCliTask({
       const decision = typeof result === 'object' && result !== null ? result.decision : result;
       const feedback = typeof result === 'object' && result !== null ? result.feedback : undefined;
       const response = buildPermissionResponseLine(protocol, requestId, decision || 'deny', rawInput, feedback);
+      console.error('[MCP-DIAG] Permission response:', response.trim());
       try {
         child?.stdin.write(response);
       } catch {
@@ -936,6 +961,25 @@ async function runClaudeCliTask({
       child?.stdout.resume();
     }
   }
+
+  // ── MCP diagnostics: log .mcp.json presence and contents before spawn ──
+  if (existsSync(mcpJsonPath)) {
+    try {
+      const mcpJsonContent = readFileSync(mcpJsonPath, 'utf8');
+      const mcpParsed = JSON.parse(mcpJsonContent);
+      const serverNames = mcpParsed?.mcpServers ? Object.keys(mcpParsed.mcpServers) : [];
+      console.error('[MCP-DIAG] .mcp.json found at', mcpJsonPath);
+      console.error('[MCP-DIAG] MCP servers configured:', serverNames.join(', ') || '(none)');
+      console.error('[MCP-DIAG] .mcp.json contents:', JSON.stringify(mcpParsed));
+    } catch (e) {
+      console.error('[MCP-DIAG] .mcp.json exists but failed to parse:', e.message);
+    }
+  } else {
+    console.error('[MCP-DIAG] No .mcp.json found at', mcpJsonPath);
+  }
+  console.error('[MCP-DIAG] CLI spawn cwd:', workspaceRoot);
+  console.error('[MCP-DIAG] CLI args:', JSON.stringify(args));
+  console.error('[MCP-DIAG] CLAUDE_CONFIG_DIR:', env.CLAUDE_CONFIG_DIR || '(not set)');
 
   // When cliPath points to a Node.js wrapper script (e.g. cli-wrapper.cjs),
   // spawn it via `node <script>` instead of executing the script directly.
@@ -1010,6 +1054,21 @@ async function runClaudeCliTask({
 
       const parsed = tryParseJson(line);
 
+      // ── MCP diagnostics: log system.init to see available tools & MCP servers ──
+      if (parsed && parsed.type === 'system' && parsed.subtype === 'init') {
+        const tools = Array.isArray(parsed.tools) ? parsed.tools : [];
+        const mcpServers = Array.isArray(parsed.mcp_servers) ? parsed.mcp_servers : [];
+        const mcpTools = tools.filter(t => typeof t === 'string' && t.includes('__'));
+        console.error('[MCP-DIAG] ═══ system.init received ═══');
+        console.error('[MCP-DIAG] Total tools:', tools.length);
+        console.error('[MCP-DIAG] MCP tools:', mcpTools.length > 0 ? mcpTools.join(', ') : '(none)');
+        console.error('[MCP-DIAG] MCP servers:', mcpServers.length > 0
+          ? JSON.stringify(mcpServers)
+          : '(none)');
+        console.error('[MCP-DIAG] Model:', parsed.model || '(unknown)');
+        console.error('[MCP-DIAG] ═══════════════════════════');
+      }
+
       if (parsed && parsed.type === 'assistant' && parsed.message) {
         const content = parsed.message.content;
         if (Array.isArray(content)) {
@@ -1035,6 +1094,69 @@ async function runClaudeCliTask({
       // decides whether to flush or fall back to direct content parse.
       if (parsed && typeof parsed.type === 'string') {
         emitTrace(onEvent, 'run:sdk-message', { raw: parsed });
+      }
+
+      // ── Auto-respond to MCP elicitation requests immediately ──────────
+      // Elicitation is a form interaction from MCP servers (e.g. macOS
+      // permission prompts, app access grants).  Handle it here—BEFORE the
+      // permission detection block—so it never gets misrouted as a tool
+      // permission and never blocks stdout while awaiting user input.
+      if (
+        parsed &&
+        parsed.type === 'control_request' &&
+        parsed.request &&
+        typeof parsed.request === 'object' &&
+        parsed.request.subtype === 'elicitation'
+      ) {
+        const req = parsed.request;
+        const requestId = String(parsed.request_id || parsed.requestId || Date.now());
+        const schema = req.requested_schema;
+
+        // Build auto-response: pick the most permissive option from the schema.
+        const formValues = {};
+        if (schema && typeof schema === 'object' && schema.properties) {
+          for (const [key, prop] of Object.entries(schema.properties)) {
+            if (prop && typeof prop === 'object') {
+              const oneOf = prop.oneOf;
+              if (Array.isArray(oneOf) && oneOf.length > 0) {
+                const preferred = oneOf.find(o => o.const === 'allow_all')
+                  || oneOf.find(o => o.const === 'allow')
+                  || oneOf.find(o => o.const === 'done')
+                  || oneOf[0];
+                formValues[key] = preferred.const || preferred.title || '';
+              } else if (prop.enum && Array.isArray(prop.enum)) {
+                formValues[key] = prop.enum[0] || '';
+              } else if (prop.default !== undefined) {
+                formValues[key] = prop.default;
+              }
+            }
+          }
+        }
+
+        console.error('[MCP-DIAG] Auto-approving elicitation:', requestId,
+          'server:', req.mcp_server_name || '?',
+          'response:', JSON.stringify(formValues));
+
+        // Emit as a trace event so the frontend can log it in browser console.
+        emitTrace(onEvent, 'run:elicitation-auto-approved', {
+          requestId,
+          mcpServerName: req.mcp_server_name || '?',
+          message: (req.message || '').substring(0, 120),
+          formValues,
+        });
+
+        const elicitResponse = JSON.stringify({
+          type: 'control_response',
+          response: {
+            subtype: 'success',
+            request_id: requestId,
+            response: {
+              action: 'accept',
+              content: formValues,
+            },
+          },
+        }) + '\n';
+        try { child?.stdin.write(elicitResponse); } catch { /* ignore */ }
       }
 
       // When we receive the final `result` message, close stdin so the CLI
@@ -1067,7 +1189,14 @@ async function runClaudeCliTask({
       // Detect permission request events emitted by Claude CLI in stream-json mode.
       // The CLI may use various shapes depending on version; we match broadly.
       if (parsed && typeof parsed === 'object') {
-        const isPermissionRequest =
+        // Elicitation is already auto-responded above; exclude it here.
+        const isElicitation =
+          parsed.type === 'control_request' &&
+          parsed.request &&
+          typeof parsed.request === 'object' &&
+          parsed.request.subtype === 'elicitation';
+
+        const isPermissionRequest = !isElicitation && (
           // New SDK control envelope – subtype nested inside request object
           (parsed.type === 'control_request' &&
             parsed.request &&
@@ -1084,7 +1213,8 @@ async function runClaudeCliTask({
           parsed.type === 'permission_request' ||
           (parsed.type === 'system' &&
             (parsed.subtype === 'permission_request' || parsed.subtype === 'permission')) ||
-          parsed.request_type === 'permission';
+          parsed.request_type === 'permission'
+        );
         if (isPermissionRequest) {
           emitTrace(onEvent, 'run:permission-request', { raw: parsed });
           // handlePermissionEvent is async; we call it fire-and-forget but stdout
@@ -1100,6 +1230,10 @@ async function runClaudeCliTask({
   child.stderr.on('data', (chunk) => {
     const text = normalizeTraceText(chunk);
     stderr += text;
+    // ── MCP diagnostics: surface MCP-related errors from stderr ──
+    if (/mcp|MCP|server.*fail|fail.*server|ENOENT|spawn.*error/i.test(text)) {
+      console.error('[MCP-DIAG] stderr (MCP-related):', text.trim());
+    }
     emitTrace(onEvent, 'stderr:chunk', { text });
   });
 

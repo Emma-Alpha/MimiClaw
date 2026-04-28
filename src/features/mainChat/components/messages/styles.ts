@@ -280,9 +280,6 @@ export const useMessageStyles = createStyles(({ token, css }) => {
       font-weight: var(--mimi-font-weight-semibold);
     }
 
-    .ant-highlighter {
-      overflow: visible;
-    }
 
     pre {
       margin: 1em 0 !important;

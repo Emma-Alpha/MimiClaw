@@ -23,6 +23,7 @@ type GatewayManager = {
   debouncedReload: () => void;
   on: (event: string, handler: (...args: unknown[]) => void) => void;
 };
+import { getChatAiService } from "../services/chat";
 import { type ProviderConfig } from "../utils/secure-storage";
 import {
 	getOpenClawStatus,
@@ -1039,8 +1040,8 @@ export function registerIpcHandlers(
 	// Screenshot handlers
 	registerScreenshotHandlers();
 
-	// Browser-use handlers (AI-controlled in-app browser)
-	registerBrowserUseHandlers();
+	// Browser-use handlers are registered early in index.ts (before window creation)
+	// to avoid "No handler registered" errors during renderer startup / HMR.
 }
 
 type HostApiFetchRequest = {
@@ -4012,7 +4013,6 @@ function registerSessionHandlers(): void {
 }
 
 function registerChatHandlers(mainWindow: BrowserWindow): void {
-	const { getChatAiService } = require("../services/chat") as typeof import("../services/chat");
 	const chatService = getChatAiService();
 	chatService.setMainWindow(mainWindow);
 
@@ -4044,7 +4044,7 @@ function registerChatHandlers(mainWindow: BrowserWindow): void {
 
 // ─── Browser-Use Handlers ────────────────────────────────────────────────────
 
-function registerBrowserUseHandlers(): void {
+export function registerBrowserUseHandlers(): void {
 
 	ipcMain.handle("browser-use:attach", async (_, webContentsId: number) => {
 		try {

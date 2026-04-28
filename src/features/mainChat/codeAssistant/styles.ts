@@ -1526,10 +1526,6 @@ export const useCodeChatStyles = createStyles(
 			margin-top: 0.9em !important;
 		}
 
-		.ant-highlighter {
-			overflow: visible;
-		}
-
 		pre {
 			margin: 0.75em 0 !important;
 			border-radius: ${token.borderRadiusLG}px;

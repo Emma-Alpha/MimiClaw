@@ -19,7 +19,7 @@ class GatewayManager {
   debouncedRestart() {}
   debouncedReload() {}
 }
-import { registerIpcHandlers } from './ipc-handlers';
+import { registerBrowserUseHandlers, registerIpcHandlers } from './ipc-handlers';
 import {
   createTray,
 } from './tray';
@@ -734,9 +734,19 @@ async function initialize(): Promise<void> {
   createMenu();
   syncMacDockIcon('initialize-after-menu');
 
+  // Register browser-use IPC handlers early, before the window loads content,
+  // to prevent "No handler registered" errors during renderer startup / HMR.
+  registerBrowserUseHandlers();
+
   // Create the main window
   const window = createMainWindow();
   syncMacDockIcon('initialize-after-main-window');
+
+  // Register IPC handlers immediately after window creation, before content
+  // finishes loading, to prevent "No handler registered" errors from the
+  // renderer during startup / HMR.
+  registerIpcHandlers(gatewayManager, window);
+  registerUpdateHandlers(appUpdater, window);
 
   // Create system tray
   createTray(window);
@@ -793,9 +803,6 @@ async function initialize(): Promise<void> {
     },
   );
 
-  // Register IPC handlers
-  registerIpcHandlers(gatewayManager, window);
-
   hostApiServer = await startHostApiServer({
     gatewayManager,
     codeAgentManager,
@@ -806,9 +813,6 @@ async function initialize(): Promise<void> {
 
   await syncPetWindowFromSettings();
   void startVoiceShortcutMonitor();
-
-  // Register update handlers
-  registerUpdateHandlers(appUpdater, window);
 
   void (async () => {
     try {
