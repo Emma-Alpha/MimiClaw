@@ -1344,7 +1344,56 @@ export function Settings() {
                 <Switch checked={gatewayAutoStart} onChange={setGatewayAutoStart} />
               </div>
 
-              {/* Remote Gateway */}
+              
+            {/* OpenClaw API */}
+            <Form.Group
+              title="OpenClaw API"
+              variant="filled"
+              extra={<List style={{ height: 16, width: 16, color: 'var(--ant-color-text-secondary)' }} />}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 16px 16px' }}>
+                <p className={styles.hintText12}>{t('developer.codeAgentConfigDesc')}</p>
+
+                <div className={styles.formField}>
+                  <Label className={styles.fieldLabelSmall}>{t('developer.codeAgentBaseUrl')}</Label>
+                  <Input
+                    type="text"
+                    placeholder="http://127.0.0.1:18789"
+                    value={codeAgent.baseUrl}
+                    onChange={(e) => {
+                      const nextConfig = { ...codeAgent, baseUrl: e.target.value };
+                      useSettingsStore.setState({ codeAgent: nextConfig });
+                      hostApiFetch('/api/settings', {
+                        method: 'PUT',
+                        body: JSON.stringify({ codeAgent: nextConfig }),
+                      });
+                    }}
+                    style={{ fontSize: 13, fontFamily: 'monospace' }}
+                  />
+                </div>
+
+                <div className={styles.formField}>
+                  <Label className={styles.fieldLabelSmall}>{t('developer.codeAgentApiKey')}</Label>
+                  <Input
+                    type="password"
+                    placeholder={t('developer.codeAgentApiKeyPlaceholder')}
+                    value={codeAgent.apiKey}
+                    onChange={(e) => {
+                      const nextConfig = { ...codeAgent, apiKey: e.target.value };
+                      useSettingsStore.setState({ codeAgent: nextConfig });
+                      hostApiFetch('/api/settings', {
+                        method: 'PUT',
+                        body: JSON.stringify({ codeAgent: nextConfig }),
+                      });
+                    }}
+                    style={{ fontSize: 13, fontFamily: 'monospace' }}
+                  />
+                  <p className={styles.hintText}>{t('developer.codeAgentApiKeyDesc')}</p>
+                </div>
+              </div>
+            </Form.Group>
+
+            {/* Remote Gateway */}
               <Form.Group
                 title={t('gateway.remoteTitle')}
                 variant="filled"
