@@ -29,6 +29,10 @@ export interface MarketplacePlugin {
   capabilities?: string[];
   /** Developer name override */
   developerName?: string;
+  /** MCP server name used as key in .mcp.json (e.g. "computer-use") */
+  mcpServerName?: string;
+  /** MCP server config object to write into .mcp.json mcpServers */
+  mcpServerConfig?: Record<string, unknown>;
   /** Marketplace name this plugin belongs to (injected at fetch time) */
   marketplace: string;
 }

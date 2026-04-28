@@ -3,7 +3,7 @@ import { Sparkles } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 import type { MarketplacePlugin } from '@/types/claude-plugin';
-import { HERO_PROMPTS } from '../builtin-catalog';
+import { HERO_PROMPTS } from '@/stores/plugins';
 
 const CAROUSEL_HEIGHT = 275;
 const AUTO_ROTATE_MS = 5000;

@@ -8,6 +8,7 @@ import { usePasteFile, useUploadFiles } from '@/components/DragUploadZone';
 import { useChatInputContext } from '../ChatInputProvider';
 import { fromEditorMarkdown } from '../hooks/useChatInputEditor';
 import { useChatInputStore } from '../store';
+import { MentionCommandMenu } from './MentionCommandMenu';
 import { MentionTagDecoratorOverride } from './MentionTag';
 import { SlashCommandMenu } from './SlashCommandMenu';
 
@@ -125,48 +126,13 @@ export function InputEditor() {
     });
   }, [mentionItems]);
 
-  const builtinSlashOptions = useMemo<ISlashOption[]>(() => ([
-    {
-      desc: t('input.slash.send.description', { defaultValue: 'Send current message' }),
-      icon: Send,
-      key: 'send-message',
-      label: t('input.slash.send.label', { defaultValue: 'Send Message' }),
-      metadata: { group: 'commands' },
-      onSelect: () => {
-        if (sending) return;
-        void handleSend();
-      },
-    },
-    {
-      desc: t('input.slash.upload.description', { defaultValue: 'Open file picker' }),
-      icon: Upload,
-      key: 'upload-files',
-      label: t('input.slash.upload.label', { defaultValue: 'Upload Files' }),
-      metadata: { group: 'commands' },
-      onSelect: () => {
-        void pickFiles();
-      },
-    },
-    {
-      desc: t('input.slash.clear.description', { defaultValue: 'Clear input and attachments' }),
-      icon: Eraser,
-      key: 'clear-input',
-      label: t('input.slash.clear.label', { defaultValue: 'Clear Input' }),
-      metadata: { group: 'commands' },
-      onSelect: () => {
-        editor?.clearContent();
-        clearAttachments();
-      },
-    },
-  ]), [clearAttachments, editor, handleSend, pickFiles, sending, t]);
-
   const commandSlashOptions = useMemo<ISlashOption[]>(() => {
     const extraWithGroup = extraSlashItems.map((item) => {
       if ('type' in item && item.type === 'divider') return item;
       return { ...item, metadata: { ...item.metadata, group: 'commands' } };
     });
-    return [...builtinSlashOptions, ...extraWithGroup];
-  }, [builtinSlashOptions, extraSlashItems]);
+    return [...extraWithGroup];
+  }, [ extraSlashItems]);
 
   const slashOptions = useMemo<ISlashOption[]>(
     () => commandSlashOptions,
@@ -196,6 +162,7 @@ export function InputEditor() {
         trigger: '@',
         maxLength: 200,
         punctuation: ',;:',
+        renderComp: MentionCommandMenu,
         markdownWriter: (node: { label: string; metadata?: Record<string, unknown> }) => {
           if (node.metadata?.kind === 'skill') return `/${node.label}`;
           return `@${node.label}`;

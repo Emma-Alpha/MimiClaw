@@ -74,7 +74,9 @@
       "verificationHint": "ここで確認しているのは現在のワークスペースの .mcp.json 接続状況であり、リモートサービスのライブ接続確認ではありません。",
       "workspaceHint": "プロジェクト単位の MCP 接続を確認するには、先にスレッドのワークスペースを開いてください。",
       "workspaceLabel": "ワークスペース",
-      "workspaceMissing": "確認に使えるワークスペースがまだありません。"
+      "workspaceMissing": "確認に使えるワークスペースがまだありません。",
+      "mcpStatus": "MCP ステータス",
+      "removePlugin": "削除"
     },
     "tools": {
       "figma": {
@@ -129,6 +131,15 @@
     "failedCopyTemplate": "MCP テンプレートのコピーに失敗しました: {{error}}",
     "clipboardMcpInvalid": "クリップボードに有効な MCP 設定がありません。先に Copy MCP config を実行してください。",
     "connectedReady": "接続完了: {{server}} を {{filePath}} に書き込みました",
-    "connectedFailed": "ワンクリック接続に失敗しました: {{error}}"
+    "connectedFailed": "ワンクリック接続に失敗しました: {{error}}",
+    "mcpDisconnected": "{{server}} MCP サーバーの接続を解除しました",
+    "mcpDisconnectFailed": "MCP の切断に失敗しました: {{error}}"
+  },
+  "detail": {
+    "category": "カテゴリ",
+    "capabilities": "機能",
+    "developer": "開発者",
+    "website": "ウェブサイト",
+    "addToApp": "MimiClaw に追加"
   }
 }

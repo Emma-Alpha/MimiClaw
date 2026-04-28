@@ -74,7 +74,9 @@
       "verificationHint": "This checks whether the current workspace .mcp.json is wired up, not a live remote handshake.",
       "workspaceHint": "Open a thread workspace first to verify project-level MCP setup.",
       "workspaceLabel": "Workspace",
-      "workspaceMissing": "No workspace is currently available for verification."
+      "workspaceMissing": "No workspace is currently available for verification.",
+      "mcpStatus": "MCP Status",
+      "removePlugin": "Remove"
     },
     "tools": {
       "figma": {
@@ -129,6 +131,15 @@
     "failedCopyTemplate": "Failed to copy MCP template: {{error}}",
     "clipboardMcpInvalid": "No valid MCP config found in clipboard. Please click Copy MCP config first.",
     "connectedReady": "Connected: {{server}} was written to {{filePath}}",
-    "connectedFailed": "One-click setup failed: {{error}}"
+    "connectedFailed": "One-click setup failed: {{error}}",
+    "mcpDisconnected": "Disconnected {{server}} MCP server",
+    "mcpDisconnectFailed": "Failed to disconnect MCP: {{error}}"
+  },
+  "detail": {
+    "category": "Category",
+    "capabilities": "Capabilities",
+    "developer": "Developer",
+    "website": "Website",
+    "addToApp": "Add to MimiClaw"
   }
 }

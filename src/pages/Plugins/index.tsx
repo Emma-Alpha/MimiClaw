@@ -20,7 +20,7 @@ import {
 import { useSettingsStore } from '@/stores/settings';
 import type { InstalledPlugin, MarketplacePlugin } from '@/types/claude-plugin';
 import type { ClaudeCodeSkillEntry } from '@/lib/code-agent';
-import { HERO_PLUGIN_NAMES } from './builtin-catalog';
+import { HERO_PLUGIN_NAMES } from '@/stores/plugins';
 
 import CardGrid from './components/CardGrid';
 import HeroCarousel from './components/HeroCarousel';
@@ -169,15 +169,34 @@ function toInstalledPlugins(
 
 const BrowsePluginsContent = memo<{
   onSelectPlugin: (p: MarketplacePlugin) => void;
-}>(({ onSelectPlugin }) => {
+  workspaceRoot: string;
+}>(({ onSelectPlugin, workspaceRoot }) => {
   const { styles } = useStyles();
   const { t } = useTranslation('plugins');
 
   const catalogs = usePluginsStore((s) => s.catalogs);
   const enabledPlugins = usePluginsStore((s) => s.enabledPlugins);
+  const togglePlugin = usePluginsStore((s) => s.togglePlugin);
+  const connectMcp = usePluginsStore((s) => s.connectMcp);
   const searchQuery = usePluginsStore((s) => s.searchQuery);
   const selectedMarketplace = usePluginsStore((s) => s.selectedMarketplace);
   const selectedCategory = usePluginsStore((s) => s.selectedCategory);
+
+  const handleInstall = useCallback(
+    async (plugin: MarketplacePlugin) => {
+      const key = `${plugin.name}@${plugin.marketplace}`;
+      try {
+        if (plugin.mcpServerName && plugin.mcpServerConfig && workspaceRoot) {
+          await connectMcp(plugin.mcpServerName, plugin.mcpServerConfig, workspaceRoot);
+        }
+        await togglePlugin(key, true);
+        toast.success(t('toast.pluginEnabled', { key: plugin.name }));
+      } catch (error) {
+        toast.error(t('toast.connectedFailed', { error: String(error) }));
+      }
+    },
+    [workspaceRoot, connectMcp, togglePlugin, t],
+  );
 
   const allPlugins = useMemo(
     () => getAllMarketplacePlugins(catalogs),
@@ -251,6 +270,7 @@ const BrowsePluginsContent = memo<{
                   actionMode={installed ? 'status' : 'install'}
                   checked={installed}
                   onClick={() => onSelectPlugin(plugin)}
+                  onInstall={() => handleInstall(plugin)}
                 />
               );
             })}
@@ -582,7 +602,7 @@ export function Plugins() {
     void fetchMarketplaceSources();
     if (workspaceRoot) {
       void fetchSkills(workspaceRoot);
-      void fetchMcpStatus(['figma-desktop', 'pencil'], workspaceRoot);
+      void fetchMcpStatus(['figma-desktop', 'pencil', 'computer-use'], workspaceRoot);
     }
   }, [
     fetchInstalledPlugins,
@@ -767,7 +787,7 @@ export function Plugins() {
 
         {/* Content */}
         {activeTab === 'plugins' ? (
-          <BrowsePluginsContent onSelectPlugin={setDetailPlugin} />
+          <BrowsePluginsContent onSelectPlugin={setDetailPlugin} workspaceRoot={workspaceRoot} />
         ) : (
           <BrowseSkillsContent />
         )}

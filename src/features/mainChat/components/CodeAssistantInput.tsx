@@ -22,8 +22,8 @@ import {
 	X,
 	File,
 	Folder,
-	Sparkles,
 	ChevronDown,
+	Circle,
 } from "lucide-react";
 import { CommandMenu, type CommandMenuItem, type CommandMenuGroup } from "@/components/CommandMenu";
 import { Button, type MenuProps } from "antd";
@@ -375,6 +375,10 @@ export function CodeAssistantInput({
 	}, []);
 
 	// ── Build CommandMenu groups for "/" slash picker ────────────
+	const slashDot = useMemo(() => (
+		<Circle size={6} fill="currentColor" />
+	), []);
+
 	const slashMenuGroups = useMemo<CommandMenuGroup[]>(() => {
 		const groups: CommandMenuGroup[] = [];
 
@@ -384,9 +388,10 @@ export function CodeAssistantInput({
 				title: "Project Skills",
 				items: projectSkills.map((o) => ({
 					id: o.id,
-					icon: <Sparkles style={{ width: 14, height: 14, opacity: 0.45 }} />,
+					icon: slashDot,
 					label: o.command,
 					description: o.description,
+					tag: "个人",
 					data: o,
 				})),
 			});
@@ -398,9 +403,10 @@ export function CodeAssistantInput({
 				title: "Global Skills",
 				items: globalSkills.map((o) => ({
 					id: o.id,
-					icon: <Sparkles style={{ width: 14, height: 14, opacity: 0.45 }} />,
+					icon: slashDot,
 					label: o.command,
 					description: o.description,
+					tag: "系统",
 					data: o,
 				})),
 			});
@@ -417,7 +423,7 @@ export function CodeAssistantInput({
 		});
 
 		return groups;
-	}, [slashOptions, modelLabel]);
+	}, [slashOptions, modelLabel, slashDot]);
 
 	const handleSlashSelect = useCallback(
 		(item: CommandMenuItem) => {
@@ -846,25 +852,25 @@ export function CodeAssistantInput({
 					attachmentRowClassName={styles.attachmentRow}
 					dragOver={isDragOver}
 					dragOverClassName={styles.pillDragOver}
-					overlay={showSlashPicker ? (
-						<CommandMenu
-							groups={slashMenuGroups}
-							activeIndex={activeSlashIndex}
-							onActiveIndexChange={onActiveSlashIndexChange}
-							onSelect={handleSlashSelect}
-						/>
-					) : null}
+					overlay={
+						showSlashPicker ? (
+							<CommandMenu
+								groups={slashMenuGroups}
+								activeIndex={activeSlashIndex}
+								onActiveIndexChange={onActiveSlashIndexChange}
+								onSelect={handleSlashSelect}
+							/>
+						) : showMentionPanel ? (
+							<CommandMenu
+								groups={mentionMenuGroups}
+								activeIndex={activeMentionIndex}
+								onActiveIndexChange={onActiveMentionIndexChange}
+								onSelect={handleMentionSelect}
+								emptyState={mentionEmptyNode}
+							/>
+						) : null
+					}
 				>
-					{/* Mention Overlay */}
-					{showMentionPanel && (
-						<CommandMenu
-							groups={mentionMenuGroups}
-							activeIndex={activeMentionIndex}
-							onActiveIndexChange={onActiveMentionIndexChange}
-							onSelect={handleMentionSelect}
-							emptyState={mentionEmptyNode}
-						/>
-					)}
 
 					{/* Recording / Transcribing Pill */}
 					{(isRecording || isTranscribing) && (

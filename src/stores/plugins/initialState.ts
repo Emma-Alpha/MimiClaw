@@ -1,9 +1,14 @@
 /**
- * Built-in plugin catalog for MimiClaw.
- * Used as default data source so the plugins page is never empty.
+ * Plugins store initial state.
+ *
+ * Built-in catalog constants and hero prompts live here so the page is never empty
+ * and the store is the single source of truth for plugin data.
  */
-
 import type { MarketplaceCatalog } from '@/types/claude-plugin';
+
+import type { PluginsStoreState } from './types';
+
+// ─── built-in constants ──────────────────────────────────────────────────────
 
 export const BUILTIN_MARKETPLACE_NAME = 'MimiClaw official';
 
@@ -23,7 +28,6 @@ export const HERO_PLUGIN_NAMES = [
   'linear',
 ];
 
-/** Prompt text shown in the hero carousel card for each plugin */
 export const HERO_PROMPTS: Record<string, string> = {
   'computer-use': '播放一个播放列表，帮我进入专注状态',
   'gmail': '帮我回复所有未读邮件',
@@ -32,6 +36,8 @@ export const HERO_PROMPTS: Record<string, string> = {
   'google-drive': '每周五帮我写周报',
   'linear': '为这些 bug bash 发现创建工单',
 };
+
+// ─── built-in catalog ────────────────────────────────────────────────────────
 
 export const builtinCatalog: MarketplaceCatalog = {
   name: BUILTIN_MARKETPLACE_NAME,
@@ -46,9 +52,15 @@ export const builtinCatalog: MarketplaceCatalog = {
         'Use Computer Use to interact with native Mac applications. It can click, drag, type, scroll, and read accessibility information from any running app.',
       categories: ['Featured'],
       components: ['mcp'],
-      author: 'OpenAI',
-      developerName: 'OpenAI',
+      author: 'GitHub',
+      developerName: 'GitHub',
+      homepage: 'https://github.com/github/computer-use-mcp',
       capabilities: ['Click', 'Drag', 'Type', 'Scroll', 'Read accessibility'],
+      mcpServerName: 'computer-use',
+      mcpServerConfig: {
+        command: 'npx',
+        args: ['-y', '@github/computer-use-mcp'],
+      },
     },
     {
       id: 'browser-use',
@@ -345,4 +357,23 @@ export const builtinCatalog: MarketplaceCatalog = {
       homepage: 'https://cloudflare.com',
     },
   ],
+};
+
+// ─── initial state ───────────────────────────────────────────────────────────
+
+export const initialPluginsState: PluginsStoreState = {
+  enabledPlugins: {},
+  marketplaceSources: {},
+  catalogs: { [BUILTIN_MARKETPLACE_NAME]: builtinCatalog },
+  loading: false,
+  error: null,
+  skills: { global: [], project: [] },
+  skillsLoading: false,
+  mcpStatuses: {},
+  mode: 'browse',
+  activeTab: 'plugins',
+  manageTab: 'plugins',
+  searchQuery: '',
+  selectedMarketplace: null,
+  selectedCategory: null,
 };

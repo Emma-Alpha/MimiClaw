@@ -1,7 +1,7 @@
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useCallback } from "react";
-import type { CommandMenuItem, CommandMenuGroup } from "./index";
-import { getCommandMenuItemCount } from "./index";
+import type { CommandMenuItem, CommandMenuGroup } from "./types";
+import { getCommandMenuItemCount } from "./types";
 
 /**
  * Resolve a flat activeIndex to the corresponding CommandMenuItem.

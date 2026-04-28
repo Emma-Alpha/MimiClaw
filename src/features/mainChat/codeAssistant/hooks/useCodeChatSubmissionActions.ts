@@ -17,6 +17,7 @@ import {
 	toCliSubmission,
 	type ComposerPath,
 } from "@/lib/unified-composer";
+import { useChatInputStore } from "@/features/mainChat/ChatInput/store";
 import { useSettingsStore } from "@/stores/settings";
 import { toast } from "sonner";
 import type {
@@ -122,6 +123,12 @@ export function useCodeChatSubmissionActions({
 
 			try {
 				const latestCodeAgentConfig = useSettingsStore.getState().codeAgent;
+				const inputThinkingLevel = useChatInputStore.getState().thinkingLevel;
+				const thinkingOverride = inputThinkingLevel === 'none'
+					? latestCodeAgentConfig.thinking
+					: inputThinkingLevel === 'low'
+						? 'adaptive' as const
+						: 'enabled' as const;
 				const result = await runCodeAgentTask({
 					workspaceRoot,
 					prompt,
@@ -131,7 +138,7 @@ export function useCodeChatSubmissionActions({
 						model: latestCodeAgentConfig.model,
 						fallbackModel: latestCodeAgentConfig.fallbackModel,
 						effort: latestCodeAgentConfig.effort,
-						thinking: latestCodeAgentConfig.thinking,
+						thinking: thinkingOverride,
 						fastMode: latestCodeAgentConfig.fastMode === true,
 						permissionMode: latestCodeAgentConfig.permissionMode,
 					},

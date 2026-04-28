@@ -1,47 +1,9 @@
-import type { ReactNode } from "react";
 import { memo, useCallback, useEffect, useRef } from "react";
 import { createStyles } from "antd-style";
 
-// ── Types ────────────────────────────────────────────────────────
-
-export interface CommandMenuItem {
-	id: string;
-	icon?: ReactNode;
-	label: string;
-	description?: string;
-	/** Right-side tag, e.g. "个人" / "系统" */
-	tag?: string;
-	/** Arbitrary payload forwarded on selection */
-	data?: unknown;
-}
-
-export interface CommandMenuGroup {
-	title: string;
-	items: CommandMenuItem[];
-	/** Shown inside the group when it has no items (e.g. "输入内容搜索文件") */
-	emptyText?: string;
-}
-
-export interface CommandMenuProps {
-	groups: CommandMenuGroup[];
-	/** Flat index across all groups (used for keyboard navigation) */
-	activeIndex: number;
-	onActiveIndexChange: (index: number) => void;
-	onSelect: (item: CommandMenuItem) => void;
-	className?: string;
-	/** Shown when every group is empty and no emptyText is set */
-	emptyState?: ReactNode;
-}
-
-// ── Helpers ──────────────────────────────────────────────────────
-
-/** Total selectable items across all groups */
-export function getCommandMenuItemCount(groups: CommandMenuGroup[]): number {
-	let count = 0;
-	for (const g of groups) count += g.items.length;
-	return count;
-}
-
+export type { CommandMenuItem, CommandMenuGroup, CommandMenuProps } from "./types";
+import type { CommandMenuProps } from "./types";
+import { getCommandMenuItemCount } from "./types";
 
 // ── Styles ───────────────────────────────────────────────────────
 
@@ -49,6 +11,7 @@ const useStyles = createStyles(({ css, token }) => ({
 	panel: css`
 		display: flex;
 		flex-direction: column;
+		width: 100%;
 		max-height: 340px;
 		overflow-x: hidden;
 		overflow-y: auto;
@@ -61,14 +24,13 @@ const useStyles = createStyles(({ css, token }) => ({
 			0 1px 4px 0 rgba(0, 0, 0, 0.04);
 	`,
 	section: css`
-		padding: 6px 0;
+		padding: 4px 0;
 	`,
 	sectionTitle: css`
-		padding: 4px 14px 6px;
+		padding: 4px 14px 4px;
 		font-size: 11px;
 		font-weight: 600;
 		letter-spacing: 0.3px;
-		text-transform: uppercase;
 		color: ${token.colorTextQuaternary};
 		user-select: none;
 	`,
@@ -80,14 +42,16 @@ const useStyles = createStyles(({ css, token }) => ({
 	item: css`
 		width: 100%;
 		display: flex;
+		flex-direction: row;
 		align-items: center;
-		gap: 10px;
-		padding: 7px 14px;
+		gap: 0;
+		padding: 6px 14px;
 		border: none;
 		background: transparent;
 		text-align: left;
 		cursor: pointer;
 		transition: background 120ms ease;
+		line-height: 20px;
 
 		&:hover {
 			background: ${token.colorFillTertiary};
@@ -101,55 +65,48 @@ const useStyles = createStyles(({ css, token }) => ({
 		}
 	`,
 	itemIcon: css`
-		display: flex;
+		display: inline-flex;
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
-		width: 28px;
-		height: 28px;
-		border-radius: 6px;
-		background: ${token.colorFillTertiary};
-		color: ${token.colorTextSecondary};
+		width: 20px;
+		height: 20px;
+		margin-right: 6px;
+		color: ${token.colorTextQuaternary};
 		font-size: 14px;
 		line-height: 1;
 
 		img {
-			width: 18px;
-			height: 18px;
+			width: 16px;
+			height: 16px;
 			object-fit: contain;
-			border-radius: 4px;
+			border-radius: 3px;
 		}
-	`,
-	itemContent: css`
-		display: flex;
-		flex-direction: column;
-		gap: 1px;
-		min-width: 0;
-		flex: 1;
 	`,
 	itemLabel: css`
 		font-size: 13px;
-		line-height: 18px;
-		font-weight: 500;
+		font-weight: 600;
 		color: ${token.colorText};
-		overflow: hidden;
-		text-overflow: ellipsis;
 		white-space: nowrap;
+		flex-shrink: 0;
 	`,
 	itemDescription: css`
-		font-size: 12px;
-		line-height: 16px;
+		font-size: 13px;
 		color: ${token.colorTextQuaternary};
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+		margin-left: 6px;
+		min-width: 0;
+		flex: 1;
 	`,
 	itemTag: css`
 		flex-shrink: 0;
-		font-size: 11px;
-		line-height: 16px;
+		margin-left: 12px;
+		font-size: 12px;
 		color: ${token.colorTextQuaternary};
 		user-select: none;
+		white-space: nowrap;
 	`,
 	emptyText: css`
 		padding: 8px 14px;
@@ -248,18 +205,16 @@ export const CommandMenu = memo<CommandMenuProps>(function CommandMenu({
 												}}
 											>
 												{item.icon != null && (
-													<div className={styles.itemIcon}>{item.icon}</div>
+													<span className={styles.itemIcon}>{item.icon}</span>
 												)}
-												<div className={styles.itemContent}>
-													<div className={styles.itemLabel}>{item.label}</div>
-													{item.description && (
-														<div className={styles.itemDescription}>
-															{item.description}
-														</div>
-													)}
-												</div>
+												<span className={styles.itemLabel}>{item.label}</span>
+												{item.description && (
+													<span className={styles.itemDescription}>
+														{item.description}
+													</span>
+												)}
 												{item.tag && (
-													<div className={styles.itemTag}>{item.tag}</div>
+													<span className={styles.itemTag}>{item.tag}</span>
 												)}
 											</button>
 										);
@@ -270,7 +225,6 @@ export const CommandMenu = memo<CommandMenuProps>(function CommandMenu({
 						</div>
 					);
 
-					// Only recalculate flatIndex for next group if this group was rendered
 					void startIndex;
 
 					return (

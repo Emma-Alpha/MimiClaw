@@ -376,6 +376,47 @@ export async function handlePluginRoutes(
     return true;
   }
 
+  // POST /api/plugins/public-mcp/disconnect — remove an MCP server from .mcp.json
+  if (url.pathname === '/api/plugins/public-mcp/disconnect' && req.method === 'POST') {
+    try {
+      const body = await parseJsonBody<{ serverName?: unknown; workspaceRoot?: unknown }>(req);
+      const serverName = typeof body.serverName === 'string' ? body.serverName.trim() : '';
+      if (!serverName) throw new Error('serverName is required');
+      const workspaceRoot = normalizeWorkspaceRootCandidate(body.workspaceRoot);
+      const settings = await getAllSettings();
+      const resolvedRoot = resolveWorkspaceRoot(workspaceRoot, settings);
+
+      if (!(await pathIsDirectory(resolvedRoot))) {
+        throw new Error(`workspaceRoot does not exist or is not a directory: ${resolvedRoot}`);
+      }
+
+      const mcpConfigPath = join(resolvedRoot, '.mcp.json');
+      const existingConfig = await readMcpConfig(mcpConfigPath);
+      const existingServers = isRecord(existingConfig.mcpServers)
+        ? { ...existingConfig.mcpServers as Record<string, McpServerConfig> }
+        : {};
+      const existed = Object.prototype.hasOwnProperty.call(existingServers, serverName);
+      delete existingServers[serverName];
+
+      const nextConfig: McpConfigFile = {
+        ...existingConfig,
+        mcpServers: existingServers,
+      };
+
+      await writeMcpConfig(mcpConfigPath, nextConfig);
+      sendJson(res, 200, {
+        success: true,
+        existed,
+        filePath: mcpConfigPath,
+        serverName,
+        workspaceRoot: resolvedRoot,
+      });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
   if (url.pathname === '/api/plugins/public-mcp/status' && req.method === 'POST') {
     try {
       const body = normalizeStatusBody(await parseJsonBody<PublicMcpStatusBody>(req));

@@ -13,6 +13,7 @@ import {
 	FileText,
 	Folder,
 	GitBranch,
+	Monitor,
 	Plus,
 	Search,
 	Shield,
@@ -42,6 +43,7 @@ import {
 } from "@/lib/code-agent";
 import { invokeIpc } from "@/lib/api-client";
 import { useChatStore, type StreamingToolUse } from "@/stores/chat";
+import { getAllMarketplacePlugins, usePluginsStore } from "@/stores/plugins";
 import {
 	extractComposerPathsFromTransfer,
 	type ComposerPath,
@@ -466,7 +468,7 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 	}, [codeWorkspaceRoot]);
 
 	// Map project mention entries to MentionItem[]
-	const mentionItems = useMemo<MentionItem[]>(
+	const fileMentionItems = useMemo<MentionItem[]>(
 		() => {
 			return projectMentionEntries.map((entry) => {
 				const lastSlash = entry.relativePath.lastIndexOf('/');
@@ -476,15 +478,8 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 				const Icon = entry.isDirectory ? Folder : FileText;
 				return {
 					id: entry.absolutePath,
-					// Inserted mention text: full relative path keeps every
-					// entry unique (avoids duplicate "@src" pills) and makes
-					// it clear which file/folder was referenced.
 					label: `@${entry.relativePath}`,
-					// Dropdown row label: short name for easy scanning. The
-					// fuse.js client-side filter also uses this string.
 					displayLabel: entry.name,
-					// Description participates in fuse matching; also useful
-					// for other consumers that want secondary metadata.
 					description: entry.relativePath,
 					kind: entry.isDirectory ? 'folder' : 'file',
 					icon: (
@@ -523,12 +518,45 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 		[projectMentionEntries],
 	);
 
+	// Map enabled MCP plugins to MentionItem[] so they appear in the @ dropdown
+	const catalogs = usePluginsStore((s) => s.catalogs);
+	const enabledPlugins = usePluginsStore((s) => s.enabledPlugins);
+
+	const pluginMentionItems = useMemo<MentionItem[]>(() => {
+		const allPlugins = getAllMarketplacePlugins(catalogs);
+		return allPlugins
+			.filter((p) => {
+				const key = `${p.name}@${p.marketplace}`;
+				return (key in enabledPlugins) && p.mcpServerName;
+			})
+			.map((p) => ({
+				id: `mcp:${p.mcpServerName}`,
+				label: `@${p.mcpServerName}`,
+				displayLabel: p.name,
+				description: p.description,
+				kind: 'plugin' as const,
+				icon: (
+					<Monitor
+						size={14}
+						strokeWidth={1.75}
+						style={{ color: 'var(--color-primary)', flexShrink: 0 }}
+					/>
+				),
+			}));
+	}, [catalogs, enabledPlugins]);
+
+	const mentionItems = useMemo<MentionItem[]>(
+		() => [...pluginMentionItems, ...fileMentionItems],
+		[pluginMentionItems, fileMentionItems],
+	);
+
 	// Map claudeCodeSkills to ISlashOption[] for the editor slash menu
 	const extraSlashItems = useMemo<ISlashOption[]>(() => {
 		const toSlashItem = (entry: ClaudeCodeSkillEntry): ISlashOption => ({
 			desc: entry.description,
 			key: `${entry.scope}:${entry.name}`,
 			label: entry.command,
+			metadata: { scope: entry.scope, source: entry.source },
 			onSelect: () => {
 				const skill: SlashOption = {
 					id: `${entry.scope}:${entry.name}`,

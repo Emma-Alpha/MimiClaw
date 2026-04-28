@@ -1,5 +1,5 @@
 import type { StoreGetter, StoreSetter } from '@/stores/types';
-import { initialChatInputStoreState } from './initialState';
+import { initialChatInputStoreState, writeStoredThinkingLevel } from './initialState';
 import type { ChatInputStore, ChatInputStoreAction } from './types';
 
 type Setter = StoreSetter<ChatInputStore>;
@@ -69,6 +69,7 @@ export class ChatInputStoreActionImpl {
 
   setThinkingLevel: ChatInputStoreAction['setThinkingLevel'] = (thinkingLevel) => {
     this.#set({ thinkingLevel });
+    writeStoredThinkingLevel(thinkingLevel);
   };
 
   reset: ChatInputStoreAction['reset'] = () => {

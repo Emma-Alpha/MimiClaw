@@ -74,7 +74,9 @@
       "verificationHint": "这里校验的是当前工作区 .mcp.json 是否已接入，并不是远端服务实时握手状态。",
       "workspaceHint": "请先打开一个工作区，再验证项目级 MCP 是否接入。",
       "workspaceLabel": "工作区",
-      "workspaceMissing": "当前还没有可用于验证的工作区。"
+      "workspaceMissing": "当前还没有可用于验证的工作区。",
+      "mcpStatus": "MCP 状态",
+      "removePlugin": "移除"
     },
     "tools": {
       "figma": {
@@ -129,6 +131,15 @@
     "failedCopyTemplate": "复制 MCP 模板失败：{{error}}",
     "clipboardMcpInvalid": "剪贴板里没有可识别的 MCP 配置，请先在服务端点 Copy MCP config",
     "connectedReady": "接入成功：{{server}} 已写入 {{filePath}}",
-    "connectedFailed": "一键接入失败：{{error}}"
+    "connectedFailed": "一键接入失败：{{error}}",
+    "mcpDisconnected": "已断开 {{server}} MCP 连接",
+    "mcpDisconnectFailed": "断开 MCP 失败：{{error}}"
+  },
+  "detail": {
+    "category": "类别",
+    "capabilities": "功能",
+    "developer": "开发者",
+    "website": "网站",
+    "addToApp": "添加到 MimiClaw"
   }
 }

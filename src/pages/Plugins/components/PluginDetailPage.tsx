@@ -1,12 +1,14 @@
 import { Flexbox, Text } from '@lobehub/ui';
+import { Tag } from 'antd';
 import { createStyles, cssVar } from 'antd-style';
 import { ChevronRight, ExternalLink } from 'lucide-react';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
 import PluginAvatar from '@/components/Plugins/PluginAvatar';
 import { usePluginsStore } from '@/stores/plugins';
+import { useSettingsStore } from '@/stores/settings';
 import type { MarketplacePlugin, PluginSkillEntry } from '@/types/claude-plugin';
 
 import SkillDetailModal from './SkillDetailModal';
@@ -81,6 +83,15 @@ const useStyles = createStyles(({ css, token }) => ({
   addedButton: css`
     background: color-mix(in oklab, ${cssVar.colorText} 8%, transparent);
     color: ${cssVar.colorText};
+  `,
+  removeButton: css`
+    background: transparent;
+    color: ${token.colorError};
+    border: 1px solid ${token.colorErrorBorder};
+
+    &:hover {
+      background: ${token.colorErrorBg};
+    }
   `,
 
   /* ── content ── */
@@ -277,29 +288,81 @@ const PluginDetailPage = memo<PluginDetailPageProps>(({ plugin, onBack }) => {
 
   const enabledPlugins = usePluginsStore((s) => s.enabledPlugins);
   const togglePlugin = usePluginsStore((s) => s.togglePlugin);
+  const uninstallPlugin = usePluginsStore((s) => s.uninstallPlugin);
+  const connectMcp = usePluginsStore((s) => s.connectMcp);
+  const disconnectMcp = usePluginsStore((s) => s.disconnectMcp);
+  const fetchMcpStatus = usePluginsStore((s) => s.fetchMcpStatus);
+  const mcpStatuses = usePluginsStore((s) => s.mcpStatuses);
+
+  const workspaces = useSettingsStore((s) => s.sidebarThreadWorkspaces);
+  const workspaceRoot = useMemo(() => {
+    const sorted = [...workspaces].sort(
+      (a, b) => (b.lastUsedAt || 0) - (a.lastUsedAt || 0),
+    );
+    return sorted[0]?.rootPath ?? '';
+  }, [workspaces]);
 
   const pluginKey = `${plugin.name}@${plugin.marketplace}`;
   const isAdded = pluginKey in enabledPlugins;
+  const isMcpPlugin = Boolean(plugin.mcpServerName && plugin.mcpServerConfig);
+  const mcpConnected = plugin.mcpServerName
+    ? (mcpStatuses[plugin.mcpServerName] ?? false)
+    : false;
+
+  // Fetch MCP status on mount for MCP plugins
+  useEffect(() => {
+    if (plugin.mcpServerName && workspaceRoot) {
+      void fetchMcpStatus([plugin.mcpServerName], workspaceRoot);
+    }
+  }, [plugin.mcpServerName, workspaceRoot, fetchMcpStatus]);
 
   const handleAdd = useCallback(async () => {
     if (isAdded) return;
-    await togglePlugin(pluginKey, true);
-    toast.success(t('toast.pluginEnabled', { key: plugin.name }));
-  }, [isAdded, togglePlugin, pluginKey, t, plugin.name]);
+    try {
+      if (isMcpPlugin && plugin.mcpServerName && plugin.mcpServerConfig && workspaceRoot) {
+        await connectMcp(plugin.mcpServerName, plugin.mcpServerConfig, workspaceRoot);
+      }
+      await togglePlugin(pluginKey, true);
+      toast.success(t('toast.pluginEnabled', { key: plugin.name }));
+    } catch (error) {
+      toast.error(t('toast.connectedFailed', { error: String(error) }));
+    }
+  }, [isAdded, isMcpPlugin, plugin, workspaceRoot, connectMcp, togglePlugin, pluginKey, t]);
+
+  const handleRemove = useCallback(async () => {
+    try {
+      if (isMcpPlugin && plugin.mcpServerName && workspaceRoot) {
+        await disconnectMcp(plugin.mcpServerName, workspaceRoot);
+      }
+      await uninstallPlugin(pluginKey);
+      toast.success(t('toast.pluginRemoved', { key: plugin.name }));
+    } catch (error) {
+      toast.error(t('toast.mcpDisconnectFailed', { error: String(error) }));
+    }
+  }, [isMcpPlugin, plugin, workspaceRoot, disconnectMcp, uninstallPlugin, pluginKey, t]);
 
   // build information items
   const infoItems = useMemo(() => {
-    const items: { label: string; value: string; href?: string }[] = [];
+    const items: { label: string; value: string; href?: string; tag?: 'connected' | 'disconnected' }[] = [];
+    if (isMcpPlugin) {
+      items.push({
+        label: t('publicMcp.status.mcpStatus'),
+        value: mcpConnected
+          ? t('publicMcp.status.connected')
+          : t('publicMcp.status.disconnected'),
+        tag: mcpConnected ? 'connected' : 'disconnected',
+      });
+    }
     const cats = plugin.categories?.join(', ');
-    if (cats) items.push({ label: '类别', value: cats });
+    if (cats) items.push({ label: t('detail.category', '类别'), value: cats });
     const caps = plugin.capabilities?.join(', ');
-    if (caps) items.push({ label: '功能', value: caps });
+    if (caps) items.push({ label: t('detail.capabilities', '功能'), value: caps });
     const dev = plugin.developerName || plugin.author;
-    if (dev) items.push({ label: '开发者', value: dev });
+    if (dev) items.push({ label: t('detail.developer', '开发者'), value: dev });
     if (plugin.homepage)
-      items.push({ label: '网站', value: plugin.homepage, href: plugin.homepage });
+      items.push({ label: t('detail.website', '网站'), value: plugin.homepage, href: plugin.homepage });
     return items;
-  }, [plugin]);
+  }, [plugin, isMcpPlugin, mcpConnected, t]);
 
   const showLongDesc =
     plugin.longDescription &&
@@ -320,16 +383,28 @@ const PluginDetailPage = memo<PluginDetailPageProps>(({ plugin, onBack }) => {
           <ChevronRight size={14} style={{ opacity: 0.4, flexShrink: 0 }} />
           <span className={styles.breadcrumbCurrent}>{plugin.name}</span>
         </div>
-        <button
-          type="button"
-          className={cx(
-            styles.actionButton,
-            isAdded ? styles.addedButton : styles.addButton,
+        <Flexbox horizontal gap={8}>
+          {isAdded && (
+            <button
+              type="button"
+              className={cx(styles.actionButton, styles.removeButton)}
+              onClick={handleRemove}
+            >
+              {t('publicMcp.status.removePlugin')}
+            </button>
           )}
-          onClick={handleAdd}
-        >
-          {isAdded ? '已添加' : '添加到 MimiClaw'}
-        </button>
+          <button
+            type="button"
+            className={cx(
+              styles.actionButton,
+              isAdded ? styles.addedButton : styles.addButton,
+            )}
+            disabled={isAdded || (isMcpPlugin && !workspaceRoot)}
+            onClick={handleAdd}
+          >
+            {isAdded ? t('discover.enabled') : t('detail.addToApp', '添加到 MimiClaw')}
+          </button>
+        </Flexbox>
       </div>
 
       {/* ── Scrollable content ── */}
@@ -371,6 +446,13 @@ const PluginDetailPage = memo<PluginDetailPageProps>(({ plugin, onBack }) => {
               <span className={styles.longDesc}>
                 {plugin.longDescription}
               </span>
+            )}
+
+            {/* Workspace warning for MCP plugins */}
+            {isMcpPlugin && !workspaceRoot && (
+              <Tag color="warning">
+                {t('publicMcp.status.workspaceMissing')}
+              </Tag>
             )}
           </Flexbox>
         </section>
@@ -451,6 +533,10 @@ const PluginDetailPage = memo<PluginDetailPageProps>(({ plugin, onBack }) => {
                         })()}
                         <ExternalLink size={12} />
                       </a>
+                    ) : item.tag ? (
+                      <Tag color={item.tag === 'connected' ? 'success' : 'default'}>
+                        {item.value}
+                      </Tag>
                     ) : (
                       <span className={styles.infoValue}>{item.value}</span>
                     )}
