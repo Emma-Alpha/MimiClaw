@@ -1,3 +1,11 @@
+/** A bundled skill entry within a plugin */
+export interface PluginSkillEntry {
+  name: string;
+  description: string;
+  overview?: string;
+  badge?: string;
+}
+
 /** Plugin entry from a remote marketplace catalog */
 export interface MarketplacePlugin {
   id: string;
@@ -9,6 +17,14 @@ export interface MarketplacePlugin {
   categories?: string[];
   components?: string[];
   homepage?: string;
+  /** Long description shown on the detail page */
+  longDescription?: string;
+  /** Hero image URL or gradient identifier */
+  heroImage?: string;
+  /** Bundled skills within this plugin */
+  skills?: PluginSkillEntry[];
+  /** Default prompt for "Try in chat" */
+  defaultPrompt?: string;
   /** Marketplace name this plugin belongs to (injected at fetch time) */
   marketplace: string;
 }
@@ -19,6 +35,8 @@ export interface MarketplaceCatalog {
   description?: string;
   plugins: Omit<MarketplacePlugin, 'marketplace'>[];
 }
+
+export type CatalogPlugin = Omit<MarketplacePlugin, 'marketplace'>;
 
 /** Source descriptor for a marketplace */
 export interface MarketplaceSourceDescriptor {

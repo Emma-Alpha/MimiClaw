@@ -7,7 +7,7 @@
 import { create } from "zustand";
 import type { Descendant } from "slate";
 import { buildUnifiedPatch } from "@/lib/diff-utils";
-import { saveCodeAgentSessionPerf, saveMessage, type DBMessage } from "@/lib/db";
+import { saveCodeAgentSessionPerf, saveMessage, updateMessagePerformance, type DBMessage } from "@/lib/db";
 import { normalizeUsageRecord } from "@/lib/usageAdapter";
 import type { CodeAgentUsageProtocol } from "../../../shared/code-agent";
 
@@ -1223,6 +1223,9 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 	};
 	let scheduledStreamingFlush: number | ReturnType<typeof setTimeout> | null = null;
 	let scheduledWithAnimationFrame = false;
+	/** Tracks the DB id of the last saved assistant message so message_delta can
+	 *  update it with computed performance (TPS/TTFT). */
+	let lastSavedAssistantMsgId: string | null = null;
 
 	const canUseAnimationFrame = () =>
 		typeof globalThis !== "undefined"
@@ -1865,8 +1868,13 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 				const sessionKey = get().sessionId || "default";
 				const finalText = assistantText || extractTextContent(content);
 				if (finalText.trim()) {
+					const turnStart = get().perfTurnStartedAt;
+					const firstToken = get().perfFirstTokenAt;
+					const ttft = (firstToken > 0 && turnStart > 0) ? (firstToken - turnStart) : undefined;
+					const savedId = uid();
+					lastSavedAssistantMsgId = savedId;
 					void saveMessage({
-						id: uid(),
+						id: savedId,
 						sessionKey,
 						role: "assistant",
 						content: finalText,
@@ -1874,7 +1882,7 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 						usage: msgUsage as Record<string, unknown> | undefined,
 						model: msgModel,
 						elapsed: msgDurationMs,
-						performance: undefined,
+						performance: ttft !== undefined ? { ttft } : undefined,
 					} satisfies DBMessage);
 				}
 			}
@@ -2087,6 +2095,12 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 						ttftMs,
 						tps,
 					});
+
+					// Update the last saved assistant message in DB with final performance
+					if (lastSavedAssistantMsgId && (ttftMs !== undefined || tps !== undefined)) {
+						void updateMessagePerformance(lastSavedAssistantMsgId, { ttft: ttftMs, tps });
+						lastSavedAssistantMsgId = null;
+					}
 
 				}
 

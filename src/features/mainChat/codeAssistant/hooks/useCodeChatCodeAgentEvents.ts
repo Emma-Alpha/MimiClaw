@@ -3,6 +3,7 @@ import {
 	type MutableRefObject,
 	type SetStateAction,
 	useEffect,
+	useRef,
 } from "react";
 import { invokeIpc } from "@/lib/api-client";
 import { subscribeHostEvent } from "@/lib/host-events";
@@ -37,6 +38,10 @@ export function useCodeChatCodeAgentEvents({
 	codeActivitiesRef,
 	pendingCompletionActivitiesRef,
 }: Params) {
+	/** Tracks the session ID of the current Code Agent sidecar run.
+	 *  Used to discard stale SDK messages from a previous session after switching. */
+	const liveRunSessionIdRef = useRef<string | null>(null);
+
 	useEffect(() => {
 		const unsubscribeStatus = subscribeHostEvent<CodeAgentStatus>(
 			"code-agent:status",
@@ -86,6 +91,7 @@ export function useCodeChatCodeAgentEvents({
 		const unsubscribeRunStarted = subscribeHostEvent(
 			"code-agent:run-started",
 			() => {
+				liveRunSessionIdRef.current = null;
 				setCodeRunActive(true);
 				codeActivitiesRef.current = [];
 				resetCodeAgentStreaming();
@@ -148,6 +154,31 @@ export function useCodeChatCodeAgentEvents({
 		const unsubscribeSdkMessage = subscribeHostEvent<unknown>(
 			"code-agent:sdk-message",
 			(payload) => {
+				const msg = payload as Record<string, unknown> | null;
+
+				// Track session ID from system/init messages
+				if (msg?.type === "system" && msg?.subtype === "init") {
+					const sid = msg.session_id;
+					if (typeof sid === "string" && sid) {
+						liveRunSessionIdRef.current = sid;
+					}
+				}
+
+				// Guard: discard stale events from a previous session after switching.
+				// If we know the sidecar's session and the store has moved to a
+				// different session (or was reset), drop the event.
+				if (liveRunSessionIdRef.current) {
+					const storeSessionId = useChatStore.getState().sessionId;
+					if (storeSessionId !== null && storeSessionId !== liveRunSessionIdRef.current) {
+						return;
+					}
+					// Store was reset (session switch in progress) — allow system/init
+					// (which sets the new sessionId) but block everything else.
+					if (storeSessionId === null && msg?.type !== "system") {
+						return;
+					}
+				}
+
 				pushSdkMessage(payload);
 			},
 		);

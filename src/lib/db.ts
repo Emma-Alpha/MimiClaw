@@ -171,6 +171,18 @@ export async function deleteSessionMessages(sessionKey: string): Promise<void> {
   }
 }
 
+/** Update the performance field of an existing message record. */
+export async function updateMessagePerformance(
+  id: string,
+  performance: { ttft?: number; tps?: number },
+): Promise<void> {
+  try {
+    await db.messages.update(id, { performance });
+  } catch (err) {
+    console.warn('[db] updateMessagePerformance failed:', err);
+  }
+}
+
 // ── Code Agent helpers ───────────────────────────────────────────────────────
 
 /** Save all assistant-usage TPS entries for a Code Agent session. */

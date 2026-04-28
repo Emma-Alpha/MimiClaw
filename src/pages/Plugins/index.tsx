@@ -6,7 +6,7 @@ import {
   RefreshCw,
   Settings2,
 } from 'lucide-react';
-import { memo, useCallback, useEffect, useMemo } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
@@ -25,6 +25,7 @@ import { HERO_PLUGIN_NAMES } from './builtin-catalog';
 import CardGrid from './components/CardGrid';
 import HeroCarousel from './components/HeroCarousel';
 import PluginCard from './components/PluginCard';
+import PluginDetailPage from './components/PluginDetailPage';
 
 // ─── styles ──────────────────────────────────────────────────────────────────
 
@@ -34,10 +35,19 @@ const useStyles = createStyles(({ css, token }) => ({
     overflow-y: auto;
     scrollbar-gutter: stable;
   `,
+  topBar: css`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    max-width: 720px;
+    margin: 0 auto;
+    width: 100%;
+  `,
   scrollContent: css`
     max-width: 720px;
     margin: 0 auto;
-    padding: 24px 24px 48px;
+    padding: 0 24px 48px;
     display: flex;
     flex-direction: column;
     gap: 24px;
@@ -46,17 +56,18 @@ const useStyles = createStyles(({ css, token }) => ({
     font-size: 22px;
     font-weight: 400;
     color: ${cssVar.colorText};
+    text-align: center;
   `,
   subtitle: css`
     font-size: 13px;
     color: ${cssVar.colorTextSecondary};
+    text-align: center;
     margin-top: -16px;
   `,
   controlsBar: css`
     display: flex;
     align-items: center;
     gap: 8px;
-    padding-block: 8px;
     flex-wrap: wrap;
   `,
   stickyHeader: css`
@@ -159,7 +170,9 @@ function toInstalledPlugins(
 
 // ─── Browse: Plugins content ─────────────────────────────────────────────────
 
-const BrowsePluginsContent = memo(() => {
+const BrowsePluginsContent = memo<{
+  onSelectPlugin: (p: MarketplacePlugin) => void;
+}>(({ onSelectPlugin }) => {
   const { styles } = useStyles();
   const { t } = useTranslation('plugins');
 
@@ -204,7 +217,6 @@ const BrowsePluginsContent = memo(() => {
   const showHero =
     !searchQuery.trim() && !selectedCategory && featured.length > 0;
 
-  // group by category
   const sections = useMemo(() => {
     const map = new Map<string, MarketplacePlugin[]>();
     for (const p of filtered) {
@@ -239,25 +251,9 @@ const BrowsePluginsContent = memo(() => {
                   icon={plugin.icon}
                   title={plugin.name}
                   description={plugin.description}
-                  badges={
-                    plugin.marketplace !== 'Built by OpenAI'
-                      ? [plugin.marketplace]
-                      : undefined
-                  }
                   actionMode={installed ? 'status' : 'install'}
                   checked={installed}
-                  extra={
-                    plugin.homepage ? (
-                      <ActionIcon
-                        icon={ExternalLinkStub}
-                        size={{ blockSize: 28, size: 14 }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.open(plugin.homepage, '_blank');
-                        }}
-                      />
-                    ) : undefined
-                  }
+                  onClick={() => onSelectPlugin(plugin)}
                 />
               );
             })}
@@ -267,15 +263,6 @@ const BrowsePluginsContent = memo(() => {
     </Flexbox>
   );
 });
-
-// stub to avoid importing ExternalLink inside memo
-const ExternalLinkStub = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-    <polyline points="15 3 21 3 21 9" />
-    <line x1="10" y1="14" x2="21" y2="3" />
-  </svg>
-);
 
 // ─── Browse: Skills content ──────────────────────────────────────────────────
 
@@ -527,11 +514,10 @@ const ManageContent = memo(() => {
                   <PluginAvatar avatar="MCP_AVATAR" size={32} />
                   <Flexbox flex={1} gap={2}>
                     <Text weight={500}>{name}</Text>
-                    <Text
-                      type="secondary"
-                      style={{ fontSize: 11 }}
-                    >
-                      {connected ? t('publicMcp.status.connected') : t('publicMcp.status.disconnected')}
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                      {connected
+                        ? t('publicMcp.status.connected')
+                        : t('publicMcp.status.disconnected')}
                     </Text>
                   </Flexbox>
                   <Switch size="small" checked={connected} disabled />
@@ -579,7 +565,11 @@ export function Plugins() {
   const fetchSkills = usePluginsStore((s) => s.fetchSkills);
   const fetchMcpStatus = usePluginsStore((s) => s.fetchMcpStatus);
 
-  // resolve workspace root from settings
+  // selected plugin for detail view
+  const [detailPlugin, setDetailPlugin] = useState<MarketplacePlugin | null>(
+    null,
+  );
+
   const workspaces = useSettingsStore((s) => s.sidebarThreadWorkspaces);
   const workspaceRoot = useMemo(() => {
     const sorted = [...workspaces].sort(
@@ -605,7 +595,6 @@ export function Plugins() {
     workspaceRoot,
   ]);
 
-  // auto-fetch catalogs
   useEffect(() => {
     for (const [name, source] of Object.entries(marketplaceSources)) {
       if (source.catalogUrl && !catalogs[name]) {
@@ -634,20 +623,18 @@ export function Plugins() {
     } catch {
       toast.error(t('toast.failedRefresh'));
     }
-  }, [fetchInstalledPlugins, fetchMarketplaceSources, fetchSkills, t, workspaceRoot]);
-
-  // ── marketplace dropdown menu ──────────────────────────────────────────
+  }, [
+    fetchInstalledPlugins,
+    fetchMarketplaceSources,
+    fetchSkills,
+    t,
+    workspaceRoot,
+  ]);
 
   const marketplaceMenu: MenuProps = {
     items: [
-      {
-        key: '__all__',
-        label: t('discover.allCategories'),
-      },
-      ...marketplaceNames.map((name) => ({
-        key: name,
-        label: name,
-      })),
+      { key: '__all__', label: t('discover.allCategories') },
+      ...marketplaceNames.map((name) => ({ key: name, label: name })),
     ],
     onClick: ({ key }) =>
       setSelectedMarketplace(key === '__all__' ? null : key),
@@ -655,24 +642,38 @@ export function Plugins() {
 
   const categoryMenu: MenuProps = {
     items: [
-      {
-        key: '__all__',
-        label: t('discover.allCategories'),
-      },
-      ...categories.map((cat) => ({
-        key: cat,
-        label: cat,
-      })),
+      { key: '__all__', label: t('discover.allCategories') },
+      ...categories.map((cat) => ({ key: cat, label: cat })),
     ],
     onClick: ({ key }) =>
       setSelectedCategory(key === '__all__' ? null : key),
   };
+
+  // ── Detail view ────────────────────────────────────────────────────────
+
+  if (detailPlugin) {
+    return (
+      <PluginDetailPage
+        plugin={detailPlugin}
+        onBack={() => setDetailPlugin(null)}
+      />
+    );
+  }
 
   // ── Manage mode ────────────────────────────────────────────────────────
 
   if (mode === 'manage') {
     return (
       <div className={styles.page}>
+        <div className={styles.topBar}>
+          <button
+            type="button"
+            className={styles.filterButton}
+            onClick={() => setMode('browse')}
+          >
+            ← 返回浏览
+          </button>
+        </div>
         <ManageContent />
       </div>
     );
@@ -682,71 +683,81 @@ export function Plugins() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.scrollContent}>
-        {/* Header */}
-        <Flexbox horizontal align="center" justify="space-between">
-          <span className={styles.title}>{t('title')}</span>
-          <Flexbox horizontal align="center" gap={6}>
-            <ActionIcon
-              icon={RefreshCw}
-              size={{ blockSize: 32, size: 16 }}
-              title={t('actions.refresh')}
-              loading={loading}
-              onClick={handleRefresh}
-            />
-            <ActionIcon
-              icon={Settings2}
-              size={{ blockSize: 32, size: 16 }}
-              title="Manage"
-              onClick={() => setMode('manage')}
-            />
-          </Flexbox>
+      {/* Top tab bar */}
+      <div className={styles.topBar}>
+        <Segmented
+          size="small"
+          options={[
+            { label: t('tabs.discover'), value: 'plugins' },
+            { label: 'Skills', value: 'skills' },
+          ]}
+          value={activeTab}
+          onChange={(val) => setActiveTab(val as 'plugins' | 'skills')}
+        />
+        <Flexbox horizontal align="center" gap={6}>
+          <ActionIcon
+            icon={RefreshCw}
+            size={{ blockSize: 32, size: 16 }}
+            title={t('actions.refresh')}
+            loading={loading}
+            onClick={handleRefresh}
+          />
+          <ActionIcon
+            icon={Settings2}
+            size={{ blockSize: 32, size: 16 }}
+            title="管理"
+            onClick={() => setMode('manage')}
+          />
         </Flexbox>
+      </div>
 
-        <span className={styles.subtitle}>
-          {t('publicMcp.description')}
-        </span>
+      <div className={styles.scrollContent}>
+        {/* Title */}
+        <span className={styles.title}>让 Codex 按你的方式工作</span>
 
         {/* Controls bar */}
-        <div className={styles.controlsBar}>
-          <Segmented
-            size="small"
-            options={[
-              { label: t('tabs.discover'), value: 'plugins' },
-              { label: 'Skills', value: 'skills' },
-            ]}
-            value={activeTab}
-            onChange={(val) => setActiveTab(val as 'plugins' | 'skills')}
-          />
-          <div style={{ flex: 1 }} />
-          <SearchInput
-            value={searchQuery}
-            onValueChange={setSearchQuery}
-            placeholder={t('discover.searchPlaceholder')}
-            clearable
-            style={{ width: 200 }}
-          />
-          {activeTab === 'plugins' && marketplaceNames.length > 0 && (
-            <Dropdown menu={marketplaceMenu} trigger={['click']}>
-              <button type="button" className={styles.filterButton}>
-                {selectedMarketplace ?? t('discover.allCategories')}
-                <ChevronDown size={12} />
-              </button>
-            </Dropdown>
-          )}
-          {activeTab === 'plugins' && categories.length > 0 && (
-            <Dropdown menu={categoryMenu} trigger={['click']}>
-              <button type="button" className={styles.filterButton}>
-                {selectedCategory ?? t('discover.allCategories')}
-                <ChevronDown size={12} />
-              </button>
-            </Dropdown>
-          )}
-        </div>
+        {activeTab === 'plugins' && (
+          <div className={styles.controlsBar}>
+            <SearchInput
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+              placeholder={t('discover.searchPlaceholder')}
+              clearable
+              style={{ flex: 1, minWidth: 160 }}
+            />
+            {marketplaceNames.length > 0 && (
+              <Dropdown menu={marketplaceMenu} trigger={['click']}>
+                <button type="button" className={styles.filterButton}>
+                  {selectedMarketplace ?? BUILTIN_MARKETPLACE_NAME_LABEL}
+                  <ChevronDown size={12} />
+                </button>
+              </Dropdown>
+            )}
+            {categories.length > 0 && (
+              <Dropdown menu={categoryMenu} trigger={['click']}>
+                <button type="button" className={styles.filterButton}>
+                  {selectedCategory ?? t('discover.allCategories')}
+                  <ChevronDown size={12} />
+                </button>
+              </Dropdown>
+            )}
+          </div>
+        )}
+        {activeTab === 'skills' && (
+          <div className={styles.controlsBar}>
+            <SearchInput
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+              placeholder="搜索技能..."
+              clearable
+              style={{ flex: 1, minWidth: 160 }}
+            />
+          </div>
+        )}
 
         {/* Content */}
         {activeTab === 'plugins' ? (
-          <BrowsePluginsContent />
+          <BrowsePluginsContent onSelectPlugin={setDetailPlugin} />
         ) : (
           <BrowseSkillsContent />
         )}
@@ -754,5 +765,7 @@ export function Plugins() {
     </div>
   );
 }
+
+const BUILTIN_MARKETPLACE_NAME_LABEL = 'Codex official';
 
 export default Plugins;

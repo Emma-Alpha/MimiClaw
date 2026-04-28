@@ -1,7 +1,7 @@
 import { createStyles, useTheme } from "antd-style";
 import type { Descendant } from "slate";
 import { ChatItem } from "@lobehub/ui/chat";
-import { Clock, Coins, File as FileIcon, Folder } from "lucide-react";
+import { Clock, Coins, File as FileIcon, Folder, Zap, Timer } from "lucide-react";
 import { ModelIcon } from "@lobehub/icons";
 import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/chat";
 import { StreamingText } from "./StreamingText";
@@ -180,11 +180,15 @@ function AssistantUsageLine({
 	model,
 	costUsd,
 	durationMs,
+	tps,
+	ttftMs,
 }: {
 	usage?: { inputTokens: number; outputTokens: number; totalTokens: number };
 	model?: string;
 	costUsd?: number;
 	durationMs?: number;
+	tps?: number;
+	ttftMs?: number;
 }) {
 	const theme = useTheme();
 	const parts: React.ReactNode[] = [];
@@ -212,6 +216,24 @@ function AssistantUsageLine({
 			<span key="duration" style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
 				<Clock size={12} />
 				{formatDuration(durationMs)}
+			</span>,
+		);
+	}
+
+	if (typeof tps === "number" && tps > 0) {
+		parts.push(
+			<span key="tps" style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+				<Zap size={12} />
+				{tps.toFixed(1)} TPS
+			</span>,
+		);
+	}
+
+	if (typeof ttftMs === "number" && ttftMs > 0) {
+		parts.push(
+			<span key="ttft" style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+				<Timer size={12} />
+				TTFT {formatDuration(ttftMs)}
 			</span>,
 		);
 	}
@@ -285,6 +307,8 @@ export function CodeAgentItem({
 					model={item.model}
 					costUsd={item.costUsd}
 					durationMs={item.durationMs}
+					tps={item.tps}
+					ttftMs={item.ttftMs}
 				/>
 			);
 
