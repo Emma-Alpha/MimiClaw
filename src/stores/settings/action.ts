@@ -432,6 +432,10 @@ export function createSettingsActions(set: Setter, get: Getter): SettingsStoreAc
     },
     touchSidebarThreadWorkspace: (workspaceId, lastUsedAt = Date.now()) => {
       if (!workspaceId) return;
+      // Skip update if workspace is already the most recent — avoids
+      // creating a new array reference and cascading re-renders.
+      const { sidebarThreadWorkspaces } = get();
+      if (sidebarThreadWorkspaces[0]?.id === workspaceId) return;
       set((state) => {
         const updated = state.sidebarThreadWorkspaces.map((workspace) =>
           workspace.id === workspaceId
@@ -445,6 +449,8 @@ export function createSettingsActions(set: Setter, get: Getter): SettingsStoreAc
     },
     setSidebarThreadWorkspaceExpanded: (workspaceId, expanded) => {
       if (!workspaceId) return;
+      // Skip update + network sync if value is already correct
+      if (get().sidebarThreadWorkspaceExpanded[workspaceId] === expanded) return;
       set((state) => ({
         sidebarThreadWorkspaceExpanded: {
           ...state.sidebarThreadWorkspaceExpanded,
@@ -459,11 +465,11 @@ export function createSettingsActions(set: Setter, get: Getter): SettingsStoreAc
         : context.kind === 'realtimeVoice'
           ? 'realtimeVoice'
           : 'openclaw';
+      const workspaceId = kind === 'thread' ? context.workspaceId ?? null : null;
+      const current = get().sidebarActiveContext;
+      if (current.kind === kind && current.workspaceId === workspaceId) return;
       set({
-        sidebarActiveContext: {
-          kind,
-          workspaceId: kind === 'thread' ? context.workspaceId ?? null : null,
-        },
+        sidebarActiveContext: { kind, workspaceId },
       });
     },
     setSidebarBetaEnabled: (sidebarBetaEnabled) => set({ sidebarBetaEnabled }),
@@ -568,19 +574,25 @@ export function createSettingsActions(set: Setter, get: Getter): SettingsStoreAc
     markSetupComplete: () => set({ setupComplete: true }),
     resetSettings: () => set(initialSettingsState),
     hydrateCloudAuth: () => {
+      const raw = window.localStorage.getItem('mimiclaw:cloud-session');
+      console.log('[settings] hydrateCloudAuth: raw localStorage =', raw);
       if (isCloudSessionValid()) {
         const session = getCloudSession();
+        console.log('[settings] hydrateCloudAuth: session valid, userId=%s', session?.userId);
         set({
           cloudLoggedIn: true,
           cloudUserId: session?.userId ?? null,
           cloudWorkspaceId: session?.workspaceId ?? null,
         });
       } else {
+        console.log('[settings] hydrateCloudAuth: session invalid or missing, redirecting to login');
         set({ cloudLoggedIn: false, cloudUserId: null, cloudWorkspaceId: null });
       }
     },
     applyCloudSession: (session: CloudSession) => {
+      console.log('[settings] applyCloudSession: saving session, token=%s..., userId=%s', session.token?.slice(0, 20), session.userId);
       setCloudSession(session);
+      console.log('[settings] applyCloudSession: localStorage after save =', window.localStorage.getItem('mimiclaw:cloud-session')?.slice(0, 100));
       set({
         cloudLoggedIn: true,
         cloudUserId: session.userId,

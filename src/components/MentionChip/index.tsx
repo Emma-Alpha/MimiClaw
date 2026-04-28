@@ -257,4 +257,47 @@ export function renderTextWithMentions(
   return result;
 }
 
+/**
+ * Detect a leading `/command` in message text and render it as a skill MentionChip.
+ * The rest of the text is returned as-is.
+ *
+ * When `mentionTags` is provided, the skill label is matched exactly so that
+ * `/image-gen9:16` correctly splits into chip `/image-gen` + text `9:16`.
+ * Without tags, falls back to a regex that splits on the first non-alpha-hyphen char.
+ */
+const SLASH_CMD_FALLBACK_RE = /^(\/[a-zA-Z][a-zA-Z-]*)\s*/;
+
+export function renderTextWithSlashCommand(
+  text: string,
+  mentionTags?: MentionTag[],
+): ReactNode[] {
+  if (!text) return [text];
+
+  // Try exact match from mentionTags first
+  if (mentionTags && mentionTags.length > 0) {
+    for (const tag of mentionTags) {
+      if (tag.kind !== 'skill') continue;
+      const prefix = `/${tag.label}`;
+      if (!text.startsWith(prefix)) continue;
+      const rest = text.slice(prefix.length).replace(/^\s+/, '');
+      const result: ReactNode[] = [
+        <MentionChip key="slash-cmd" kind="skill" label={tag.label} icon={tag.icon} />,
+      ];
+      if (rest) result.push(rest);
+      return result;
+    }
+  }
+
+  // Fallback: letters + hyphens only (no digits) to avoid greedy matching
+  const match = text.match(SLASH_CMD_FALLBACK_RE);
+  if (!match) return [text];
+  const cmd = match[1];
+  const rest = text.slice(match[0].length);
+  const result: ReactNode[] = [
+    <MentionChip key="slash-cmd" kind="skill" label={cmd.slice(1)} />,
+  ];
+  if (rest) result.push(rest);
+  return result;
+}
+
 export default MentionChip;

@@ -175,6 +175,8 @@ async function exchangeCodeForCloudSession(
   });
 
   const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+  logger.info('[xiaojiu-auth] Token exchange response status:', response.status);
+  logger.info('[xiaojiu-auth] Token exchange response payload:', JSON.stringify(payload, null, 2));
 
   if (!response.ok) {
     const message = typeof payload.error === 'string'
@@ -185,20 +187,32 @@ async function exchangeCodeForCloudSession(
 
   // Response format: { code, data: { jwt: { access_token, expires_at }, userInfo: { id, name, staffId } } }
   const data = payload.data as Record<string, unknown> | undefined;
+  logger.info('[xiaojiu-auth] Parsed data:', JSON.stringify(data, null, 2));
   if (data && typeof data === 'object') {
     const jwt = data.jwt as Record<string, unknown> | undefined;
     const userInfo = data.userInfo as Record<string, unknown> | undefined;
+    logger.info('[xiaojiu-auth] jwt:', JSON.stringify(jwt, null, 2));
+    logger.info('[xiaojiu-auth] userInfo:', JSON.stringify(userInfo, null, 2));
     if (jwt && userInfo) {
-      return normalizeCloudSession({
+      const session = normalizeCloudSession({
         token: jwt.access_token as string,
+        tokenType: jwt.token_type as string | undefined,
         userId: String(userInfo.name ?? userInfo.id ?? ''),
         workspaceId: String(userInfo.staffId ?? userInfo.name ?? userInfo.id ?? ''),
         expiresAt: jwt.expires_at as number,
+        cname: userInfo.cname as string | undefined,
+        avatar: userInfo.avatar as string | undefined,
+        team: userInfo.team as string | undefined,
+        staffId: userInfo.staffId as string | undefined,
+        isAdmin: userInfo.isAdmin as boolean | undefined,
       });
+      logger.info('[xiaojiu-auth] Normalized session: userId=%s, workspaceId=%s, expiresAt=%s', session.userId, session.workspaceId, session.expiresAt);
+      return session;
     }
   }
 
   // Fallback: try treating the top-level payload as a flat session object
+  logger.info('[xiaojiu-auth] Using fallback: treating top-level payload as session');
   return normalizeCloudSession(payload);
 }
 

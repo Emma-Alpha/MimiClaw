@@ -3,7 +3,7 @@ import type { Descendant } from "slate";
 import { ChatItem } from "@lobehub/ui/chat";
 import { Clock, Coins, Zap, Timer } from "lucide-react";
 import { ModelIcon } from "@lobehub/icons";
-import MentionChip, { renderTextWithMentions } from "@/components/MentionChip";
+import MentionChip, { renderTextWithMentions, renderTextWithSlashCommand } from "@/components/MentionChip";
 import type { MentionTag } from "@/components/MentionChip";
 import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/chat";
 import { StreamingText } from "./StreamingText";
@@ -137,7 +137,11 @@ function UserMessageContent({
 						</div>
 					) : null}
 					{item.text ? (
-						<span>{renderTextWithMentions(item.text, item.mentionTags as MentionTag[] | undefined)}</span>
+						<span>{
+							item.text.startsWith('/')
+								? renderTextWithSlashCommand(item.text, item.mentionTags as MentionTag[] | undefined)
+								: renderTextWithMentions(item.text, item.mentionTags as MentionTag[] | undefined)
+						}</span>
 					) : null}
 				</>
 			)}

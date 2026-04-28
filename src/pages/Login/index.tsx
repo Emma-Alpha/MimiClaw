@@ -60,10 +60,12 @@ export function Login() {
 
   useEffect(() => {
     const offSuccess = subscribeHostEvent<CloudSession>('cloud:auth-success', (session) => {
+      console.log('[Login] cloud:auth-success received, session:', JSON.stringify(session, null, 2));
       setOauthLoading(false);
       setErrorMsg('');
       setOauthNotice('');
       applyCloudSession(session);
+      console.log('[Login] applyCloudSession called, localStorage:', localStorage.getItem('mimiclaw:cloud-session'));
       navigate(setupComplete ? '/' : '/setup', { replace: true });
     });
 

@@ -21,7 +21,6 @@ release/
 output/
 output_resource/
 log/
-resources/
 
 .vscode/**/*
 !.vscode/settings.json

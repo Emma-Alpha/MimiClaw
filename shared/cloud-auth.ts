@@ -1,12 +1,25 @@
 export interface CloudSession {
   token: string;
+  tokenType?: string;
   userId: string;
   workspaceId: string;
   expiresAt?: number;
+  /** Display name (中文名) */
+  cname?: string;
+  /** Avatar path or URL */
+  avatar?: string;
+  /** Team code, e.g. "GZ" */
+  team?: string;
+  /** Staff ID, e.g. "S7212" */
+  staffId?: string;
+  /** Whether the user has admin privileges */
+  isAdmin?: boolean;
 }
 
 export interface CloudSessionResponse {
   token: string;
+  tokenType?: string;
+  token_type?: string;
   userId?: string;
   user_id?: string;
   username?: string;
@@ -14,6 +27,11 @@ export interface CloudSessionResponse {
   workspace_id?: string;
   expiresAt?: number | string;
   expires_at?: number | string;
+  cname?: string;
+  avatar?: string;
+  team?: string;
+  staffId?: string;
+  isAdmin?: boolean;
 }
 
 export function normalizeExpiration(value: number | string | undefined): number | undefined {
@@ -57,8 +75,14 @@ export function normalizeCloudSession(
 
   return {
     token,
+    tokenType: data.tokenType ?? data.token_type ?? undefined,
     userId,
     workspaceId,
     expiresAt: normalizeExpiration(data.expiresAt ?? data.expires_at),
+    cname: data.cname ?? undefined,
+    avatar: data.avatar ?? undefined,
+    team: data.team ?? undefined,
+    staffId: data.staffId ?? undefined,
+    isAdmin: data.isAdmin ?? undefined,
   };
 }

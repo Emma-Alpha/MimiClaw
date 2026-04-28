@@ -3,7 +3,7 @@ import { theme } from 'antd';
 import { File } from 'lucide-react';
 import type { Descendant } from 'slate';
 
-import MentionChip, { renderTextWithMentions } from '@/components/MentionChip';
+import MentionChip, { renderTextWithMentions, renderTextWithSlashCommand } from '@/components/MentionChip';
 import type { MentionTag } from '@/components/MentionChip';
 import type { AttachedFileMeta, RawMessage } from '@/stores/chat';
 import { ReadOnlySlateMessage } from '@/components/common/ReadOnlySlateMessage';
@@ -228,10 +228,16 @@ export function UserMessage({
       );
     }
 
+    // Highlight leading slash command (e.g. "/image-gen 生成一张小米su7图片")
+    if (text.startsWith('/')) {
+      return <div className={styles.userMessageText}><span>{renderTextWithSlashCommand(text, mentionTags)}</span></div>;
+    }
+
     // Render text with inline MentionChips (auto-detects @mentions even without mentionTags)
     if (hasMentionTags || text.includes('@')) {
       return <div className={styles.userMessageText}><span>{renderTextWithMentions(text, mentionTags)}</span></div>;
     }
+
     return renderUserTextBubble(protocol, { className: styles.userMessageText, text });
   };
 

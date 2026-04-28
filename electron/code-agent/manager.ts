@@ -56,7 +56,7 @@ type SidecarMessage = SidecarResponse | SidecarReadyEvent | SidecarEvent | Sidec
 type PendingRequest = {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
-  timer: NodeJS.Timeout;
+  timer: NodeJS.Timeout | null;
 };
 
 type ReadyWaiter = {
@@ -216,8 +216,8 @@ export class CodeAgentManager extends EventEmitter {
     await this.start();
     const cliTimeoutMs = typeof input.timeoutMs === 'number' && input.timeoutMs > 0
       ? input.timeoutMs
-      : 120_000;
-    const rpcTimeoutMs = cliTimeoutMs + 30_000;
+      : 0;
+    const rpcTimeoutMs = cliTimeoutMs > 0 ? cliTimeoutMs + 30_000 : 0;
     const startedAt = Date.now();
     this.lastRun = {
       startedAt,
@@ -693,10 +693,12 @@ export class CodeAgentManager extends EventEmitter {
     const serialized = `${JSON.stringify({ id, method, params })}\n`;
 
     return await new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pendingRequests.delete(id);
-        reject(new Error(`Code agent request timed out for method ${method}`));
-      }, timeoutMs);
+      const timer = timeoutMs > 0
+        ? setTimeout(() => {
+            this.pendingRequests.delete(id);
+            reject(new Error(`Code agent request timed out for method ${method}`));
+          }, timeoutMs)
+        : null;
 
       this.pendingRequests.set(id, {
         resolve: (value) => resolve(value as T),

@@ -451,6 +451,13 @@ export function Sidebar() {
 		(codeAgentSessionState === "running" ||
 			codeAgentSessionState === "requires_action");
 
+	// Refs so the host-event effect can read current values without
+	// re-subscribing on every session navigation.
+	const activeThreadSessionIdRef = useRef(activeThreadSessionId);
+	activeThreadSessionIdRef.current = activeThreadSessionId;
+	const activeThreadWorkspaceIdFromRouteRef = useRef(activeThreadWorkspaceIdFromRoute);
+	activeThreadWorkspaceIdFromRouteRef.current = activeThreadWorkspaceIdFromRoute;
+
 	const [sortOrder, setSortOrder] = useState<"recent" | "alpha">("recent");
 	const [previouslyExpandedIds, setPreviouslyExpandedIds] = useState<string[]>(
 		[],
@@ -681,8 +688,8 @@ export function Sidebar() {
 			if (target) {
 				// 当完成的会话不是当前激活会话，或窗口不在前台时，发送系统通知
 				const isCurrentSession =
-					target.sessionId === activeThreadSessionId &&
-					target.workspaceId === activeThreadWorkspaceIdFromRoute;
+					target.sessionId === activeThreadSessionIdRef.current &&
+					target.workspaceId === activeThreadWorkspaceIdFromRouteRef.current;
 				if (!isCurrentSession || document.hidden) {
 					const output = payload.result?.output || "";
 					const body =
@@ -732,8 +739,6 @@ export function Sidebar() {
 		resolveRunSessionTarget,
 		workspaceById,
 		workspaceIdByNormalizedRoot,
-		activeThreadSessionId,
-		activeThreadWorkspaceIdFromRoute,
 	]);
 
 	useEffect(() => {
@@ -886,7 +891,6 @@ export function Sidebar() {
 	const handleThreadSession = useCallback(
 		(workspace: SidebarThreadWorkspace, sessionId: string) => {
 			setSidebarActiveContext({ kind: "thread", workspaceId: workspace.id });
-			touchSidebarThreadWorkspace(workspace.id);
 			setSidebarThreadWorkspaceExpanded(workspace.id, true);
 			writeStoredCodeAgentWorkspaceRoot(workspace.rootPath);
 			const params = new URLSearchParams();
@@ -898,7 +902,6 @@ export function Sidebar() {
 			navigate,
 			setSidebarActiveContext,
 			setSidebarThreadWorkspaceExpanded,
-			touchSidebarThreadWorkspace,
 		],
 	);
 
@@ -1251,15 +1254,20 @@ export function Sidebar() {
 												(e.target as HTMLElement).closest("[data-popup-open]")
 											)
 												return;
+											const willExpand = !expanded;
 											setSidebarThreadWorkspaceExpanded(
 												workspace.id,
-												!expanded,
+												willExpand,
 											);
 											setSidebarActiveContext({
 												kind: "thread",
 												workspaceId: workspace.id,
 											});
-											void refreshWorkspaceSessions(workspace);
+											// Only fetch sessions when expanding and data
+											// hasn't been loaded yet.
+											if (willExpand && !workspaceSessionsById[workspace.id]) {
+												void refreshWorkspaceSessions(workspace);
+											}
 										}}
 									>
 										<span

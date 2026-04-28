@@ -226,6 +226,48 @@ export async function ensureBuiltinSkillsInstalled(): Promise<void> {
             logger.warn(`Failed to install built-in skill ${slug}:`, error);
         }
     }
+
+    // Deploy bundled SKILL.md skills from resources/skills/ to the Claude Code
+    // config skills directory so the CLI can discover them via /command.
+    await ensureBundledResourceSkillsDeployed();
+}
+
+/**
+ * Copy SKILL.md-based skills from resources/skills/ into
+ * {CLAUDE_CONFIG_DIR}/skills/ so the Claude Code CLI process can discover
+ * them as slash commands.  Skips directories without SKILL.md (e.g. "local/").
+ * Overwrites on every launch so bundled updates always take effect.
+ */
+async function ensureBundledResourceSkillsDeployed(): Promise<void> {
+    const { getClaudeCodeConfigDir } = await import('./paths');
+    const targetRoot = join(getClaudeCodeConfigDir(), 'skills');
+    const resourceSkillsDir = join(getResourcesDir(), 'skills');
+
+    if (!existsSync(resourceSkillsDir)) return;
+
+    let entries: import('node:fs').Dirent[];
+    try {
+        entries = readdirSync(resourceSkillsDir, { withFileTypes: true });
+    } catch {
+        return;
+    }
+
+    await mkdir(targetRoot, { recursive: true });
+
+    for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const sourceDir = join(resourceSkillsDir, entry.name);
+        if (!existsSync(join(sourceDir, 'SKILL.md'))) continue;
+
+        const targetDir = join(targetRoot, entry.name);
+        try {
+            await mkdir(targetDir, { recursive: true });
+            await cp(sourceDir, targetDir, { recursive: true });
+            logger.info(`Deployed bundled skill to CLI config: ${entry.name} -> ${targetDir}`);
+        } catch (error) {
+            logger.warn(`Failed to deploy bundled skill ${entry.name}:`, error);
+        }
+    }
 }
 
 const PREINSTALLED_MANIFEST_NAME = 'preinstalled-manifest.json';

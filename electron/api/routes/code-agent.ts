@@ -403,11 +403,13 @@ export async function handleCodeAgentRoutes(
       const isolatedConfigDir = getClaudeCodeConfigDir();
 
       // All global skill directories that Claude Code, Codex, or Cursor may use
+      const { getResourcesDir } = await import('../../utils/paths');
       const globalDirs = [
         join(isolatedConfigDir, 'skills'),
         join(home, '.agents', 'skills'),
         join(home, '.codex', 'skills'),
         join(home, '.cursor', 'skills-cursor'),
+        join(getResourcesDir(), 'skills'),
       ];
 
       // Project-level: .claude/skills under workspace root
