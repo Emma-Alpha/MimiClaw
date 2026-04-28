@@ -554,7 +554,14 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 				displayLabel: p.name,
 				description: p.description,
 				kind: 'plugin' as const,
-				icon: (
+				iconUrl: p.icon,
+				icon: p.icon ? (
+					<img
+						alt=""
+						src={p.icon}
+						style={{ borderRadius: 2, flexShrink: 0, height: 14, objectFit: 'contain', width: 14 }}
+					/>
+				) : (
 					<Monitor
 						size={14}
 						strokeWidth={1.75}
@@ -634,11 +641,34 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 		});
 
 	const handleCodeAssistantSend = useCallback(
-		async ({ getMarkdownContent }: ChatInputSendPayload) => {
+		async ({ getMarkdownContent, getMentions }: ChatInputSendPayload) => {
 			const content = getMarkdownContent().trim();
 			if (!content && attachments.length === 0 && droppedPaths.length === 0) return;
 			if (codeSending) return;
-			await submitPrompt(content);
+
+			const mentions = getMentions();
+			const mcpServerNames = mentions
+				.filter((m) => m.metadata?.kind === 'plugin' && typeof m.metadata?.id === 'string')
+				.map((m) => (m.metadata!.id as string).replace(/^mcp:/, ''))
+				.filter(Boolean);
+
+			// Convert mention metadata to serializable tags for message display
+			const mentionTags = mentions
+				.filter((m) => m.metadata?.kind)
+				.map((m) => ({
+					kind: m.metadata!.kind as string,
+					label: m.label,
+					icon: m.metadata?.icon as string | undefined,
+				}));
+
+			await submitPrompt(
+				content,
+				undefined,
+				undefined,
+				undefined,
+				mcpServerNames.length > 0 ? mcpServerNames : undefined,
+				mentionTags.length > 0 ? mentionTags : undefined,
+			);
 		},
 		[attachments.length, codeSending, droppedPaths.length, submitPrompt],
 	);

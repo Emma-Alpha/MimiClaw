@@ -4,6 +4,7 @@
  * Built-in catalog constants and hero prompts live here so the page is never empty
  * and the store is the single source of truth for plugin data.
  */
+import { pluginIcons } from '@/assets/plugins';
 import type { MarketplaceCatalog } from '@/types/claude-plugin';
 
 import type { PluginsStoreState } from './types';
@@ -47,6 +48,7 @@ export const builtinCatalog: MarketplaceCatalog = {
     {
       id: 'computer-use',
       name: 'Computer Use',
+      icon: pluginIcons['computer-use'],
       description: 'Control Mac apps from MimiClaw',
       longDescription:
         'Use Computer Use to interact with native Mac applications. It can click, drag, type, scroll, and read accessibility information from any running app.',
@@ -306,6 +308,24 @@ export const builtinCatalog: MarketplaceCatalog = {
             'Plan the foundational architecture for a browser game project: directory structure, build tooling, engine choice, asset pipeline, and deployment strategy.',
         },
       ],
+    },
+    {
+      id: 'godot-mcp',
+      name: 'Godot MCP',
+      description: 'Control the Godot game engine from MimiClaw',
+      longDescription:
+        'Launch the Godot editor, run and stop projects, capture debug output, manage scenes and nodes, load sprites, and handle UID operations — all through AI-driven automation.',
+      categories: ['Coding'],
+      components: ['mcp'],
+      author: 'Coding-Solo',
+      developerName: 'Coding-Solo',
+      homepage: 'https://github.com/Coding-Solo/godot-mcp',
+      capabilities: ['Launch Editor', 'Run Projects', 'Scene Management', 'Debug Output', '3D Export'],
+      mcpServerName: 'godot-mcp',
+      mcpServerConfig: {
+        command: 'npx',
+        args: ['-y', '@coding-solo/godot-mcp'],
+      },
     },
     {
       id: 'datadog',

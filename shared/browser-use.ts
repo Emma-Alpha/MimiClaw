@@ -70,6 +70,6 @@ export interface BrowserUseNavigationConfig {
 }
 
 export const DEFAULT_BROWSER_USE_NAVIGATION_CONFIG: BrowserUseNavigationConfig = {
-  mode: 'localhost-only',
+  mode: 'unrestricted',
   allowedOrigins: [],
 };

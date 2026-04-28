@@ -289,8 +289,15 @@ export type CodeAgentUserPathTag = {
 	isDirectory: boolean;
 };
 
+export type CodeAgentUserMentionTag = {
+	kind: string;
+	label: string;
+	icon?: string;
+};
+
 export type CodeAgentUserMessageMeta = {
 	imagePreviews?: CodeAgentUserImagePreview[];
+	mentionTags?: CodeAgentUserMentionTag[];
 	pathTags?: CodeAgentUserPathTag[];
 	richContent?: Descendant[];
 };
@@ -309,6 +316,7 @@ export type CodeAgentTimelineItem =
 		text: string;
 		createdAt?: number;
 		imagePreviews?: CodeAgentUserImagePreview[];
+		mentionTags?: CodeAgentUserMentionTag[];
 		pathTags?: CodeAgentUserPathTag[];
 		richContent?: Descendant[];
 	}
@@ -1432,6 +1440,7 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 
 	pushUserMessage: (text, meta) => {
 		const imagePreviews = meta?.imagePreviews?.length ? meta.imagePreviews : undefined;
+		const mentionTags = meta?.mentionTags?.length ? meta.mentionTags : undefined;
 		const pathTags = meta?.pathTags?.length ? meta.pathTags : undefined;
 		const richContent = meta?.richContent?.length ? meta.richContent : undefined;
 		const msgId = uid();
@@ -1443,6 +1452,7 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 					id: msgId,
 					text,
 					imagePreviews,
+					mentionTags,
 					pathTags,
 					richContent,
 				},

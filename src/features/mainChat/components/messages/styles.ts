@@ -124,18 +124,6 @@ export const useMessageStyles = createStyles(({ token, css }) => {
     flex-wrap: wrap;
     gap: 6px;
   `,
-  pathTag: css`
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    max-width: 220px;
-    padding: 3px 8px;
-    border-radius: 14px;
-    font-size: ${token.fontSizeSM}px;
-    border: 1px solid ${token.colorBorderSecondary};
-    background: ${token.colorFillTertiary};
-    color: ${token.colorText};
-  `,
   messageMetaRow: css`
     display: inline-flex;
     align-items: center;

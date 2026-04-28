@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import type { Descendant } from "slate";
-import { File as FileIcon, Folder } from "lucide-react";
+
 import { createStyles } from "antd-style";
+
+import MentionChip from "@/components/MentionChip";
 
 type SlatePathNode = {
 	type: "path";
@@ -49,37 +51,9 @@ const useStyles = createStyles(({ token, css }) => ({
 		white-space: pre-wrap;
 		word-break: break-word;
 	`,
-	pathChip: css`
-		display: inline-flex;
-		align-items: center;
-		gap: 5px;
-		padding: 2px 8px;
-		margin: 0 2px;
-		border-radius: 14px;
-		background: ${token.colorFillQuaternary};
-		border: 1px solid ${token.colorBorderSecondary};
-		font-size: 12px;
-		color: ${token.colorText};
-		max-width: 220px;
-		vertical-align: middle;
-	`,
-	pathName: css`
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	`,
-	skillChip: css`
-		color: #c47a2a;
-		font-weight: 600;
-		margin: 0 2px;
-		padding: 0 2px;
-	`,
 }));
 
-function renderNodes(
-	nodes: unknown[],
-	styles: ReturnType<typeof useStyles>["styles"],
-): ReactNode[] {
+function renderNodes(nodes: unknown[]): ReactNode[] {
 	const result: ReactNode[] = [];
 	for (let i = 0; i < nodes.length; i++) {
 		const node = nodes[i];
@@ -87,26 +61,16 @@ function renderNodes(
 			if (node.text) result.push(node.text);
 		} else if (isSkillNode(node)) {
 			result.push(
-				<span key={`s-${i}`} className={styles.skillChip}>
-					{node.command}
-				</span>,
+				<MentionChip key={`s-${i}`} kind="skill" label={node.command} />,
 			);
 		} else if (isPathNode(node)) {
 			result.push(
-				<span
+				<MentionChip
 					key={`p-${i}`}
-					className={styles.pathChip}
+					kind={node.path.isDirectory ? "folder" : "file"}
+					label={node.path.name}
 					title={node.path.absolutePath}
-				>
-					<span style={{ display: "inline-flex", flexShrink: 0 }}>
-						{node.path.isDirectory ? (
-							<Folder style={{ width: 12, height: 12 }} />
-						) : (
-							<FileIcon style={{ width: 12, height: 12 }} />
-						)}
-					</span>
-					<span className={styles.pathName}>{node.path.name}</span>
-				</span>,
+				/>,
 			);
 		} else if (
 			typeof node === "object" &&
@@ -114,7 +78,7 @@ function renderNodes(
 			Array.isArray((node as { children?: unknown }).children)
 		) {
 			const children = (node as { children: unknown[] }).children;
-			const inner = renderNodes(children, styles);
+			const inner = renderNodes(children);
 			if ((node as { type?: string }).type === "paragraph") {
 				result.push(<div key={`b-${i}`}>{inner}</div>);
 			} else {
@@ -156,7 +120,7 @@ export function ReadOnlySlateMessage({ content }: Props) {
 		return null;
 	}
 
-	const rendered = renderNodes(content, styles);
+	const rendered = renderNodes(content);
 	if (rendered.length === 0) {
 		const plain = extractPlainText(content);
 		return plain ? <span>{plain}</span> : null;

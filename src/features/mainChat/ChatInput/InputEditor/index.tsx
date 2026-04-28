@@ -102,6 +102,7 @@ export function InputEditor() {
         metadata: {
           bareLabel,
           description: item.description,
+          icon: item.iconUrl,
           id: item.id,
           kind: item.kind,
         },
@@ -117,6 +118,7 @@ export function InputEditor() {
             label: bareLabel,
             metadata: {
               description: item.description,
+              icon: item.iconUrl,
               id: item.id,
               kind: item.kind,
             },

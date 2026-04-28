@@ -1,4 +1,4 @@
-import { Flexbox, Text } from '@lobehub/ui';
+import { Button, Flexbox, Text } from '@lobehub/ui';
 import { Tag } from 'antd';
 import { createStyles, cssVar } from 'antd-style';
 import { ChevronRight, ExternalLink } from 'lucide-react';
@@ -79,21 +79,17 @@ const useStyles = createStyles(({ css, token }) => ({
       opacity: 0.9;
     }
   `,
-  addButton: css`
-    background: ${token.colorPrimary};
-    color: ${token.colorWhite};
-  `,
   addedButton: css`
     background: color-mix(in oklab, ${cssVar.colorText} 8%, transparent);
     color: ${cssVar.colorText};
   `,
   removeButton: css`
     background: transparent;
-    color: ${token.colorError};
-    border: 1px solid ${token.colorErrorBorder};
+    color: ${cssVar.colorError};
+    border: 1px solid ${cssVar.colorErrorBorder};
 
     &:hover {
-      background: ${token.colorErrorBg};
+      background: ${cssVar.colorErrorBg};
     }
   `,
 
@@ -408,11 +404,11 @@ const PluginDetailPage = memo<PluginDetailPageProps>(({ plugin, onBack }) => {
               {t('publicMcp.status.removePlugin')}
             </button>
           )}
-          <button
-            type="button"
+          <Button
+            type={isAdded && (!isMcpPlugin || mcpConnected) ? 'default' : 'primary'}
             className={cx(
               styles.actionButton,
-              isAdded && (!isMcpPlugin || mcpConnected) ? styles.addedButton : styles.addButton,
+              isAdded && (!isMcpPlugin || mcpConnected) && styles.addedButton,
             )}
             disabled={(isAdded && (!isMcpPlugin || mcpConnected)) || (isMcpPlugin && !workspaceRoot)}
             onClick={handleAdd}
@@ -422,7 +418,7 @@ const PluginDetailPage = memo<PluginDetailPageProps>(({ plugin, onBack }) => {
                 ? t('publicMcp.status.reconnect', '重新连接')
                 : t('discover.enabled'))
               : t('detail.addToApp', '添加到 MimiClaw')}
-          </button>
+          </Button>
         </Flexbox>
       </div>
 

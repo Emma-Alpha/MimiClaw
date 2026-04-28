@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { theme } from 'antd';
-import { File, Folder } from 'lucide-react';
+import { File } from 'lucide-react';
 import type { Descendant } from 'slate';
 
+import MentionChip, { renderTextWithMentions } from '@/components/MentionChip';
+import type { MentionTag } from '@/components/MentionChip';
 import type { AttachedFileMeta, RawMessage } from '@/stores/chat';
 import { ReadOnlySlateMessage } from '@/components/common/ReadOnlySlateMessage';
 import { renderUserTextBubble } from './protocols/user';
@@ -50,6 +52,7 @@ interface UserMessageProps {
   protocol?: MessageProtocol;
   // MiniChat extension props
   imagePreviews?: UserMessageImagePreview[];
+  mentionTags?: MentionTag[];
   pathTags?: UserMessagePathTag[];
   richContent?: Descendant[];
 }
@@ -62,6 +65,7 @@ export function UserMessage({
   protocol = 'generic',
   hasText,
   imagePreviews,
+  mentionTags,
   pathTags,
   richContent,
 }: UserMessageProps) {
@@ -76,10 +80,11 @@ export function UserMessage({
   const hasMedia = images.length > 0 || nonVideoFiles.length > 0 || videoFiles.length > 0;
   const hasRich = !!richContent && richContent.length > 0 && hasInlineElements(richContent);
   const hasPathTags = !!pathTags && pathTags.length > 0;
+  const hasMentionTags = !!mentionTags && mentionTags.length > 0;
   const hasImagePreviews = !!imagePreviews && imagePreviews.length > 0;
 
   const effectiveHasText =
-    hasText ?? (text.trim().length > 0 || hasRich || hasPathTags || hasImagePreviews);
+    hasText ?? (text.trim().length > 0 || hasRich || hasPathTags || hasMentionTags || hasImagePreviews);
 
   const mediaSection = hasMedia ? (
     <div
@@ -184,8 +189,8 @@ export function UserMessage({
       );
     }
 
-    // MiniChat: path tags + optional plain text
-    if (hasPathTags || hasImagePreviews) {
+    // MiniChat: path tags / mention tags + optional plain text
+    if (hasPathTags || hasMentionTags || hasImagePreviews) {
       const hasBody = text.trim().length > 0;
       return (
         <div className={styles.userMessageText}>
@@ -209,25 +214,24 @@ export function UserMessage({
           {hasPathTags && (
             <div className={styles.pathTagRow} style={{ marginBottom: hasBody ? 6 : 0 }}>
               {pathTags!.map((tag) => (
-                <span key={tag.absolutePath} className={styles.pathTag} title={tag.absolutePath}>
-                  {tag.isDirectory ? (
-                    <Folder size={12} style={{ flexShrink: 0 }} />
-                  ) : (
-                    <File size={12} style={{ flexShrink: 0 }} />
-                  )}
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {tag.name}
-                  </span>
-                </span>
+                <MentionChip
+                  key={tag.absolutePath}
+                  kind={tag.isDirectory ? 'folder' : 'file'}
+                  label={tag.name}
+                  title={tag.absolutePath}
+                />
               ))}
             </div>
           )}
-          {hasBody && <span>{text}</span>}
+          {hasBody && <span>{renderTextWithMentions(text, mentionTags)}</span>}
         </div>
       );
     }
 
-    // Default: full-chat plain text
+    // Default: full-chat plain text (also apply mention inline replacement)
+    if (hasMentionTags) {
+      return <div className={styles.userMessageText}><span>{renderTextWithMentions(text, mentionTags)}</span></div>;
+    }
     return renderUserTextBubble(protocol, { className: styles.userMessageText, text });
   };
 

@@ -12,6 +12,7 @@ import { StatusIndicator } from "./code-agent/StatusIndicator";
 import { TypingIndicator } from "./TypingIndicator";
 import { useFileReferenceMarkdownProps } from "./file-reference-markdown";
 import { BackBottomButton } from "@/components/common/BackBottomButton";
+import type { MentionTag } from "@/components/MentionChip";
 import { MessageMarkdown } from "@/components/MessageMarkdown";
 import { UserMessage } from "@/features/mainChat/components/messages/UserMessage";
 import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/chat";
@@ -164,6 +165,7 @@ function CodeChatTimelineImpl({
 					key={item.key}
 					text={message.text}
 					imagePreviews={message.imagePreviews}
+					mentionTags={message.mentionTags as MentionTag[] | undefined}
 					pathTags={message.pathTags}
 					richContent={message.richContent}
 				/>

@@ -32,9 +32,6 @@ type PublicMcpStatusBody = {
 };
 
 type McpServerConfig = Record<string, unknown>;
-type McpConfigFile = Record<string, unknown> & {
-  mcpServers?: Record<string, McpServerConfig>;
-};
 
 type PublicMcpConnectionSnapshot = {
   fileExists: boolean;
@@ -57,14 +54,6 @@ async function pathIsDirectory(pathLike: string): Promise<boolean> {
   }
 }
 
-async function pathIsFile(pathLike: string): Promise<boolean> {
-  try {
-    const fileStat = await stat(pathLike);
-    return fileStat.isFile();
-  } catch {
-    return false;
-  }
-}
 
 function normalizeWorkspaceRootCandidate(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -78,7 +67,7 @@ function normalizeWorkspaceRootCandidate(value: unknown): string {
 function resolveResourcesPlaceholder(config: McpServerConfig): McpServerConfig {
   const resourcesDir = app.isPackaged
     ? join(process.resourcesPath, 'resources')
-    : join(__dirname, '../../../resources');
+    : join(__dirname, '../../resources');
 
   const replacePlaceholder = (value: unknown): unknown => {
     if (typeof value === 'string') {
@@ -101,17 +90,14 @@ function resolveResourcesPlaceholder(config: McpServerConfig): McpServerConfig {
 }
 
 /**
- * Register an MCP server in the CLI's project config inside `.claude.json`.
+ * Register an MCP server globally in `.claude.json`.
  *
- * Project-scoped MCP servers (from `.mcp.json`) require an interactive trust
- * dialog that the non-interactive sidecar cannot handle, so they appear as
- * "disabled". By writing the server config into `.claude.json`'s project-level
- * `mcpServers` field, the CLI treats it as a user-approved server.
+ * Writes the server config into the top-level `mcpServers` field so it is
+ * available to ALL projects, not just a single workspace root.
  */
 async function registerMcpServerInCliSettings(
   serverName: string,
   serverConfig: McpServerConfig,
-  workspaceRoot: string,
 ): Promise<void> {
   const { readFile, writeFile } = await import('node:fs/promises');
   const { getClaudeCodeConfigDir } = await import('../../utils/paths');
@@ -124,25 +110,17 @@ async function registerMcpServerInCliSettings(
     if (isRecord(parsed)) claudeJson = parsed;
   } catch { /* file may not exist yet */ }
 
-  const resolvedRoot = resolve(workspaceRoot);
-  const projects = (isRecord(claudeJson.projects) ? claudeJson.projects : {}) as Record<string, Record<string, unknown>>;
-  const project = (isRecord(projects[resolvedRoot]) ? { ...projects[resolvedRoot] } : {}) as Record<string, unknown>;
-  const mcpServers = (isRecord(project.mcpServers) ? { ...project.mcpServers } : {}) as Record<string, McpServerConfig>;
-
+  const mcpServers = (isRecord(claudeJson.mcpServers) ? { ...claudeJson.mcpServers } : {}) as Record<string, McpServerConfig>;
   mcpServers[serverName] = serverConfig;
-  project.mcpServers = mcpServers;
-  project.hasTrustDialogAccepted = true;
-  projects[resolvedRoot] = project;
-  claudeJson.projects = projects;
+  claudeJson.mcpServers = mcpServers;
 
   await writeFile(claudeJsonPath, `${JSON.stringify(claudeJson, null, 2)}\n`, 'utf8');
-  console.log(`[plugins] MCP server "${serverName}" registered in .claude.json for project ${resolvedRoot}`);
+  console.log(`[plugins] MCP server "${serverName}" registered globally in .claude.json`);
 }
 
-/** Remove an MCP server from the CLI's project config in `.claude.json`. */
+/** Remove an MCP server from the global config in `.claude.json`. */
 async function unregisterMcpServerFromCliSettings(
   serverName: string,
-  workspaceRoot: string,
 ): Promise<void> {
   const { readFile, writeFile } = await import('node:fs/promises');
   const { getClaudeCodeConfigDir } = await import('../../utils/paths');
@@ -155,17 +133,14 @@ async function unregisterMcpServerFromCliSettings(
     if (isRecord(parsed)) claudeJson = parsed;
   } catch { return; }
 
-  const resolvedRoot = resolve(workspaceRoot);
-  const projects = claudeJson.projects as Record<string, Record<string, unknown>> | undefined;
-  const project = projects?.[resolvedRoot];
-  if (!project || !isRecord(project.mcpServers)) return;
+  if (!isRecord(claudeJson.mcpServers)) return;
 
-  const mcpServers = { ...project.mcpServers as Record<string, unknown> };
+  const mcpServers = { ...claudeJson.mcpServers as Record<string, unknown> };
   delete mcpServers[serverName];
-  project.mcpServers = mcpServers;
+  claudeJson.mcpServers = mcpServers;
 
   await writeFile(claudeJsonPath, `${JSON.stringify(claudeJson, null, 2)}\n`, 'utf8');
-  console.log(`[plugins] MCP server "${serverName}" unregistered from .claude.json for project ${resolvedRoot}`);
+  console.log(`[plugins] MCP server "${serverName}" unregistered globally from .claude.json`);
 }
 
 function resolveWorkspaceRoot(
@@ -196,28 +171,24 @@ function resolveWorkspaceRoot(
   return resolve(fallbackWorkspaceRoot);
 }
 
-async function readMcpConfig(filePath: string): Promise<McpConfigFile> {
-  const fs = await import('node:fs/promises');
-  try {
-    const raw = await fs.readFile(filePath, 'utf8');
-    if (!raw.trim()) return {};
-    const parsed = JSON.parse(raw) as unknown;
-    if (!isRecord(parsed)) {
-      throw new Error('existing .mcp.json is not a JSON object');
-    }
-    return parsed as McpConfigFile;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes('ENOENT')) {
-      return {};
-    }
-    throw error;
-  }
-}
+/**
+ * Read globally registered MCP servers from `.claude.json`.
+ * This is the sole source of truth for MCP server registrations.
+ */
+async function readRegisteredMcpServers(): Promise<Record<string, McpServerConfig>> {
+  const { readFile } = await import('node:fs/promises');
+  const { getClaudeCodeConfigDir } = await import('../../utils/paths');
+  const claudeJsonPath = join(getClaudeCodeConfigDir(), '.claude.json');
 
-async function writeMcpConfig(filePath: string, config: McpConfigFile): Promise<void> {
-  const fs = await import('node:fs/promises');
-  await fs.writeFile(filePath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+  try {
+    const raw = await readFile(claudeJsonPath, 'utf8');
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return {};
+    if (!isRecord(parsed.mcpServers)) return {};
+    return parsed.mcpServers as Record<string, McpServerConfig>;
+  } catch {
+    return {};
+  }
 }
 
 function normalizeConnectBody(body: ConnectPublicMcpBody): {
@@ -277,7 +248,7 @@ async function readPublicMcpConnectionSnapshot(
   body: ReturnType<typeof normalizeStatusBody>,
   settings: Awaited<ReturnType<typeof getAllSettings>>,
 ): Promise<PublicMcpConnectionSnapshot> {
-  let workspaceRoot = '';
+  let workspaceRoot: string;
 
   try {
     workspaceRoot = resolveWorkspaceRoot(body.workspaceRoot, settings);
@@ -289,18 +260,14 @@ async function readPublicMcpConnectionSnapshot(
     return createEmptyPublicMcpConnectionSnapshot(body.serverNames);
   }
 
-  const mcpConfigPath = join(workspaceRoot, '.mcp.json');
-  const fileExists = await pathIsFile(mcpConfigPath);
-  const config = await readMcpConfig(mcpConfigPath);
-  const existingServers = isRecord(config.mcpServers)
-    ? config.mcpServers as Record<string, McpServerConfig>
-    : {};
+  // Read MCP server registrations from .claude.json (the sole source of truth)
+  const registeredServers = await readRegisteredMcpServers();
 
   return {
-    fileExists,
-    filePath: mcpConfigPath,
+    fileExists: Object.keys(registeredServers).length > 0,
+    filePath: '',
     statuses: Object.fromEntries(
-      body.serverNames.map((serverName) => [serverName, isRecord(existingServers[serverName])]),
+      body.serverNames.map((serverName) => [serverName, isRecord(registeredServers[serverName])]),
     ),
     workspaceResolved: true,
     workspaceRoot,
@@ -446,39 +413,20 @@ export async function handlePluginRoutes(
         throw new Error(`workspaceRoot does not exist or is not a directory: ${workspaceRoot}`);
       }
 
-      const mcpConfigPath = join(workspaceRoot, '.mcp.json');
-      const existingConfig = await readMcpConfig(mcpConfigPath);
-      const existingServers = isRecord(existingConfig.mcpServers)
-        ? existingConfig.mcpServers as Record<string, McpServerConfig>
-        : {};
-      const existed = Object.prototype.hasOwnProperty.call(existingServers, body.serverName);
-
       // Resolve __RESOURCES_PATH__ placeholder in MCP server config args
       const resolvedConfig = resolveResourcesPlaceholder(body.serverConfig);
 
-      const nextConfig: McpConfigFile = {
-        ...existingConfig,
-        mcpServers: {
-          ...existingServers,
-          [body.serverName]: resolvedConfig,
-        },
-      };
+      // Check if server already exists in .claude.json
+      const existingServers = await readRegisteredMcpServers();
+      const existed = Object.prototype.hasOwnProperty.call(existingServers, body.serverName);
 
-      await writeMcpConfig(mcpConfigPath, nextConfig);
-
-      // Also register the MCP server in the CLI's user-level settings.json
-      // so the CLI trusts it without needing an interactive approval dialog.
-      // Project-level .mcp.json servers are "disabled" by default if not pre-approved.
-      try {
-        await registerMcpServerInCliSettings(body.serverName, resolvedConfig, workspaceRoot);
-      } catch (cliError) {
-        console.warn('[plugins] Failed to register MCP server in CLI settings (non-fatal):', cliError);
-      }
+      // Register the MCP server in .claude.json — the sole source of truth.
+      // This pre-approves the server so the non-interactive sidecar can use it.
+      await registerMcpServerInCliSettings(body.serverName, resolvedConfig);
 
       sendJson(res, 200, {
         success: true,
         existed,
-        filePath: mcpConfigPath,
         serverName: body.serverName,
         workspaceRoot,
       });
@@ -488,7 +436,7 @@ export async function handlePluginRoutes(
     return true;
   }
 
-  // POST /api/plugins/public-mcp/disconnect — remove an MCP server from .mcp.json
+  // POST /api/plugins/public-mcp/disconnect — remove an MCP server from .claude.json
   if (url.pathname === '/api/plugins/public-mcp/disconnect' && req.method === 'POST') {
     try {
       const body = await parseJsonBody<{ serverName?: unknown; workspaceRoot?: unknown }>(req);
@@ -502,32 +450,16 @@ export async function handlePluginRoutes(
         throw new Error(`workspaceRoot does not exist or is not a directory: ${resolvedRoot}`);
       }
 
-      const mcpConfigPath = join(resolvedRoot, '.mcp.json');
-      const existingConfig = await readMcpConfig(mcpConfigPath);
-      const existingServers = isRecord(existingConfig.mcpServers)
-        ? { ...existingConfig.mcpServers as Record<string, McpServerConfig> }
-        : {};
+      // Check if server existed before removal
+      const existingServers = await readRegisteredMcpServers();
       const existed = Object.prototype.hasOwnProperty.call(existingServers, serverName);
-      delete existingServers[serverName];
 
-      const nextConfig: McpConfigFile = {
-        ...existingConfig,
-        mcpServers: existingServers,
-      };
-
-      await writeMcpConfig(mcpConfigPath, nextConfig);
-
-      // Also remove the MCP server from the CLI's project config in .claude.json
-      try {
-        await unregisterMcpServerFromCliSettings(serverName, resolvedRoot);
-      } catch (cliError) {
-        console.warn('[plugins] Failed to unregister MCP server from CLI settings (non-fatal):', cliError);
-      }
+      // Remove the MCP server from .claude.json
+      await unregisterMcpServerFromCliSettings(serverName);
 
       sendJson(res, 200, {
         success: true,
         existed,
-        filePath: mcpConfigPath,
         serverName,
         workspaceRoot: resolvedRoot,
       });

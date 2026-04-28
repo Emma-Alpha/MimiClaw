@@ -1,12 +1,12 @@
 import type { IEditorKernel } from '@lobehub/editor/es/types/kernel';
 import type { LexicalEditor } from 'lexical';
-import type { MouseEvent } from 'react';
 
 import { useLexicalComposerContext } from '@lobehub/editor/es/editor-kernel/react/react-context';
-import { createStyles } from 'antd-style';
 import { $getNodeByKey } from 'lexical';
-import { FileText, Folder, Puzzle, X } from 'lucide-react';
-import { memo, useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
+
+import MentionChip from '@/components/MentionChip';
+import type { MentionChipKind } from '@/components/MentionChip';
 
 interface MentionNodeLike {
   getKey: () => string;
@@ -19,100 +19,11 @@ interface MentionTagProps {
   node: MentionNodeLike;
 }
 
-const useStyles = createStyles(({ css, token }) => ({
-  deleteBtn: css`
-    all: unset;
-    box-sizing: border-box;
-
-    /* visibility is toggled via CSS custom property set by .pill:hover */
-    display: var(--mc-delete-display, none);
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    width: 16px;
-    height: 16px;
-
-    cursor: pointer;
-    border-radius: ${token.borderRadiusSM}px;
-    color: ${token.colorTextSecondary};
-
-    &:hover {
-      color: ${token.colorError};
-      background: ${token.colorErrorBg};
-    }
-  `,
-  fileIcon: css`
-    /* visibility toggled via CSS custom property */
-    display: var(--mc-icon-display, flex);
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    width: 16px;
-    height: 16px;
-    color: ${token.colorTextTertiary};
-  `,
-  label: css`
-    overflow: hidden;
-    min-width: 0;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 200px;
-  `,
-  pill: css`
-    /* CSS custom properties drive hover-toggle between icon ↔ delete button */
-    --mc-delete-display: none;
-    --mc-icon-display: flex;
-
-    display: inline-flex;
-    align-items: center;
-    gap: ${token.marginXXS}px;
-    padding: 2px 6px 2px 4px;
-
-    border: 1px solid ${token.colorBorderSecondary};
-    border-radius: ${token.borderRadiusSM}px;
-    background: ${token.colorFillTertiary};
-    color: ${token.colorText};
-    font-size: ${token.fontSizeSM}px;
-    line-height: 1.4;
-
-    cursor: default;
-    user-select: none;
-    vertical-align: middle;
-    margin-inline: 2px;
-
-    &:hover {
-      --mc-delete-display: flex;
-      --mc-icon-display: none;
-      border-color: ${token.colorPrimaryBorder};
-      background: ${token.colorFillSecondary};
-    }
-  `,
-}));
-
-const IMAGE_ICON_RE = /^(https?:\/\/|data:image\/|\/)/i;
-
-function renderMentionIcon(kind: string | undefined, metadata: Record<string, unknown>): ReactNode {
-  if (kind === 'skill') {
-    const icon = metadata.icon as string | undefined;
-    if (icon && IMAGE_ICON_RE.test(icon)) {
-      return <img alt="" src={icon} style={{ borderRadius: 2, height: 12, objectFit: 'contain', width: 12 }} />;
-    }
-    if (icon) {
-      return <span style={{ fontSize: 11, lineHeight: 1 }}>{icon}</span>;
-    }
-    return <Puzzle size={12} strokeWidth={1.75} />;
-  }
-  if (kind === 'folder') return <Folder size={12} strokeWidth={1.75} />;
-  return <FileText size={12} strokeWidth={1.75} />;
-}
-
 const MentionTag = memo<MentionTagProps>(({ node, editor }) => {
-  const { styles } = useStyles();
   const metadata = node.metadata ?? {};
-  const kind = (metadata as { kind?: string }).kind;
+  const kind = (metadata.kind as MentionChipKind | undefined) ?? 'file';
+  const icon = metadata.icon as string | undefined;
   const label = node.label || '';
-  const isSkill = kind === 'skill';
-  const displayLabel = isSkill ? `/${label}` : label;
   const pillRef = useRef<HTMLSpanElement>(null);
 
   // Strip the default mention theme styles from the outer <span> created
@@ -130,10 +41,8 @@ const MentionTag = memo<MentionTagProps>(({ node, editor }) => {
     }
   }, []);
 
-  const handleDelete = useCallback(
-    (e: MouseEvent<HTMLButtonElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
+  const handleRemove = useCallback(
+    () => {
       const key = node.getKey();
       editor.update(() => {
         $getNodeByKey(key)?.remove();
@@ -143,20 +52,14 @@ const MentionTag = memo<MentionTagProps>(({ node, editor }) => {
   );
 
   return (
-    <span ref={pillRef} className={styles.pill} contentEditable={false} title={displayLabel}>
-      <span aria-hidden className={styles.fileIcon}>
-        {renderMentionIcon(kind, metadata)}
-      </span>
-      <button
-        aria-label="Remove mention"
-        className={styles.deleteBtn}
-        onClick={handleDelete}
-        onMouseDown={(e) => e.preventDefault()}
-        type="button"
-      >
-        <X size={12} strokeWidth={2} />
-      </button>
-      <span className={styles.label}>{displayLabel}</span>
+    <span ref={pillRef}>
+      <MentionChip
+        icon={icon}
+        kind={kind}
+        label={label}
+        onRemove={handleRemove}
+        removable
+      />
     </span>
   );
 });

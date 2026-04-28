@@ -48,6 +48,7 @@ type Params = {
 		text: string,
 		options?: {
 			imagePreviews?: MiniCodeMessageImagePreview[];
+			mentionTags?: { kind: string; label: string; icon?: string }[];
 			pathTags?: MiniCodeMessagePathTag[];
 			richContent?: Descendant[];
 		},
@@ -87,9 +88,11 @@ export function useCodeChatSubmissionActions({
 			images?: CodeAgentImageAttachment[],
 			options?: {
 				imagePreviews?: MiniCodeMessageImagePreview[];
+				mentionTags?: { kind: string; label: string; icon?: string }[];
 				pathTags?: MiniCodeMessagePathTag[];
 				displayText?: string;
 				richContent?: Descendant[];
+				mcpServerHints?: string[];
 			},
 		) => {
 			const workspaceRoot = codeWorkspaceRoot.trim();
@@ -108,6 +111,7 @@ export function useCodeChatSubmissionActions({
 
 			pushUserMessage(userText, {
 				imagePreviews: options?.imagePreviews,
+				mentionTags: options?.mentionTags,
 				pathTags: options?.pathTags,
 				richContent: options?.richContent,
 			});
@@ -129,6 +133,14 @@ export function useCodeChatSubmissionActions({
 					: inputThinkingLevel === 'low'
 						? 'adaptive' as const
 						: 'enabled' as const;
+				const mcpHints = options?.mcpServerHints;
+				let effectiveAppendSystemPrompt: string | undefined;
+				if (mcpHints && mcpHints.length > 0) {
+					const serverList = mcpHints.join(', ');
+					const mcpInstruction = `The user explicitly requested MCP server(s): ${serverList}. You MUST use tools from these MCP servers (prefixed with ${mcpHints.map((s) => `"mcp__${s}__"`).join(' or ')}). Do NOT use tools from other MCP servers that provide similar functionality.`;
+					const existing = latestCodeAgentConfig.appendSystemPrompt?.trim() ?? '';
+					effectiveAppendSystemPrompt = existing ? `${existing}\n\n${mcpInstruction}` : mcpInstruction;
+				}
 				const result = await runCodeAgentTask({
 					workspaceRoot,
 					prompt,
@@ -141,6 +153,7 @@ export function useCodeChatSubmissionActions({
 						thinking: thinkingOverride,
 						fastMode: latestCodeAgentConfig.fastMode === true,
 						permissionMode: latestCodeAgentConfig.permissionMode,
+						...(effectiveAppendSystemPrompt ? { appendSystemPrompt: effectiveAppendSystemPrompt } : {}),
 					},
 					metadata: {
 						source: "pet-code-chat",
@@ -217,6 +230,8 @@ export function useCodeChatSubmissionActions({
 			attachmentOverride?: PetCodeChatSeedAttachment[],
 			_forcedTarget?: CodeChatTarget,
 			pathOverride?: ComposerPath[],
+			mcpServerHints?: string[],
+			mentionTags?: { kind: string; label: string; icon?: string }[],
 		) => {
 			const cleanText = rawText.trim();
 
@@ -312,9 +327,11 @@ export function useCodeChatSubmissionActions({
 			clearComposer();
 			return runMiniCodeTask(prompt, imageAttachments, {
 				imagePreviews,
+				mentionTags,
 				pathTags: mergedPathTags,
 				displayText: rawText,
 				richContent: snapshotRichContent,
+				mcpServerHints,
 			});
 		},
 		[

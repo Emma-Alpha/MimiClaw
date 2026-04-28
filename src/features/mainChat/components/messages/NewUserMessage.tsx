@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { theme } from 'antd';
-import { File, Folder, User } from 'lucide-react';
+import { File } from 'lucide-react';
 import type { Descendant } from 'slate';
 
 import ChatItem from '@/components/ChatItem';
+import MentionChip from '@/components/MentionChip';
 import type { AttachedFileMeta, RawMessage } from '@/stores/chat';
 import { ReadOnlySlateMessage } from '@/components/common/ReadOnlySlateMessage';
 import { renderUserTextBubble } from './protocols/user';
@@ -205,16 +206,12 @@ export function NewUserMessage({
           {hasPathTags && (
             <div className={styles.pathTagRow} style={{ marginBottom: hasBody ? 6 : 0 }}>
               {pathTags!.map((tag) => (
-                <span key={tag.absolutePath} className={styles.pathTag} title={tag.absolutePath}>
-                  {tag.isDirectory ? (
-                    <Folder size={12} style={{ flexShrink: 0 }} />
-                  ) : (
-                    <File size={12} style={{ flexShrink: 0 }} />
-                  )}
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {tag.name}
-                  </span>
-                </span>
+                <MentionChip
+                  key={tag.absolutePath}
+                  kind={tag.isDirectory ? 'folder' : 'file'}
+                  label={tag.name}
+                  title={tag.absolutePath}
+                />
               ))}
             </div>
           )}

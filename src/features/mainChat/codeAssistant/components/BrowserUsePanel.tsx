@@ -76,7 +76,7 @@ export function BrowserUsePanel({ onClose }: BrowserUsePanelProps) {
 	// ─── Subscribe to status events ────────────────────────────────────────────
 
 	useEffect(() => {
-		return subscribeHostEvent<BrowserUseStatus>("browser-use:status-changed", (status) => {
+		return subscribeHostEvent<BrowserUseStatus>("browser-use:status", (status) => {
 			setCurrentUrl(status.currentUrl || "about:blank");
 			setTitle(status.title || "");
 			setLoading(status.loading);

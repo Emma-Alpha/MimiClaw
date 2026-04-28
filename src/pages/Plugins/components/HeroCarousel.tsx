@@ -2,6 +2,7 @@ import { createStyles, cssVar } from 'antd-style';
 import { Sparkles } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
+import PluginAvatar from '@/components/Plugins/PluginAvatar';
 import type { MarketplacePlugin } from '@/types/claude-plugin';
 import { HERO_PROMPTS } from '@/stores/plugins';
 
@@ -207,7 +208,12 @@ const HeroCarousel = memo<HeroCarouselProps>(({ plugins, onTryInChat }) => {
               <div key={plugin.id} className={styles.slide}>
                 <div className={styles.promptCard}>
                   <span className={styles.promptBadge}>
-                    🎨 {plugin.name}
+                    <PluginAvatar
+                      avatar={plugin.icon || 'MCP_AVATAR'}
+                      size={16}
+                      style={{ borderRadius: 3 }}
+                    />
+                    {plugin.name}
                   </span>
                   {prompt}
                 </div>

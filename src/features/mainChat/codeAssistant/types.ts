@@ -37,6 +37,7 @@ export type MiniCodeMessage = {
 	targetLabel?: string;
 	activities?: ToolActivityItem[];
 	imagePreviews?: MiniCodeMessageImagePreview[];
+	mentionTags?: { kind: string; label: string; icon?: string }[];
 	pathTags?: MiniCodeMessagePathTag[];
 	/** Slate editor tree for inline rendering in message list */
 	richContent?: Descendant[];

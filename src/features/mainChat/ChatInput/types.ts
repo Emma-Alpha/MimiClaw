@@ -43,6 +43,8 @@ export interface MentionItem {
    * (e.g. folder vs. file) from here without shipping React nodes.
    */
   kind?: 'folder' | 'file' | 'agent' | string;
+  /** Icon URL string serialized into mention metadata for pill rendering. */
+  iconUrl?: string;
   /** Called when the user confirms this mention in the editor */
   onSelect?: () => void;
 }

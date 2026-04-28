@@ -1,8 +1,10 @@
 import { createStyles, useTheme } from "antd-style";
 import type { Descendant } from "slate";
 import { ChatItem } from "@lobehub/ui/chat";
-import { Clock, Coins, File as FileIcon, Folder, Zap, Timer } from "lucide-react";
+import { Clock, Coins, Zap, Timer } from "lucide-react";
 import { ModelIcon } from "@lobehub/icons";
+import MentionChip, { renderTextWithMentions } from "@/components/MentionChip";
+import type { MentionTag } from "@/components/MentionChip";
 import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/chat";
 import { StreamingText } from "./StreamingText";
 import { ThinkingBlock } from "./ThinkingBlock";
@@ -67,23 +69,6 @@ userImageList: css`
 		gap: 6px;
 		margin-bottom: 6px;
 	`,
-	userPathTag: css`
-		display: inline-flex;
-		align-items: center;
-		gap: 5px;
-		max-width: 220px;
-		padding: 3px 8px;
-		border-radius: 14px;
-		font-size: ${token.fontSizeSM}px;
-		border: 1px solid ${token.colorBorderSecondary};
-		background: ${token.colorBgContainer};
-		color: ${token.colorText};
-	`,
-	userPathTagName: css`
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	`,
 }));
 
 type UserTimelineItem = Extract<CodeAgentTimelineItem, { kind: "user" }>;
@@ -142,22 +127,18 @@ function UserMessageContent({
 					{item.pathTags && item.pathTags.length > 0 ? (
 						<div className={styles.userPathTagList}>
 							{item.pathTags.map((pathTag) => (
-								<span
+								<MentionChip
 									key={pathTag.absolutePath}
+									kind={pathTag.isDirectory ? 'folder' : 'file'}
+									label={pathTag.name}
 									title={pathTag.absolutePath}
-									className={styles.userPathTag}
-								>
-									{pathTag.isDirectory ? (
-										<Folder size={12} style={{ flexShrink: 0 }} />
-									) : (
-										<FileIcon size={12} style={{ flexShrink: 0 }} />
-									)}
-									<span className={styles.userPathTagName}>{pathTag.name}</span>
-								</span>
+								/>
 							))}
 						</div>
 					) : null}
-					{item.text ? <span>{item.text}</span> : null}
+					{item.text ? (
+						<span>{renderTextWithMentions(item.text, item.mentionTags as MentionTag[] | undefined)}</span>
+					) : null}
 				</>
 			)}
 		</>
