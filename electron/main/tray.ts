@@ -421,6 +421,7 @@ async function ensureTrayRuntimeWindow(): Promise<BrowserWindow> {
     },
   });
 
+  win.excludedFromShownWindowsMenu = true;
   win.setAlwaysOnTop(true, process.platform === 'darwin' ? 'floating' : 'normal');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.on('closed', () => {

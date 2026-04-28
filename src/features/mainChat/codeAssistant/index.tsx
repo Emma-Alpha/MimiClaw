@@ -840,6 +840,7 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 					content: item.text,
 					timestamp: ts,
 					_attachedFiles: [],
+					_mentionTags: item.mentionTags,
 				});
 			} else if (item.kind === "assistant-text") {
 				const ts = item.createdAt
@@ -1163,6 +1164,7 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 				pendingFinal={false}
 				lastRunWasAborted={false}
 				clearError={() => {}}
+				skipPetActivity
 			/>
 
 			<div className={styles.bottomDock}>

@@ -191,9 +191,11 @@ type ConversationViewProps = {
   pendingFinal: boolean;
   lastRunWasAborted: boolean;
   clearError: () => void;
+  /** When true, skip pet activity control — the parent component manages it. */
+  skipPetActivity?: boolean;
 };
 
-export function ConversationView({ messages, currentSessionKey, loading, sending, error, showThinking, streamingMessage, streamingTools, pendingFinal, lastRunWasAborted, clearError }: ConversationViewProps) {
+export function ConversationView({ messages, currentSessionKey, loading, sending, error, showThinking, streamingMessage, streamingTools, pendingFinal, lastRunWasAborted, clearError, skipPetActivity }: ConversationViewProps) {
   const { t } = useTranslation('chat');
   const { styles } = useStyles();
   const enableAutoScrollOnStreaming = useSettingsStore((s) => s.enableAutoScrollOnStreaming);
@@ -257,7 +259,7 @@ export function ConversationView({ messages, currentSessionKey, loading, sending
     setAtBottom(true);
   }, [timelineRows.length]);
 
-  useEffect(() => { void invokeIpc('pet:setUiActivity', { activity: petUiActivity }).catch(() => {}); }, [petUiActivity]);
+  useEffect(() => { if (!skipPetActivity) void invokeIpc('pet:setUiActivity', { activity: petUiActivity }).catch(() => {}); }, [petUiActivity, skipPetActivity]);
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       const shouldFollow = enableAutoScrollOnStreaming && atBottom && sending;

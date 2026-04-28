@@ -1,5 +1,6 @@
 import { memo } from 'react';
 
+import type { MentionTag } from '@/components/MentionChip';
 import { useEnhancedMarkdownProps } from '@/lib/markdown-enhancements';
 import type { RawMessage } from '@/stores/chat';
 import {
@@ -63,12 +64,14 @@ export const ChatMessage = memo(function ChatMessage({
   }
 
   if (isUser) {
+    const mentionTags = message._mentionTags as MentionTag[] | undefined;
     if (useNewUI) {
       return (
         <NewUserMessage
           attachedFiles={attachedFiles}
           hasText={hasText}
           images={images}
+          mentionTags={mentionTags}
           message={message}
           protocol={protocol}
           text={text}
@@ -80,6 +83,7 @@ export const ChatMessage = memo(function ChatMessage({
         attachedFiles={attachedFiles}
         hasText={hasText}
         images={images}
+        mentionTags={mentionTags}
         message={message}
         protocol={protocol}
         text={text}

@@ -90,7 +90,7 @@ async function createMiniChatWindow(): Promise<BrowserWindow> {
 		minimizable: true,
 		maximizable: false,
 		fullscreenable: false,
-		skipTaskbar: false,
+		skipTaskbar: true,
 		alwaysOnTop: true,
 		hasShadow: true,
 		minWidth: 360,
@@ -104,6 +104,7 @@ async function createMiniChatWindow(): Promise<BrowserWindow> {
 		},
 	});
 
+	win.excludedFromShownWindowsMenu = true;
 	win.setAlwaysOnTop(
 		true,
 		isMac ? "floating" : "floating",

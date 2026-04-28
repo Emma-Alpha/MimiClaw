@@ -101,6 +101,7 @@ async function createPetBubbleWindow(): Promise<BrowserWindow> {
 		},
 	});
 
+	win.excludedFromShownWindowsMenu = true;
 	win.setAlwaysOnTop(
 		true,
 		process.platform === "darwin" ? "screen-saver" : "floating",

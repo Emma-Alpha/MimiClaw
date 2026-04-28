@@ -228,8 +228,8 @@ export function UserMessage({
       );
     }
 
-    // Default: full-chat plain text (also apply mention inline replacement)
-    if (hasMentionTags) {
+    // Render text with inline MentionChips (auto-detects @mentions even without mentionTags)
+    if (hasMentionTags || text.includes('@')) {
       return <div className={styles.userMessageText}><span>{renderTextWithMentions(text, mentionTags)}</span></div>;
     }
     return renderUserTextBubble(protocol, { className: styles.userMessageText, text });

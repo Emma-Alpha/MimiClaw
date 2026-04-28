@@ -814,6 +814,16 @@ async function initialize(): Promise<void> {
   await syncPetWindowFromSettings();
   void startVoiceShortcutMonitor();
 
+  // DEBUG: Log all windows after startup to identify duplicate Dock entries
+  setTimeout(() => {
+    const allWindows = BrowserWindow.getAllWindows();
+    logger.info(`[DEBUG] Total BrowserWindows: ${allWindows.length}`);
+    for (const w of allWindows) {
+      if (w.isDestroyed()) continue;
+      logger.info(`[DEBUG] Window id=${w.id} title="${w.getTitle()}" visible=${w.isVisible()} excluded=${w.excludedFromShownWindowsMenu} url=${w.webContents.getURL()}`);
+    }
+  }, 5000);
+
   void (async () => {
     try {
       const [updateChannel, autoCheckUpdate, autoDownloadUpdate] = await Promise.all([

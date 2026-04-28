@@ -190,46 +190,64 @@ const MentionChip = memo<MentionChipProps>(
 MentionChip.displayName = 'MentionChip';
 
 /**
- * Parse message text and replace `@label` patterns (matching provided mentionTags)
- * with inline MentionChip components. Returns an array of ReactNode.
+ * Regex matching `@some-label` at the start of text or after whitespace.
+ * Captures the label (letters, digits, hyphens, underscores, dots).
+ */
+const AT_MENTION_RE = /(?<=^|[\s])@([\w][\w.-]*[\w])/g;
+
+/**
+ * Parse message text and replace `@label` patterns with inline MentionChip components.
+ *
+ * - If `mentionTags` is provided, only those labels are matched (exact match).
+ * - If `mentionTags` is not provided, all `@word-word` patterns are auto-detected
+ *   and rendered as `plugin` kind chips (works after page refresh without persisted data).
  */
 export function renderTextWithMentions(
   text: string,
   mentionTags?: MentionTag[],
 ): ReactNode[] {
-  if (!mentionTags || mentionTags.length === 0 || !text) {
-    return [text];
+  if (!text) return [text];
+
+  let pattern: RegExp;
+  let tagMap: Map<string, MentionTag>;
+
+  if (mentionTags && mentionTags.length > 0) {
+    // Exact match mode: only match known labels
+    const sorted = [...mentionTags].sort((a, b) => b.label.length - a.label.length);
+    const escaped = sorted.map((t) => t.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    pattern = new RegExp(`@(${escaped.join('|')})`, 'g');
+    tagMap = new Map(sorted.map((t) => [t.label, t]));
+  } else {
+    // Auto-detect mode: match any @word-word pattern
+    pattern = AT_MENTION_RE;
+    tagMap = new Map();
   }
 
-  // Build regex that matches any @label in the text, longest first to avoid partial matches
-  const sorted = [...mentionTags].sort((a, b) => b.label.length - a.label.length);
-  const escaped = sorted.map((t) => t.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  const pattern = new RegExp(`@(${escaped.join('|')})`, 'g');
-
-  const tagMap = new Map(sorted.map((t) => [t.label, t]));
   const result: ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
+  let hasMatch = false;
 
   while ((match = pattern.exec(text)) !== null) {
+    hasMatch = true;
     // Text before the match
     if (match.index > lastIndex) {
       result.push(text.slice(lastIndex, match.index));
     }
     const label = match[1];
     const tag = tagMap.get(label);
-    if (tag) {
-      result.push(
-        <MentionChip
-          key={`mention-${match.index}`}
-          kind={tag.kind}
-          label={tag.label}
-          icon={tag.icon}
-        />,
-      );
-    }
+    result.push(
+      <MentionChip
+        key={`mention-${match.index}`}
+        kind={tag?.kind ?? 'plugin'}
+        label={label}
+        icon={tag?.icon}
+      />,
+    );
     lastIndex = match.index + match[0].length;
   }
+
+  if (!hasMatch) return [text];
 
   // Remaining text
   if (lastIndex < text.length) {

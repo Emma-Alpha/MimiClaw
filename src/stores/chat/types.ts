@@ -19,6 +19,8 @@ export interface RawMessage {
   isError?: boolean;
   /** Local-only: file metadata for user-uploaded attachments (not sent to/from Gateway) */
   _attachedFiles?: AttachedFileMeta[];
+  /** Local-only: mention tags extracted from editor for styled inline rendering */
+  _mentionTags?: { kind: string; label: string; icon?: string }[];
 }
 
 /** Content block inside a message */

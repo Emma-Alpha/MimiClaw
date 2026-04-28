@@ -4,7 +4,8 @@ import { File } from 'lucide-react';
 import type { Descendant } from 'slate';
 
 import ChatItem from '@/components/ChatItem';
-import MentionChip from '@/components/MentionChip';
+import MentionChip, { renderTextWithMentions } from '@/components/MentionChip';
+import type { MentionTag } from '@/components/MentionChip';
 import type { AttachedFileMeta, RawMessage } from '@/stores/chat';
 import { ReadOnlySlateMessage } from '@/components/common/ReadOnlySlateMessage';
 import { renderUserTextBubble } from './protocols/user';
@@ -47,6 +48,7 @@ interface NewUserMessageProps {
   attachedFiles?: AttachedFileMeta[];
   hasText?: boolean;
   images?: ExtractedImage[];
+  mentionTags?: MentionTag[];
   message?: RawMessage;
   protocol?: MessageProtocol;
   imagePreviews?: UserMessageImagePreview[];
@@ -62,6 +64,7 @@ export function NewUserMessage({
   protocol = 'generic',
   hasText,
   imagePreviews,
+  mentionTags,
   pathTags,
   richContent,
 }: NewUserMessageProps) {
@@ -75,10 +78,11 @@ export function NewUserMessage({
   const hasMedia = images.length > 0 || nonVideoFiles.length > 0 || videoFiles.length > 0;
   const hasRich = !!richContent && richContent.length > 0 && hasInlineElements(richContent);
   const hasPathTags = !!pathTags && pathTags.length > 0;
+  const hasMentionTags = !!mentionTags && mentionTags.length > 0;
   const hasImagePreviews = !!imagePreviews && imagePreviews.length > 0;
 
   const effectiveHasText =
-    hasText ?? (text.trim().length > 0 || hasRich || hasPathTags || hasImagePreviews);
+    hasText ?? (text.trim().length > 0 || hasRich || hasPathTags || hasMentionTags || hasImagePreviews);
 
   const mediaSection = hasMedia ? (
     <div
@@ -218,6 +222,11 @@ export function NewUserMessage({
           {hasBody && <span>{text}</span>}
         </div>
       );
+    }
+
+    // Render text with inline MentionChips (auto-detects @mentions even without mentionTags)
+    if (hasMentionTags || text.includes('@')) {
+      return <div className={styles.userMessageText}><span>{renderTextWithMentions(text, mentionTags)}</span></div>;
     }
 
     return renderUserTextBubble(protocol, { className: styles.userMessageText, text });
