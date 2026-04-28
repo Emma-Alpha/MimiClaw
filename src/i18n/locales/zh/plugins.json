@@ -1,7 +1,7 @@
 {
-  "title": "Plugins",
+  "title": "插件",
   "tabs": {
-    "discover": "发现",
+    "discover": "插件",
     "installed": "已安装",
     "marketplaces": "市场源"
   },

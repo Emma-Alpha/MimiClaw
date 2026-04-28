@@ -156,7 +156,7 @@ export const SlashCommandMenu = memo<SlashCommandMenuProps>(({
       apply({ rects, elements, availableHeight }) {
         Object.assign(elements.floating.style, {
           width: `${rects.reference.width}px`,
-          maxHeight: `${Math.max(120, availableHeight - 8)}px`,
+          maxHeight: `${Math.min(200, Math.max(120, availableHeight - 8))}px`,
         });
       },
     }),

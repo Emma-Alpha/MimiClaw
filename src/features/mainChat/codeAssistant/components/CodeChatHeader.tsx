@@ -1,6 +1,5 @@
 import { memo, useState, useEffect, useMemo } from "react";
 import { ActionIcon } from "@lobehub/ui";
-import { OpenClaw, ClaudeCode } from "@lobehub/icons";
 import { Dropdown } from "antd";
 import { SidebarToggleButton } from "@/components/layout/SidebarToggleButton";
 import { useChatHeaderInsets } from "@/lib/titlebar-safe-area";
@@ -25,7 +24,6 @@ import type {
 import { SearchInput } from "@/components/common/SearchInput";
 import {
 	CHAT_NAV_ICON_SIZE,
-	CHAT_SESSION_HEADER_ICON_SIZE,
 	CHAT_SESSION_META_ICON_SIZE,
 } from "@/styles/typography-tokens";
 import type { CodeChatTarget } from "../types";
@@ -61,6 +59,7 @@ type CodeChatHeaderProps = {
 	onNewConversation: () => void;
 	onSwitchSession: (key: string) => void;
 	showWindowActions?: boolean;
+	isMiniWindow?: boolean;
 	showTerminalToggle?: boolean;
 	isTerminalVisible?: boolean;
 	isTerminalToggleDisabled?: boolean;
@@ -130,6 +129,7 @@ function CodeChatHeaderImpl({
 	onNewConversation,
 	onSwitchSession,
 	showWindowActions = true,
+	isMiniWindow = false,
 	showTerminalToggle = false,
 	isTerminalVisible = false,
 	isTerminalToggleDisabled = false,
@@ -142,8 +142,9 @@ function CodeChatHeaderImpl({
 	const { t } = useTranslation("common");
 	const sidebarCollapsed = useSettingsStore((state) => state.sidebarCollapsed);
 	const setSidebarCollapsed = useSettingsStore((state) => state.setSidebarCollapsed);
-	const headerInsets = useChatHeaderInsets(sidebarCollapsed, {
-		sidebarToggleLocation: sidebarCollapsed ? "inline" : "global",
+	const effectiveSidebarCollapsed = isMiniWindow || sidebarCollapsed;
+	const headerInsets = useChatHeaderInsets(effectiveSidebarCollapsed, {
+		sidebarToggleLocation: effectiveSidebarCollapsed ? "inline" : "global",
 	});
 	const { styles, cx } = useCodeChatStyles({
 		codexHeaderInsetEnd: headerInsets.end,
@@ -318,9 +319,6 @@ function CodeChatHeaderImpl({
 			)}
 		>
 			<div className={cx(styles.brand, embedded && styles.brandEmbedded)}>
-				{draftTarget !== "code" && <div className={styles.brandLogo}>
-					<OpenClaw.Color size={CHAT_SESSION_HEADER_ICON_SIZE} />
-				</div>}
 					{!embedded && draftTarget !== "code" ? (
 						<div className={styles.brandText}>
 							<span className={styles.brandTitle}>极智</span>
@@ -335,7 +333,7 @@ function CodeChatHeaderImpl({
 			{useCodexHeader ? (
 				<>
 					<div className={styles.embeddedTopLeft}>
-						{sidebarCollapsed ? (
+						{!isMiniWindow && sidebarCollapsed ? (
 							<SidebarToggleButton
 								ariaLabel={sidebarToggleAriaLabel}
 								onToggle={() => setSidebarCollapsed(false)}
@@ -344,13 +342,6 @@ function CodeChatHeaderImpl({
 						) : null}
 						<div className={styles.embeddedThreadWrap}>
 							<div className={styles.embeddedThreadBtn}>
-								<span className={styles.embeddedThreadIcon}>
-									{isCodeMode ? (
-										<ClaudeCode.Color size={CHAT_SESSION_HEADER_ICON_SIZE} />
-									) : (
-										<OpenClaw.Color size={CHAT_SESSION_HEADER_ICON_SIZE} />
-									)}
-								</span>
 								<span className={styles.embeddedThreadLabel} title={embeddedHeaderTitle}>
 									{embeddedHeaderTitleDisplay}
 								</span>
@@ -458,13 +449,7 @@ function CodeChatHeaderImpl({
 												onMouseDown={(event) => {
 													event.stopPropagation();
 												}}
-											>
-												{isCodeMode ? (
-													<ClaudeCode.Color size={CHAT_SESSION_HEADER_ICON_SIZE} />
-												) : (
-													<OpenClaw.Color size={CHAT_SESSION_HEADER_ICON_SIZE} />
-												)}
-											</button>
+											/>
 											</Dropdown>
 										</div>
 									<div className={styles.islandTextWrapper} >

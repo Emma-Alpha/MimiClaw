@@ -1789,6 +1789,23 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 				});
 			}
 
+			// Backfill streaming tool uses with full input from the completed
+			// assistant message content blocks.  During streaming, input_json_delta
+			// events are not accumulated, so rawInput stays as {}.  The completed
+			// message carries the authoritative input for each tool_use block.
+			if (toolUses.size > 0 && Array.isArray(content)) {
+				for (const block of content as Array<Record<string, unknown>>) {
+					if (block.type === "tool_use" && typeof block.id === "string") {
+						const existing = toolUses.get(block.id);
+						if (existing && Object.keys(existing.rawInput).length === 0) {
+							const fullInput = (block.input as Record<string, unknown>) || {};
+							existing.rawInput = fullInput;
+							existing.inputSummary = buildInputSummary(existing.toolName, fullInput);
+						}
+					}
+				}
+			}
+
 			// Flush tool uses accumulated during streaming (SDK streaming mode only).
 			// In CLI stream-json mode these are empty; tool_use comes from content blocks below.
 			for (const [, tu] of toolUses) {

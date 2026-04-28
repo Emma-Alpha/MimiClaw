@@ -1526,10 +1526,14 @@ export const useCodeChatStyles = createStyles(
 			margin-top: 0.9em !important;
 		}
 
+		.ant-highlighter {
+			overflow: visible;
+		}
+
 		pre {
 			margin: 0.75em 0 !important;
 			border-radius: ${token.borderRadiusLG}px;
-			overflow: hidden;
+			overflow: auto;
 			border: 1px solid ${token.colorBorderSecondary} !important;
 		}
 
@@ -1571,6 +1575,10 @@ export const useCodeChatStyles = createStyles(
 		z-index: 6;
 	`,
 	inputDockEmbedded: css``,
+	inputDockMiniWindow: css`
+		padding-block: 2px;
+		gap: 2px;
+	`,
 	/* Override MobileChatInput inline 12px side padding to match
 	   the message list's --code-chat-side-gap so both are flush.
 	   Also fix flex overflow: force min-width:0 on nested flex containers
@@ -1615,6 +1623,12 @@ export const useCodeChatStyles = createStyles(
 		width: 100%;
 		position: relative;
 		z-index: 3;
+	`,
+	composerStatusRowMiniWindow: css`
+		min-height: 16px;
+		padding-top: 0;
+		padding-bottom: 0;
+		margin-top: -8px;
 	`,
 	composerStatusRow: css`
 		display: flex;

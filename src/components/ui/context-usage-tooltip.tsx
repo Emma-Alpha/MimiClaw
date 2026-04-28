@@ -7,6 +7,7 @@ import { memo } from "react";
 type ContextUsageTooltipProps = {
 	usedTokens: number;
 	maxTokens: number;
+	size?: "large" | "middle" | "small" | number;
 };
 
 const formatToken = (value: number): string => {
@@ -96,7 +97,7 @@ const TokenProgress = memo<{
 });
 
 export const ContextUsageTooltip = memo<ContextUsageTooltipProps>(
-	({ usedTokens, maxTokens }) => {
+	({ usedTokens, maxTokens, size = "middle" }) => {
 		const remaining = Math.max(0, maxTokens - usedTokens);
 
 		const content = (
@@ -123,6 +124,7 @@ export const ContextUsageTooltip = memo<ContextUsageTooltipProps>(
 					</Tooltip>
 				</Flexbox>
 				<TokenProgress
+
 					showTotal="总计"
 					data={[
 						{
@@ -151,6 +153,7 @@ export const ContextUsageTooltip = memo<ContextUsageTooltipProps>(
 					maxValue={maxTokens}
 					mode="used"
 					value={usedTokens}
+					size={size}
 					text={{
 						overload: "超出",
 						remained: "剩余",

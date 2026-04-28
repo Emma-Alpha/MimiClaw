@@ -124,9 +124,10 @@ function hasValidTodoItems(rawInput: Record<string, unknown>): boolean {
 
 type CodeChatProps = {
 	embeddedCodeAssistant?: boolean;
+	isMiniWindow?: boolean;
 };
 
-export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
+export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }: CodeChatProps) {
 	const { styles, cx } = useCodeChatStyles();
 	const location = useLocation();
 	const platform = window.electron?.platform;
@@ -1089,14 +1090,15 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 					onNewConversation={handleNewConversation}
 					onSwitchSession={handleSwitchSession}
 					showWindowActions={!embeddedCodeAssistant}
-					showTerminalToggle={embeddedCodeAssistant && draftTarget === "code"}
+					isMiniWindow={isMiniWindow}
+					showTerminalToggle={embeddedCodeAssistant && !isMiniWindow && draftTarget === "code"}
 					isTerminalVisible={showThreadTerminal}
 					isTerminalToggleDisabled={!codeWorkspaceRoot.trim()}
 					terminalShortcutLabel={terminalShortcutLabel}
 					onToggleTerminal={() => {
 						setShowThreadTerminal((previous) => !previous);
 					}}
-					showBrowserToggle={embeddedCodeAssistant && draftTarget === "code"}
+					showBrowserToggle={embeddedCodeAssistant && !isMiniWindow && draftTarget === "code"}
 					isBrowserVisible={showBrowserUse}
 					onToggleBrowser={() => {
 						setShowBrowserUse((previous) => !previous);
@@ -1134,7 +1136,7 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 			/>
 
 			<div className={styles.bottomDock}>
-				<div className={cx(styles.inputDock, embeddedCodeAssistant && styles.inputDockEmbedded)}>
+				<div className={cx(styles.inputDock, embeddedCodeAssistant && styles.inputDockEmbedded, isMiniWindow && styles.inputDockMiniWindow)}>
 					{/* New SDK-driven permission dispatcher (tool-specific UI) */}
 					{codeAgentPendingPermission && (
 						<div className={styles.permissionDock}>
@@ -1221,7 +1223,7 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 			/>
 			</div>
 				{showEmbeddedComposerMeta ? (
-					<div className={styles.composerStatusRow}>
+					<div className={cx(styles.composerStatusRow, isMiniWindow && styles.composerStatusRowMiniWindow)}>
 						<div className={styles.composerStatusLeft}>
 							
 							<StyledDropdown
@@ -1252,6 +1254,7 @@ export function CodeChat({ embeddedCodeAssistant = false }: CodeChatProps) {
 							<ContextUsageTooltip
 								usedTokens={embeddedContextSummary.usedTokens}
 								maxTokens={embeddedContextSummary.contextWindowSize}
+								size={isMiniWindow ? 16: "middle"}
 							/>
 							<StyledDropdown
 								menu={{

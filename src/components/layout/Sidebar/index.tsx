@@ -10,6 +10,7 @@ import {
 	ChevronsDownUp,
 	ChevronsUpDown,
 	Loader2,
+	Ellipsis,
 	Plus,
 	Puzzle,
 	Search,
@@ -35,6 +36,7 @@ import {
 	writeStoredCodeAgentWorkspaceRoot,
 } from "@/lib/code-agent";
 import { invokeIpc } from "@/lib/api-client";
+import { writeMiniChatPendingSession } from "@/pages/MiniChat";
 import { subscribeHostEvent } from "@/lib/host-events";
 import {
 	buildWorkspaceId,
@@ -226,6 +228,10 @@ const useStyles = createStyles(({ css, token }) => ({
     &:hover {
       background: color-mix(in oklab, ${cssVar.colorText} 4%, transparent);
     }
+
+    &:hover .group-actions {
+      opacity: 1;
+    }
   `,
 	groupChevron: css`
     flex-shrink: 0;
@@ -246,6 +252,30 @@ const useStyles = createStyles(({ css, token }) => ({
     flex-shrink: 0;
     font-size: 11px;
     color: ${cssVar.colorTextQuaternary};
+  `,
+	groupActions: css`
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  `,
+	groupActionBtn: css`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    color: ${cssVar.colorTextTertiary};
+    cursor: pointer;
+    transition: background 0.15s ease;
+
+    &:hover {
+      background: color-mix(in oklab, ${cssVar.colorText} 8%, transparent);
+      color: ${cssVar.colorText};
+    }
   `,
 	flatSessionItem: css`
     position: relative;
@@ -850,6 +880,41 @@ export function Sidebar() {
 		],
 	);
 
+	const handleSessionRename = useCallback(
+		(workspace: SidebarThreadWorkspace, session: CliSessionItem) => {
+			const nextTitle = window.prompt(
+				t("sidebar.session.renamePrompt", { defaultValue: "重命名对话" }),
+				session.title,
+			);
+			if (!nextTitle) return;
+			const trimmed = nextTitle.trim();
+			if (!trimmed || trimmed === session.title) return;
+			// Persist custom title and update local state
+			const key = `mimiclaw:session-title:${workspace.id}:${session.sessionId}`;
+			localStorage.setItem(key, trimmed);
+			void refreshWorkspaceSessions(workspace);
+		},
+		[refreshWorkspaceSessions, t],
+	);
+
+	const handleSessionOpenInFinder = useCallback(
+		(workspace: SidebarThreadWorkspace) => {
+			void invokeIpc("shell:showItemInFolder", workspace.rootPath).catch(() => {});
+		},
+		[],
+	);
+
+	const handleSessionOpenInMiniWindow = useCallback(
+		(workspace: SidebarThreadWorkspace, sessionId: string) => {
+			writeMiniChatPendingSession({
+				workspaceRoot: workspace.rootPath,
+				sessionId,
+			});
+			void invokeIpc("pet:toggleQuickChat").catch(() => {});
+		},
+		[],
+	);
+
 	// ── derived counts ────────────────────────────────────────────────────────
 
 	const sortedVisibleWorkspaces = useMemo(() => {
@@ -1088,6 +1153,26 @@ export function Sidebar() {
 						const workspaceMenuTrigger: Array<"click" | "contextMenu"> =
 							["contextMenu"];
 
+						const workspaceMoreMenu: MenuProps = {
+							items: [
+								{
+									key: "rename",
+									label: t("sidebar.workspace.rename", { defaultValue: "重命名" }),
+								},
+								{
+									key: "open",
+									label: t("sidebar.workspace.openInFinder", { defaultValue: "在 Finder 中打开" }),
+								},
+								{ type: "divider" },
+								{
+									key: "remove",
+									label: t("sidebar.workspace.remove", { defaultValue: "从列表移除" }),
+									danger: true,
+								},
+							],
+							onClick: workspaceMenu.onClick,
+						};
+
 						return (
 							<div key={workspace.id}>
 								{/* ── Group header (same level as sessions) ── */}
@@ -1115,9 +1200,28 @@ export function Sidebar() {
 												</span>
 											)}
 										</span>
-										{sessionCount > 0 && (
-											<span className={styles.groupCount}>{sessionCount}</span>
-										)}
+										<span className={`${styles.groupActions} group-actions`}>
+											{availability.available && (
+												<span
+													className={styles.groupActionBtn}
+													title={t("sidebar.newThread", { defaultValue: "新对话" })}
+													onClick={(e) => {
+														e.stopPropagation();
+														handleWorkspaceNewThread(workspace);
+													}}
+												>
+													<Plus size={14} />
+												</span>
+											)}
+											<Dropdown menu={workspaceMoreMenu} trigger={["click"]}>
+												<span
+													className={styles.groupActionBtn}
+													onClick={(e) => e.stopPropagation()}
+												>
+													<Ellipsis size={14} />
+												</span>
+											</Dropdown>
+										</span>
 									</div>
 								</Dropdown>
 
@@ -1149,42 +1253,70 @@ export function Sidebar() {
 													session.sessionId
 												] === true
 												|| (isActive && isThreadSessionGenerating);
+											const sessionMenu: MenuProps = {
+												items: [
+													{
+														key: "rename",
+														label: t("sidebar.session.rename", { defaultValue: "重命名对话" }),
+													},
+													{
+														key: "openInFinder",
+														label: t("sidebar.session.openInFinder", { defaultValue: "在访达中打开" }),
+													},
+													{
+														key: "openInMiniWindow",
+														label: t("sidebar.session.openInMiniWindow", { defaultValue: "在迷你窗口中打开" }),
+													},
+												],
+												onClick: ({ key }) => {
+													if (key === "rename") {
+														handleSessionRename(workspace, session);
+													} else if (key === "openInFinder") {
+														handleSessionOpenInFinder(workspace);
+													} else if (key === "openInMiniWindow") {
+														handleSessionOpenInMiniWindow(workspace, session.sessionId);
+													}
+												},
+											};
 											return (
-												<NavItem
-													key={`${workspace.id}:${session.sessionId}`}
-													className={styles.flatSessionItem}
-													title={session.title}
-													active={isActive}
-													extra={
-														<TimeLabel
-															text={formatRelativeTime(
-																session.updatedAt,
-																i18n.language,
-															)}
+												<Dropdown key={`${workspace.id}:${session.sessionId}`} menu={sessionMenu} trigger={["contextMenu"]}>
+													<div>
+														<NavItem
+															className={styles.flatSessionItem}
+															title={session.title}
+															active={isActive}
+															extra={
+																<TimeLabel
+																	text={formatRelativeTime(
+																		session.updatedAt,
+																		i18n.language,
+																	)}
+																/>
+															}
+															slots={
+																isRunning
+																	? {
+																			titlePrefix: (
+																				<span
+																					className={cx(
+																						styles.sessionMarker,
+																						styles.sessionMarkerSpinning,
+																					)}
+																				>
+																					<Loader2
+																						size={CHAT_SESSION_META_ICON_SIZE}
+																					/>
+																				</span>
+																			),
+																		}
+																	: undefined
+															}
+															onClick={() =>
+																handleThreadSession(workspace, session.sessionId)
+															}
 														/>
-													}
-													slots={
-														isRunning
-															? {
-																	titlePrefix: (
-																		<span
-																			className={cx(
-																				styles.sessionMarker,
-																				styles.sessionMarkerSpinning,
-																			)}
-																		>
-																			<Loader2
-																				size={CHAT_SESSION_META_ICON_SIZE}
-																			/>
-																		</span>
-																	),
-																}
-															: undefined
-													}
-													onClick={() =>
-														handleThreadSession(workspace, session.sessionId)
-													}
-												/>
+													</div>
+												</Dropdown>
 											);
 										})}
 										{canToggleSessions && (
