@@ -327,6 +327,20 @@ export function createSettingsActions(set: Setter, get: Getter): SettingsStoreAc
         body: JSON.stringify({ codeAgent }),
       }).catch(() => { });
     },
+    setImageGenUrl: (imageGenUrl) => {
+      set({ imageGenUrl });
+      void hostApiFetch('/api/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ imageGenUrl }),
+      }).catch(() => { });
+    },
+    setImageGenApiKey: (imageGenApiKey) => {
+      set({ imageGenApiKey });
+      void hostApiFetch('/api/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ imageGenApiKey }),
+      }).catch(() => { });
+    },
     setUpdateChannel: (updateChannel) => {
       set({ updateChannel });
       void hostApiFetch('/api/settings', {

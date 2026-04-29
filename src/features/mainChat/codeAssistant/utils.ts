@@ -109,7 +109,7 @@ export function getMentionDraft(
 ): MentionDraft | null {
 	const safeCaret = Math.max(0, Math.min(caretIndex, text.length));
 	const beforeCaret = text.slice(0, safeCaret);
-	const tokenMatch = beforeCaret.match(/(^|\s)@([^\s@]*)$/);
+	const tokenMatch = beforeCaret.match(/(^|.)@([^\s@]*)$/);
 	if (!tokenMatch) return null;
 	const fullToken = tokenMatch[0];
 	const atIndex = safeCaret - fullToken.length + fullToken.lastIndexOf("@");

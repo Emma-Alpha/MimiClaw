@@ -449,7 +449,7 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 		if (!codeWorkspaceRoot) return;
 
 		const trimmedInput = input.trimEnd();
-		const mentionMatch = trimmedInput.match(/(^|\s)@([^\s@]*)$/);
+		const mentionMatch = trimmedInput.match(/(^|.)@([^\s@]*)$/);
 		if (!mentionMatch) return;
 
 		const query = (mentionMatch[2] ?? '').replace(/\\/g, '/');

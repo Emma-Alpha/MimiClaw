@@ -329,6 +329,16 @@
     "cloudGatewayStateError": "出错",
     "cloudGatewayNotAvailable": "未连接云后端"
   },
+  "imageGen": {
+    "title": "图片生成",
+    "desc": "配置 Image Gen 技能使用的 OpenAI 兼容图片生成 API。",
+    "url": "API 地址",
+    "urlPlaceholder": "https://aihub.gz4399.com/v1",
+    "urlHelp": "OpenAI 兼容的图片生成 API 地址，例：https://aihub.gz4399.com/v1",
+    "apiKey": "API Key",
+    "apiKeyPlaceholder": "输入 API Key",
+    "apiKeyHelp": "用于图片生成服务的 API 密钥"
+  },
   "updates": {
     "title": "更新",
     "description": "保持 极智 最新",

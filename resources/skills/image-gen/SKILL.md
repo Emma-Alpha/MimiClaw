@@ -1,26 +1,23 @@
 ---
 name: image-gen
-version: 1.0.0
-description: ArtFlow image generation. Text-to-image via ArtFlow API. Use when the user asks to generate, create, or draw an image, or says "生成图片", "画一张", "文生图".
+version: 2.0.0
+description: Image generation via OpenAI-compatible API. Text-to-image and image-to-image via aihub.gz4399.com. Use when the user asks to generate, create, or draw an image, edit/modify an existing image, or says "生成图片", "画一张", "文生图", "图生图".
 metadata:
   openclaw:
     emoji: "🎨"
 ---
 
-# Image Gen (ArtFlow)
+# Image Gen
 
-Generate images from text prompts via ArtFlow API (artflow.gz4399.com). Uses `gpt-image-2` model by default.
+Generate images from text prompts or edit images with reference images via the OpenAI-compatible API at `aihub.gz4399.com`. Uses `gpt-image-2` model.
 
 ## Authentication
 
-Read the JWT token from the local cloud session stored in `localStorage`:
+Read the API URL and API key from the app settings stored in electron-store:
 
 ```bash
-# The token is stored in electron-store as cloudApiToken.
-# In the SKILL context, read it from the mimiclaw cloud session file.
-CLOUD_TOKEN=$(python3 -c "
+read -r IMAGE_GEN_URL IMAGE_GEN_KEY <<< $(python3 -c "
 import json, os, sys
-# Try electron-store settings
 settings_paths = [
     os.path.expanduser('~/Library/Application Support/极智/settings.json'),
     os.path.expanduser('~/Library/Application Support/jizhi/settings.json'),
@@ -30,199 +27,149 @@ settings_paths = [
 for p in settings_paths:
     if os.path.exists(p):
         data = json.load(open(p))
-        token = data.get('cloudApiToken', '')
-        if token:
-            print(token)
+        url = data.get('imageGenUrl', '')
+        key = data.get('imageGenApiKey', '')
+        if url and key:
+            print(url, key)
             sys.exit(0)
-print('')
+print('', '')
 " 2>/dev/null)
 ```
 
-If the token is empty, inform the user they need to log in first via the app's login page.
+- `IMAGE_GEN_URL` — The OpenAI-compatible API base URL (e.g. `https://aihub.gz4399.com/v1`), configured in Settings > Gateway > Image Generation.
+- `IMAGE_GEN_KEY` — The API key for the image generation service.
 
-The token is used as a cookie: `aisearch_jwt=JWT <token>`
+If either value is empty, inform the user they need to configure the Image Generation URL and API Key in **Settings > Gateway > Image Generation** first.
 
 ## API Endpoint
 
-- Base URL: `https://artflow.gz4399.com`
-- Create Topic: `POST /api/nextimage/v1/topic/create`
-- Send: `POST /api/nextimage/v1/chat/message/send`
-- Query: `GET /api/nextimage/v1/chat/message?id={messageId}`
+- Base URL: Configured via `imageGenUrl` in settings (e.g. `https://aihub.gz4399.com/v1`)
+- Model: `gpt-image-2`
+- Text-to-image: `POST {BASE_URL}/images/generations`
+- Image-to-image: `POST {BASE_URL}/images/edits`
 
-## Step 1 - Create Topic
+## Text-to-Image (文生图)
 
-**Every generation must first create a new topic (chat session).** The returned `chatId` is required by the send request.
+Generate an image from a text prompt.
 
-**IMPORTANT: `count` must always be `1` unless the user explicitly requests multiple images (e.g. "生成3张", "generate 4 images"). Never increase count on your own.**
+### Python
 
-```bash
-TOPIC_RESPONSE=$(curl -s 'https://artflow.gz4399.com/api/nextimage/v1/topic/create' \
-  -H 'accept: application/json' \
-  -H 'content-type: application/json;charset=UTF-8' \
-  -b "aisearch_jwt=JWT ${CLOUD_TOKEN}" \
-  -H 'x-client-source: artflow-main' \
-  --data-raw '{
-    "config": {
-      "clearContext": 0,
-      "count": 1,
-      "gptImage2Size": { "height": 2048, "ratio": "1:1", "width": 2048 },
-      "model": "gpt-image-2"
-    }
-  }')
+```python
+from openai import OpenAI
+import base64
+import datetime
+
+client = OpenAI(
+    api_key=IMAGE_GEN_KEY,
+    base_url=IMAGE_GEN_URL  # e.g. "https://aihub.gz4399.com/v1"
+)
+
+result = client.images.generate(
+    model="gpt-image-2",
+    prompt="<USER_PROMPT>"
+)
+
+image_base64 = result.data[0].b64_json
+image_bytes = base64.b64decode(image_base64)
+
+timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+filename = f"output_{timestamp}.png"
+
+with open(filename, "wb") as f:
+    f.write(image_bytes)
 ```
 
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `config.model` | string | `gpt-image-2` | Generation model |
-| `config.count` | number | `1` | Number of images. **Always 1 unless user explicitly asks for more.** |
-| `config.gptImage2Size.ratio` | string | `1:1` | Aspect ratio: `auto`, `1:1`, `16:9`, `9:16`, `4:3`, `3:4` |
-| `config.gptImage2Size.width` | number | `2048` | Image width |
-| `config.gptImage2Size.height` | number | `2048` | Image height |
-| `config.clearContext` | number | `0` | Whether to clear context |
-
-### Create Topic Response
-
-```json
-{
-  "code": 0,
-  "message": "",
-  "data": {
-    "id": 56789
-  }
-}
-```
-
-Extract `data.id` as `CHAT_ID`. If `code` is not `0`, report the error and stop.
-
-## Step 2 - Send Generation Request
-
-Use the `CHAT_ID` from Step 1:
-
-**The `count` here MUST match the value used in Step 1. Default is `1`.**
+### curl
 
 ```bash
-curl -s 'https://artflow.gz4399.com/api/nextimage/v1/chat/message/send' \
-  -H 'accept: application/json' \
-  -H 'content-type: application/json;charset=UTF-8' \
-  -b "aisearch_jwt=JWT ${CLOUD_TOKEN}" \
-  -H 'x-client-source: artflow-main' \
-  --data-raw '{
-    "prompt": "<USER_PROMPT>",
+RESPONSE=$(curl -s "${IMAGE_GEN_URL}/images/generations" \
+  -H "Authorization: Bearer ${IMAGE_GEN_KEY}" \
+  -H 'Content-Type: application/json' \
+  -d '{
     "model": "gpt-image-2",
-    "chatId": <CHAT_ID>,
-    "params": {
-      "clearContext": 0,
-      "count": 1,
-      "gptImage2Size": { "ratio": "1:1" }
-    }
-  }'
+    "prompt": "<USER_PROMPT>"
+  }')
+
+# Extract base64 image data and decode
+IMAGE_B64=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data'][0]['b64_json'])")
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+OUTPUT_PATH=~/Downloads/image-gen/output_${TIMESTAMP}.png
+mkdir -p ~/Downloads/image-gen
+echo "$IMAGE_B64" | base64 -d > "$OUTPUT_PATH"
 ```
 
-| Parameter | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `prompt` | string | Yes | - | Image description |
-| `model` | string | No | `gpt-image-2` | Generation model |
-| `chatId` | number | Yes | - | Topic ID from Step 1 |
-| `params.count` | number | No | `1` | Number of images. **Must match Step 1. Always 1 unless user explicitly asks for more.** |
-| `params.gptImage2Size.ratio` | string | No | `1:1` | Aspect ratio: `auto`, `1:1`, `16:9`, `9:16`, `4:3`, `3:4` |
-
-### Send Response
+### Response Format
 
 ```json
 {
-  "code": 0,
-  "message": "",
-  "data": {
-    "id": [3175285, 3175286]
-  }
+  "data": [
+    {
+      "b64_json": "<base64-encoded-image-data>"
+    }
+  ]
 }
 ```
 
-Extract `data.id` array. This typically returns 2 IDs: one for the user message, one for the assistant message.
+## Image-to-Image (图生图)
 
-If `code` is not `0`, report the error message to the user and stop.
+Edit or combine images using reference images with a text prompt. Supports multiple reference images.
 
-## Step 3 - Poll for Result
+### Python
 
-For **each** message ID returned, query the message status:
+```python
+from openai import OpenAI
+import base64
+import datetime
+
+client = OpenAI(
+    api_key=IMAGE_GEN_KEY,
+    base_url=IMAGE_GEN_URL  # e.g. "https://aihub.gz4399.com/v1"
+)
+
+result = client.images.edit(
+    model="gpt-image-2",
+    image=[
+        open("image1.png", "rb"),
+        open("image2.png", "rb"),
+    ],
+    prompt="<USER_PROMPT>"
+)
+
+image_base64 = result.data[0].b64_json
+image_bytes = base64.b64decode(image_base64)
+
+timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+filename = f"output_{timestamp}.png"
+
+with open(filename, "wb") as f:
+    f.write(image_bytes)
+```
+
+### curl
 
 ```bash
-curl -s "https://artflow.gz4399.com/api/nextimage/v1/chat/message?id=${MSG_ID}" \
-  -H 'accept: application/json' \
-  -b "aisearch_jwt=JWT ${CLOUD_TOKEN}" \
-  -H 'x-client-source: artflow-main'
+RESPONSE=$(curl -s "${IMAGE_GEN_URL}/images/edits" \
+  -H "Authorization: Bearer ${IMAGE_GEN_KEY}" \
+  -F model="gpt-image-2" \
+  -F "image=@image1.png" \
+  -F "image=@image2.png" \
+  -F "prompt=<USER_PROMPT>")
+
+# Extract base64 image data and decode
+IMAGE_B64=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data'][0]['b64_json'])")
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+OUTPUT_PATH=~/Downloads/image-gen/output_${TIMESTAMP}.png
+mkdir -p ~/Downloads/image-gen
+echo "$IMAGE_B64" | base64 -d > "$OUTPUT_PATH"
 ```
 
-### Response Handling Rules
+### Notes on Image-to-Image
 
-1. **If `data.role` is `"user"`** — skip this message ID entirely, move to the next one.
+- Pass one or more reference images via the `image` parameter.
+- The prompt should describe how to use/combine the reference images.
+- Useful for style transfer, compositing, and image editing tasks.
 
-2. **If `data.role` is `"assistant"`** — check `data.content` for an item with `type: "image"`:
-   - If `image.status` is `"pending"` — wait **10 seconds**, then poll again. Keep polling up to 5 minutes (30 retries).
-   - If `image.status` is `"success"` — extract the image URL (see Step 4).
-   - If `image.status` is any other value — report error from `image.errorInfo` or `image.error` and stop.
-
-### Pending Response Example
-
-```json
-{
-  "code": 0,
-  "data": {
-    "role": "assistant",
-    "content": [{
-      "type": "image",
-      "image": {
-        "status": "pending",
-        "url": "",
-        "originUrl": "",
-        "width": 1024,
-        "height": 1024,
-        "predictTimeSec": 90
-      }
-    }]
-  }
-}
-```
-
-### Success Response Example
-
-```json
-{
-  "code": 0,
-  "data": {
-    "role": "assistant",
-    "content": [{
-      "type": "image",
-      "image": {
-        "status": "success",
-        "url": "/cosres/apps-ai-tools/nextimage/storage_out/user_11/xxx_small.webp",
-        "originUrl": "/cosres/apps-ai-tools/nextimage/storage_out/user_11/xxx.png",
-        "width": 1024,
-        "height": 1536
-      }
-    }]
-  }
-}
-```
-
-## Step 4 - Extract Image URL
-
-The `originUrl` field is a **relative path**. Prepend the base URL to get the full URL:
-
-```
-https://artflow.gz4399.com{originUrl}
-```
-
-For example:
-```
-https://artflow.gz4399.com/cosres/apps-ai-tools/nextimage/storage_out/user_11/1777382299852_bb67ca9b13ab42ff96cf322d9e556074.png
-```
-
-The `url` field contains a smaller preview (webp). Use `originUrl` for the full-resolution image.
-
-## Step 5 - Download & Output
-
-Download the image and save it locally:
+## Output
 
 **Output directory**:
 
@@ -230,14 +177,7 @@ Download the image and save it locally:
 mkdir -p ~/Downloads/image-gen
 ```
 
-Download using curl:
-
-```bash
-curl -s -o "${OUTPUT_PATH}" "https://artflow.gz4399.com${ORIGIN_URL}" \
-  -b "aisearch_jwt=JWT ${CLOUD_TOKEN}"
-```
-
-Default filename: `artflow-<TIMESTAMP>.png`
+Default filename: `output_<TIMESTAMP>.png`
 
 **CRITICAL SECURITY:** Sanitize the output filename — keep only letters, numbers, dot, underscore, and hyphen.
 
@@ -248,13 +188,13 @@ After a successful generation, your reply MUST follow this **exact format**:
 ```
 <success message>
 
-![](full_image_url)
+![](file_path_or_url)
 
 Local path: local_path
 ```
 
 Rules:
-1. **Inline image** — output `![](full_image_url)` on its own line using the full URL (`https://artflow.gz4399.com` + `originUrl`). This renders the image inline in chat.
+1. **Inline image** — output `![](path)` on its own line to render the image inline in chat.
 2. **Local path** — show the saved file path so the user knows where it is.
 3. **Print `MEDIA:<path>`** for auto-attach if available.
 
@@ -262,18 +202,26 @@ Rules:
 
 | Scenario | Action |
 |---|---|
-| Token is empty | Tell user to log in first |
-| `code` is not `0` in send response | Report error message, stop |
-| Poll timeout (5 min) | Inform user generation is taking too long, suggest retrying |
-| `image.status` is not `pending`/`success` | Report `errorInfo` or `error` field |
+| URL or API key is empty | Tell user to configure Image Generation settings in Settings > Gateway > Image Generation |
+| API returns error | Report the error message, stop |
+| Response missing `b64_json` | Report unexpected response format |
 | Network error | Inform user, suggest checking connection |
+
+## Choosing Text-to-Image vs Image-to-Image
+
+| User Intent | API |
+|---|---|
+| Generate from text description only | `images/generations` (text-to-image) |
+| Edit, modify, or combine existing images | `images/edits` (image-to-image) |
+| Add elements to an existing image | `images/edits` (image-to-image) |
+| Change style of an existing image | `images/edits` (image-to-image) |
 
 ## Triggers
 
-- Chinese: "生成图片：xxx" / "画一张：xxx" / "文生图：xxx" / "帮我画"
-- English: "generate image: xxx" / "draw: xxx" / "create image: xxx"
+- Chinese: "生成图片：xxx" / "画一张：xxx" / "文生图：xxx" / "帮我画" / "图生图"
+- English: "generate image: xxx" / "draw: xxx" / "create image: xxx" / "edit image"
 
-Treat the text after the colon as `prompt`, use default `ratio` of `"auto"`, and generate immediately.
+Treat the text after the colon as `prompt` and generate immediately.
 
 ## Prompt Enhancement
 
@@ -281,11 +229,10 @@ Expand vague user requests into detailed prompts before submission:
 - Add style, composition, lighting, and background details where appropriate.
 - Preserve the user's original intent; only add detail, never change meaning.
 - If the user provides a very specific prompt, use it as-is without modification.
-- **Never change `count` or `ratio` during prompt enhancement.** Only modify the text prompt.
 
 ## Notes
 
-- The generation typically takes 1-3 minutes. Keep the user informed during polling.
-- The `predictTimeSec` field in the pending response gives an estimate (usually 90s).
-- Image URLs from ArtFlow may require the same cookie authentication to access.
-- Always use `originUrl` (full resolution PNG) rather than `url` (compressed webp preview).
+- The generation typically takes 30s-2min depending on complexity.
+- The API returns base64-encoded image data directly — no polling required.
+- For image-to-image, ensure reference image files exist and are accessible before calling the API.
+- Multiple reference images can be passed for compositing tasks.

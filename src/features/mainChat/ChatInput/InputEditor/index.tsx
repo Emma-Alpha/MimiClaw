@@ -163,6 +163,7 @@ export function InputEditor() {
         },
         items: mentionOptions.length > 0 ? mentionOptions : [MENTION_SENTINEL],
         trigger: '@',
+        allowAfterAnyChar: true,
         maxLength: 200,
         punctuation: ',;:',
         renderComp: MentionCommandMenu,
@@ -191,6 +192,7 @@ export function InputEditor() {
           threshold: 0.2,
         },
         items: slashOptions,
+        allowAfterAnyChar: true,
         renderComp: SlashCommandMenu,
       }}
       slashPlacement={slashPlacement}

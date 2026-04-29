@@ -252,7 +252,7 @@ function deleteTrailingTokenAtSelection(
 	const beforeCaret = node.text.slice(0, anchor.offset);
 	const pattern =
 		trigger === "@"
-			? /(^|\s)@([^\s@]*)$/
+			? /(^|.)@([^\s@]*)$/
 			: /(^|\s)\/([a-z0-9-]*)$/i;
 	const match = beforeCaret.match(pattern);
 	if (!match) return false;

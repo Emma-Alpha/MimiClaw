@@ -77,6 +77,10 @@ export interface AppSettings {
   proxyAllServer: string;
   proxyBypassRules: string;
   codeAgent: CodeAgentRuntimeConfig;
+  /** Base URL for the image generation API (OpenAI-compatible) */
+  imageGenUrl: string;
+  /** API key for the image generation service */
+  imageGenApiKey: string;
 
   // Update
   updateChannel: 'stable' | 'beta' | 'dev';
@@ -158,6 +162,8 @@ function createDefaultSettings(): AppSettings {
     proxyAllServer: '',
     proxyBypassRules: '<local>;localhost;127.0.0.1;::1',
     codeAgent: { ...DEFAULT_CODE_AGENT_RUNTIME_CONFIG },
+    imageGenUrl: '',
+    imageGenApiKey: '',
 
     // Update
     updateChannel: 'stable',

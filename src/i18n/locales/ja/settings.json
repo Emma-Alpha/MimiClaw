@@ -328,6 +328,16 @@
     "cloudGatewayStateError": "エラー",
     "cloudGatewayNotAvailable": "クラウドバックエンド未接続"
   },
+  "imageGen": {
+    "title": "画像生成",
+    "desc": "Image Gen スキルで使用する OpenAI 互換の画像生成 API を設定します。",
+    "url": "API URL",
+    "urlPlaceholder": "https://aihub.gz4399.com/v1",
+    "urlHelp": "OpenAI 互換の画像生成 API URL。例：https://aihub.gz4399.com/v1",
+    "apiKey": "API キー",
+    "apiKeyPlaceholder": "API キーを入力",
+    "apiKeyHelp": "画像生成サービスの API キー"
+  },
   "updates": {
     "title": "アップデート",
     "description": "极智 を最新に保つ",

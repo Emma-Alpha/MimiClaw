@@ -8,6 +8,11 @@ overrides:
   isbinaryfile: ^5.0.0
   https-proxy-agent: 7.0.6
 
+patchedDependencies:
+  '@lobehub/editor':
+    hash: ff5da314888ada9838af6728aa6ce084321132c18cac73d5840138911a03e9d5
+    path: patches/@lobehub__editor.patch
+
 importers:
 
   .:
@@ -20,7 +25,7 @@ importers:
         version: 2.1.119
       '@lobehub/editor':
         specifier: ^4.5.0
-        version: 4.5.0(@lobehub/ui@5.6.1)(@types/mdast@4.0.4)(@types/react@19.2.14)(antd@6.3.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(micromark-util-types@2.0.2)(micromark@4.0.2)(motion@12.38.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(unified@11.0.5)
+        version: 4.5.0(patch_hash=ff5da314888ada9838af6728aa6ce084321132c18cac73d5840138911a03e9d5)(@lobehub/ui@5.6.1)(@types/mdast@4.0.4)(@types/react@19.2.14)(antd@6.3.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(micromark-util-types@2.0.2)(micromark@4.0.2)(motion@12.38.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(unified@11.0.5)
       '@lobehub/fluent-emoji':
         specifier: ^4.1.0
         version: 4.1.0(@types/react@19.2.14)(antd@6.3.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -6531,7 +6536,7 @@ snapshots:
     dependencies:
       '@lit-labs/ssr-dom-shim': 1.5.1
 
-  '@lobehub/editor@4.5.0(@lobehub/ui@5.6.1)(@types/mdast@4.0.4)(@types/react@19.2.14)(antd@6.3.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(micromark-util-types@2.0.2)(micromark@4.0.2)(motion@12.38.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(unified@11.0.5)':
+  '@lobehub/editor@4.5.0(patch_hash=ff5da314888ada9838af6728aa6ce084321132c18cac73d5840138911a03e9d5)(@lobehub/ui@5.6.1)(@types/mdast@4.0.4)(@types/react@19.2.14)(antd@6.3.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(micromark-util-types@2.0.2)(micromark@4.0.2)(motion@12.38.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(unified@11.0.5)':
     dependencies:
       '@floating-ui/dom': 1.7.6
       '@floating-ui/react': 0.27.19(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

@@ -87,6 +87,8 @@ export interface SettingsStoreState extends CloudAuthState {
   proxyAllServer: string;
   proxyBypassRules: string;
   codeAgent: CodeAgentRuntimeConfig;
+  imageGenUrl: string;
+  imageGenApiKey: string;
   updateChannel: UpdateChannel;
   autoCheckUpdate: boolean;
   autoDownloadUpdate: boolean;
@@ -139,6 +141,8 @@ export interface SettingsStoreAction {
   setProxyAllServer: (value: string) => void;
   setProxyBypassRules: (value: string) => void;
   setCodeAgent: (value: CodeAgentRuntimeConfig) => void;
+  setImageGenUrl: (url: string) => void;
+  setImageGenApiKey: (key: string) => void;
   setUpdateChannel: (channel: UpdateChannel) => void;
   setAutoCheckUpdate: (value: boolean) => void;
   setAutoDownloadUpdate: (value: boolean) => void;
@@ -179,7 +183,8 @@ export type MainProcessSettingsPatch = Partial<
     | 'petAnimation' | 'petCompanionSeed' | 'petCompanion' | 'xiaojiuEnabled' | 'jizhiEnabled'
     | 'machineId' | 'gatewayAutoStart' | 'gatewayPort' | 'remoteGatewayUrl' | 'remoteGatewayToken'
     | 'proxyEnabled' | 'proxyServer' | 'proxyHttpServer' | 'proxyHttpsServer' | 'proxyAllServer'
-    | 'proxyBypassRules' | 'codeAgent' | 'updateChannel' | 'autoCheckUpdate' | 'autoDownloadUpdate'
+    | 'proxyBypassRules' | 'codeAgent' | 'imageGenUrl' | 'imageGenApiKey'
+    | 'updateChannel' | 'autoCheckUpdate' | 'autoDownloadUpdate'
     | 'sidebarCollapsed' | 'sidebarThreadWorkspaces' | 'sidebarThreadWorkspaceExpanded'
     | 'devModeUnlocked'>
 >;

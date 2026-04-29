@@ -17,6 +17,9 @@
     "overrides": {
       "isbinaryfile": "^5.0.0",
       "https-proxy-agent": "7.0.6"
+    },
+    "patchedDependencies": {
+      "@lobehub/editor": "patches/@lobehub__editor.patch"
     }
   },
   "description": "极智 - AI 智能助手",

@@ -329,6 +329,16 @@
     "cloudGatewayStateError": "Error",
     "cloudGatewayNotAvailable": "Cloud backend not connected"
   },
+  "imageGen": {
+    "title": "Image Generation",
+    "desc": "Configure the OpenAI-compatible image generation API used by the Image Gen skill.",
+    "url": "API URL",
+    "urlPlaceholder": "https://aihub.gz4399.com/v1",
+    "urlHelp": "OpenAI-compatible image generation API URL, e.g. https://aihub.gz4399.com/v1",
+    "apiKey": "API Key",
+    "apiKeyPlaceholder": "Enter API Key",
+    "apiKeyHelp": "API key for the image generation service"
+  },
   "updates": {
     "title": "Updates",
     "description": "Keep 极智 up to date",

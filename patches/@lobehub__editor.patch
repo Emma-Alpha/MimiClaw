@@ -1,0 +1,57 @@
+diff --git a/es/plugins/slash/plugin/index.js b/es/plugins/slash/plugin/index.js
+index cbec671c30fde641c57f37b93c47667fcd6dcff2..92889a3e18acec5e4772bffcec5a7af5e3524132 100644
+--- a/es/plugins/slash/plugin/index.js
++++ b/es/plugins/slash/plugin/index.js
+@@ -86,9 +86,13 @@ export var SlashPlugin = (_class = /*#__PURE__*/function (_KernelPlugin) {
+           var range = editorWindow.document.createRange();
+           var selection = $getSelection();
+           var text = getQueryTextForSearch(editor);
++          // Check if the last typed character belongs to a trigger with allowAfterAnyChar
++          var _lastTypedChar = text && text.length > 0 ? text.slice(-1) : '';
++          var _triggerOpt = _lastTypedChar && _this2.service ? _this2.service.getSlashOptions(_lastTypedChar) : null;
++          var _allowAfterAny = _triggerOpt && _triggerOpt.allowAfterAnyChar;
+           if (!$isRangeSelection(selection) || !selection.isCollapsed() ||
+           // Do not trigger inside code
+-          selection.hasFormat('code') || text === null || range === null || _this2.currentSlashTrigger === null && text.length > 1 && text.at(-2) !== ' ') {
++          selection.hasFormat('code') || text === null || range === null || _this2.currentSlashTrigger === null && text.length > 1 && text.at(-2) !== ' ' && !_allowAfterAny) {
+             _this2.triggerClose();
+             return;
+           }
+diff --git a/es/plugins/slash/service/i-slash-service.js b/es/plugins/slash/service/i-slash-service.js
+index 3204bb8a317ddb3e761adaeaa96d753cb0b37db7..139cac2abdd93a6fefb7a0d25af711db49c14eed 100644
+--- a/es/plugins/slash/service/i-slash-service.js
++++ b/es/plugins/slash/service/i-slash-service.js
+@@ -36,6 +36,7 @@ export var SlashService = /*#__PURE__*/function () {
+       }
+       this.triggerMap.set(options.trigger, options);
+       this.triggerFnMap.set(options.trigger, getBasicTypeaheadTriggerMatch(options.trigger, {
++        allowAfterAnyChar: options.allowAfterAnyChar,
+         allowWhitespace: options.allowWhitespace,
+         maxLength: options.maxLength,
+         minLength: options.minLength,
+diff --git a/es/plugins/slash/utils/utils.js b/es/plugins/slash/utils/utils.js
+index 697c0acf18551c4637b19ca46273e19aeb8239bc..8b54eab63f8a733a76e9376ee3d19a476518dffb 100644
+--- a/es/plugins/slash/utils/utils.js
++++ b/es/plugins/slash/utils/utils.js
+@@ -118,14 +118,19 @@ export function getBasicTypeaheadTriggerMatch(trigger, _ref) {
+     _ref$punctuation = _ref.punctuation,
+     punctuation = _ref$punctuation === void 0 ? PUNCTUATION : _ref$punctuation,
+     _ref$allowWhitespace = _ref.allowWhitespace,
+-    allowWhitespace = _ref$allowWhitespace === void 0 ? false : _ref$allowWhitespace;
++    allowWhitespace = _ref$allowWhitespace === void 0 ? false : _ref$allowWhitespace,
++    _ref$allowAfterAnyCha = _ref.allowAfterAnyChar,
++    allowAfterAnyChar = _ref$allowAfterAnyCha === void 0 ? false : _ref$allowAfterAnyCha;
+   return function (text) {
+     // When whitespace is not allowed, we need to ensure the regex stops at whitespace
+     var validCharsSuffix = allowWhitespace ? '' : '\\s';
+     var validChars = '[^' + trigger + punctuation + validCharsSuffix + ']';
+ 
++    // Prefix pattern: allow trigger after any character when allowAfterAnyChar is set
++    var prefixPattern = allowAfterAnyChar ? '(^|.)' : '(^|\\s|\\()';
++
+     // Create regex that matches from trigger to either end of string OR whitespace (when not allowed)
+-    var regexPattern = allowWhitespace ? '(^|\\s|\\()(' + '[' + trigger + ']' + '((?:' + validChars + '){0,' + maxLength + '})' + ')$' : '(^|\\s|\\()(' + '[' + trigger + ']' + '((?:' + validChars + ')*?)' + ')(?=\\s|$)';
++    var regexPattern = allowWhitespace ? prefixPattern + '(' + '[' + trigger + ']' + '((?:' + validChars + '){0,' + maxLength + '})' + ')$' : prefixPattern + '(' + '[' + trigger + ']' + '((?:' + validChars + ')*?)' + ')(?=\\s|$)';
+     var TypeaheadTriggerRegex = new RegExp(regexPattern);
+     var match = TypeaheadTriggerRegex.exec(text);
+     if (match !== null) {

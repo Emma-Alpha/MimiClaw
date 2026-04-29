@@ -163,6 +163,10 @@ export function Settings() {
     setRemoteGatewayUrl,
     remoteGatewayToken,
     setRemoteGatewayToken,
+    imageGenUrl,
+    setImageGenUrl,
+    imageGenApiKey,
+    setImageGenApiKey,
     proxyEnabled,
     proxyServer,
     proxyHttpServer,
@@ -203,6 +207,9 @@ export function Settings() {
   const [remoteGatewayUrlDraft, setRemoteGatewayUrlDraft] = useState('');
   const [remoteGatewayTokenDraft, setRemoteGatewayTokenDraft] = useState('');
   const [showRemoteGatewayToken, setShowRemoteGatewayToken] = useState(false);
+  const [imageGenUrlDraft, setImageGenUrlDraft] = useState('');
+  const [imageGenApiKeyDraft, setImageGenApiKeyDraft] = useState('');
+  const [showImageGenApiKey, setShowImageGenApiKey] = useState(false);
   const [proxyServerDraft, setProxyServerDraft] = useState('');
   const [proxyHttpServerDraft, setProxyHttpServerDraft] = useState('');
   const [proxyHttpsServerDraft, setProxyHttpsServerDraft] = useState('');
@@ -792,6 +799,14 @@ export function Settings() {
   }, [remoteGatewayToken]);
 
   useEffect(() => {
+    setImageGenUrlDraft(imageGenUrl);
+  }, [imageGenUrl]);
+
+  useEffect(() => {
+    setImageGenApiKeyDraft(imageGenApiKey);
+  }, [imageGenApiKey]);
+
+  useEffect(() => {
     setProxyEnabledDraft(proxyEnabled);
   }, [proxyEnabled]);
 
@@ -1336,18 +1351,10 @@ export function Settings() {
                 </div>
               )}
 
-              <div className={styles.settingRow}>
-                <div>
-                  <Label className={styles.settingLabel}>{t('gateway.autoStart')}</Label>
-                  <p className={styles.settingDesc}>{t('gateway.autoStartDesc')}</p>
-                </div>
-                <Switch checked={gatewayAutoStart} onChange={setGatewayAutoStart} />
-              </div>
-
               
-            {/* OpenClaw API */}
+            {/* Model API */}
             <Form.Group
-              title="OpenClaw API"
+              title="Model API"
               variant="filled"
               extra={<List style={{ height: 16, width: 16, color: 'var(--ant-color-text-secondary)' }} />}
             >
@@ -1393,56 +1400,52 @@ export function Settings() {
               </div>
             </Form.Group>
 
-            {/* Remote Gateway */}
+            {/* Image Generation */}
               <Form.Group
-                title={t('gateway.remoteTitle')}
+                title={t('imageGen.title')}
                 variant="filled"
-                extra={<Globe style={{ height: 16, width: 16, color: 'var(--ant-color-text-secondary)' }} />}
               >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 16px 16px' }}>
-                  <p className={styles.hintText12}>{t('gateway.remoteDesc')}</p>
+                  <p className={styles.hintText12}>{t('imageGen.desc')}</p>
 
                   <div className={styles.formField}>
-                    <Label className={styles.fieldLabelSmall}>{t('gateway.remoteUrl')}</Label>
+                    <Label className={styles.fieldLabelSmall}>{t('imageGen.url')}</Label>
                     <Input
                       type="text"
-                      placeholder="ws://your-gateway-host:18789/ws"
-                      value={remoteGatewayUrlDraft}
-                      onChange={(e) => setRemoteGatewayUrlDraft(e.target.value)}
+                      placeholder={t('imageGen.urlPlaceholder')}
+                      value={imageGenUrlDraft}
+                      onChange={(e) => setImageGenUrlDraft(e.target.value)}
                       onBlur={() => {
-                        if (remoteGatewayUrlDraft !== remoteGatewayUrl) {
-                          setRemoteGatewayUrl(remoteGatewayUrlDraft);
+                        if (imageGenUrlDraft !== imageGenUrl) {
+                          setImageGenUrl(imageGenUrlDraft);
                         }
                       }}
                       style={{ fontSize: 13, fontFamily: 'monospace' }}
                     />
-                    <p className={styles.hintText}>{t('gateway.remoteUrlHelp')}</p>
+                    <p className={styles.hintText}>{t('imageGen.urlHelp')}</p>
                   </div>
 
                   <div className={styles.formField}>
-                    <Label className={styles.fieldLabelSmall}>{t('gateway.remoteToken')}</Label>
+                    <Label className={styles.fieldLabelSmall}>{t('imageGen.apiKey')}</Label>
                     <div className={styles.inputWithEye}>
                       <Input
-                        type={showRemoteGatewayToken ? 'text' : 'password'}
-                        placeholder={t('gateway.remoteTokenPlaceholder')}
-                        value={remoteGatewayTokenDraft}
-                        onChange={(e) => setRemoteGatewayTokenDraft(e.target.value)}
+                        type={showImageGenApiKey ? 'text' : 'password'}
+                        placeholder={t('imageGen.apiKeyPlaceholder')}
+                        value={imageGenApiKeyDraft}
+                        onChange={(e) => setImageGenApiKeyDraft(e.target.value)}
                         onBlur={() => {
-                          if (remoteGatewayTokenDraft !== remoteGatewayToken) {
-                            setRemoteGatewayToken(remoteGatewayTokenDraft);
+                          if (imageGenApiKeyDraft !== imageGenApiKey) {
+                            setImageGenApiKey(imageGenApiKeyDraft);
                           }
                         }}
                         style={{ fontSize: 13, fontFamily: 'monospace', paddingRight: 40 }}
                       />
-                      <button type="button" onClick={() => setShowRemoteGatewayToken((v) => !v)} className={styles.eyeBtn}>
-                        {showRemoteGatewayToken ? <EyeOff style={{ height: 16, width: 16 }} /> : <Eye style={{ height: 16, width: 16 }} />}
+                      <button type="button" onClick={() => setShowImageGenApiKey((v) => !v)} className={styles.eyeBtn}>
+                        {showImageGenApiKey ? <EyeOff style={{ height: 16, width: 16 }} /> : <Eye style={{ height: 16, width: 16 }} />}
                       </button>
                     </div>
+                    <p className={styles.hintText}>{t('imageGen.apiKeyHelp')}</p>
                   </div>
-
-                  {remoteGatewayUrl && (
-                    <p className={styles.amberText}>{t('gateway.remoteActive')}</p>
-                  )}
                 </div>
               </Form.Group>
 
@@ -1597,77 +1600,6 @@ export function Settings() {
                         {t('common:actions.copy')}
                       </Button>
                     </div>
-                  </div>
-
-                  {showCliTools && (
-                    <div className={styles.sectionGap6} style={{ gap: 12 }}>
-                      <Label className={styles.settingLabel}>{t('developer.cli')}</Label>
-                      <p className={styles.settingDesc}>{t('developer.cliDesc')}</p>
-                      {isWindows && <p className={styles.hintText12}>{t('developer.cliPowershell')}</p>}
-                      <div className={styles.flexWrapRow}>
-                        <Input readOnly value={openclawCliCommand} placeholder={openclawCliError || t('developer.cmdUnavailable')} className={styles.monoInputFull} />
-                        <Button onClick={handleCopyCliCommand} disabled={!openclawCliCommand} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}>
-                          <Copy style={{ height: 16, width: 16, marginRight: 8 }} />
-                          {t('common:actions.copy')}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className={styles.sectionGap6} style={{ gap: 16 }}>
-                    <div className={styles.settingRow}>
-                      <div>
-                        <Label className={styles.settingLabel}>{t('developer.doctor')}</Label>
-                        <p className={styles.settingDesc}>{t('developer.doctorDesc')}</p>
-                      </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <Button onClick={() => void handleRunOpenClawDoctor('diagnose')} disabled={doctorRunningMode !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}>
-                          <RefreshCw style={{ height: 16, width: 16, marginRight: 8, animation: doctorRunningMode === 'diagnose' ? 'spin 1s linear infinite' : undefined }} />
-                          {doctorRunningMode === 'diagnose' ? t('common:status.running') : t('developer.runDoctor')}
-                        </Button>
-                        <Button onClick={() => void handleRunOpenClawDoctor('fix')} disabled={doctorRunningMode !== null} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}>
-                          <RefreshCw style={{ height: 16, width: 16, marginRight: 8, animation: doctorRunningMode === 'fix' ? 'spin 1s linear infinite' : undefined }} />
-                          {doctorRunningMode === 'fix' ? t('common:status.running') : t('developer.runDoctorFix')}
-                        </Button>
-                        <Button onClick={handleCopyDoctorOutput} disabled={!doctorResult} style={{ borderRadius: 12, height: 40, padding: '0 16px', background: 'transparent', border: '1px solid var(--ant-color-border-secondary)' }}>
-                          <Copy style={{ height: 16, width: 16, marginRight: 8 }} />
-                          {t('common:actions.copy')}
-                        </Button>
-                      </div>
-                    </div>
-
-                    {doctorResult && (
-                      <div className={styles.outputPanel}>
-                        <div className={styles.badgeRow}>
-                          <Badge variant={doctorResult.success ? 'secondary' : 'destructive'} className={styles.statusTag}>
-                            {doctorResult.mode === 'fix'
-                              ? (doctorResult.success ? t('developer.doctorFixOk') : t('developer.doctorFixIssue'))
-                              : (doctorResult.success ? t('developer.doctorOk') : t('developer.doctorIssue'))}
-                          </Badge>
-                          <Badge variant="outline" className={styles.statusTag}>
-                            {t('developer.doctorExitCode')}: {doctorResult.exitCode ?? 'null'}
-                          </Badge>
-                          <Badge variant="outline" className={styles.statusTag}>
-                            {t('developer.doctorDuration')}: {Math.round(doctorResult.durationMs)}ms
-                          </Badge>
-                        </div>
-                        <div className={styles.metaText}>
-                          <p>{t('developer.doctorCommand')}: {doctorResult.command}</p>
-                          <p>{t('developer.doctorWorkingDir')}: {doctorResult.cwd || '-'}</p>
-                          {doctorResult.error && <p>{t('developer.doctorError')}: {doctorResult.error}</p>}
-                        </div>
-                        <div className={styles.outputGrid2}>
-                          <div className={styles.formField}>
-                            <p className={styles.outputLabel}>{t('developer.doctorStdout')}</p>
-                            <pre className={styles.outputPre}>{doctorResult.stdout.trim() || t('developer.doctorOutputEmpty')}</pre>
-                          </div>
-                          <div className={styles.formField}>
-                            <p className={styles.outputLabel}>{t('developer.doctorStderr')}</p>
-                            <pre className={styles.outputPre}>{doctorResult.stderr.trim() || t('developer.doctorOutputEmpty')}</pre>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   <div className={styles.sectionGap6} style={{ gap: 16 }}>
