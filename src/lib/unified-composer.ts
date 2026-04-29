@@ -658,14 +658,6 @@ export function toCodeChatSubmission(
 	};
 }
 
-export function toJizhiSubmission(
-	draft: Pick<UnifiedComposerDraft, "text" | "paths">,
-): { prompt: string } {
-	return {
-		prompt: composePromptWithPaths(draft.text, draft.paths),
-	};
-}
-
 export function toCliSubmission(
 	draft: Pick<UnifiedComposerDraft, "text" | "paths">,
 ): { prompt: string } {

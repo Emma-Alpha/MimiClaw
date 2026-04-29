@@ -26,7 +26,6 @@
         "folder": {
             "chat": "Chat",
             "cli": "CLI",
-            "jizhi": "Jizhi",
             "xiaojiu": "Xiaojiu",
             "voice": "Voice"
         },

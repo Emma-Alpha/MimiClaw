@@ -31,7 +31,6 @@ export const initialSettingsState: SettingsStoreState = {
   petCompanionSeed: '',
   petCompanion: null,
   xiaojiuEnabled: false,
-  jizhiEnabled: false,
   machineId: '',
   preference: {
     useCmdEnterToSend: false,
@@ -70,7 +69,6 @@ export const initialSettingsState: SettingsStoreState = {
     thread: true,
     openclaw: true,
     realtimeVoice: true,
-    jizhi: true,
     xiaojiu: true,
     voice: true,
   },
@@ -118,7 +116,6 @@ export const MAIN_PROCESS_SETTINGS_KEYS = [
   'petCompanionSeed',
   'petCompanion',
   'xiaojiuEnabled',
-  'jizhiEnabled',
   'machineId',
   'gatewayAutoStart',
   'gatewayPort',

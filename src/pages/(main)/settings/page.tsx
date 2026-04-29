@@ -194,8 +194,6 @@ export function Settings() {
     setPetAnimation,
     xiaojiuEnabled,
     setXiaojiuEnabled,
-    jizhiEnabled,
-    setJizhiEnabled,
   } = useSettingsStore();
 
   const { status: gatewayStatus, restart: restartGateway } = useGatewayStore();
@@ -316,16 +314,6 @@ export function Settings() {
       setVoiceChatLoading(false);
     }
   }, [t]);
-
-  useEffect(() => {
-    if (!jizhiEnabled) {
-      setCloudGateway({ cloudMode: false });
-      return;
-    }
-    void refreshCloudGateway();
-    const timer = setInterval(() => { void refreshCloudGateway(); }, 10_000);
-    return () => clearInterval(timer);
-  }, [jizhiEnabled, refreshCloudGateway]);
 
   useEffect(() => {
     void loadSpeechConfig();
@@ -1024,7 +1012,6 @@ export function Settings() {
                   petEnabled,
                   petAnimation,
                   xiaojiuEnabled,
-                  jizhiEnabled,
                 }}
                 items={
                   [
@@ -1066,7 +1053,6 @@ export function Settings() {
                   if ('petEnabled' in changedValues) setPetEnabled(changedValues.petEnabled as boolean);
                   if ('petAnimation' in changedValues) setPetAnimation(changedValues.petAnimation as PetAnimation);
                   if ('xiaojiuEnabled' in changedValues) setXiaojiuEnabled(changedValues.xiaojiuEnabled as boolean);
-                  if ('jizhiEnabled' in changedValues) setJizhiEnabled(changedValues.jizhiEnabled as boolean);
                 }}
                 itemMinWidth="max(30%, 180px)"
                 style={{ width: '100%' }}
@@ -2212,14 +2198,14 @@ export function Settings() {
                 <Button
                   type="link"
                   style={{ height: 'auto', padding: 0, fontSize: 14, color: '#3b82f6', fontWeight: 500 }}
-                  onClick={() => window.electron.openExternal('https://jizhi.gz4399.com')}
+                  onClick={() => window.electron.openExternal('https://gz4399.com')}
                 >
                   {t('about.docs')}
                 </Button>
                 <Button
                   type="link"
                   style={{ height: 'auto', padding: 0, fontSize: 14, color: '#3b82f6', fontWeight: 500 }}
-                  onClick={() => window.electron.openExternal('https://jizhi.gz4399.com')}
+                  onClick={() => window.electron.openExternal('https://gz4399.com')}
                 >
                   {t('about.github')}
                 </Button>

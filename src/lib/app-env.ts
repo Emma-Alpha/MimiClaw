@@ -8,8 +8,6 @@ type RuntimeEnv = Partial<ImportMetaEnv> & {
 
 const DEV_CLOUD_API_BASE_URL = 'http://localhost:3000';
 const PROD_CLOUD_API_BASE_URL = 'https://api.jizhiai.gz4399.com';
-const DEV_REMOTE_JIZHI_CHAT_URL = 'https://local-jizhiai-main.gz4399.com/';
-const PROD_REMOTE_JIZHI_CHAT_URL = 'https://jizhiai.gz4399.com/';
 
 function normalizeEnvName(value: string | undefined): MimiClawAppEnv | null {
   const normalized = (value || '').trim().toLowerCase();
@@ -35,12 +33,6 @@ function normalizeBaseUrl(value: string | undefined): string | null {
   } catch {
     return null;
   }
-}
-
-function normalizeAppUrl(value: string | undefined): string | null {
-  const normalized = (value || '').trim();
-  if (!normalized) return null;
-  return normalized.endsWith('/') ? normalized : `${normalized}/`;
 }
 
 function normalizeBooleanFlag(value: string | undefined): boolean {
@@ -69,15 +61,6 @@ export function resolveDefaultCloudApiBase(env: RuntimeEnv = import.meta.env): s
   return resolveMimiClawAppEnv(env) === 'development'
     ? DEV_CLOUD_API_BASE_URL
     : PROD_CLOUD_API_BASE_URL;
-}
-
-export function resolveRemoteJizhiChatUrl(env: RuntimeEnv = import.meta.env): string {
-  const explicit = normalizeAppUrl(env.VITE_REMOTE_JIZHI_CHAT_URL);
-  if (explicit) return explicit;
-
-  return resolveMimiClawAppEnv(env) === 'development'
-    ? DEV_REMOTE_JIZHI_CHAT_URL
-    : PROD_REMOTE_JIZHI_CHAT_URL;
 }
 
 export function resolveCloudOnlyMode(env: RuntimeEnv = import.meta.env): boolean {

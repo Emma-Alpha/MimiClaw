@@ -125,7 +125,7 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
 }));
 
-const FULL_BLEED_PATHS = new Set(['/chat/jizhi']);
+const FULL_BLEED_PATHS = new Set<string>();
 
 const sidebarTransition = { duration: 0.25, ease: [0.25, 0.1, 0.25, 1] as const };
 

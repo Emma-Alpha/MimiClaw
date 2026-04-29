@@ -72,7 +72,6 @@ export interface SettingsStoreState extends CloudAuthState {
   petCompanionSeed: string;
   petCompanion: StoredPetCompanion | null;
   xiaojiuEnabled: boolean;
-  jizhiEnabled: boolean;
   machineId: string;
   preference: PreferenceSettings;
   labPreferences: LabPreferenceSettings;
@@ -129,7 +128,6 @@ export interface SettingsStoreAction {
   setPetAnimation: (value: PetAnimation) => void;
   setPetCompanion: (value: StoredPetCompanion, seed?: string) => void;
   setXiaojiuEnabled: (value: boolean) => void;
-  setJizhiEnabled: (value: boolean) => void;
   setGatewayAutoStart: (value: boolean) => void;
   setGatewayPort: (port: number) => void;
   setRemoteGatewayUrl: (url: string) => void;
@@ -181,7 +179,7 @@ export type MainProcessSettingsPatch = Partial<
     | 'translucentSidebar' | 'fontSize' | 'highlighterTheme' | 'mermaidTheme' | 'transitionMode'
     | 'animationMode' | 'contextMenuMode' | 'responseLanguage' | 'enableAutoScrollOnStreaming'
     | 'startMinimized' | 'launchAtStartup' | 'telemetryEnabled' | 'petEnabled'
-    | 'petAnimation' | 'petCompanionSeed' | 'petCompanion' | 'xiaojiuEnabled' | 'jizhiEnabled'
+    | 'petAnimation' | 'petCompanionSeed' | 'petCompanion' | 'xiaojiuEnabled'
     | 'machineId' | 'gatewayAutoStart' | 'gatewayPort' | 'remoteGatewayUrl' | 'remoteGatewayToken'
     | 'proxyEnabled' | 'proxyServer' | 'proxyHttpServer' | 'proxyHttpsServer' | 'proxyAllServer'
     | 'proxyBypassRules' | 'codeAgent' | 'aihubApiUrl' | 'aihubApiKey'

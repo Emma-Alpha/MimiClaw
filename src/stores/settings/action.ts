@@ -280,13 +280,6 @@ export function createSettingsActions(set: Setter, get: Getter): SettingsStoreAc
         body: JSON.stringify({ xiaojiuEnabled }),
       }).catch(() => { });
     },
-    setJizhiEnabled: (jizhiEnabled) => {
-      set({ jizhiEnabled });
-      void hostApiFetch('/api/settings', {
-        method: 'PUT',
-        body: JSON.stringify({ jizhiEnabled }),
-      }).catch(() => { });
-    },
     setGatewayAutoStart: (gatewayAutoStart) => {
       set({ gatewayAutoStart });
       void hostApiFetch('/api/settings/gatewayAutoStart', {

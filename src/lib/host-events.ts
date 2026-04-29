@@ -15,7 +15,6 @@ const HOST_EVENT_TO_IPC_CHANNEL: Record<string, string> = {
   'oauth:error': 'oauth:error',
   'cloud:auth-success': 'cloud:auth-success',
   'cloud:auth-error': 'cloud:auth-error',
-  'jizhi:stream': 'jizhi:stream',
   'code-agent:status': 'code-agent:status',
   'code-agent:error': 'code-agent:error',
   'code-agent:exit': 'code-agent:exit',
