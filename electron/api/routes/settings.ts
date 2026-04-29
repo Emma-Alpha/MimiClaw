@@ -2,22 +2,19 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import { applyProxySettings } from '../../main/proxy';
 import { syncLaunchAtStartupSettingFromStore } from '../../main/launch-at-startup';
 import { syncPetWindowFromSettings } from '../../main/pet-window';
-import { syncProxyConfigToOpenClaw } from '../../utils/openclaw-proxy';
 import { getAllSettings, getSetting, resetSettings, setSetting, type AppSettings } from '../../utils/store';
 import { isCloudMode, patchCloudConfig } from '../../utils/cloud-config-bridge';
 import type { HostApiContext } from '../context';
 import { parseJsonBody, sendJson } from '../route-utils';
 
-// Fields that affect OpenClaw runtime config and should be forwarded to the
-// cloud backend when cloud mode is active.
-const CLOUD_OPENCLAW_FIELD_MAP: Partial<Record<keyof AppSettings, string>> = {
+// Fields that should be forwarded to the cloud backend when cloud mode is active.
+const CLOUD_FIELD_MAP: Partial<Record<keyof AppSettings, string>> = {
   sessionIdleMinutes: 'sessionIdleMinutes',
   browserEnabled: 'browser.enabled',
 };
 
 async function handleProxySettingsChange(ctx: HostApiContext): Promise<void> {
   const settings = await getAllSettings();
-  await syncProxyConfigToOpenClaw(settings, { preserveExistingWhenDisabled: false });
   await applyProxySettings(settings);
   if (ctx.gatewayManager.getStatus().state === 'running') {
     await ctx.gatewayManager.restart();
@@ -100,11 +97,11 @@ export async function handleSettingsRoutes(
         await syncPetWindowFromSettings();
       }
 
-      // Forward OpenClaw-affecting settings to the cloud backend when in cloud mode.
+      // Forward relevant settings to the cloud backend when in cloud mode.
       if (await isCloudMode()) {
         const cloudPatch: Record<string, unknown> = {};
         for (const [key] of Object.entries(patch)) {
-          const cloudField = CLOUD_OPENCLAW_FIELD_MAP[key as keyof AppSettings];
+          const cloudField = CLOUD_FIELD_MAP[key as keyof AppSettings];
           if (cloudField) {
             cloudPatch[cloudField] = patch[key as keyof AppSettings];
           }

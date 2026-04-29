@@ -200,8 +200,6 @@ export function Settings() {
   const currentVersion = useUpdateStore((state) => state.currentVersion);
   const updateSetAutoDownload = useUpdateStore((state) => state.setAutoDownload);
   const [controlUiInfo, setControlUiInfo] = useState<ControlUiInfo | null>(null);
-  const [openclawCliCommand, setOpenclawCliCommand] = useState('');
-  const [openclawCliError, setOpenclawCliError] = useState<string | null>(null);
   const [remoteGatewayUrlDraft, setRemoteGatewayUrlDraft] = useState('');
   const [remoteGatewayTokenDraft, setRemoteGatewayTokenDraft] = useState('');
   const [showRemoteGatewayToken, setShowRemoteGatewayToken] = useState(false);
@@ -238,23 +236,8 @@ export function Settings() {
   const [voiceChatAccessKeyDraft, setVoiceChatAccessKeyDraft] = useState('');
   const [voiceChatEndpointDraft, setVoiceChatEndpointDraft] = useState(DEFAULT_VOICE_CHAT_ENDPOINT);
   const [showVoiceChatAccessKey, setShowVoiceChatAccessKey] = useState(false);
-  const isWindows = window.electron.platform === 'win32';
-  const showCliTools = true;
   const [showLogs, setShowLogs] = useState(false);
   const [logContent, setLogContent] = useState('');
-  const [doctorRunningMode, setDoctorRunningMode] = useState<'diagnose' | 'fix' | null>(null);
-  const [doctorResult, setDoctorResult] = useState<{
-    mode: 'diagnose' | 'fix';
-    success: boolean;
-    exitCode: number | null;
-    stdout: string;
-    stderr: string;
-    command: string;
-    cwd: string;
-    durationMs: number;
-    timedOut?: boolean;
-    error?: string;
-  } | null>(null);
   const [codeAgentStatus, setCodeAgentStatus] = useState<CodeAgentStatus | null>(null);
   const [codeAgentHealth, setCodeAgentHealth] = useState<CodeAgentHealth | null>(null);
   const [codeAgentLastRun, setCodeAgentLastRun] = useState<CodeAgentRunRecord | null>(null);
@@ -377,72 +360,6 @@ export function Settings() {
       }
     } catch {
       // ignore
-    }
-  };
-
-  const handleRunOpenClawDoctor = async (mode: 'diagnose' | 'fix') => {
-    setDoctorRunningMode(mode);
-    try {
-      const result = await hostApiFetch<{
-        mode: 'diagnose' | 'fix';
-        success: boolean;
-        exitCode: number | null;
-        stdout: string;
-        stderr: string;
-        command: string;
-        cwd: string;
-        durationMs: number;
-        timedOut?: boolean;
-        error?: string;
-      }>('/api/app/openclaw-doctor', {
-        method: 'POST',
-        body: JSON.stringify({ mode }),
-      });
-      setDoctorResult(result);
-      if (result.success) {
-        toast.success(mode === 'fix' ? t('developer.doctorFixSucceeded') : t('developer.doctorSucceeded'));
-      } else {
-        toast.error(result.error || (mode === 'fix' ? t('developer.doctorFixFailed') : t('developer.doctorFailed')));
-      }
-    } catch (error) {
-      const message = toUserMessage(error) || (mode === 'fix' ? t('developer.doctorFixRunFailed') : t('developer.doctorRunFailed'));
-      toast.error(message);
-      setDoctorResult({
-        mode,
-        success: false,
-        exitCode: null,
-        stdout: '',
-        stderr: '',
-        command: 'openclaw doctor',
-        cwd: '',
-        durationMs: 0,
-        error: message,
-      });
-    } finally {
-      setDoctorRunningMode(null);
-    }
-  };
-
-  const handleCopyDoctorOutput = async () => {
-    if (!doctorResult) return;
-    const payload = [
-      `command: ${doctorResult.command}`,
-      `cwd: ${doctorResult.cwd}`,
-      `exitCode: ${doctorResult.exitCode ?? 'null'}`,
-      `durationMs: ${doctorResult.durationMs}`,
-      '',
-      '[stdout]',
-      doctorResult.stdout.trim() || '(empty)',
-      '',
-      '[stderr]',
-      doctorResult.stderr.trim() || '(empty)',
-    ].join('\n');
-
-    try {
-      await navigator.clipboard.writeText(payload);
-      toast.success(t('developer.doctorCopied'));
-    } catch (error) {
-      toast.error(`Failed to copy doctor output: ${String(error)}`);
     }
   };
 
@@ -648,56 +565,6 @@ export function Settings() {
       toast.error(`Failed to copy token: ${String(error)}`);
     }
   };
-
-  useEffect(() => {
-    if (!showCliTools) return;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const result = await invokeIpc<{
-          success: boolean;
-          command?: string;
-          error?: string;
-        }>('openclaw:getCliCommand');
-        if (cancelled) return;
-        if (result.success && result.command) {
-          setOpenclawCliCommand(result.command);
-          setOpenclawCliError(null);
-        } else {
-          setOpenclawCliCommand('');
-          setOpenclawCliError(result.error || 'OpenClaw CLI unavailable');
-        }
-      } catch (error) {
-        if (cancelled) return;
-        setOpenclawCliCommand('');
-        setOpenclawCliError(String(error));
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [devModeUnlocked, showCliTools]);
-
-  const handleCopyCliCommand = async () => {
-    if (!openclawCliCommand) return;
-    try {
-      await navigator.clipboard.writeText(openclawCliCommand);
-      toast.success(t('developer.cmdCopied'));
-    } catch (error) {
-      toast.error(`Failed to copy command: ${String(error)}`);
-    }
-  };
-
-  useEffect(() => {
-    const unsubscribe = window.electron.ipcRenderer.on(
-      'openclaw:cli-installed',
-      (...args: unknown[]) => {
-        const installedPath = typeof args[0] === 'string' ? args[0] : '';
-        toast.success(`openclaw CLI installed at ${installedPath}`);
-      },
-    );
-    return () => { unsubscribe?.(); };
-  }, []);
 
   useEffect(() => {
     setWsDiagnosticEnabled(getGatewayWsDiagnosticEnabled());

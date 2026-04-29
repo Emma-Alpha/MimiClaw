@@ -21,6 +21,12 @@ import { getApiKey } from '../utils/secure-storage';
 import { getAllSettings } from '../utils/store';
 import { logger } from '../utils/logger';
 import { readClaudeUserSettingsRuntimeConfig } from './claude-user-settings';
+import {
+  isOpenAIModel,
+  mapThinkingToReasoningEffort,
+  startReasoningGateway,
+  type ReasoningGateway,
+} from '../gateway/reasoning-gateway';
 
 type SidecarResponse = {
   type: 'response';
@@ -244,6 +250,33 @@ export class CodeAgentManager extends EventEmitter {
     });
     this.emit('run:started', this.getLastRun());
 
+    // ── Reasoning gateway: spin up a local proxy for OpenAI models ──
+    // The gateway injects `reasoning_effort` into API requests and uses
+    // proxyAwareFetch() to honor the user's proxy settings.
+    let gateway: ReasoningGateway | null = null;
+    const reasoningEffort = mapThinkingToReasoningEffort(this.runtimeConfig.thinking);
+    if (
+      reasoningEffort
+      && isOpenAIModel(this.runtimeConfig.model)
+      && this.runtimeConfig.baseUrl
+    ) {
+      try {
+        gateway = await startReasoningGateway({
+          targetBaseUrl: this.runtimeConfig.baseUrl,
+          reasoningEffort,
+        });
+        // Override baseUrl so the sidecar points CLI at the gateway
+        this.runtimeConfig = { ...this.runtimeConfig, baseUrl: gateway.baseUrl };
+        logger.info('[code-agent] Reasoning gateway active', {
+          model: this.runtimeConfig.model,
+          reasoningEffort,
+          gatewayUrl: gateway.baseUrl,
+        });
+      } catch (err) {
+        logger.warn('[code-agent] Failed to start reasoning gateway, proceeding without:', err);
+      }
+    }
+
     let currentInput = { ...input };
     let lastResult: CodeAgentRunResult | undefined;
     let trackedSessionId = input.sessionId || '';
@@ -256,90 +289,98 @@ export class CodeAgentManager extends EventEmitter {
     };
     this.on('run:sdk-message', captureSessionId);
 
-    for (let attempt = 1; attempt <= CodeAgentManager.MAX_TIMEOUT_RETRIES + 1; attempt++) {
-      try {
-        const result = await this.sendRequest<CodeAgentRunResult>('run.start', {
-          ...currentInput,
-          config: this.runtimeConfig,
-        }, rpcTimeoutMs);
-
-        if (this.isTimeoutResult(result) && attempt <= CodeAgentManager.MAX_TIMEOUT_RETRIES) {
-          lastResult = result;
-          const sessionId =
-            (result.metadata as Record<string, unknown> | undefined)?.sessionId as string | undefined
-            || trackedSessionId
-            || currentInput.sessionId
-            || '';
-          logger.info(`[code-agent] CLI timed out, retrying (attempt ${attempt}/${CodeAgentManager.MAX_TIMEOUT_RETRIES})`, {
-            sessionId,
-            durationMs: Date.now() - startedAt,
-          });
-          this.emit('run:activity', {
-            toolId: `timeout-retry-${attempt}`,
-            toolName: 'system',
-            inputSummary: `超时自动重试 (${attempt}/${CodeAgentManager.MAX_TIMEOUT_RETRIES})`,
-          });
-          currentInput = {
+    try {
+      for (let attempt = 1; attempt <= CodeAgentManager.MAX_TIMEOUT_RETRIES + 1; attempt++) {
+        try {
+          const result = await this.sendRequest<CodeAgentRunResult>('run.start', {
             ...currentInput,
-            sessionId: sessionId || undefined,
-            prompt: 'continue',
-          };
-          continue;
-        }
+            config: this.runtimeConfig,
+          }, rpcTimeoutMs);
 
-        this.removeListener('run:sdk-message', captureSessionId);
+          if (this.isTimeoutResult(result) && attempt <= CodeAgentManager.MAX_TIMEOUT_RETRIES) {
+            lastResult = result;
+            const sessionId =
+              (result.metadata as Record<string, unknown> | undefined)?.sessionId as string | undefined
+              || trackedSessionId
+              || currentInput.sessionId
+              || '';
+            logger.info(`[code-agent] CLI timed out, retrying (attempt ${attempt}/${CodeAgentManager.MAX_TIMEOUT_RETRIES})`, {
+              sessionId,
+              durationMs: Date.now() - startedAt,
+            });
+            this.emit('run:activity', {
+              toolId: `timeout-retry-${attempt}`,
+              toolName: 'system',
+              inputSummary: `超时自动重试 (${attempt}/${CodeAgentManager.MAX_TIMEOUT_RETRIES})`,
+            });
+            currentInput = {
+              ...currentInput,
+              sessionId: sessionId || undefined,
+              prompt: 'continue',
+            };
+            continue;
+          }
+
+          this.removeListener('run:sdk-message', captureSessionId);
+          this.lastRun = {
+            ...(this.lastRun ?? { startedAt, request: this.buildRequestRecord(input) }),
+            completedAt: Date.now(),
+            result,
+          };
+          logger.info('[code-agent] Run completed', {
+            runId: result.runId,
+            status: result.status,
+            durationMs: Date.now() - startedAt,
+            summary: result.summary || null,
+            outputPreview: previewText(result.output),
+            attempts: attempt,
+          });
+          this.emit('run:completed', this.getLastRun());
+          return result;
+        } catch (error) {
+          this.removeListener('run:sdk-message', captureSessionId);
+          this.lastRun = {
+            ...(this.lastRun ?? { startedAt, request: this.buildRequestRecord(input) }),
+            completedAt: Date.now(),
+            error: error instanceof Error ? error.message : String(error),
+          };
+          logger.error('[code-agent] Run failed', {
+            durationMs: Date.now() - startedAt,
+            error: error instanceof Error ? error.message : String(error),
+            promptPreview: previewText(input.prompt),
+            attempt,
+          });
+          this.emit('run:failed', this.getLastRun());
+          throw error;
+        }
+      }
+
+      this.removeListener('run:sdk-message', captureSessionId);
+      // All retries exhausted — return the last timeout result or throw
+      if (!lastResult) {
+        const error = new Error('Code agent task failed: all timeout retries exhausted');
         this.lastRun = {
           ...(this.lastRun ?? { startedAt, request: this.buildRequestRecord(input) }),
           completedAt: Date.now(),
-          result,
+          error: error.message,
         };
-        logger.info('[code-agent] Run completed', {
-          runId: result.runId,
-          status: result.status,
-          durationMs: Date.now() - startedAt,
-          summary: result.summary || null,
-          outputPreview: previewText(result.output),
-          attempts: attempt,
-        });
-        this.emit('run:completed', this.getLastRun());
-        return result;
-      } catch (error) {
-        this.removeListener('run:sdk-message', captureSessionId);
-        this.lastRun = {
-          ...(this.lastRun ?? { startedAt, request: this.buildRequestRecord(input) }),
-          completedAt: Date.now(),
-          error: error instanceof Error ? error.message : String(error),
-        };
-        logger.error('[code-agent] Run failed', {
-          durationMs: Date.now() - startedAt,
-          error: error instanceof Error ? error.message : String(error),
-          promptPreview: previewText(input.prompt),
-          attempt,
-        });
         this.emit('run:failed', this.getLastRun());
         throw error;
       }
-    }
-
-    this.removeListener('run:sdk-message', captureSessionId);
-    // All retries exhausted — return the last timeout result or throw
-    if (!lastResult) {
-      const error = new Error('Code agent task failed: all timeout retries exhausted');
       this.lastRun = {
         ...(this.lastRun ?? { startedAt, request: this.buildRequestRecord(input) }),
         completedAt: Date.now(),
-        error: error.message,
+        result: lastResult,
       };
-      this.emit('run:failed', this.getLastRun());
-      throw error;
+      this.emit('run:completed', this.getLastRun());
+      return lastResult;
+    } finally {
+      // Always shut down the reasoning gateway after the run
+      if (gateway) {
+        await gateway.close().catch(() => {});
+        logger.info('[code-agent] Reasoning gateway closed');
+      }
     }
-    this.lastRun = {
-      ...(this.lastRun ?? { startedAt, request: this.buildRequestRecord(input) }),
-      completedAt: Date.now(),
-      result: lastResult,
-    };
-    this.emit('run:completed', this.getLastRun());
-    return lastResult;
   }
 
   async cancelActiveRun(): Promise<{ cancelled: boolean; result?: CodeAgentRunResult }> {

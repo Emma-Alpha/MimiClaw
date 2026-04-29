@@ -284,7 +284,7 @@ export class ChatAiService {
         };
         const responsesEffort = mapThinkingToReasoningEffort(thinkingLevel);
         if (responsesEffort) {
-          body.reasoning = { effort: responsesEffort };
+          body.reasoning = { effort: responsesEffort, summary: 'auto' };
         }
         return { url, headers, body };
       }

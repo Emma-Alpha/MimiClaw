@@ -67,6 +67,7 @@ export const builtinCatalog: MarketplaceCatalog = {
     {
       id: 'browser-use',
       name: 'Browser Use',
+      icon: pluginIcons['browser-use'],
       description: 'Control the in-app browser with MimiClaw',
       longDescription:
         'Browse the web, fill forms, click buttons, and extract information from any website — all within MimiClaw.',
@@ -229,11 +230,31 @@ export const builtinCatalog: MarketplaceCatalog = {
       author: 'OpenAI',
       homepage: 'https://figma.com',
     },
+    {
+      id: 'blender-mcp',
+      name: 'Blender MCP',
+      icon: pluginIcons['blender-mcp'],
+      description: '通过 MimiClaw 控制 Blender 3D 建模',
+      longDescription:
+        '通过 AI 驱动的自动化控制 Blender：创建场景、操作 3D 对象、应用材质、执行 Python 代码，以及导入 Poly Haven 资产。',
+      categories: ['Design'],
+      components: ['mcp'],
+      author: 'ahujasid',
+      developerName: 'ahujasid',
+      homepage: 'https://github.com/ahujasid/blender-mcp',
+      capabilities: ['3D Modeling', 'Materials', 'Scene Management', 'Python Execution', 'Asset Import'],
+      mcpServerName: 'blender',
+      mcpServerConfig: {
+        command: 'uvx',
+        args: ['blender-mcp'],
+      },
+    },
 
     // ── Coding ───────────────────────────────────────────────────────
     {
       id: 'game-studio',
       name: 'Game Studio',
+      icon: pluginIcons['game-studio'],
       description: 'Design, prototype, and ship browser games',
       longDescription:
         'Plan, prototype, and build browser games with guided workflows for gameplay systems, UI, asset pipelines, and playtesting across 2D and 3D projects.',
@@ -312,6 +333,7 @@ export const builtinCatalog: MarketplaceCatalog = {
     {
       id: 'godot-mcp',
       name: 'Godot MCP',
+      icon: pluginIcons['godot-mcp'],
       description: 'Control the Godot game engine from MimiClaw',
       longDescription:
         'Launch the Godot editor, run and stop projects, capture debug output, manage scenes and nodes, load sprites, and handle UID operations — all through AI-driven automation.',

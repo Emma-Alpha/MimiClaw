@@ -67,7 +67,6 @@ export const initialSettingsState: SettingsStoreState = {
     chat: true,
     cli: true,
     thread: true,
-    openclaw: true,
     realtimeVoice: true,
     xiaojiu: true,
     voice: true,
@@ -75,7 +74,7 @@ export const initialSettingsState: SettingsStoreState = {
   sidebarThreadWorkspaces: [],
   sidebarThreadWorkspaceExpanded: {},
   sidebarActiveContext: {
-    kind: 'openclaw',
+    kind: 'chat',
     workspaceId: null,
   },
   sidebarBetaEnabled: false,

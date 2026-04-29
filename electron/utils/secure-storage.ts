@@ -6,7 +6,6 @@
  */
 
 import { BUILTIN_PROVIDER_TYPES, type ProviderType } from './provider-registry';
-import { getActiveOpenClawProviders } from './openclaw-auth';
 import {
   deleteProviderAccount,
   getProviderAccount,
@@ -23,7 +22,7 @@ import {
   getProviderSecret,
   setProviderSecret,
 } from '../services/secrets/secret-store';
-import { getOpenClawProviderKeyForType } from './provider-keys';
+
 
 /**
  * Provider configuration
@@ -259,36 +258,14 @@ export async function getProviderWithKeyInfo(
 
 /**
  * Get all providers with key info (for UI display)
- * Also synchronizes MimiClaw local provider list with OpenClaw's actual config.
  */
 export async function getAllProvidersWithKeyInfo(): Promise<
   Array<ProviderConfig & { hasKey: boolean; keyMasked: string | null }>
 > {
   const providers = await getAllProviders();
   const results: Array<ProviderConfig & { hasKey: boolean; keyMasked: string | null }> = [];
-  const activeOpenClawProviders = await getActiveOpenClawProviders();
-  // When openclaw.json is deleted/missing, the active set is empty.
-  // In that case, all providers (including builtins) should be cleaned up.
-  const configMissing = activeOpenClawProviders.size === 0;
 
   for (const provider of providers) {
-    // Sync check: If it's a custom/OAuth provider and it no longer exists in OpenClaw config
-    // (e.g. wiped by Gateway due to missing plugin, or manually deleted by user)
-    // we should remove it from MimiClaw UI to stay consistent.
-    const isBuiltin = (BUILTIN_PROVIDER_TYPES as readonly string[]).includes(provider.type);
-    // For custom/ollama providers, the OpenClaw config key is derived as
-    // "<type>-<suffix>" where suffix = first 8 chars of providerId with hyphens stripped.
-    // e.g. provider.id "custom-a1b2c3d4-..." → strip hyphens → "customa1b2c3d4..." → slice(0,8) → "customa1"
-    // → openClawKey = "custom-customa1"
-    // This must match getOpenClawProviderKey() in ipc-handlers.ts exactly.
-    const openClawKey = getOpenClawProviderKeyForType(provider.type, provider.id);
-    const isActive = activeOpenClawProviders.has(provider.type) || activeOpenClawProviders.has(provider.id) || activeOpenClawProviders.has(openClawKey);
-    if (configMissing || (!isBuiltin && !isActive)) {
-      console.log(`[Sync] Provider ${provider.id} (${provider.type}) missing from OpenClaw, dropping from MimiClaw UI`);
-      await deleteProvider(provider.id);
-      continue;
-    }
-
     const apiKey = await getApiKey(provider.id);
     let keyMasked: string | null = null;
 

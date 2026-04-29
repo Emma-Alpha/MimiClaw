@@ -44,9 +44,6 @@ import { initTelemetry } from '../utils/telemetry';
 class SkillsCliRunner {}
 const ensureMimiClawContext = async () => {};
 const repairMimiClawOnlyBootstrapFiles = async () => {};
-const autoInstallCliIfNeeded = async () => {};
-const generateCompletionCache = async () => {};
-const installCompletionToProfile = async () => {};
 import { isInstallingUpdate, isQuitting, setInstallingUpdate, setQuitting } from './app-state';
 import { applyProxySettings } from './proxy';
 import { syncLaunchAtStartupSettingFromStore } from './launch-at-startup';
@@ -69,18 +66,15 @@ import { createSignalQuitHandler } from './signal-quit';
 import { acquireProcessInstanceFileLock } from './process-instance-lock';
 import { getSetting } from '../utils/store';
 import { setSetting } from '../utils/store';
-// Skills/plugins/OpenClaw presence checks removed — using stubs
+// Skills/plugins stubs
 const ensureBuiltinSkillsInstalled = async () => {};
 const ensurePreinstalledSkillsInstalled = async () => {};
 const ensureAllBundledPluginsInstalled = async () => {};
-const isOpenClawPresent = () => false;
 import { startHostApiServer } from '../api/server';
 import { HostEventBus } from '../api/event-bus';
 import { deviceOAuthManager } from '../utils/device-oauth';
 import { browserOAuthManager } from '../utils/browser-oauth';
 import { whatsAppLoginManager } from '../utils/whatsapp-login';
-// Provider runtime sync removed — OpenClaw no longer exists
-const syncAllProviderAuthToRuntime = async () => {};
 import { completeXiaojiuAuthCallback } from '../utils/xiaojiu-auth';
 import type { CloudSession } from '../../shared/cloud-auth';
 import { isBenignDevWindowLoadRejection, loadWindowRoute, type WindowLoadRoute } from './window-loader';
@@ -712,14 +706,10 @@ function performBestEffortQuitCleanup(): void {
 async function initialize(): Promise<void> {
   // Initialize logger first
   logger.init();
-  const openclawAvailable = isOpenClawPresent();
   logger.info('=== MimiClaw Application Starting ===');
   logger.debug(
     `Runtime: platform=${process.platform}/${process.arch}, electron=${process.versions.electron}, node=${process.versions.node}, packaged=${app.isPackaged}, pid=${process.pid}, ppid=${process.ppid}`
   );
-  if (!openclawAvailable) {
-    logger.info('OpenClaw runtime not bundled; local Gateway and CLI features will be skipped until a runtime is available.');
-  }
 
   // Warm up network optimization (non-blocking)
   void warmupNetworkOptimization();
@@ -1190,13 +1180,8 @@ async function initialize(): Promise<void> {
       const gatewayAutoStart = await getSetting('gatewayAutoStart');
       const remoteGatewayUrl = await getSetting('remoteGatewayUrl');
       const hasRemoteGateway = !!(remoteGatewayUrl && String(remoteGatewayUrl).trim());
-      // Allow auto-start when either a local runtime exists OR a remote gateway URL is configured.
-      if (gatewayAutoStart && (openclawAvailable || hasRemoteGateway)) {
+      if (gatewayAutoStart && hasRemoteGateway) {
         try {
-          // Provider auth sync only applies to the local openclaw runtime.
-          if (openclawAvailable) {
-            await syncAllProviderAuthToRuntime();
-          }
           logger.debug('Auto-starting Gateway...');
           await gatewayManager.start();
           logger.info('Gateway auto-start succeeded');
@@ -1206,8 +1191,6 @@ async function initialize(): Promise<void> {
             window.webContents.send('gateway:error', String(error));
           }
         }
-      } else if (gatewayAutoStart && !openclawAvailable && !hasRemoteGateway) {
-        logger.info('Gateway auto-start skipped because no bundled OpenClaw runtime is available');
       } else {
         logger.info('Gateway auto-start disabled in settings');
       }
@@ -1226,17 +1209,6 @@ async function initialize(): Promise<void> {
     })();
   });
 
-  // Auto-install openclaw CLI and shell completions (non-blocking, no renderer dependency).
-  if (openclawAvailable) {
-    void autoInstallCliIfNeeded((installedPath) => {
-      mainWindow?.webContents.send('openclaw:cli-installed', installedPath);
-    }).then(() => {
-      generateCompletionCache();
-      installCompletionToProfile();
-    }).catch((error) => {
-      logger.warn('CLI auto-install failed:', error);
-    });
-  }
 }
 
 if (gotTheLock) {

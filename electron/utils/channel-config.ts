@@ -8,7 +8,6 @@ import { access, mkdir, readFile, writeFile, readdir, stat, rm } from 'fs/promis
 import { constants } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import { getOpenClawResolvedDir } from './paths';
 import * as logger from './logger';
 import { proxyAwareFetch } from './proxy-fetch';
 import { withConfigLock } from './config-mutex';
@@ -1294,53 +1293,11 @@ async function validateTelegramCredentials(
 }
 
 export async function validateChannelConfig(channelType: string): Promise<ValidationResult> {
-    const { exec } = await import('child_process');
     const resolvedChannelType = resolveStoredChannelType(channelType);
 
     const result: ValidationResult = { valid: true, errors: [], warnings: [] };
 
     try {
-        const openclawPath = getOpenClawResolvedDir();
-
-        // Run openclaw doctor command to validate config (async to avoid
-        // blocking the main thread).
-        const runDoctor = async (command: string): Promise<string> =>
-            await new Promise<string>((resolve, reject) => {
-                exec(
-                    command,
-                    {
-                        cwd: openclawPath,
-                        encoding: 'utf-8',
-                        timeout: 30000,
-                        windowsHide: true,
-                    },
-                    (err, stdout, stderr) => {
-                        const combined = `${stdout || ''}${stderr || ''}`;
-                        if (err) {
-                            const next = new Error(combined || err.message);
-                            reject(next);
-                            return;
-                        }
-                        resolve(combined);
-                    },
-                );
-            });
-
-        const output = await runDoctor(`node openclaw.mjs doctor 2>&1`);
-
-        const parsedDoctor = parseDoctorValidationOutput(resolvedChannelType, output);
-        result.errors.push(...parsedDoctor.errors);
-        result.warnings.push(...parsedDoctor.warnings);
-        if (parsedDoctor.errors.length > 0) {
-            result.valid = false;
-        }
-        if (parsedDoctor.undetermined) {
-            logger.warn('Doctor output parsing fell back to local channel checks', {
-                channelType: resolvedChannelType,
-                hint: DOCTOR_PARSER_FALLBACK_HINT,
-            });
-        }
-
         const config = await readOpenClawConfig();
         const savedChannelConfig = await getChannelConfig(resolvedChannelType, DEFAULT_ACCOUNT_ID);
         if (!config.channels?.[resolvedChannelType] || !savedChannelConfig) {

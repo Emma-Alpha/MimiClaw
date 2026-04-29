@@ -7,7 +7,7 @@ export interface AttachedFileMeta {
   filePath?: string;
 }
 
-/** Raw message from OpenClaw chat.history */
+/** Raw message from chat.history */
 export interface RawMessage {
   role: 'user' | 'assistant' | 'system' | 'toolresult';
   content: unknown; // string | ContentBlock[]

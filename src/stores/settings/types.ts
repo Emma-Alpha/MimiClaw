@@ -23,7 +23,7 @@ export type SidebarThreadWorkspace = {
 };
 
 export type SidebarActiveContext = {
-  kind: 'thread' | 'openclaw' | 'realtimeVoice';
+  kind: 'thread' | 'chat' | 'realtimeVoice';
   workspaceId: string | null;
 };
 

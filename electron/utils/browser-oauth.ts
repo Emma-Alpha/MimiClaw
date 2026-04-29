@@ -5,7 +5,7 @@ import { loginGeminiCliOAuth, type GeminiCliOAuthCredentials } from './gemini-cl
 import { loginOpenAICodexOAuth, type OpenAICodexOAuthCredentials } from './openai-codex-oauth';
 import { getProviderService } from '../services/providers/provider-service';
 import { getSecretStore } from '../services/secrets/secret-store';
-import { saveOAuthTokenToOpenClaw } from './openclaw-auth';
+
 
 export type BrowserOAuthProviderType = 'google' | 'openai';
 
@@ -209,14 +209,6 @@ class BrowserOAuthManager extends EventEmitter {
       expiresAt: token.expires,
       email: oauthTokenEmail,
       subject: oauthTokenSubject,
-    });
-
-    await saveOAuthTokenToOpenClaw(runtimeProviderId, {
-      access: token.access,
-      refresh: token.refresh,
-      expires: token.expires,
-      email: oauthTokenEmail,
-      projectId: oauthTokenSubject,
     });
 
     this.emit('oauth:success', { provider: providerType, accountId: nextAccount.id });

@@ -27,6 +27,7 @@ type Params = {
 	setCodeAgentPendingPermission: (permission: PendingPermission | null) => void;
 	codeActivitiesRef: MutableRefObject<ToolActivityItem[]>;
 	pendingCompletionActivitiesRef: MutableRefObject<ToolActivityItem[]>;
+	stopRequestedRef: MutableRefObject<boolean>;
 };
 
 export function useCodeChatCodeAgentEvents({
@@ -37,6 +38,7 @@ export function useCodeChatCodeAgentEvents({
 	setCodeAgentPendingPermission,
 	codeActivitiesRef,
 	pendingCompletionActivitiesRef,
+	stopRequestedRef,
 }: Params) {
 	/** Tracks the session ID of the current Code Agent sidecar run.
 	 *  Used to discard stale SDK messages from a previous session after switching. */
@@ -82,6 +84,7 @@ export function useCodeChatCodeAgentEvents({
 		const unsubscribeToken = subscribeHostEvent<{ text: string }>(
 			"code-agent:token",
 			(payload) => {
+				if (stopRequestedRef.current) return;
 				if (payload?.text) {
 					appendStreamingText(payload.text);
 				}
@@ -91,6 +94,7 @@ export function useCodeChatCodeAgentEvents({
 		const unsubscribeRunStarted = subscribeHostEvent(
 			"code-agent:run-started",
 			() => {
+				stopRequestedRef.current = false;
 				liveRunSessionIdRef.current = null;
 				setCodeRunActive(true);
 				codeActivitiesRef.current = [];
@@ -158,6 +162,7 @@ export function useCodeChatCodeAgentEvents({
 		const unsubscribeSdkMessage = subscribeHostEvent<unknown>(
 			"code-agent:sdk-message",
 			(payload) => {
+				if (stopRequestedRef.current) return;
 				const msg = payload as Record<string, unknown> | null;
 
 				// Track session ID from system/init messages
@@ -206,5 +211,6 @@ export function useCodeChatCodeAgentEvents({
 		setCodeRunActive,
 		codeActivitiesRef,
 		pendingCompletionActivitiesRef,
+		stopRequestedRef,
 	]);
 }

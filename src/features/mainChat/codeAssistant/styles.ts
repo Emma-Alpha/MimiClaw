@@ -2155,5 +2155,314 @@ export const useCodeChatStyles = createStyles(
 		font-size: 11px;
 		color: ${token.colorText};
 	`,
+
+	// ─── Side Panel (multi-tab right panel) ────────────────────────────────
+
+	sidePanelCard: css`
+		border-left: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorBgContainer};
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		min-width: 0;
+	`,
+	sidePanelTabBar: css`
+		height: 36px;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0 4px 0 4px;
+		border-bottom: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorBgContainer};
+		flex-shrink: 0;
+	`,
+	sidePanelTabList: css`
+		display: flex;
+		align-items: center;
+		gap: 2px;
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+	`,
+	sidePanelTab: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		padding: 4px 8px;
+		border: none;
+		border-radius: 6px;
+		background: transparent;
+		color: ${token.colorTextTertiary};
+		font-size: 12px;
+		cursor: pointer;
+		white-space: nowrap;
+		transition: all 0.15s ease;
+		&:hover {
+			background: ${token.colorFillQuaternary};
+			color: ${token.colorText};
+		}
+	`,
+	sidePanelTabActive: css`
+		background: ${token.colorFillSecondary};
+		color: ${token.colorText};
+		font-weight: 500;
+	`,
+	sidePanelTabLabel: css`
+		line-height: 1;
+	`,
+	sidePanelTabBadge: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 16px;
+		height: 16px;
+		padding: 0 4px;
+		border-radius: 8px;
+		background: ${token.colorPrimary};
+		color: #fff;
+		font-size: 10px;
+		font-weight: 600;
+		line-height: 1;
+	`,
+	sidePanelContent: css`
+		flex: 1;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	`,
+
+	// ─── File Tree ──────────────────────────────────────────────────────────
+
+	fileTreeContainer: css`
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		min-height: 0;
+		overflow: hidden;
+	`,
+	fileTreeSearch: css`
+		padding: 6px 8px;
+		border-bottom: 1px solid ${token.colorBorderSecondary};
+		flex-shrink: 0;
+	`,
+	fileTreeSearchInput: css`
+		width: 100%;
+		height: 26px;
+		padding: 0 8px;
+		border: 1px solid ${token.colorBorder};
+		border-radius: 6px;
+		background: ${token.colorFillQuaternary};
+		color: ${token.colorText};
+		font-size: 12px;
+		outline: none;
+		&:focus {
+			border-color: ${token.colorPrimary};
+		}
+		&::placeholder {
+			color: ${token.colorTextQuaternary};
+		}
+	`,
+	fileTreeList: css`
+		flex: 1;
+		overflow: auto;
+		padding: 2px 0;
+	`,
+	fileTreeNode: css`
+		display: flex;
+		align-items: center;
+		height: 28px;
+		padding-right: 8px;
+		cursor: pointer;
+		white-space: nowrap;
+		user-select: none;
+		font-size: 12px;
+		color: ${token.colorText};
+		&:hover {
+			background: ${token.colorFillQuaternary};
+		}
+	`,
+	fileTreeNodeIcon: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 16px;
+		height: 16px;
+		flex-shrink: 0;
+		color: ${token.colorTextTertiary};
+	`,
+	fileTreeNodeChevron: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 16px;
+		height: 16px;
+		flex-shrink: 0;
+		color: ${token.colorTextTertiary};
+	`,
+	fileTreeNodeName: css`
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		margin-left: 2px;
+	`,
+	fileTreeEmpty: css`
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 24px 16px;
+		color: ${token.colorTextQuaternary};
+		font-size: 12px;
+	`,
+	fileTreeLoading: css`
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 24px 16px;
+		color: ${token.colorTextTertiary};
+		font-size: 12px;
+		gap: 6px;
+	`,
+
+	// ─── Changed Files ──────────────────────────────────────────────────────
+
+	changedFilesList: css`
+		flex: 1;
+		overflow: auto;
+		padding: 2px 0;
+	`,
+	changedFileRow: css`
+		display: flex;
+		align-items: center;
+		height: 30px;
+		padding: 0 10px;
+		cursor: pointer;
+		font-size: 12px;
+		color: ${token.colorText};
+		gap: 6px;
+		&:hover {
+			background: ${token.colorFillQuaternary};
+		}
+	`,
+	changedFileIcon: css`
+		flex-shrink: 0;
+		color: ${token.colorTextTertiary};
+	`,
+	changedFileName: css`
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	`,
+	changedFileBadgeAdded: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 16px;
+		height: 16px;
+		border-radius: 3px;
+		background: ${token.colorSuccessBg};
+		color: ${token.colorSuccess};
+		font-size: 10px;
+		font-weight: 700;
+		flex-shrink: 0;
+	`,
+	changedFileBadgeModified: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 16px;
+		height: 16px;
+		border-radius: 3px;
+		background: ${token.colorWarningBg};
+		color: ${token.colorWarning};
+		font-size: 10px;
+		font-weight: 700;
+		flex-shrink: 0;
+	`,
+	changedFileStats: css`
+		font-size: 11px;
+		color: ${token.colorTextTertiary};
+		flex-shrink: 0;
+	`,
+	changedFilesEmpty: css`
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 32px 16px;
+		color: ${token.colorTextQuaternary};
+		font-size: 12px;
+		gap: 8px;
+	`,
+
+	// ─── Preview Tab ────────────────────────────────────────────────────────
+
+	previewContainer: css`
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		min-height: 0;
+		overflow: hidden;
+	`,
+	previewHeader: css`
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 6px 10px;
+		border-bottom: 1px solid ${token.colorBorderSecondary};
+		flex-shrink: 0;
+		font-size: 12px;
+		color: ${token.colorTextSecondary};
+		white-space: nowrap;
+		overflow: hidden;
+	`,
+	previewHeaderPath: css`
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	`,
+	previewBody: css`
+		flex: 1;
+		overflow: auto;
+		min-height: 0;
+	`,
+	previewImage: css`
+		max-width: 100%;
+		height: auto;
+		display: block;
+		margin: 16px auto;
+	`,
+	previewCodeWrap: css`
+		font-size: 12px;
+		line-height: 1.6;
+		& pre {
+			margin: 0;
+			padding: 8px;
+		}
+	`,
+	previewEmpty: css`
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 32px 16px;
+		color: ${token.colorTextQuaternary};
+		font-size: 12px;
+		gap: 8px;
+	`,
+	previewLoading: css`
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 24px 16px;
+		color: ${token.colorTextTertiary};
+		font-size: 12px;
+		gap: 6px;
+	`,
 	}),
 );

@@ -1,11 +1,11 @@
 /**
- * Gateway manager — spawns and supervises per-user OpenClaw gateway processes.
+ * Gateway manager — spawns and supervises per-user gateway processes.
  *
  * Each workspace gets its own gateway instance on a unique port.
  * Port range: 19000–19999, assigned round-robin from the pool.
  *
  * Process lifecycle:
- *   start  → spawn `openclaw serve` → wait for /health → update workspace state
+ *   start  → spawn gateway serve → wait for /health → update workspace state
  *   stop   → SIGTERM the process → update workspace state
  *   restart → stop + start
  */
@@ -38,9 +38,9 @@ function allocatePort(): number {
 
 // ─── Process lifecycle helpers ───────────────────────────────────────────────
 
-const OPENCLAW_BIN = process.env.OPENCLAW_BIN ?? 'openclaw';
-const OPENCLAW_SERVE_ARGS = (port: number) =>
-  (process.env.OPENCLAW_SERVE_ARGS ?? `serve --port {port}`)
+const GATEWAY_BIN = process.env.GATEWAY_BIN ?? 'gateway';
+const GATEWAY_SERVE_ARGS = (port: number) =>
+  (process.env.GATEWAY_SERVE_ARGS ?? `serve --port {port}`)
     .replace('{port}', String(port))
     .split(' ');
 
@@ -73,8 +73,8 @@ export async function startGateway(workspaceId: string): Promise<void> {
     }
   });
 
-  const args = OPENCLAW_SERVE_ARGS(port);
-  const proc = spawn(OPENCLAW_BIN, args, {
+  const args = GATEWAY_SERVE_ARGS(port);
+  const proc = spawn(GATEWAY_BIN, args, {
     stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, WORKSPACE_ID: workspaceId },
   });

@@ -27,13 +27,10 @@ type GatewayManager = {
 import { getChatAiService } from "../services/chat";
 import { type ProviderConfig } from "../utils/secure-storage";
 import {
-	getOpenClawStatus,
-	getOpenClawDir,
 	getOpenClawConfigDir,
 	getOpenClawSkillsDir,
 	ensureDir,
 } from "../utils/paths";
-import { getOpenClawCliCommand } from "../utils/openclaw-cli";
 import {
 	getAllSettings,
 	getSetting,
@@ -41,12 +38,6 @@ import {
 	setSetting,
 	type AppSettings,
 } from "../utils/store";
-import {
-	saveProviderKeyToOpenClaw,
-	removeProviderFromOpenClaw,
-} from "../utils/openclaw-auth";
-import { syncProxyConfigToOpenClaw } from "../utils/openclaw-proxy";
-import { buildOpenClawControlUiUrl } from "../utils/openclaw-control-ui";
 import { logger } from "../utils/logger";
 import {
 	saveChannelConfig,
@@ -88,7 +79,6 @@ import { proxyAwareFetch } from "../utils/proxy-fetch";
 import { getRecentTokenUsageHistory } from "../utils/token-usage";
 import { getProviderService } from "../services/providers/provider-service";
 import {
-	getOpenClawProviderKey,
 	syncDefaultProviderToRuntime,
 	syncDeletedProviderApiKeyToRuntime,
 	syncDeletedProviderToRuntime,
@@ -981,7 +971,7 @@ export function registerIpcHandlers(
 	// Gateway handlers
 	registerGatewayHandlers(gatewayManager, mainWindow);
 
-	// OpenClaw handlers
+	// Package status & channel handlers
 	registerOpenClawHandlers(gatewayManager);
 
 	// Provider handlers
@@ -1155,9 +1145,6 @@ function registerUnifiedRequestHandlers(gatewayManager: GatewayManager): void {
 	const providerService = getProviderService();
 	const handleProxySettingsChange = async () => {
 		const settings = await getAllSettings();
-		await syncProxyConfigToOpenClaw(settings, {
-			preserveExistingWhenDisabled: false,
-		});
 		await applyProxySettings(settings);
 		if (gatewayManager.getStatus().state === "running") {
 			await gatewayManager.restart();
@@ -1311,7 +1298,7 @@ function registerUnifiedRequestHandlers(gatewayManager: GatewayManager): void {
 										gatewayManager,
 									);
 								} catch (err) {
-									console.warn("Failed to sync openclaw provider config:", err);
+									console.warn("Failed to sync provider config to runtime:", err);
 								}
 
 								data = { success: true };
@@ -1343,7 +1330,7 @@ function registerUnifiedRequestHandlers(gatewayManager: GatewayManager): void {
 										);
 									} catch (err) {
 										console.warn(
-											"Failed to completely remove provider from OpenClaw:",
+											"Failed to completely remove provider from runtime:",
 											err,
 										);
 									}
@@ -1373,18 +1360,6 @@ function registerUnifiedRequestHandlers(gatewayManager: GatewayManager): void {
 									providerId,
 									apiKey,
 								);
-								const provider =
-									await providerService.getLegacyProvider(providerId);
-								const providerType = provider?.type || providerId;
-								const ock = getOpenClawProviderKey(providerType, providerId);
-								try {
-									await saveProviderKeyToOpenClaw(ock, apiKey);
-								} catch (err) {
-									console.warn(
-										"Failed to save key to OpenClaw auth-profiles:",
-										err,
-									);
-								}
 								data = { success: true };
 							} catch (error) {
 								data = { success: false, error: String(error) };
@@ -1421,10 +1396,6 @@ function registerUnifiedRequestHandlers(gatewayManager: GatewayManager): void {
 
 							const previousKey =
 								await providerService.getLegacyProviderApiKey(providerId);
-							const previousOck = getOpenClawProviderKey(
-								existing.type,
-								providerId,
-							);
 
 							try {
 								const nextConfig: ProviderConfig = {
@@ -1432,7 +1403,6 @@ function registerUnifiedRequestHandlers(gatewayManager: GatewayManager): void {
 									...updates,
 									updatedAt: new Date().toISOString(),
 								};
-								const ock = getOpenClawProviderKey(nextConfig.type, providerId);
 								await providerService.saveLegacyProvider(nextConfig);
 
 								if (apiKey !== undefined) {
@@ -1442,12 +1412,10 @@ function registerUnifiedRequestHandlers(gatewayManager: GatewayManager): void {
 											providerId,
 											trimmedKey,
 										);
-										await saveProviderKeyToOpenClaw(ock, trimmedKey);
 									} else {
 										await providerService.deleteLegacyProviderApiKey(
 											providerId,
 										);
-										await removeProviderFromOpenClaw(ock);
 									}
 								}
 
@@ -1459,7 +1427,7 @@ function registerUnifiedRequestHandlers(gatewayManager: GatewayManager): void {
 									);
 								} catch (err) {
 									console.warn(
-										"Failed to sync openclaw config after provider update:",
+										"Failed to sync provider config after provider update:",
 										err,
 									);
 								}
@@ -1473,12 +1441,10 @@ function registerUnifiedRequestHandlers(gatewayManager: GatewayManager): void {
 											providerId,
 											previousKey,
 										);
-										await saveProviderKeyToOpenClaw(previousOck, previousKey);
 									} else {
 										await providerService.deleteLegacyProviderApiKey(
 											providerId,
 										);
-										await removeProviderFromOpenClaw(previousOck);
 									}
 								} catch (rollbackError) {
 									console.warn(
@@ -1502,20 +1468,6 @@ function registerUnifiedRequestHandlers(gatewayManager: GatewayManager): void {
 								throw new Error("Invalid provider.deleteApiKey payload");
 							try {
 								await providerService.deleteLegacyProviderApiKey(providerId);
-								const provider =
-									await providerService.getLegacyProvider(providerId);
-								const providerType = provider?.type || providerId;
-								const ock = getOpenClawProviderKey(providerType, providerId);
-								try {
-									if (ock) {
-										await removeProviderFromOpenClaw(ock);
-									}
-								} catch (err) {
-									console.warn(
-										"Failed to completely remove provider from OpenClaw:",
-										err,
-									);
-								}
 								data = { success: true };
 							} catch (error) {
 								data = { success: false, error: String(error) };
@@ -1543,7 +1495,7 @@ function registerUnifiedRequestHandlers(gatewayManager: GatewayManager): void {
 											gatewayManager,
 										);
 									} catch (err) {
-										console.warn("Failed to set OpenClaw default model:", err);
+										console.warn("Failed to set default model:", err);
 									}
 								}
 
@@ -1897,7 +1849,7 @@ function registerUnifiedRequestHandlers(gatewayManager: GatewayManager): void {
 
 /**
  * Skill config IPC handlers
- * Direct read/write to ~/.openclaw/openclaw.json (bypasses Gateway RPC)
+ * Skill config IPC handlers (bypasses Gateway RPC)
  */
 function registerSkillConfigHandlers(): void {
 	// Update skill config (apiKey and env)
@@ -2059,7 +2011,7 @@ function registerCronHandlers(gatewayManager: GatewayManager): void {
 	// Create a new cron job
 	// UI-created tasks have no delivery target — results go to the MimiClaw chat page.
 	// Tasks created via external channels (Feishu, Discord, etc.) are handled
-	// directly by the OpenClaw Gateway and do not pass through this IPC handler.
+	// directly by the Gateway and do not pass through this IPC handler.
 	ipcMain.handle(
 		"cron:create",
 		async (
@@ -2483,7 +2435,7 @@ function registerGatewayHandlers(
 			const status = gatewayManager.getStatus();
 			const token = await getSetting("gatewayToken");
 			const port = status.port || 18789;
-			const url = buildOpenClawControlUiUrl(port, token);
+			const url = null;
 			return { success: true, url, port, token };
 		} catch (error) {
 			return { success: false, error: String(error) };
@@ -2545,8 +2497,7 @@ function registerGatewayHandlers(
 }
 
 /**
- * OpenClaw-related IPC handlers
- * For checking package status and channel configuration
+ * Package status and channel configuration IPC handlers
  */
 function registerOpenClawHandlers(gatewayManager: GatewayManager): void {
 	// Plugin-based channels require a full Gateway process restart to properly
@@ -2586,56 +2537,16 @@ function registerOpenClawHandlers(gatewayManager: GatewayManager): void {
 		gatewayManager.debouncedReload();
 	};
 
-	// Get OpenClaw package status
-	ipcMain.handle("openclaw:status", () => {
-		const status = getOpenClawStatus();
-		logger.info("openclaw:status IPC called", status);
-		return status;
-	});
-
-	// Check if OpenClaw is ready (package present)
-	ipcMain.handle("openclaw:isReady", () => {
-		const status = getOpenClawStatus();
-		return status.packageExists;
-	});
-
-	// Get the resolved OpenClaw directory path (for diagnostics)
-	ipcMain.handle("openclaw:getDir", () => {
-		return getOpenClawDir();
-	});
-
-	// Get the OpenClaw config directory (~/.openclaw)
+	// Get the config directory (~/.openclaw)
 	ipcMain.handle("openclaw:getConfigDir", () => {
 		return getOpenClawConfigDir();
 	});
 
-	// Get the OpenClaw skills directory (~/.openclaw/skills)
+	// Get the skills directory (~/.openclaw/skills)
 	ipcMain.handle("openclaw:getSkillsDir", () => {
 		const dir = getOpenClawSkillsDir();
 		ensureDir(dir);
 		return dir;
-	});
-
-	// Get a shell command to run OpenClaw CLI without modifying PATH
-	ipcMain.handle("openclaw:getCliCommand", () => {
-		try {
-			const status = getOpenClawStatus();
-			if (!status.packageExists) {
-				return {
-					success: false,
-					error: `OpenClaw package not found at: ${status.dir}`,
-				};
-			}
-			if (!existsSync(status.entryPath)) {
-				return {
-					success: false,
-					error: `OpenClaw entry script not found at: ${status.entryPath}`,
-				};
-			}
-			return { success: true, command: getOpenClawCliCommand() };
-		} catch (error) {
-			return { success: false, error: String(error) };
-		}
 	});
 
 	// ==================== Channel Configuration Handlers ====================
@@ -3005,7 +2916,6 @@ function registerProviderHandlers(gatewayManager: GatewayManager): void {
 							trimmedKey,
 						);
 
-						// Also write to OpenClaw auth-profiles.json so the gateway can use it
 						try {
 							await syncProviderApiKeyToRuntime(
 								config.type,
@@ -3014,18 +2924,17 @@ function registerProviderHandlers(gatewayManager: GatewayManager): void {
 							);
 						} catch (err) {
 							console.warn(
-								"Failed to save key to OpenClaw auth-profiles:",
+								"Failed to sync provider API key to runtime:",
 								err,
 							);
 						}
 					}
 				}
 
-				// Sync the provider configuration to openclaw.json so Gateway knows about it
 				try {
 					await syncSavedProviderToRuntime(config, apiKey, gatewayManager);
 				} catch (err) {
-					console.warn("Failed to sync openclaw provider config:", err);
+					console.warn("Failed to sync provider config to runtime:", err);
 				}
 
 				return { success: true };
@@ -3042,7 +2951,7 @@ function registerProviderHandlers(gatewayManager: GatewayManager): void {
 			const existing = await providerService.getLegacyProvider(providerId);
 			await providerService.deleteLegacyProvider(providerId);
 
-			// Best-effort cleanup in OpenClaw auth profiles & openclaw.json config
+			// Best-effort cleanup in runtime config
 			if (existing?.type) {
 				try {
 					await syncDeletedProviderToRuntime(
@@ -3052,7 +2961,7 @@ function registerProviderHandlers(gatewayManager: GatewayManager): void {
 					);
 				} catch (err) {
 					console.warn(
-						"Failed to completely remove provider from OpenClaw:",
+						"Failed to completely remove provider from runtime:",
 						err,
 					);
 				}
@@ -3072,13 +2981,12 @@ function registerProviderHandlers(gatewayManager: GatewayManager): void {
 			try {
 				await providerService.setLegacyProviderApiKey(providerId, apiKey);
 
-				// Also write to OpenClaw auth-profiles.json
 				const provider = await providerService.getLegacyProvider(providerId);
 				const providerType = provider?.type || providerId;
 				try {
 					await syncProviderApiKeyToRuntime(providerType, providerId, apiKey);
 				} catch (err) {
-					console.warn("Failed to save key to OpenClaw auth-profiles:", err);
+					console.warn("Failed to sync provider API key to runtime:", err);
 				}
 
 				return { success: true };
@@ -3105,7 +3013,6 @@ function registerProviderHandlers(gatewayManager: GatewayManager): void {
 
 			const previousKey =
 				await providerService.getLegacyProviderApiKey(providerId);
-			const previousOck = getOpenClawProviderKey(existing.type, providerId);
 
 			try {
 				const nextConfig: ProviderConfig = {
@@ -3113,8 +3020,6 @@ function registerProviderHandlers(gatewayManager: GatewayManager): void {
 					...updates,
 					updatedAt: new Date().toISOString(),
 				};
-
-				const ock = getOpenClawProviderKey(nextConfig.type, providerId);
 
 				await providerService.saveLegacyProvider(nextConfig);
 
@@ -3132,11 +3037,9 @@ function registerProviderHandlers(gatewayManager: GatewayManager): void {
 						);
 					} else {
 						await providerService.deleteLegacyProviderApiKey(providerId);
-						await removeProviderFromOpenClaw(ock);
 					}
 				}
 
-				// Sync the provider configuration to openclaw.json so Gateway knows about it
 				try {
 					await syncUpdatedProviderToRuntime(
 						nextConfig,
@@ -3145,7 +3048,7 @@ function registerProviderHandlers(gatewayManager: GatewayManager): void {
 					);
 				} catch (err) {
 					console.warn(
-						"Failed to sync openclaw config after provider update:",
+						"Failed to sync provider config after provider update:",
 						err,
 					);
 				}
@@ -3160,10 +3063,8 @@ function registerProviderHandlers(gatewayManager: GatewayManager): void {
 							providerId,
 							previousKey,
 						);
-						await saveProviderKeyToOpenClaw(previousOck, previousKey);
 					} else {
 						await providerService.deleteLegacyProviderApiKey(providerId);
-						await removeProviderFromOpenClaw(previousOck);
 					}
 				} catch (rollbackError) {
 					console.warn(
@@ -3183,13 +3084,12 @@ function registerProviderHandlers(gatewayManager: GatewayManager): void {
 		try {
 			await providerService.deleteLegacyProviderApiKey(providerId);
 
-			// Keep OpenClaw auth-profiles.json in sync with local key storage
 			const provider = await providerService.getLegacyProvider(providerId);
 			try {
 				await syncDeletedProviderApiKeyToRuntime(provider, providerId);
 			} catch (err) {
 				console.warn(
-					"Failed to completely remove provider from OpenClaw:",
+					"Failed to completely remove provider from runtime:",
 					err,
 				);
 			}
@@ -3212,17 +3112,16 @@ function registerProviderHandlers(gatewayManager: GatewayManager): void {
 		return await providerService.getLegacyProviderApiKey(providerId);
 	});
 
-	// Set default provider and update OpenClaw default model
+	// Set default provider
 	ipcMain.handle("provider:setDefault", async (_, providerId: string) => {
 		logLegacyProviderChannel("provider:setDefault");
 		try {
 			await providerService.setDefaultLegacyProvider(providerId);
 
-			// Update OpenClaw config to use this provider's default model
 			try {
 				await syncDefaultProviderToRuntime(providerId, gatewayManager);
 			} catch (err) {
-				console.warn("Failed to set OpenClaw default model:", err);
+				console.warn("Failed to set default model:", err);
 			}
 
 			return { success: true };
@@ -3468,9 +3367,6 @@ function registerAppHandlers(): void {
 function registerSettingsHandlers(gatewayManager: GatewayManager): void {
 	const handleProxySettingsChange = async () => {
 		const settings = await getAllSettings();
-		await syncProxyConfigToOpenClaw(settings, {
-			preserveExistingWhenDisabled: false,
-		});
 		await applyProxySettings(settings);
 		if (gatewayManager.getStatus().state === "running") {
 			await gatewayManager.restart();
@@ -3686,7 +3582,7 @@ async function generateImagePreview(
 
 /**
  * File staging IPC handlers
- * Stage files to ~/.openclaw/media/outbound/ for gateway access
+ * Stage files to media outbound directory for gateway access
  */
 function registerFileHandlers(): void {
 	// Stage files from real disk paths (used with dialog:open)
@@ -3891,7 +3787,7 @@ function registerSessionHandlers(): void {
 				};
 			}
 
-			// sessions.json structure: try common shapes used by OpenClaw Gateway:
+			// sessions.json structure: try common shapes used by Gateway:
 			//   Shape A (array):  { sessions: [{ key, file, ... }] }
 			//   Shape B (object): { [sessionKey]: { file, ... } }
 			//   Shape C (array):  { sessions: [{ key, id, ... }] }  — id is the UUID

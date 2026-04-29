@@ -5,8 +5,7 @@
 import { app } from 'electron';
 import { join } from 'path';
 import { homedir } from 'os';
-import { existsSync, mkdirSync, readFileSync, realpathSync } from 'fs';
-import { logger } from './logger';
+import { existsSync, mkdirSync } from 'fs';
 
 export {
   quoteForCmd,
@@ -120,96 +119,3 @@ export function getPreloadPath(): string {
   return join(__dirname, '../preload/index.js');
 }
 
-/**
- * Get OpenClaw package directory
- * - Production (packaged): from resources/openclaw (copied by electron-builder extraResources)
- * - Development: from node_modules/openclaw
- */
-export function getOpenClawDir(): string {
-  if (app.isPackaged) {
-    return join(process.resourcesPath, 'openclaw');
-  }
-  // Development: use node_modules/openclaw
-  return join(__dirname, '../../node_modules/openclaw');
-}
-
-/**
- * Get OpenClaw package directory resolved to a real path.
- * Useful when consumers need deterministic module resolution under pnpm symlinks.
- */
-export function getOpenClawResolvedDir(): string {
-  const dir = getOpenClawDir();
-  if (!existsSync(dir)) {
-    return dir;
-  }
-  try {
-    return realpathSync(dir);
-  } catch {
-    return dir;
-  }
-}
-
-/**
- * Get OpenClaw entry script path (openclaw.mjs)
- */
-export function getOpenClawEntryPath(): string {
-  return join(getOpenClawDir(), 'openclaw.mjs');
-}
-
-/**
- * Check if OpenClaw package exists
- */
-export function isOpenClawPresent(): boolean {
-  const dir = getOpenClawDir();
-  const pkgJsonPath = join(dir, 'package.json');
-  return existsSync(dir) && existsSync(pkgJsonPath);
-}
-
-/**
- * Check if OpenClaw is built (has dist folder)
- * For the npm package, this should always be true since npm publishes the built dist.
- */
-export function isOpenClawBuilt(): boolean {
-  const dir = getOpenClawDir();
-  const distDir = join(dir, 'dist');
-  const hasDist = existsSync(distDir);
-  return hasDist;
-}
-
-/**
- * Get OpenClaw status for environment check
- */
-export interface OpenClawStatus {
-  packageExists: boolean;
-  isBuilt: boolean;
-  entryPath: string;
-  dir: string;
-  version?: string;
-}
-
-export function getOpenClawStatus(): OpenClawStatus {
-  const dir = getOpenClawDir();
-  let version: string | undefined;
-
-  // Try to read version from package.json
-  try {
-    const pkgPath = join(dir, 'package.json');
-    if (existsSync(pkgPath)) {
-      const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
-      version = pkg.version;
-    }
-  } catch {
-    // Ignore version read errors
-  }
-
-  const status: OpenClawStatus = {
-    packageExists: isOpenClawPresent(),
-    isBuilt: isOpenClawBuilt(),
-    entryPath: getOpenClawEntryPath(),
-    dir,
-    version,
-  };
-
-  logger.info('OpenClaw status:', status);
-  return status;
-}

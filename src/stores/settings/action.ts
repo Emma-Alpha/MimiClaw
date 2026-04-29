@@ -426,7 +426,7 @@ export function createSettingsActions(set: Setter, get: Getter): SettingsStoreAc
         const nextActiveContext =
           state.sidebarActiveContext.kind === 'thread'
             && state.sidebarActiveContext.workspaceId === workspaceId
-            ? { kind: 'openclaw' as const, workspaceId: null }
+            ? { kind: 'chat' as const, workspaceId: null }
             : state.sidebarActiveContext;
         return {
           sidebarThreadWorkspaces: state.sidebarThreadWorkspaces.filter(
@@ -472,7 +472,7 @@ export function createSettingsActions(set: Setter, get: Getter): SettingsStoreAc
         ? 'thread'
         : context.kind === 'realtimeVoice'
           ? 'realtimeVoice'
-          : 'openclaw';
+          : 'chat';
       const workspaceId = kind === 'thread' ? context.workspaceId ?? null : null;
       const current = get().sidebarActiveContext;
       if (current.kind === kind && current.workspaceId === workspaceId) return;

@@ -12,7 +12,6 @@ import { logger } from './logger';
 import { saveProvider, getProvider, ProviderConfig } from './secure-storage';
 import { getProviderDefaultModel } from './provider-registry';
 import { proxyAwareFetch } from './proxy-fetch';
-import { saveOAuthTokenToOpenClaw, setOpenClawDefaultModelWithOverride } from './openclaw-auth';
 
 // ─────────────────────────────────────────────────────────────────────
 // OAuth utilities (pure Node.js, no external deps)
@@ -344,25 +343,9 @@ class DeviceOAuthManager extends EventEmitter {
         this.activeLabel = null;
         logger.info(`[DeviceOAuth] Successfully completed OAuth for ${providerType}`);
 
-        // 1. Write OAuth token to OpenClaw's auth-profiles.json in native OAuth format.
-        //    (matches what `openclaw models auth login` → upsertAuthProfile writes).
-        //    We save both MiniMax providers to the generic "minimax-portal" profile
-        //    so OpenClaw's gateway auto-refresher knows how to find it.
-        try {
-            const tokenProviderId = providerType.startsWith('minimax-portal') ? 'minimax-portal' : providerType;
-            await saveOAuthTokenToOpenClaw(tokenProviderId, {
-                access: token.access,
-                refresh: token.refresh,
-                expires: token.expires,
-            });
-        } catch (err) {
-            logger.warn(`[DeviceOAuth] Failed to save OAuth token to OpenClaw:`, err);
-        }
-
-        // 2. Write openclaw.json: set default model + provider config (baseUrl/api/models)
-        //    This mirrors what the OpenClaw plugin's configPatch does after CLI login.
-        //    The baseUrl comes from token.resourceUrl (per-account URL from the OAuth server)
-        //    or falls back to the provider's default public endpoint.
+        // Determine the base URL for the provider.
+        // The baseUrl comes from token.resourceUrl (per-account URL from the OAuth server)
+        // or falls back to the provider's default public endpoint.
         const defaultBaseUrl = providerType === 'minimax-portal'
             ? 'https://api.minimax.io/anthropic'
             : (providerType === 'minimax-portal-cn' ? 'https://api.minimaxi.com/anthropic' : 'https://portal.qwen.ai/v1');
@@ -384,22 +367,7 @@ class DeviceOAuthManager extends EventEmitter {
             }
         }
 
-        try {
-            const tokenProviderId = providerType.startsWith('minimax-portal') ? 'minimax-portal' : providerType;
-            await setOpenClawDefaultModelWithOverride(tokenProviderId, undefined, {
-                baseUrl,
-                api: token.api,
-                // Tells OpenClaw's anthropic adapter to use `Authorization: Bearer` instead of `x-api-key`
-                authHeader: providerType.startsWith('minimax-portal') ? true : undefined,
-                // OAuth placeholder — tells Gateway to resolve credentials
-                // from auth-profiles.json (type: 'oauth') instead of a static API key.
-                apiKeyEnv: tokenProviderId === 'minimax-portal' ? 'minimax-oauth' : 'qwen-oauth',
-            });
-        } catch (err) {
-            logger.warn(`[DeviceOAuth] Failed to configure openclaw models:`, err);
-        }
-
-        // 3. Save provider record in MimiClaw's own store so UI shows it as configured
+        // Save provider record in MimiClaw's own store so UI shows it as configured
         const existing = await getProvider(accountId);
         const nameMap: Record<OAuthProviderType, string> = {
             'minimax-portal': 'MiniMax (Global)',

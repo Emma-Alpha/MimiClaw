@@ -10,7 +10,7 @@ import { existsSync, readdirSync } from 'fs';
 import { constants } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import { getOpenClawDir, getResourcesDir } from './paths';
+import { getResourcesDir } from './paths';
 import { logger } from './logger';
 import { withConfigLock } from './config-mutex';
 
@@ -194,41 +194,11 @@ export async function getAllSkillConfigs(): Promise<Record<string, SkillEntry>> 
 const BUILTIN_SKILLS = [] as const;
 
 /**
- * Ensure built-in skills are deployed to ~/.openclaw/skills/<slug>/.
- * Skips any skill that already has a SKILL.md present (idempotent).
- * Runs at app startup; all errors are logged and swallowed so they never
- * block the normal startup flow.
+ * Ensure built-in skills are deployed.
+ * Deploys bundled SKILL.md skills from resources/skills/ to the Claude Code
+ * config skills directory so the CLI can discover them via /command.
  */
 export async function ensureBuiltinSkillsInstalled(): Promise<void> {
-    const skillsRoot = join(homedir(), '.openclaw', 'skills');
-
-    for (const { slug, sourceExtension } of BUILTIN_SKILLS) {
-        const targetDir = join(skillsRoot, slug);
-        const targetManifest = join(targetDir, 'SKILL.md');
-
-        if (existsSync(targetManifest)) {
-            continue; // already installed
-        }
-
-        const openclawDir = getOpenClawDir();
-        const sourceDir = join(openclawDir, 'extensions', sourceExtension, 'skills', slug);
-
-        if (!existsSync(join(sourceDir, 'SKILL.md'))) {
-            logger.warn(`Built-in skill source not found, skipping: ${sourceDir}`);
-            continue;
-        }
-
-        try {
-            await mkdir(targetDir, { recursive: true });
-            await cp(sourceDir, targetDir, { recursive: true });
-            logger.info(`Installed built-in skill: ${slug} -> ${targetDir}`);
-        } catch (error) {
-            logger.warn(`Failed to install built-in skill ${slug}:`, error);
-        }
-    }
-
-    // Deploy bundled SKILL.md skills from resources/skills/ to the Claude Code
-    // config skills directory so the CLI can discover them via /command.
     await ensureBundledResourceSkillsDeployed();
 }
 

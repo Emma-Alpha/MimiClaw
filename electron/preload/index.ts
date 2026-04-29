@@ -25,9 +25,6 @@ const electronAPI = {
         'hostapi:fetch',
         'gateway:health',
         'gateway:getControlUiUrl',
-        // OpenClaw
-        'openclaw:status',
-        'openclaw:isReady',
         // Shell
         'shell:openExternal',
         'shell:showItemInFolder',
@@ -164,11 +161,8 @@ const electronAPI = {
         'chat:abort',
         // Session management
         'session:delete',
-        // OpenClaw extras
-        'openclaw:getDir',
         'openclaw:getConfigDir',
         'openclaw:getSkillsDir',
-        'openclaw:getCliCommand',
         'code-agent:respond-permission',
         'code-agent:respond-elicitation',
         'thread-terminal:list-shells',
@@ -247,7 +241,6 @@ const electronAPI = {
         'code-agent:tool-result',
         'code-agent:permission-request',
         'code-agent:sdk-message',
-        'openclaw:cli-installed',
         'pet:settings-updated',
         'pet:runtime-state',
         'pet:recording-command',

@@ -707,7 +707,7 @@ export function createGatewayWsTransportInvoker(options: GatewayWsTransportOptio
         minProtocol: 3,
         maxProtocol: 3,
         client: {
-          id: 'openclaw-control-ui',
+          id: 'mimiclaw-ui',
           displayName: '极智 UI',
           version: '1.0.0',
           platform: window.electron?.platform ?? 'unknown',

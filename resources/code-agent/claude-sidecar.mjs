@@ -71,6 +71,7 @@ function send(message) {
 // Resolved when the manager sends a run.approve RPC call.
 const pendingPermissions = new Map();
 let activeRunAbortController = null;
+let activeRunSettled = false;
 
 function resolvePendingPermissions(decision = 'deny', feedback = 'Cancelled by user') {
   if (pendingPermissions.size === 0) return;
@@ -122,7 +123,7 @@ async function handleRequest(method, params) {
     if (!workspaceRoot || !prompt) {
       throw new Error('run.start requires both workspaceRoot and prompt');
     }
-    if (activeRunAbortController && !activeRunAbortController.signal.aborted) {
+    if (activeRunAbortController && !activeRunAbortController.signal.aborted && !activeRunSettled) {
       throw new Error('A code agent run is already in progress');
     }
 
@@ -130,6 +131,7 @@ async function handleRequest(method, params) {
     const images = Array.isArray(params?.images) ? params.images : [];
     const abortController = new AbortController();
     activeRunAbortController = abortController;
+    activeRunSettled = false;
 
     try {
       const analysis = await runSnapshotAnalysis({
@@ -216,9 +218,11 @@ async function handleRequest(method, params) {
         },
       };
     } finally {
-      if (activeRunAbortController === abortController) {
-        activeRunAbortController = null;
-      }
+      // Mark the run as settled but keep activeRunAbortController alive.
+      // The abort listener in runClaudeCliTask stays registered until the
+      // child process exits, so a late run.cancel can still kill it.
+      // The controller is replaced on the next run.start.
+      activeRunSettled = true;
       resolvePendingPermissions();
     }
   }

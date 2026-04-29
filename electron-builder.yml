@@ -151,7 +151,7 @@ linux:
   maintainer: 极智团队 <1733452028@qq.com>
   vendor: 极智
   synopsis: AI 智能助手
-  description: 极智是一款图形化 AI 助手应用，集成 OpenClaw 网关，提供跨多平台的智能自动化与辅助功能。
+  description: 极智是一款图形化 AI 助手应用，提供跨多平台的智能自动化与辅助功能。
   desktop:
     entry:
       Name: 极智

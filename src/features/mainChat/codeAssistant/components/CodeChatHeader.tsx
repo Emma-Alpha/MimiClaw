@@ -12,7 +12,7 @@ import {
 	Cpu,
 	ShieldAlert,
 	SquareTerminal,
-	Globe,
+	PanelRight,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useSettingsStore } from "@/stores/settings";
@@ -65,9 +65,9 @@ type CodeChatHeaderProps = {
 	isTerminalToggleDisabled?: boolean;
 	terminalShortcutLabel?: string;
 	onToggleTerminal?: () => void;
-	showBrowserToggle?: boolean;
-	isBrowserVisible?: boolean;
-	onToggleBrowser?: () => void;
+	showSidePanelToggle?: boolean;
+	isSidePanelVisible?: boolean;
+	onToggleSidePanel?: () => void;
 };
 const HEADER_SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
 
@@ -135,9 +135,9 @@ function CodeChatHeaderImpl({
 	isTerminalToggleDisabled = false,
 	terminalShortcutLabel = "",
 	onToggleTerminal,
-	showBrowserToggle = false,
-	isBrowserVisible = false,
-	onToggleBrowser,
+	showSidePanelToggle = false,
+	isSidePanelVisible = false,
+	onToggleSidePanel,
 }: CodeChatHeaderProps) {
 	const { t } = useTranslation("common");
 	const sidebarCollapsed = useSettingsStore((state) => state.sidebarCollapsed);
@@ -370,20 +370,20 @@ function CodeChatHeaderImpl({
 								</span>
 							</Tooltip>
 						) : null}
-						{showBrowserToggle ? (
-							<Tooltip placement="bottom" title="Browser">
+						{showSidePanelToggle ? (
+							<Tooltip placement="bottom" title="侧面板 (⌘⇧E)">
 								<span className={styles.tooltipTrigger}>
 									<ActionIcon
-										aria-label="Toggle browser panel"
-										aria-pressed={isBrowserVisible}
+										aria-label="Toggle side panel"
+										aria-pressed={isSidePanelVisible}
 										className={cx(
 											styles.embeddedToolbarButton,
-											isBrowserVisible && styles.embeddedToolbarButtonActive,
+											isSidePanelVisible && styles.embeddedToolbarButtonActive,
 										)}
-										icon={Globe}
+										icon={PanelRight}
 										onClick={(event) => {
 											event.stopPropagation();
-											onToggleBrowser?.();
+											onToggleSidePanel?.();
 										}}
 										size="small"
 									/>

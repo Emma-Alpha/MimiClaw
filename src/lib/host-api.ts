@@ -240,12 +240,12 @@ export interface CloudGatewayState {
   gatewayError?: string | null;
 }
 
-/** Fetch the current openclaw config from the cloud backend (no-op if not in cloud mode). */
+/** Fetch the current cloud config (no-op if not in cloud mode). */
 export async function fetchCloudConfig(): Promise<CloudConfigState> {
   return hostApiFetch<CloudConfigState>('/api/cloud/config');
 }
 
-/** Shallow-merge `patch` into the cloud openclaw config. */
+/** Shallow-merge `patch` into the cloud config. */
 export async function patchCloudConfigFromRenderer(
   patch: Record<string, unknown>,
 ): Promise<{ success: boolean }> {

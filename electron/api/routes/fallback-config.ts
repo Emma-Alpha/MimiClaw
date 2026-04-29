@@ -2,7 +2,6 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { applyProxySettings } from '../../main/proxy';
 import { syncLaunchAtStartupSettingFromStore } from '../../main/launch-at-startup';
 import { syncPetWindowFromSettings } from '../../main/pet-window';
-import { syncProxyConfigToOpenClaw } from '../../utils/openclaw-proxy';
 import { getAllSettings, type AppSettings } from '../../utils/store';
 import {
   applyFallbackBundlePayload,
@@ -51,7 +50,6 @@ function patchTouchesPet(patch: Partial<AppSettings>): boolean {
 async function applySettingsPatchSideEffects(patch: Partial<AppSettings>, ctx: HostApiContext): Promise<void> {
   if (patchTouchesProxy(patch)) {
     const settings = await getAllSettings();
-    await syncProxyConfigToOpenClaw(settings, { preserveExistingWhenDisabled: false });
     await applyProxySettings(settings);
     if (ctx.gatewayManager.getStatus().state === 'running') {
       await ctx.gatewayManager.restart();

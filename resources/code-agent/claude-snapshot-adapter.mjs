@@ -1257,7 +1257,11 @@ async function runClaudeCliTask({
       if (killTimer) {
         clearTimeout(killTimer);
       }
-      abortCleanup?.();
+      // NOTE: Do NOT call abortCleanup here. When earlySettle fires (from a
+      // CLI "result" message), the child process may still be alive and IPC
+      // events may still be in flight. Removing the abort listener would make
+      // a subsequent run.cancel unable to kill the child. The listener is
+      // cleaned up in the child 'close' handler below instead.
       resolvePromise(value);
     };
     // Allow the stdout handler to settle early when the CLI result arrives.
@@ -1319,6 +1323,7 @@ async function runClaudeCliTask({
       emitTrace(onEvent, 'process:error', {
         message: error instanceof Error ? error.message : String(error),
       });
+      abortCleanup?.();
       settle({
         code: null,
         signal: null,
@@ -1326,6 +1331,7 @@ async function runClaudeCliTask({
     });
 
     child.once('close', (code, signal) => {
+      abortCleanup?.();
       settle({ code, signal });
     });
   });

@@ -32,6 +32,7 @@ import {
 	cancelCodeAgentRun,
 	fetchClaudeCodeSkills,
 	fetchCodeAgentStatus,
+	restartCodeAgent,
 	fetchLatestCodeAgentRun,
 	fetchProjectMentionEntries,
 	fetchWorkspaceGitBranch,
@@ -51,7 +52,7 @@ import {
 import i18n from "@/i18n";
 import type { RawMessage } from "@/stores/chat";
 import { useSettingsStore } from "@/stores/settings";
-import { toast } from "sonner";
+
 import type {
 	CodeAgentStatus,
 	CodeAgentPermissionMode,
@@ -62,7 +63,8 @@ import type {
 import { CodeChatHeader } from "./components/CodeChatHeader";
 import { ConversationView } from "@/features/mainChat/components/ConversationView";
 import { ThreadTerminalPanel } from "./components/ThreadTerminalPanel";
-import { BrowserUsePanel } from "./components/BrowserUsePanel";
+import { SidePanel } from "./components/sidePanel";
+import { useSidePanelStore } from "@/stores/sidePanel";
 import { ElicitationForm } from "./components/code-agent/ElicitationForm";
 import { PermissionDispatcher } from "./components/code-agent/permissions/PermissionDispatcher";
 import { TodoListCard } from "./components/code-agent/TodoListCard";
@@ -147,6 +149,10 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 	// runMiniCodeTask can attach it to the completed message even if another
 	// run starts before the promise resolves.
 	const pendingCompletionActivitiesRef = useRef<ToolActivityItem[]>([]);
+	// When true, streaming events (token + sdk-message) are suppressed so that
+	// clicking "stop" gives immediate visual feedback even when the sidecar
+	// cancel round-trip races with the CLI result message. Reset on run-started.
+	const stopRequestedRef = useRef(false);
 
 	// New SDK-message driven store
 	const pushSdkMessage = useChatStore((s) => s.pushSdkMessage);
@@ -182,12 +188,13 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 	const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
 	const [branchSearchValue, setBranchSearchValue] = useState("");
 	const [showThreadTerminal, setShowThreadTerminal] = useState(false);
-	const [showBrowserUse, setShowBrowserUse] = useState(false);
+	const [showSidePanel, setShowSidePanel] = useState(false);
 
-	// Auto-open browser panel when AI requests it
+	// Auto-open side panel (browser tab) when AI requests it
 	useEffect(() => {
 		const cleanup = window.electron?.ipcRenderer?.on?.("browser-use:request-open", () => {
-			setShowBrowserUse(true);
+			setShowSidePanel(true);
+			useSidePanelStore.getState().setActiveTab("browser");
 		});
 		return typeof cleanup === "function" ? cleanup : undefined;
 	}, []);
@@ -369,6 +376,7 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 		setCodeAgentPendingPermission,
 		codeActivitiesRef,
 		pendingCompletionActivitiesRef,
+		stopRequestedRef,
 	});
 
 	useEffect(() => {
@@ -711,19 +719,32 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 	const terminalShortcutLabel = platform === "darwin" ? "⌘J" : "Ctrl+J";
 
 	const handleStop = useCallback(async () => {
-		// Immediately clear streaming text so the user sees visual feedback
-		// before the cancel round-trip (IPC → host API → sidecar → CLI kill) completes.
+		// Immediately block new streaming events and clear current text so the
+		// user sees visual feedback before the cancel round-trip completes.
+		// The flag is reset when the next run starts (code-agent:run-started).
+		stopRequestedRef.current = true;
 		resetCodeAgentStreaming();
+		setCodeSending(false);
+		setCodeRunActive(false);
+		useChatStore.setState({ sessionState: "idle" });
 		try {
 			const { cancelled } = await cancelCodeAgentRun();
 			if (!cancelled) {
-				console.warn("[code-agent] Cancel returned cancelled=false; run may still be in progress");
+				console.warn("[code-agent] Cancel returned cancelled=false, force-restarting sidecar");
+				// The sidecar couldn't cancel (run already settled or abort controller
+				// was cleared). Force-restart the entire sidecar process to ensure the
+				// CLI child is killed and no stale events leak through.
+				await restartCodeAgent().catch((err) => {
+					console.error("[code-agent] Force restart failed:", err);
+				});
 			}
 		} catch (error) {
 			console.error(error);
-			toast.error("停止生成失败");
+			// Even if cancel throws, force-restart as a last resort
+			await restartCodeAgent().catch(() => {});
 		}
-	}, [resetCodeAgentStreaming]);
+		resetCodeAgentStreaming();
+	}, [resetCodeAgentStreaming, setCodeSending, setCodeRunActive]);
 
 	useEffect(() => {
 		if (!embeddedCodeAssistant || draftTarget !== "code") return;
@@ -741,6 +762,28 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 
 			event.preventDefault();
 			setShowThreadTerminal((previous) => !previous);
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [draftTarget, embeddedCodeAssistant, platform]);
+
+	// ─── Cmd+Shift+E → toggle side panel ──────────────────────────────────
+	useEffect(() => {
+		if (!embeddedCodeAssistant || draftTarget !== "code") return;
+
+		const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+			if (event.defaultPrevented || event.repeat) return;
+			if (!event.shiftKey) return;
+			if (event.key.toLowerCase() !== "e") return;
+
+			const hasShortcutModifier = platform === "darwin"
+				? event.metaKey
+				: event.ctrlKey;
+			if (!hasShortcutModifier) return;
+
+			event.preventDefault();
+			setShowSidePanel((previous) => !previous);
 		};
 
 		window.addEventListener("keydown", handleKeyDown);
@@ -1148,15 +1191,15 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 					onToggleTerminal={() => {
 						setShowThreadTerminal((previous) => !previous);
 					}}
-					showBrowserToggle={embeddedCodeAssistant && !isMiniWindow && draftTarget === "code"}
-					isBrowserVisible={showBrowserUse}
-					onToggleBrowser={() => {
-						setShowBrowserUse((previous) => !previous);
+					showSidePanelToggle={embeddedCodeAssistant && !isMiniWindow && draftTarget === "code"}
+					isSidePanelVisible={showSidePanel}
+					onToggleSidePanel={() => {
+						setShowSidePanel((previous) => !previous);
 					}}
 				/>
 
-			<div className={showBrowserUse ? styles.browserUseMainContent : undefined} style={showBrowserUse ? undefined : { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-			<div className={showBrowserUse ? styles.browserUseChatColumn : undefined} style={showBrowserUse ? undefined : { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+			<div className={showSidePanel ? styles.browserUseMainContent : undefined} style={showSidePanel ? undefined : { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+			<div className={showSidePanel ? styles.browserUseChatColumn : undefined} style={showSidePanel ? undefined : { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
 			<ConversationView
 				messages={codeAgentMessages}
 				currentSessionKey={activeClaudeSessionId}
@@ -1443,11 +1486,12 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 		</div>
 			{/* end chatColumn */}
 			</div>
-			{/* Browser panel: right side */}
-			{embeddedCodeAssistant && draftTarget === "code" && showBrowserUse ? (
-				<BrowserUsePanel
+			{/* Side panel: right side (files, changes, browser, preview) */}
+			{embeddedCodeAssistant && draftTarget === "code" && showSidePanel ? (
+				<SidePanel
+					workspaceRoot={codeWorkspaceRoot}
 					onClose={() => {
-						setShowBrowserUse(false);
+						setShowSidePanel(false);
 					}}
 				/>
 			) : null}

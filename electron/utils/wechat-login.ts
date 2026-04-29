@@ -6,7 +6,6 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { deflateSync } from 'node:zlib';
 import { normalizeOpenClawAccountId } from './channel-alias';
-import { getOpenClawResolvedDir } from './paths';
 
 export const DEFAULT_WECHAT_BASE_URL = 'https://ilinkai.weixin.qq.com';
 const DEFAULT_ILINK_BOT_TYPE = '3';
@@ -30,8 +29,7 @@ function getQrRenderDeps(): QrRenderDeps {
     return qrRenderDeps;
   }
 
-  const openclawRequire = createRequire(join(getOpenClawResolvedDir(), 'package.json'));
-  const qrcodeTerminalPath = dirname(openclawRequire.resolve('qrcode-terminal/package.json'));
+  const qrcodeTerminalPath = dirname(require.resolve('qrcode-terminal/package.json'));
   qrRenderDeps = {
     QRCode: require(join(qrcodeTerminalPath, 'vendor', 'QRCode', 'index.js')),
     QRErrorCorrectLevel: require(join(qrcodeTerminalPath, 'vendor', 'QRCode', 'QRErrorCorrectLevel.js')),

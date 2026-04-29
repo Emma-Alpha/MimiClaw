@@ -1,9 +1,6 @@
 /**
- * Per-workspace OpenClaw config storage.
+ * Per-workspace config storage.
  * Configs are stored as JSON files under data/configs/<workspaceId>.json
- *
- * This mirrors the structure of ~/.openclaw/openclaw.json so the same
- * schema can be pushed to gateway instances when they start.
  */
 
 import { Hono } from 'hono';
@@ -27,11 +24,11 @@ function configPath(workspaceId: string): string {
 function readConfig(workspaceId: string): Record<string, unknown> {
   ensureConfigsDir();
   const p = configPath(workspaceId);
-  if (!fs.existsSync(p)) return defaultOpenClawConfig();
+  if (!fs.existsSync(p)) return defaultConfig();
   try {
     return JSON.parse(fs.readFileSync(p, 'utf-8')) as Record<string, unknown>;
   } catch {
-    return defaultOpenClawConfig();
+    return defaultConfig();
   }
 }
 
@@ -40,8 +37,8 @@ function writeConfig(workspaceId: string, cfg: Record<string, unknown>): void {
   fs.writeFileSync(configPath(workspaceId), JSON.stringify(cfg, null, 2), 'utf-8');
 }
 
-/** Minimal valid openclaw.json template */
-function defaultOpenClawConfig(): Record<string, unknown> {
+/** Minimal valid config template */
+function defaultConfig(): Record<string, unknown> {
   return {
     version: 1,
     channels: {},
@@ -57,7 +54,7 @@ function defaultOpenClawConfig(): Record<string, unknown> {
 
 export const configRouter = new Hono();
 
-/** GET /api/config — get the full openclaw.json for this workspace */
+/** GET /api/config — get the full config for this workspace */
 configRouter.get('/', async (c) => {
   const claims = await requireAuth(c.req.header('Authorization'));
   if (!claims) return c.json({ error: '未授权' }, 401);
@@ -66,7 +63,7 @@ configRouter.get('/', async (c) => {
   return c.json(cfg);
 });
 
-/** PUT /api/config — replace the full openclaw.json */
+/** PUT /api/config — replace the full config */
 configRouter.put('/', async (c) => {
   const claims = await requireAuth(c.req.header('Authorization'));
   if (!claims) return c.json({ error: '未授权' }, 401);
@@ -82,7 +79,7 @@ configRouter.put('/', async (c) => {
   return c.json({ ok: true });
 });
 
-/** PATCH /api/config — shallow-merge fields into openclaw.json */
+/** PATCH /api/config — shallow-merge fields into config */
 configRouter.patch('/', async (c) => {
   const claims = await requireAuth(c.req.header('Authorization'));
   if (!claims) return c.json({ error: '未授权' }, 401);
@@ -105,6 +102,6 @@ configRouter.delete('/', async (c) => {
   const claims = await requireAuth(c.req.header('Authorization'));
   if (!claims) return c.json({ error: '未授权' }, 401);
 
-  writeConfig(claims.workspaceId, defaultOpenClawConfig());
+  writeConfig(claims.workspaceId, defaultConfig());
   return c.json({ ok: true });
 });

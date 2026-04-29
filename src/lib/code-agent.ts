@@ -231,6 +231,15 @@ export async function fetchDirectoryChildren(
   return Array.isArray(response.entries) ? response.entries : [];
 }
 
+export async function fetchFileTextContent(
+  absolutePath: string,
+): Promise<{ content: string; truncated: boolean }> {
+  const params = new URLSearchParams({ path: absolutePath });
+  return hostApiFetch<{ content: string; truncated: boolean }>(
+    `/api/files/read-text?${params.toString()}`,
+  );
+}
+
 export async function fetchWorkspaceAvailability(
   workspaceRoot: string,
 ): Promise<WorkspaceAvailability> {

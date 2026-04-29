@@ -4,14 +4,9 @@ import { createRequire } from 'module';
 import { EventEmitter } from 'events';
 import { existsSync, mkdirSync, rmSync } from 'fs';
 import { deflateSync } from 'zlib';
-import { getOpenClawDir, getOpenClawResolvedDir, isOpenClawPresent } from './paths';
-
 const require = createRequire(import.meta.url);
 
 // ── Lazy-loaded Baileys / QRCode deps ────────────────────────────────
-// Nothing from openclaw is resolved at module load time.
-// ensureDepsLoaded() is called on first actual use to prevent startup crashes
-// when the openclaw runtime is not bundled in the app.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let makeWASocket: any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -26,36 +21,16 @@ let QRCode: any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let QRErrorCorrectLevel: any;
 
+function resolvePackageRoot(packageName: string): string {
+    const specifier = `${packageName}/package.json`;
+    return dirname(require.resolve(specifier));
+}
+
 function ensureDepsLoaded(): void {
     if (makeWASocket) return;
 
-    if (!isOpenClawPresent()) {
-        throw new Error(
-            'WhatsApp login requires the bundled OpenClaw runtime, which is not available in this installation. ' +
-            'Please use a build that includes the local OpenClaw runtime.'
-        );
-    }
-
-    const openclawPath = getOpenClawDir();
-    const openclawResolvedPath = getOpenClawResolvedDir();
-    const openclawRequire = createRequire(join(openclawResolvedPath, 'package.json'));
-
-    function resolveOpenClawPackageJson(packageName: string): string {
-        const specifier = `${packageName}/package.json`;
-        try {
-            return openclawRequire.resolve(specifier);
-        } catch (err) {
-            const reason = err instanceof Error ? err.message : String(err);
-            throw new Error(
-                `Failed to resolve "${packageName}" from OpenClaw context. ` +
-                `openclawPath=${openclawPath}, resolvedPath=${openclawResolvedPath}. ${reason}`,
-                { cause: err },
-            );
-        }
-    }
-
-    baileysPath = dirname(resolveOpenClawPackageJson('@whiskeysockets/baileys'));
-    const qrcodeTerminalPath = dirname(resolveOpenClawPackageJson('qrcode-terminal'));
+    baileysPath = resolvePackageRoot('@whiskeysockets/baileys');
+    const qrcodeTerminalPath = resolvePackageRoot('qrcode-terminal');
 
     ({
         default: makeWASocket,
