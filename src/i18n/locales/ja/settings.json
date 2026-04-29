@@ -328,15 +328,15 @@
     "cloudGatewayStateError": "エラー",
     "cloudGatewayNotAvailable": "クラウドバックエンド未接続"
   },
-  "imageGen": {
-    "title": "画像生成",
-    "desc": "Image Gen スキルで使用する OpenAI 互換の画像生成 API を設定します。",
+  "aihub": {
+    "title": "AI Hub",
+    "desc": "AI Hub プラットフォームの API URL とキーを設定します。image-gen、video-gen、model3d-gen スキルで共有されます。",
     "url": "API URL",
     "urlPlaceholder": "https://aihub.gz4399.com/v1",
-    "urlHelp": "OpenAI 互換の画像生成 API URL。例：https://aihub.gz4399.com/v1",
+    "urlHelp": "AI Hub プラットフォーム API URL。例：https://aihub.gz4399.com/v1",
     "apiKey": "API キー",
     "apiKeyPlaceholder": "API キーを入力",
-    "apiKeyHelp": "画像生成サービスの API キー"
+    "apiKeyHelp": "AI Hub プラットフォーム API キー（image-gen / video-gen / model3d-gen 共通）"
   },
   "updates": {
     "title": "アップデート",

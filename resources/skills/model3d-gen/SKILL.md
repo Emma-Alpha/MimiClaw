@@ -27,8 +27,8 @@ settings_paths = [
 for p in settings_paths:
     if os.path.exists(p):
         data = json.load(open(p))
-        url = data.get('imageGenUrl', '')
-        key = data.get('imageGenApiKey', '')
+        url = data.get('aihubApiUrl', '')
+        key = data.get('aihubApiKey', '')
         if url and key:
             print(url, key)
             sys.exit(0)
@@ -36,14 +36,14 @@ print('', '')
 " 2>/dev/null)
 ```
 
-- `API_BASE_URL` — The API base URL (e.g. `https://aihub.gz4399.com`), configured in **Settings > Gateway > Image Generation**. Note: for Tripo3D endpoints, strip the trailing `/v1` if present.
+- `API_BASE_URL` — The API base URL (e.g. `https://aihub.gz4399.com`), configured in **Settings > Gateway > AI Hub**. Note: for Tripo3D endpoints, strip the trailing `/v1` if present.
 - `API_KEY` — The API key for the service.
 
-If either value is empty, inform the user they need to configure the URL and API Key in **Settings > Gateway > Image Generation** first.
+If either value is empty, inform the user they need to configure the URL and API Key in **Settings > Gateway > AI Hub** first.
 
 ### Derive Tripo3D base URL
 
-The settings store `imageGenUrl` typically ends with `/v1` (e.g. `https://aihub.gz4399.com/v1`). Tripo3D routes are under a different path, so derive the host:
+The settings store `aihubApiUrl` typically ends with `/v1` (e.g. `https://aihub.gz4399.com/v1`). Tripo3D routes are under a different path, so derive the host:
 
 ```bash
 TRIPO_BASE=$(echo "$API_BASE_URL" | sed 's|/v1$||')
@@ -353,7 +353,7 @@ For **image-to-3D**, start directly at step 2.
 
 | Scenario | Action |
 |---|---|
-| URL or API key is empty | Tell user to configure settings in Settings > Gateway > Image Generation |
+| URL or API key is empty | Tell user to configure settings in Settings > Gateway > AI Hub |
 | `code` is not `0` in response | Report the error message, stop |
 | Poll timeout (10 min) | Inform user generation is taking too long, provide task_id for manual checking |
 | Task status is `failed` | Report the error, stop |

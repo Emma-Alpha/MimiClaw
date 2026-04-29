@@ -746,6 +746,8 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 		resetChatSeenState,
 		lastHydratedClaudeSessionRef,
 		setCodeWorkspaceRoot,
+		setCodeSending,
+		setCodeRunActive,
 	});
 
 	useEffect(() => {
@@ -772,6 +774,8 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 		forceFreshSessionOnNextSubmitRef.current = true;
 		lastRequestedClaudeSessionRef.current = "";
 		lastHydratedClaudeSessionRef.current = "";
+		setCodeSending(false);
+		setCodeRunActive(false);
 		setActiveClaudeSessionId("");
 		resetCodeTimelineState();
 		resetChatSeenState();
@@ -792,6 +796,8 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 		if (lastRequestedClaudeSessionRef.current === requestedClaudeSessionId) return;
 		lastRequestedClaudeSessionRef.current = requestedClaudeSessionId;
 		forceFreshSessionOnNextSubmitRef.current = false;
+		setCodeSending(false);
+		setCodeRunActive(false);
 		const timer = window.setTimeout(() => {
 			lastHydratedClaudeSessionRef.current = "";
 			setActiveClaudeSessionId(requestedClaudeSessionId);

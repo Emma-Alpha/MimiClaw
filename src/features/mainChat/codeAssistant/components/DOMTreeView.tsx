@@ -1,28 +1,74 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DOMTreeNode } from "../../../../../shared/browser-inspector";
 import { useInspectorStore } from "@/stores/inspector";
 import { useCodeChatStyles } from "../styles";
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Collect the cssSelector of every ancestor of the target node inside the
+ * tree so that TreeNode components on the path can force-expand themselves.
+ */
+function collectAncestorSelectors(
+  node: DOMTreeNode,
+  targetSelector: string,
+  path: string[] = [],
+): string[] | null {
+  if (node.cssSelector === targetSelector) return path;
+  for (const child of node.children) {
+    const result = collectAncestorSelectors(child, targetSelector, [...path, node.cssSelector]);
+    if (result) return result;
+  }
+  return null;
+}
+
+// ─── TreeNode ───────────────────────────────────────────────────────────────
+
 interface TreeNodeProps {
   node: DOMTreeNode;
   selectedSelector: string | null;
+  /** Set of ancestor cssSelectors that must be expanded to reveal the selected node */
+  expandedAncestors: ReadonlySet<string>;
 }
 
-const TreeNode = memo<TreeNodeProps>(function TreeNode({ node, selectedSelector }) {
+const TreeNode = memo<TreeNodeProps>(function TreeNode({ node, selectedSelector, expandedAncestors }) {
   const { styles, cx } = useCodeChatStyles();
-  const [expanded, setExpanded] = useState(node.depth < 2);
   const highlightElement = useInspectorStore((s) => s.highlightElement);
   const removeHighlight = useInspectorStore((s) => s.removeHighlight);
   const selectElement = useInspectorStore((s) => s.selectElement);
 
   const hasChildren = node.children.length > 0;
   const isSelected = node.cssSelector === selectedSelector;
+  const isAncestorOfSelected = expandedAncestors.has(node.cssSelector);
+
+  // Auto-expand: depth < 2 by default, OR if this node is an ancestor of the selected element
+  const [manualExpanded, setManualExpanded] = useState<boolean | null>(null);
+  const autoExpand = node.depth < 2 || isAncestorOfSelected;
+  const expanded = manualExpanded ?? autoExpand;
+
+  // When this node becomes an ancestor of the selected element, force expand
+  useEffect(() => {
+    if (isAncestorOfSelected) {
+      setManualExpanded(null); // reset manual override so auto-expand takes effect
+    }
+  }, [isAncestorOfSelected]);
+
+  // Scroll selected node into view
+  const rowRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (isSelected && rowRef.current) {
+      rowRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [isSelected]);
 
   const handleToggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setExpanded((prev) => !prev);
-  }, []);
+    setManualExpanded((prev) => {
+      const current = prev ?? autoExpand;
+      return !current;
+    });
+  }, [autoExpand]);
 
   const handleMouseEnter = useCallback(() => {
     void highlightElement(node.cssSelector);
@@ -48,6 +94,7 @@ const TreeNode = memo<TreeNodeProps>(function TreeNode({ node, selectedSelector 
     <>
       {/* biome-ignore lint/a11y/noStaticElementInteractions: tree node row */}
       <div
+        ref={rowRef}
         className={cx(styles.inspectorDomTreeRow, isSelected && styles.inspectorDomTreeRowSelected)}
         style={{ paddingLeft: 8 + node.depth * 14 }}
         onClick={handleClick}
@@ -70,17 +117,33 @@ const TreeNode = memo<TreeNodeProps>(function TreeNode({ node, selectedSelector 
         </span>
       </div>
       {expanded && hasChildren && node.children.map((child: DOMTreeNode) => (
-        <TreeNode key={child.nodeId} node={child} selectedSelector={selectedSelector} />
+        <TreeNode
+          key={child.nodeId}
+          node={child}
+          selectedSelector={selectedSelector}
+          expandedAncestors={expandedAncestors}
+        />
       ))}
     </>
   );
 });
+
+// ─── DOMTreeView ────────────────────────────────────────────────────────────
 
 export const DOMTreeView = memo(function DOMTreeView() {
   const { styles } = useCodeChatStyles();
   const domTree = useInspectorStore((s) => s.domTree);
   const domTreeLoading = useInspectorStore((s) => s.domTreeLoading);
   const selectedElement = useInspectorStore((s) => s.selectedElement);
+
+  const selectedSelector = selectedElement?.cssSelector ?? null;
+
+  // Compute the set of ancestor selectors that need to be expanded
+  const expandedAncestors = useMemo<ReadonlySet<string>>(() => {
+    if (!domTree || !selectedSelector) return new Set();
+    const ancestors = collectAncestorSelectors(domTree, selectedSelector);
+    return new Set(ancestors ?? []);
+  }, [domTree, selectedSelector]);
 
   if (domTreeLoading) {
     return (
@@ -100,7 +163,11 @@ export const DOMTreeView = memo(function DOMTreeView() {
 
   return (
     <div className={styles.inspectorDomTree}>
-      <TreeNode node={domTree} selectedSelector={selectedElement?.cssSelector ?? null} />
+      <TreeNode
+        node={domTree}
+        selectedSelector={selectedSelector}
+        expandedAncestors={expandedAncestors}
+      />
     </div>
   );
 });

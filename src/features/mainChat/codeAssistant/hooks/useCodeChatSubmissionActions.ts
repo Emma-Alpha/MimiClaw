@@ -287,10 +287,24 @@ export function useCodeChatSubmissionActions({
 			const hasNonImageAttachments = codeAttachmentPaths.length > 0;
 			const activeSkills = activeSkillsRef.current;
 			const codeText = (() => {
-				const base = hasNonImageAttachments
+				let base = hasNonImageAttachments
 					? `${cleanText}\n\n请优先读取并分析已附带的文件路径。`
 					: cleanText;
 				if (activeSkills.length === 0) return base;
+
+				// Strip serialized skill command prefixes from the text.
+				// The markdownWriter serializes skill mention pills as "/command-name",
+				// but skills are already handled via activeSkillsRef (appended as <skill>
+				// XML or prepended as CLI commands), so the prefix is redundant and
+				// causes "Unknown command" errors in the code agent runtime.
+				for (const skill of activeSkills) {
+					const cmd = skill.command;
+					if (base.startsWith(`${cmd} `)) {
+						base = base.slice(cmd.length + 1);
+					} else if (base === cmd || base.startsWith(cmd)) {
+						base = base.slice(cmd.length).trimStart();
+					}
+				}
 
 				let result = base;
 				const cliCommands: string[] = [];

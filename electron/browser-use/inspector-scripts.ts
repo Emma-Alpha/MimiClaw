@@ -11,54 +11,110 @@
  * be torn down cleanly.
  */
 
+// ─── Shared helpers injected into every script that needs them ──────────────
+
+/**
+ * Returns JS source for `buildSelector(el)` — used by both the picker and
+ * the DOM-tree builder so their CSS selectors always match.
+ */
+function sharedBuildSelectorSource(): string {
+  return `
+  function buildSelector(el) {
+    if (el.id) return el.tagName.toLowerCase() + '#' + el.id;
+    var parts = [];
+    var cur = el;
+    while (cur && cur !== document.body && cur !== document.documentElement) {
+      var seg = cur.tagName.toLowerCase();
+      if (cur.id) { seg += '#' + cur.id; parts.unshift(seg); break; }
+      if (cur.className && typeof cur.className === 'string') {
+        var cls = cur.className.trim().split(/\\s+/).slice(0, 2).join('.');
+        if (cls) seg += '.' + cls;
+      }
+      var parent = cur.parentElement;
+      if (parent) {
+        var siblings = Array.from(parent.children).filter(function(c) { return c.tagName === cur.tagName; });
+        if (siblings.length > 1) seg += ':nth-child(' + (Array.from(parent.children).indexOf(cur) + 1) + ')';
+      }
+      parts.unshift(seg);
+      cur = parent;
+    }
+    return parts.join(' > ');
+  }`;
+}
+
+/**
+ * Tags that the element picker should skip (bubble up past).
+ * These are inline formatting / structural / invisible tags that are rarely
+ * the element the user actually wants to inspect.
+ */
+const SKIP_TAGS = new Set([
+  'br', 'wbr', 'hr', 'script', 'style', 'link', 'meta', 'head', 'html',
+  'noscript', 'template', 'slot',
+]);
+
+const INLINE_TAGS = new Set([
+  'span', 'em', 'strong', 'b', 'i', 'u', 's', 'small', 'sub', 'sup',
+  'abbr', 'code', 'kbd', 'var', 'mark', 'del', 'ins', 'q', 'cite',
+  'dfn', 'time', 'data', 'ruby', 'rt', 'rp', 'bdi', 'bdo',
+]);
+
+function sharedBubbleUpSource(): string {
+  const skipJson = JSON.stringify([...SKIP_TAGS]);
+  const inlineJson = JSON.stringify([...INLINE_TAGS]);
+  return `
+  var __skipTags = new Set(${skipJson});
+  var __inlineTags = new Set(${inlineJson});
+
+  function bubbleUp(el) {
+    var cur = el;
+    while (cur && cur !== document.body && cur !== document.documentElement) {
+      var tag = cur.tagName.toLowerCase();
+      if (__skipTags.has(tag)) { cur = cur.parentElement; continue; }
+      // Skip inline tags unless they have meaningful attributes
+      if (__inlineTags.has(tag) && !cur.id && !cur.getAttribute('role') && !cur.getAttribute('data-testid')) {
+        cur = cur.parentElement;
+        continue;
+      }
+      return cur;
+    }
+    return el; // fallback: return original
+  }`;
+}
+
 // ─── Element Picker ─────────────────────────────────────────────────────────
 
 export function getPickerScript(): string {
   return `(function() {
   if (window.__mimiInspectorState?.pickerActive) return;
 
-  const state = window.__mimiInspectorState = window.__mimiInspectorState || {};
+  var state = window.__mimiInspectorState = window.__mimiInspectorState || {};
   state.pickerActive = true;
 
+  ${sharedBuildSelectorSource()}
+  ${sharedBubbleUpSource()}
+
   // ── Overlay element ──
-  const overlay = document.createElement('div');
+  var overlay = document.createElement('div');
   overlay.id = '__mimi-inspector-overlay';
   overlay.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483647;border:2px solid #3a96dd;background:rgba(58,150,221,0.08);transition:all 0.05s ease;display:none;';
   document.body.appendChild(overlay);
 
   // ── Label element ──
-  const label = document.createElement('div');
+  var label = document.createElement('div');
   label.id = '__mimi-inspector-label';
   label.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483647;background:#3a96dd;color:#fff;font:11px/1.4 monospace;padding:2px 6px;border-radius:3px;white-space:nowrap;display:none;';
   document.body.appendChild(label);
 
-  let lastTarget = null;
-
-  function buildSelector(el) {
-    if (el.id) return el.tagName.toLowerCase() + '#' + el.id;
-    const parts = [];
-    while (el && el !== document.body && el !== document.documentElement) {
-      let seg = el.tagName.toLowerCase();
-      if (el.id) { seg += '#' + el.id; parts.unshift(seg); break; }
-      if (el.className && typeof el.className === 'string') {
-        const cls = el.className.trim().split(/\\s+/).slice(0, 2).join('.');
-        if (cls) seg += '.' + cls;
-      }
-      const parent = el.parentElement;
-      if (parent) {
-        const siblings = Array.from(parent.children).filter(c => c.tagName === el.tagName);
-        if (siblings.length > 1) seg += ':nth-child(' + (Array.from(parent.children).indexOf(el) + 1) + ')';
-      }
-      parts.unshift(seg);
-      el = parent;
-    }
-    return parts.join(' > ');
-  }
+  var lastTarget = null;
+  var rafId = 0;
 
   function collectElementData(el) {
-    const rect = el.getBoundingClientRect();
-    const attrs = {};
-    for (const attr of el.attributes) attrs[attr.name] = attr.value;
+    var rect = el.getBoundingClientRect();
+    var attrs = {};
+    for (var i = 0; i < el.attributes.length; i++) {
+      var attr = el.attributes[i];
+      attrs[attr.name] = attr.value;
+    }
     return {
       tagName: el.tagName.toLowerCase(),
       id: el.id || '',
@@ -70,18 +126,8 @@ export function getPickerScript(): string {
     };
   }
 
-  function onMouseMove(e) {
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    if (!el || el === overlay || el === label || el === document.documentElement) {
-      overlay.style.display = 'none';
-      label.style.display = 'none';
-      lastTarget = null;
-      return;
-    }
-    if (el === lastTarget) return;
-    lastTarget = el;
-
-    const rect = el.getBoundingClientRect();
+  function updateOverlay(el) {
+    var rect = el.getBoundingClientRect();
     overlay.style.left = rect.x + 'px';
     overlay.style.top = rect.y + 'px';
     overlay.style.width = rect.width + 'px';
@@ -89,24 +135,43 @@ export function getPickerScript(): string {
     overlay.style.display = 'block';
 
     // Label content
-    let text = el.tagName.toLowerCase();
+    var text = el.tagName.toLowerCase();
     if (el.id) text += '#' + el.id;
     if (el.className && typeof el.className === 'string') {
-      const cls = el.className.trim().split(/\\s+/).slice(0, 3);
+      var cls = el.className.trim().split(/\\s+/).slice(0, 3);
       if (cls.length) text += '.' + cls.join('.');
     }
     label.textContent = text;
 
     // Position label above or below
-    const labelY = rect.y > 24 ? rect.y - 22 : rect.bottom + 4;
+    var labelY = rect.y > 24 ? rect.y - 22 : rect.bottom + 4;
     label.style.left = Math.max(0, rect.x) + 'px';
     label.style.top = labelY + 'px';
     label.style.display = 'block';
+  }
 
-    // Send hover event
-    try {
-      window.__mimiInspector(JSON.stringify({ type: 'element-hovered', data: collectElementData(el) }));
-    } catch (_) {}
+  function onMouseMove(e) {
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(function() {
+      var raw = document.elementFromPoint(e.clientX, e.clientY);
+      if (!raw || raw === overlay || raw === label || raw === document.documentElement) {
+        overlay.style.display = 'none';
+        label.style.display = 'none';
+        lastTarget = null;
+        return;
+      }
+      // Bubble up past trivial inline/structural tags
+      var el = bubbleUp(raw);
+      if (el === lastTarget) return;
+      lastTarget = el;
+
+      updateOverlay(el);
+
+      // Send hover event
+      try {
+        window.__mimiInspector(JSON.stringify({ type: 'element-hovered', data: collectElementData(el) }));
+      } catch (_) {}
+    });
   }
 
   function onClick(e) {
@@ -114,8 +179,9 @@ export function getPickerScript(): string {
     e.stopPropagation();
     e.stopImmediatePropagation();
 
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    if (!el || el === overlay || el === label) return;
+    var raw = document.elementFromPoint(e.clientX, e.clientY);
+    if (!raw || raw === overlay || raw === label) return;
+    var el = bubbleUp(raw);
 
     try {
       window.__mimiInspector(JSON.stringify({ type: 'element-selected', data: collectElementData(el) }));
@@ -137,6 +203,7 @@ export function getPickerScript(): string {
   document.addEventListener('keydown', onKeyDown, true);
 
   state.pickerCleanup = function() {
+    cancelAnimationFrame(rafId);
     document.removeEventListener('mousemove', onMouseMove, true);
     document.removeEventListener('click', onClick, true);
     document.removeEventListener('keydown', onKeyDown, true);
@@ -192,31 +259,11 @@ export function getRemoveHighlightScript(): string {
 
 export function getDOMTreeScript(maxDepth: number = 6): string {
   return `(function() {
-  let nextId = 1;
-  const MAX_DEPTH = ${maxDepth};
-  const MAX_CHILDREN = 100;
+  var nextId = 1;
+  var MAX_DEPTH = ${maxDepth};
+  var MAX_CHILDREN = 100;
 
-  function buildSelector(el) {
-    if (el.id) return el.tagName.toLowerCase() + '#' + el.id;
-    const parts = [];
-    let cur = el;
-    while (cur && cur !== document.body && cur !== document.documentElement) {
-      let seg = cur.tagName.toLowerCase();
-      if (cur.id) { seg += '#' + cur.id; parts.unshift(seg); break; }
-      if (cur.className && typeof cur.className === 'string') {
-        const cls = cur.className.trim().split(/\\s+/).slice(0, 2).join('.');
-        if (cls) seg += '.' + cls;
-      }
-      const parent = cur.parentElement;
-      if (parent) {
-        const siblings = Array.from(parent.children).filter(c => c.tagName === cur.tagName);
-        if (siblings.length > 1) seg += ':nth-child(' + (Array.from(parent.children).indexOf(cur) + 1) + ')';
-      }
-      parts.unshift(seg);
-      cur = parent;
-    }
-    return parts.join(' > ');
-  }
+  ${sharedBuildSelectorSource()}
 
   function walk(el, depth) {
     if (depth > MAX_DEPTH) return null;
@@ -224,11 +271,11 @@ export function getDOMTreeScript(maxDepth: number = 6): string {
     // Skip inspector overlay elements
     if (el.id && el.id.startsWith('__mimi-inspector')) return null;
 
-    const children = [];
-    const childElements = el.children;
-    const count = Math.min(childElements.length, MAX_CHILDREN);
-    for (let i = 0; i < count; i++) {
-      const child = walk(childElements[i], depth + 1);
+    var children = [];
+    var childElements = el.children;
+    var count = Math.min(childElements.length, MAX_CHILDREN);
+    for (var i = 0; i < count; i++) {
+      var child = walk(childElements[i], depth + 1);
       if (child) children.push(child);
     }
 
@@ -244,7 +291,7 @@ export function getDOMTreeScript(maxDepth: number = 6): string {
     };
   }
 
-  const root = document.getElementById('root') || document.body;
+  var root = document.getElementById('root') || document.body;
   return walk(root, 0);
 })()`;
 }

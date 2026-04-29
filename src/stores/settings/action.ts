@@ -327,18 +327,18 @@ export function createSettingsActions(set: Setter, get: Getter): SettingsStoreAc
         body: JSON.stringify({ codeAgent }),
       }).catch(() => { });
     },
-    setImageGenUrl: (imageGenUrl) => {
-      set({ imageGenUrl });
+    setAihubApiUrl: (aihubApiUrl) => {
+      set({ aihubApiUrl });
       void hostApiFetch('/api/settings', {
         method: 'PUT',
-        body: JSON.stringify({ imageGenUrl }),
+        body: JSON.stringify({ aihubApiUrl }),
       }).catch(() => { });
     },
-    setImageGenApiKey: (imageGenApiKey) => {
-      set({ imageGenApiKey });
+    setAihubApiKey: (aihubApiKey) => {
+      set({ aihubApiKey });
       void hostApiFetch('/api/settings', {
         method: 'PUT',
-        body: JSON.stringify({ imageGenApiKey }),
+        body: JSON.stringify({ aihubApiKey }),
       }).catch(() => { });
     },
     setUpdateChannel: (updateChannel) => {

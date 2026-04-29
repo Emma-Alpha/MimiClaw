@@ -27,8 +27,8 @@ settings_paths = [
 for p in settings_paths:
     if os.path.exists(p):
         data = json.load(open(p))
-        url = data.get('imageGenUrl', '')
-        key = data.get('imageGenApiKey', '')
+        url = data.get('aihubApiUrl', '')
+        key = data.get('aihubApiKey', '')
         if url and key:
             print(url, key)
             sys.exit(0)
@@ -36,14 +36,14 @@ print('', '')
 " 2>/dev/null)
 ```
 
-- `IMAGE_GEN_URL` — The OpenAI-compatible API base URL (e.g. `https://aihub.gz4399.com/v1`), configured in Settings > Gateway > Image Generation.
+- `IMAGE_GEN_URL` — The OpenAI-compatible API base URL (e.g. `https://aihub.gz4399.com/v1`), configured in Settings > Gateway > AI Hub.
 - `IMAGE_GEN_KEY` — The API key for the image generation service.
 
-If either value is empty, inform the user they need to configure the Image Generation URL and API Key in **Settings > Gateway > Image Generation** first.
+If either value is empty, inform the user they need to configure the Image Generation URL and API Key in **Settings > Gateway > AI Hub** first.
 
 ## API Endpoint
 
-- Base URL: Configured via `imageGenUrl` in settings (e.g. `https://aihub.gz4399.com/v1`)
+- Base URL: Configured via `aihubApiUrl` in settings (e.g. `https://aihub.gz4399.com/v1`)
 - Model: `gpt-image-2`
 - Text-to-image: `POST {BASE_URL}/images/generations`
 - Image-to-image: `POST {BASE_URL}/images/edits`
@@ -58,10 +58,13 @@ Generate an image from a text prompt.
 from openai import OpenAI
 import base64
 import datetime
+import os
+import httpx
 
 client = OpenAI(
     api_key=IMAGE_GEN_KEY,
-    base_url=IMAGE_GEN_URL  # e.g. "https://aihub.gz4399.com/v1"
+    base_url=IMAGE_GEN_URL,  # e.g. "https://aihub.gz4399.com/v1"
+    http_client=httpx.Client(timeout=180.0)  # 3 minute timeout for image generation
 )
 
 result = client.images.generate(
@@ -72,17 +75,19 @@ result = client.images.generate(
 image_base64 = result.data[0].b64_json
 image_bytes = base64.b64decode(image_base64)
 
+output_dir = os.path.expanduser("~/Downloads/image-gen")
+os.makedirs(output_dir, exist_ok=True)
 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-filename = f"output_{timestamp}.png"
+output_path = os.path.join(output_dir, f"output_{timestamp}.png")
 
-with open(filename, "wb") as f:
+with open(output_path, "wb") as f:
     f.write(image_bytes)
 ```
 
 ### curl
 
 ```bash
-RESPONSE=$(curl -s "${IMAGE_GEN_URL}/images/generations" \
+RESPONSE=$(curl -s --max-time 180 "${IMAGE_GEN_URL}/images/generations" \
   -H "Authorization: Bearer ${IMAGE_GEN_KEY}" \
   -H 'Content-Type: application/json' \
   -d '{
@@ -93,8 +98,9 @@ RESPONSE=$(curl -s "${IMAGE_GEN_URL}/images/generations" \
 # Extract base64 image data and decode
 IMAGE_B64=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data'][0]['b64_json'])")
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-OUTPUT_PATH=~/Downloads/image-gen/output_${TIMESTAMP}.png
-mkdir -p ~/Downloads/image-gen
+OUTPUT_DIR="$HOME/Downloads/image-gen"
+OUTPUT_PATH="${OUTPUT_DIR}/output_${TIMESTAMP}.png"
+mkdir -p "$OUTPUT_DIR"
 echo "$IMAGE_B64" | base64 -d > "$OUTPUT_PATH"
 ```
 
@@ -120,10 +126,13 @@ Edit or combine images using reference images with a text prompt. Supports multi
 from openai import OpenAI
 import base64
 import datetime
+import os
+import httpx
 
 client = OpenAI(
     api_key=IMAGE_GEN_KEY,
-    base_url=IMAGE_GEN_URL  # e.g. "https://aihub.gz4399.com/v1"
+    base_url=IMAGE_GEN_URL,  # e.g. "https://aihub.gz4399.com/v1"
+    http_client=httpx.Client(timeout=180.0)  # 3 minute timeout for image generation
 )
 
 result = client.images.edit(
@@ -138,17 +147,19 @@ result = client.images.edit(
 image_base64 = result.data[0].b64_json
 image_bytes = base64.b64decode(image_base64)
 
+output_dir = os.path.expanduser("~/Downloads/image-gen")
+os.makedirs(output_dir, exist_ok=True)
 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-filename = f"output_{timestamp}.png"
+output_path = os.path.join(output_dir, f"output_{timestamp}.png")
 
-with open(filename, "wb") as f:
+with open(output_path, "wb") as f:
     f.write(image_bytes)
 ```
 
 ### curl
 
 ```bash
-RESPONSE=$(curl -s "${IMAGE_GEN_URL}/images/edits" \
+RESPONSE=$(curl -s --max-time 180 "${IMAGE_GEN_URL}/images/edits" \
   -H "Authorization: Bearer ${IMAGE_GEN_KEY}" \
   -F model="gpt-image-2" \
   -F "image=@image1.png" \
@@ -158,8 +169,9 @@ RESPONSE=$(curl -s "${IMAGE_GEN_URL}/images/edits" \
 # Extract base64 image data and decode
 IMAGE_B64=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data'][0]['b64_json'])")
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-OUTPUT_PATH=~/Downloads/image-gen/output_${TIMESTAMP}.png
-mkdir -p ~/Downloads/image-gen
+OUTPUT_DIR="$HOME/Downloads/image-gen"
+OUTPUT_PATH="${OUTPUT_DIR}/output_${TIMESTAMP}.png"
+mkdir -p "$OUTPUT_DIR"
 echo "$IMAGE_B64" | base64 -d > "$OUTPUT_PATH"
 ```
 
@@ -174,7 +186,7 @@ echo "$IMAGE_B64" | base64 -d > "$OUTPUT_PATH"
 **Output directory**:
 
 ```bash
-mkdir -p ~/Downloads/image-gen
+mkdir -p "$HOME/Downloads/image-gen"
 ```
 
 Default filename: `output_<TIMESTAMP>.png`
@@ -188,13 +200,13 @@ After a successful generation, your reply MUST follow this **exact format**:
 ```
 <success message>
 
-![](file_path_or_url)
+![](/Users/<username>/Downloads/image-gen/output_<TIMESTAMP>.png)
 
-Local path: local_path
+Local path: /Users/<username>/Downloads/image-gen/output_<TIMESTAMP>.png
 ```
 
 Rules:
-1. **Inline image** — output `![](path)` on its own line to render the image inline in chat.
+1. **Inline image** — output `![](absolute_path)` on its own line to render the image inline in chat. **CRITICAL: Use the full absolute path (e.g. `/Users/xxx/Downloads/image-gen/output_xxx.png`), NOT `~/...` or relative paths.** The app can only render images from absolute paths starting with `/`.
 2. **Local path** — show the saved file path so the user knows where it is.
 3. **Print `MEDIA:<path>`** for auto-attach if available.
 
@@ -202,7 +214,7 @@ Rules:
 
 | Scenario | Action |
 |---|---|
-| URL or API key is empty | Tell user to configure Image Generation settings in Settings > Gateway > Image Generation |
+| URL or API key is empty | Tell user to configure Image Generation settings in Settings > Gateway > AI Hub |
 | API returns error | Report the error message, stop |
 | Response missing `b64_json` | Report unexpected response format |
 | Network error | Inform user, suggest checking connection |
@@ -232,7 +244,8 @@ Expand vague user requests into detailed prompts before submission:
 
 ## Notes
 
-- The generation typically takes 30s-2min depending on complexity.
+- The generation typically takes 30s-2min depending on complexity. **Always set a 180-second (3-minute) timeout** on HTTP requests to avoid premature timeouts.
 - The API returns base64-encoded image data directly — no polling required.
 - For image-to-image, ensure reference image files exist and are accessible before calling the API.
 - Multiple reference images can be passed for compositing tasks.
+- **Always use absolute paths** (starting with `/`) for image output and markdown references. Use `os.path.expanduser("~")` in Python or `$HOME` in bash to resolve the home directory. Never use `~` or relative paths in the `![](path)` markdown output.

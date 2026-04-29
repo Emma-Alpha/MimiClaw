@@ -67,6 +67,42 @@ export function remarkAutoCodeLanguage() {
 	};
 }
 
+/**
+ * Convert local absolute file paths in image nodes to file:// URLs
+ * so Electron's renderer can load them.
+ * Handles: /absolute/path, ~/home-relative/path
+ */
+function convertLocalImageUrls(node: MdastNode | null | undefined): void {
+	if (!node || typeof node !== 'object') return;
+
+	if (node.type === 'image' && typeof (node as MdastImageNode).url === 'string') {
+		let url = (node as MdastImageNode).url;
+		// Expand ~ to user home directory
+		if (url.startsWith('~/') || url === '~') {
+			const home = typeof process !== 'undefined' && process.env?.HOME
+				? process.env.HOME
+				: '/Users/' + (typeof process !== 'undefined' && process.env?.USER ? process.env.USER : 'unknown');
+			url = url.replace(/^~/, home);
+		}
+		if (url.startsWith('/') && !url.startsWith('//')) {
+			(node as MdastImageNode).url = `file://${encodeURI(url)}`;
+		}
+	}
+
+	const children = Array.isArray(node.children) ? node.children : [];
+	for (const child of children) {
+		convertLocalImageUrls(child);
+	}
+}
+
+type MdastImageNode = MdastNode & { url: string };
+
+export function remarkLocalImageToFileUrl() {
+	return (tree: MdastNode) => {
+		convertLocalImageUrls(tree);
+	};
+}
+
 type MarkdownComponentProps = NonNullable<MarkdownProps['componentProps']>;
 
 function mergeMarkdownComponentProps(
@@ -161,7 +197,7 @@ export function useEnhancedMarkdownProps(
 			},
 		};
 
-		const baseRemarkPlugins: NonNullable<MarkdownProps['remarkPlugins']> = [remarkAutoCodeLanguage];
+		const baseRemarkPlugins: NonNullable<MarkdownProps['remarkPlugins']> = [remarkAutoCodeLanguage, remarkLocalImageToFileUrl];
 
 		return {
 			componentProps: mergeMarkdownComponentProps(baseComponentProps, extra?.componentProps),

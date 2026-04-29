@@ -163,10 +163,10 @@ export function Settings() {
     setRemoteGatewayUrl,
     remoteGatewayToken,
     setRemoteGatewayToken,
-    imageGenUrl,
-    setImageGenUrl,
-    imageGenApiKey,
-    setImageGenApiKey,
+    aihubApiUrl,
+    setAihubApiUrl,
+    aihubApiKey,
+    setAihubApiKey,
     proxyEnabled,
     proxyServer,
     proxyHttpServer,
@@ -207,9 +207,9 @@ export function Settings() {
   const [remoteGatewayUrlDraft, setRemoteGatewayUrlDraft] = useState('');
   const [remoteGatewayTokenDraft, setRemoteGatewayTokenDraft] = useState('');
   const [showRemoteGatewayToken, setShowRemoteGatewayToken] = useState(false);
-  const [imageGenUrlDraft, setImageGenUrlDraft] = useState('');
-  const [imageGenApiKeyDraft, setImageGenApiKeyDraft] = useState('');
-  const [showImageGenApiKey, setShowImageGenApiKey] = useState(false);
+  const [aihubApiUrlDraft, setAihubApiUrlDraft] = useState('');
+  const [aihubApiKeyDraft, setAihubApiKeyDraft] = useState('');
+  const [showAihubApiKey, setShowAihubApiKey] = useState(false);
   const [proxyServerDraft, setProxyServerDraft] = useState('');
   const [proxyHttpServerDraft, setProxyHttpServerDraft] = useState('');
   const [proxyHttpsServerDraft, setProxyHttpsServerDraft] = useState('');
@@ -799,12 +799,12 @@ export function Settings() {
   }, [remoteGatewayToken]);
 
   useEffect(() => {
-    setImageGenUrlDraft(imageGenUrl);
-  }, [imageGenUrl]);
+    setAihubApiUrlDraft(aihubApiUrl);
+  }, [aihubApiUrl]);
 
   useEffect(() => {
-    setImageGenApiKeyDraft(imageGenApiKey);
-  }, [imageGenApiKey]);
+    setAihubApiKeyDraft(aihubApiKey);
+  }, [aihubApiKey]);
 
   useEffect(() => {
     setProxyEnabledDraft(proxyEnabled);
@@ -986,7 +986,9 @@ export function Settings() {
       setVoiceChatAccessKeyDraft('');
       toast.success(t('voiceChat.saved'));
     } catch (error) {
-      toast.error(`${t('voiceChat.saveFailed')}: ${String(error)}`);
+      console.error('[voice-chat] save config failed:', error);
+      const msg = error instanceof Error ? error.message : String(error);
+      toast.error(`${t('voiceChat.saveFailed')}: ${msg}`);
     } finally {
       setVoiceChatSaving(false);
     }
@@ -1052,22 +1054,6 @@ export function Settings() {
                               }))}
                             />
                           ),
-                          minWidth: undefined,
-                        },
-                        {
-                          label: t('pet.xiaojiuLabel', { defaultValue: '接入小九' }),
-                          desc: t('pet.xiaojiuDesc', { defaultValue: '启用后可快速调用小九相关功能。' }),
-                          children: <FormSwitch disabled={!petEnabled} />,
-                          name: 'xiaojiuEnabled',
-                          valuePropName: 'checked',
-                          minWidth: undefined,
-                        },
-                        {
-                          label: t('pet.jizhiLabel', { defaultValue: '接入极智' }),
-                          desc: t('pet.jizhiDesc', { defaultValue: '启用后可快速调用极智相关功能。' }),
-                          children: <FormSwitch disabled={!petEnabled} />,
-                          name: 'jizhiEnabled',
-                          valuePropName: 'checked',
                           minWidth: undefined,
                         },
                       ],
@@ -1400,51 +1386,51 @@ export function Settings() {
               </div>
             </Form.Group>
 
-            {/* Image Generation */}
+            {/* AI Hub */}
               <Form.Group
-                title={t('imageGen.title')}
+                title={t('aihub.title')}
                 variant="filled"
               >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 16px 16px' }}>
-                  <p className={styles.hintText12}>{t('imageGen.desc')}</p>
+                  <p className={styles.hintText12}>{t('aihub.desc')}</p>
 
                   <div className={styles.formField}>
-                    <Label className={styles.fieldLabelSmall}>{t('imageGen.url')}</Label>
+                    <Label className={styles.fieldLabelSmall}>{t('aihub.url')}</Label>
                     <Input
                       type="text"
-                      placeholder={t('imageGen.urlPlaceholder')}
-                      value={imageGenUrlDraft}
-                      onChange={(e) => setImageGenUrlDraft(e.target.value)}
+                      placeholder={t('aihub.urlPlaceholder')}
+                      value={aihubApiUrlDraft}
+                      onChange={(e) => setAihubApiUrlDraft(e.target.value)}
                       onBlur={() => {
-                        if (imageGenUrlDraft !== imageGenUrl) {
-                          setImageGenUrl(imageGenUrlDraft);
+                        if (aihubApiUrlDraft !== aihubApiUrl) {
+                          setAihubApiUrl(aihubApiUrlDraft);
                         }
                       }}
                       style={{ fontSize: 13, fontFamily: 'monospace' }}
                     />
-                    <p className={styles.hintText}>{t('imageGen.urlHelp')}</p>
+                    <p className={styles.hintText}>{t('aihub.urlHelp')}</p>
                   </div>
 
                   <div className={styles.formField}>
-                    <Label className={styles.fieldLabelSmall}>{t('imageGen.apiKey')}</Label>
+                    <Label className={styles.fieldLabelSmall}>{t('aihub.apiKey')}</Label>
                     <div className={styles.inputWithEye}>
                       <Input
-                        type={showImageGenApiKey ? 'text' : 'password'}
-                        placeholder={t('imageGen.apiKeyPlaceholder')}
-                        value={imageGenApiKeyDraft}
-                        onChange={(e) => setImageGenApiKeyDraft(e.target.value)}
+                        type={showAihubApiKey ? 'text' : 'password'}
+                        placeholder={t('aihub.apiKeyPlaceholder')}
+                        value={aihubApiKeyDraft}
+                        onChange={(e) => setAihubApiKeyDraft(e.target.value)}
                         onBlur={() => {
-                          if (imageGenApiKeyDraft !== imageGenApiKey) {
-                            setImageGenApiKey(imageGenApiKeyDraft);
+                          if (aihubApiKeyDraft !== aihubApiKey) {
+                            setAihubApiKey(aihubApiKeyDraft);
                           }
                         }}
                         style={{ fontSize: 13, fontFamily: 'monospace', paddingRight: 40 }}
                       />
-                      <button type="button" onClick={() => setShowImageGenApiKey((v) => !v)} className={styles.eyeBtn}>
-                        {showImageGenApiKey ? <EyeOff style={{ height: 16, width: 16 }} /> : <Eye style={{ height: 16, width: 16 }} />}
+                      <button type="button" onClick={() => setShowAihubApiKey((v) => !v)} className={styles.eyeBtn}>
+                        {showAihubApiKey ? <EyeOff style={{ height: 16, width: 16 }} /> : <Eye style={{ height: 16, width: 16 }} />}
                       </button>
                     </div>
-                    <p className={styles.hintText}>{t('imageGen.apiKeyHelp')}</p>
+                    <p className={styles.hintText}>{t('aihub.apiKeyHelp')}</p>
                   </div>
                 </div>
               </Form.Group>

@@ -329,15 +329,15 @@
     "cloudGatewayStateError": "出错",
     "cloudGatewayNotAvailable": "未连接云后端"
   },
-  "imageGen": {
-    "title": "图片生成",
-    "desc": "配置 Image Gen 技能使用的 OpenAI 兼容图片生成 API。",
+  "aihub": {
+    "title": "AI Hub",
+    "desc": "配置 AI Hub 平台的 API 地址和密钥，供图片生成、视频生成、3D 模型生成等技能共用。",
     "url": "API 地址",
     "urlPlaceholder": "https://aihub.gz4399.com/v1",
-    "urlHelp": "OpenAI 兼容的图片生成 API 地址，例：https://aihub.gz4399.com/v1",
+    "urlHelp": "AI Hub 平台 API 地址，例：https://aihub.gz4399.com/v1",
     "apiKey": "API Key",
     "apiKeyPlaceholder": "输入 API Key",
-    "apiKeyHelp": "用于图片生成服务的 API 密钥"
+    "apiKeyHelp": "AI Hub 平台 API 密钥，供 image-gen / video-gen / model3d-gen 共用"
   },
   "updates": {
     "title": "更新",

@@ -77,10 +77,10 @@ export interface AppSettings {
   proxyAllServer: string;
   proxyBypassRules: string;
   codeAgent: CodeAgentRuntimeConfig;
-  /** Base URL for the image generation API (OpenAI-compatible) */
-  imageGenUrl: string;
-  /** API key for the image generation service */
-  imageGenApiKey: string;
+  /** AI Hub API base URL (e.g. https://aihub.gz4399.com/v1), shared by image-gen, video-gen, model3d-gen skills */
+  aihubApiUrl: string;
+  /** AI Hub API key, shared by image-gen, video-gen, model3d-gen skills */
+  aihubApiKey: string;
 
   // Update
   updateChannel: 'stable' | 'beta' | 'dev';
@@ -162,8 +162,8 @@ function createDefaultSettings(): AppSettings {
     proxyAllServer: '',
     proxyBypassRules: '<local>;localhost;127.0.0.1;::1',
     codeAgent: { ...DEFAULT_CODE_AGENT_RUNTIME_CONFIG },
-    imageGenUrl: '',
-    imageGenApiKey: '',
+    aihubApiUrl: '',
+    aihubApiKey: '',
 
     // Update
     updateChannel: 'stable',

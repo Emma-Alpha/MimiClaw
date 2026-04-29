@@ -16,6 +16,8 @@ type Params = {
 	resetChatSeenState: () => void;
 	lastHydratedClaudeSessionRef: MutableRefObject<string>;
 	setCodeWorkspaceRoot: Dispatch<SetStateAction<string>>;
+	setCodeSending: Dispatch<SetStateAction<boolean>>;
+	setCodeRunActive: Dispatch<SetStateAction<boolean>>;
 };
 
 export function useCodeChatSessionActions({
@@ -27,8 +29,12 @@ export function useCodeChatSessionActions({
 	resetChatSeenState,
 	lastHydratedClaudeSessionRef,
 	setCodeWorkspaceRoot,
+	setCodeSending,
+	setCodeRunActive,
 }: Params) {
 	const handleNewConversation = useCallback(() => {
+		setCodeSending(false);
+		setCodeRunActive(false);
 		resetCodeTimelineState();
 		resetChatSeenState();
 		clearComposer();
@@ -40,12 +46,16 @@ export function useCodeChatSessionActions({
 		resetCodeTimelineState,
 		resetChatSeenState,
 		setActiveClaudeSessionId,
+		setCodeRunActive,
+		setCodeSending,
 	]);
 
 	const handleSwitchSession = useCallback(
 		(key: string) => {
 			if (!key) return;
 			if (key === activeClaudeSessionId) return;
+			setCodeSending(false);
+			setCodeRunActive(false);
 			lastHydratedClaudeSessionRef.current = "";
 			setActiveClaudeSessionId(key);
 			resetCodeTimelineState();
@@ -57,6 +67,8 @@ export function useCodeChatSessionActions({
 			resetCodeTimelineState,
 			resetChatSeenState,
 			setActiveClaudeSessionId,
+			setCodeRunActive,
+			setCodeSending,
 		],
 	);
 

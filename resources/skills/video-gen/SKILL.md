@@ -36,8 +36,8 @@ settings_paths = [
 for p in settings_paths:
     if os.path.exists(p):
         data = json.load(open(p))
-        url = data.get('imageGenUrl', '')
-        key = data.get('imageGenApiKey', '')
+        url = data.get('aihubApiUrl', '')
+        key = data.get('aihubApiKey', '')
         if url and key:
             print(url, key)
             sys.exit(0)
@@ -45,10 +45,10 @@ print('', '')
 " 2>/dev/null)
 ```
 
-- `API_BASE_URL` — The API base URL (e.g. `https://aihub.gz4399.com/v1`), configured in **Settings > Gateway > Image Generation**.
+- `API_BASE_URL` — The API base URL (e.g. `https://aihub.gz4399.com/v1`), configured in **Settings > Gateway > AI Hub**.
 - `API_KEY` — The API key for the service.
 
-If either value is empty, inform the user they need to configure the URL and API Key in **Settings > Gateway > Image Generation** first.
+If either value is empty, inform the user they need to configure the URL and API Key in **Settings > Gateway > AI Hub** first.
 
 ## API Endpoints
 
@@ -261,7 +261,7 @@ Rules:
 
 | Scenario | Action |
 |---|---|
-| URL or API key is empty | Tell user to configure settings in Settings > Gateway > Image Generation |
+| URL or API key is empty | Tell user to configure settings in Settings > Gateway > AI Hub |
 | Create task returns error | Report the error message, stop |
 | Poll timeout (10 min) | Inform user generation is taking too long, provide task_id for manual checking |
 | Task status is `failed` | Report the error, stop |

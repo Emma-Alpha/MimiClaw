@@ -38,6 +38,16 @@ export function createInspectorActions(set: Set, get: Get): InspectorStoreAction
 
     selectElement: (element: InspectorElementData) => {
       set({ selectedElement: element });
+
+      // Auto-open sidebar and refresh DOM tree when element is picked
+      const { sidebarVisible, enabled } = get();
+      if (!sidebarVisible) {
+        set({ sidebarVisible: true });
+      }
+      if (enabled) {
+        void get().fetchDOMTree();
+      }
+
       // Auto-fetch CSS styles for the selected element
       void get().fetchElementStyles(element.cssSelector);
     },
