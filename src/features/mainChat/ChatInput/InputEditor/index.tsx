@@ -157,9 +157,10 @@ export function InputEditor() {
   const mentionOptionProp = useMemo(
     () => ({
         fuseOptions: {
-          distance: 200,
-          keys: ['label', 'description'],
-          threshold: 0.4,
+          distance: 100,
+          keys: ['label'],
+          shouldSort: false,
+          threshold: 0.2,
         },
         items: mentionOptions.length > 0 ? mentionOptions : [MENTION_SENTINEL],
         trigger: '@',

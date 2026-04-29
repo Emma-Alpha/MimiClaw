@@ -125,7 +125,9 @@ function App() {
 	const language = useSettingsStore((state) => state.language);
 	const setupComplete = useSettingsStore((state) => state.setupComplete);
 	const cloudLoggedIn = useSettingsStore((state) => state.cloudLoggedIn);
+	const cloudBootstrapped = useSettingsStore((state) => state.cloudBootstrapped);
 	const hydrateCloudAuth = useSettingsStore((state) => state.hydrateCloudAuth);
+	const bootstrapCloudDefaults = useSettingsStore((state) => state.bootstrapCloudDefaults);
 
 	const isStandalone = isStandaloneWindowRoute(location.pathname);
 
@@ -134,6 +136,13 @@ function App() {
 		hydrateCloudAuth();
 		initSettings();
 	}, [hydrateCloudAuth, initSettings]);
+
+	// Bootstrap default API keys from env vars after login
+	useEffect(() => {
+		if (cloudLoggedIn && !cloudBootstrapped) {
+			void bootstrapCloudDefaults();
+		}
+	}, [cloudLoggedIn, cloudBootstrapped, bootstrapCloudDefaults]);
 
 	// Sync i18n language with persisted settings on mount
 	useEffect(() => {

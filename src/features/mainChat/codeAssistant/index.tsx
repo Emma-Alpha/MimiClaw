@@ -711,13 +711,19 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 	const terminalShortcutLabel = platform === "darwin" ? "⌘J" : "Ctrl+J";
 
 	const handleStop = useCallback(async () => {
+		// Immediately clear streaming text so the user sees visual feedback
+		// before the cancel round-trip (IPC → host API → sidecar → CLI kill) completes.
+		resetCodeAgentStreaming();
 		try {
-			await cancelCodeAgentRun();
+			const { cancelled } = await cancelCodeAgentRun();
+			if (!cancelled) {
+				console.warn("[code-agent] Cancel returned cancelled=false; run may still be in progress");
+			}
 		} catch (error) {
 			console.error(error);
 			toast.error("停止生成失败");
 		}
-	}, []);
+	}, [resetCodeAgentStreaming]);
 
 	useEffect(() => {
 		if (!embeddedCodeAssistant || draftTarget !== "code") return;

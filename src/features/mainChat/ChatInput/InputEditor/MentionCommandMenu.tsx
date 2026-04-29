@@ -35,11 +35,27 @@ function renderMentionIcon(item: ISlashMenuOption): ReactNode {
 }
 
 function getMentionTag(item: ISlashMenuOption): string | undefined {
-  // Use extra field (rendered as ReactNode by MentionItem, but we just want text)
+  // Use extra field if it's a plain string.
   const extra = item.extra;
   if (typeof extra === 'string') return extra;
 
-  // If extra is a ReactNode, we can't extract text easily, skip
+  // For file/folder items, derive the parent-directory path from metadata
+  // so entries with the same name (e.g. multiple "src" folders) are
+  // distinguishable — matching Cursor's "@" search behaviour.
+  const meta = item.metadata as Record<string, unknown> | undefined;
+  if (!meta) return undefined;
+
+  const kind = meta.kind as string | undefined;
+  if (kind === 'file' || kind === 'folder') {
+    const relativePath = (meta.bareLabel ?? meta.description) as string | undefined;
+    if (relativePath) {
+      const lastSlash = relativePath.lastIndexOf('/');
+      if (lastSlash >= 0) {
+        return relativePath.slice(0, lastSlash + 1);
+      }
+    }
+  }
+
   return undefined;
 }
 

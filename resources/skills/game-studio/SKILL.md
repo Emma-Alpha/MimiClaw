@@ -83,9 +83,13 @@ Once the intent is clear, route to the most specific specialist skill and contin
    - 2D characters and effects: use `sprite-pipeline` and `image-gen`.
    - 3D models, textures, and shipping format: use `web-3d-asset-pipeline` and `model3d-gen`.
    - Video assets and animation references: use `video-gen`.
-6. Close with a playtest loop before calling the work production-ready.
+6. **Generate all visual assets via image-gen BEFORE writing game code.** This is mandatory — do not skip this step or replace it with code-drawn shapes. The generated images are what give the game its visual quality.
+7. Write game code that loads and uses the generated image assets.
+8. Close with a playtest loop before calling the work production-ready.
 
 ## Game Art Generation Rules
+
+**CRITICAL: Always use image-gen to generate visual assets.** Do NOT substitute AI-generated art with code-drawn shapes (canvas rectangles, CSS gradients, SVG primitives, flat colored polygons). Code-drawn placeholder graphics make the game look amateurish. The entire point of having image-gen is to produce professional-quality art. The only exceptions where code-drawing is acceptable: single-pixel bullets, simple particle dots, or solid-color fills that are intentionally minimal.
 
 When using **image-gen** to generate game assets, follow these rules strictly.
 
@@ -94,18 +98,19 @@ When using **image-gen** to generate game assets, follow these rules strictly.
 Before generating any assets, output a resource manifest table:
 - Resource name, output path, type (sprite/background/UI/effect), transparent or opaque, required or optional.
 - Keep the list minimal — fewer, higher-quality assets are better than many mediocre ones.
-- If a resource can be drawn with code (simple shapes, particles), skip generation.
+- Only truly trivial visuals (single-color dots, lines) may use code-drawing. Everything else — backgrounds, characters, UI panels, effects, terrain — **MUST be generated via image-gen**.
 
 ### Resource Generation Standards
 
-1. Format: PNG.
-2. Characters, projectiles, explosions, icons, buttons, UI panels: **transparent background**.
-3. Scene backgrounds: **opaque background**.
-4. Subject centered with adequate padding on all sides for easy integration.
-5. No watermarks, no branding, no logos.
-6. **No baked-in text** — all text (HP, labels, button captions) must be rendered in code.
-7. Consistent art style across ALL generated assets.
-8. All assets must be original — do not replicate specific commercial characters.
+1. Format: PNG (with `output_format="png"`).
+2. Characters, projectiles, explosions, icons, buttons, UI panels: **transparent background** — must pass `background="transparent"` in the API call.
+3. Scene backgrounds: **opaque background** — must pass `background="opaque"` in the API call.
+4. **CRITICAL**: The `background` parameter must be explicitly set in every `images.generate()` call. The API does NOT auto-detect transparency from the prompt text. Without `background="transparent"`, sprites will have opaque backgrounds.
+5. Subject centered with adequate padding on all sides for easy integration.
+6. No watermarks, no branding, no logos.
+7. **No baked-in text** — all text (HP, labels, button captions) must be rendered in code.
+8. Consistent art style across ALL generated assets.
+9. All assets must be original — do not replicate specific commercial characters.
 
 ### image-gen Prompt Template
 
@@ -118,15 +123,22 @@ Every call to image-gen MUST include ALL of the following fields:
 - Style:
 - Subject description:
 - Composition:
-- Background:
+- Background: transparent | opaque
 - Color palette:
 - Restrictions:
-- Output format:
+- Output format: png
+- API parameters:
+    background: "transparent" | "opaque"
+    output_format: "png"
+    quality: "high"
+    size: "1024x1024" | "1536x1024" | "1024x1536"
 ```
 
 Defaults:
 - **Composition**: subject centered, edge padding, suitable for game engine import.
-- **Background**: transparent (except scene backgrounds).
+- **Background**: transparent (except scene backgrounds). **MUST set `background="transparent"` API parameter — the prompt text alone is not enough.**
+- **Output format**: `png` (required for transparency support).
+- **Quality**: `high` for final game assets.
 - **Restrictions**: original, no text, no watermark, no branding, no trademarks, no complex background clutter.
 
 ### Style Consistency
@@ -160,7 +172,8 @@ Use clear, lowercase, underscore-separated names grouped by type:
 ## Output Expectations
 
 - Execute the full workflow end-to-end in one run. Do not stop after outputting a plan or asset manifest.
-- Generate art assets first, then write code that integrates them.
+- **Generate art assets first via image-gen, then write code that loads and integrates them.** Do NOT write code that draws shapes as a substitute for generating images. The game's visual quality depends on AI-generated art, not programmatic shapes.
+- When implementing a game, the code should load the generated PNG assets (via `<img>`, Phaser `this.load.image()`, Three.js `TextureLoader`, etc.), NOT draw rectangles/triangles/circles as stand-ins.
 - For planning requests, return a game-specific plan with stack choice, gameplay loop, UI surface, asset workflow, and test approach.
 - For implementation requests, keep the chosen stack obvious in the file structure and code boundaries.
 - For mixed requests, preserve the plugin default: 2D Phaser first unless the user asks for something else.

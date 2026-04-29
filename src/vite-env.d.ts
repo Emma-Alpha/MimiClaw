@@ -14,6 +14,17 @@ interface ImportMetaEnv {
   readonly VITE_XIAOJIU_EXCHANGE_PATH?: string;
   /** HTTPS URL returning JSON update policy (see README / .env.example). */
   readonly VITE_UPDATE_POLICY_URL?: string;
+  // Auto-fill defaults (applied on first login if user hasn't configured)
+  readonly VITE_DEFAULT_CODE_AGENT_BASE_URL?: string;
+  readonly VITE_DEFAULT_CODE_AGENT_API_KEY?: string;
+  readonly VITE_DEFAULT_CODE_AGENT_MODEL?: string;
+  readonly VITE_DEFAULT_AIHUB_API_URL?: string;
+  readonly VITE_DEFAULT_AIHUB_API_KEY?: string;
+  readonly VITE_DEFAULT_SPEECH_APP_ID?: string;
+  readonly VITE_DEFAULT_SPEECH_CLUSTER?: string;
+  readonly VITE_DEFAULT_SPEECH_TOKEN?: string;
+  readonly VITE_DEFAULT_VOICE_CHAT_APP_ID?: string;
+  readonly VITE_DEFAULT_VOICE_CHAT_ACCESS_KEY?: string;
 }
 
 interface ImportMeta {

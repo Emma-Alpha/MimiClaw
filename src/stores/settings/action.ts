@@ -11,6 +11,7 @@ import {
   setCloudSession,
   type CloudSession,
 } from '@/lib/cloud-api';
+import { bootstrapCloudDefaults as bootstrapCloudDefaultsFn } from '@/lib/cloud-bootstrap';
 import type { StoreGetter, StoreSetter } from '@/stores/types';
 import {
   clampChatFontSize,
@@ -612,6 +613,23 @@ export function createSettingsActions(set: Setter, get: Getter): SettingsStoreAc
         cloudUserId: session.userId,
         cloudWorkspaceId: session.workspaceId,
       });
+      // Write cloudApiUrl/cloudApiToken to backend settings (matching loginCloud behavior)
+      if (!isLocalCloudSession(session)) {
+        const cloudApiBase = (() => {
+          try {
+            const override = window.localStorage.getItem('mimiclaw:cloud-api-base');
+            if (override) return override.replace(/\/$/, '');
+          } catch { /* ignore */ }
+          return getCloudApiBase();
+        })();
+        void hostApiFetch('/api/settings', {
+          method: 'PUT',
+          body: JSON.stringify({
+            cloudApiUrl: cloudApiBase,
+            cloudApiToken: session.token,
+          }),
+        }).catch(() => { });
+      }
     },
     loginCloud: async (username: string, password: string) => {
       const session = await cloudLogin(username, password);
@@ -650,5 +668,26 @@ export function createSettingsActions(set: Setter, get: Getter): SettingsStoreAc
       }).catch(() => { });
     },
     markCloudBootstrapped: () => set({ cloudBootstrapped: true }),
+    bootstrapCloudDefaults: async () => {
+      const state = get();
+      if (state.cloudBootstrapped || !state.cloudLoggedIn) return;
+      // Mark immediately to prevent concurrent runs
+      set({ cloudBootstrapped: true });
+      try {
+        const result = await bootstrapCloudDefaultsFn({
+          codeAgent: state.codeAgent,
+          aihubApiUrl: state.aihubApiUrl,
+          aihubApiKey: state.aihubApiKey,
+          setCodeAgent: get().setCodeAgent,
+          setAihubApiUrl: get().setAihubApiUrl,
+          setAihubApiKey: get().setAihubApiKey,
+        });
+        if (result.codeAgentPatched || result.aihubPatched || result.speechPatched || result.voiceChatPatched) {
+          console.log('[settings] bootstrapCloudDefaults applied:', result);
+        }
+      } catch (error) {
+        console.warn('[settings] bootstrapCloudDefaults failed:', error);
+      }
+    },
   };
 }

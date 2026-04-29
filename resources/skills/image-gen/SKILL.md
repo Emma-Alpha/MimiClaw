@@ -48,6 +48,19 @@ If either value is empty, inform the user they need to configure the Image Gener
 - Text-to-image: `POST {BASE_URL}/images/generations`
 - Image-to-image: `POST {BASE_URL}/images/edits`
 
+## Supported Parameters
+
+| Parameter | Values | Default | Notes |
+|-----------|--------|---------|-------|
+| `model` | `gpt-image-2` | — | Required |
+| `prompt` | string | — | Required |
+| `background` | `transparent`, `opaque`, `auto` | `auto` | Use `transparent` for sprites, icons, UI elements, characters. Use `opaque` for scene backgrounds. |
+| `output_format` | `png`, `webp`, `jpeg` | `png` | Use `png` for assets needing transparency. `jpeg` does not support alpha channel. |
+| `size` | `1024x1024`, `1536x1024`, `1024x1536`, `auto` | `auto` | `1536x1024` for landscape scenes, `1024x1536` for portraits, `1024x1024` for sprites/icons. |
+| `quality` | `low`, `medium`, `high`, `auto` | `auto` | Use `high` for final game assets. |
+
+**CRITICAL**: When generating assets that need transparent backgrounds (characters, sprites, UI elements, icons, effects), you **MUST** pass `background="transparent"` and `output_format="png"`. Without `background="transparent"`, the API returns opaque images — it does NOT auto-detect transparency from the prompt.
+
 ## Text-to-Image (文生图)
 
 Generate an image from a text prompt.
@@ -69,7 +82,11 @@ client = OpenAI(
 
 result = client.images.generate(
     model="gpt-image-2",
-    prompt="<USER_PROMPT>"
+    prompt="<USER_PROMPT>",
+    background="transparent",  # "transparent" for sprites/UI/effects, "opaque" for backgrounds
+    output_format="png",       # must be "png" for transparency support
+    quality="high",            # "high" for final game assets
+    size="1024x1024",          # "1536x1024" for landscape, "1024x1536" for portrait
 )
 
 image_base64 = result.data[0].b64_json
@@ -92,7 +109,11 @@ RESPONSE=$(curl -s --max-time 180 "${IMAGE_GEN_URL}/images/generations" \
   -H 'Content-Type: application/json' \
   -d '{
     "model": "gpt-image-2",
-    "prompt": "<USER_PROMPT>"
+    "prompt": "<USER_PROMPT>",
+    "background": "transparent",
+    "output_format": "png",
+    "quality": "high",
+    "size": "1024x1024"
   }')
 
 # Extract base64 image data and decode

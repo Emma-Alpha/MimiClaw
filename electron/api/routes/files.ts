@@ -232,15 +232,40 @@ export async function listProjectMentionEntriesWithSearch(
     return entries;
   } catch (error) {
     console.warn('Rust search failed, falling back to simple filter:', error);
-    // Fallback: get all entries and filter
+    // Fallback: get all entries and score against filename only (not full
+    // path) so results stay precise — matching Cursor's @ mention behaviour.
     const allEntries = await listProjectMentionEntries(normalizedRoot);
     const lowerQuery = query.toLowerCase();
-    return allEntries
-      .filter(entry =>
-        entry.name.toLowerCase().includes(lowerQuery) ||
-        entry.relativePath.toLowerCase().includes(lowerQuery)
-      )
-      .slice(0, 80);
+    const hasPathHint = lowerQuery.includes('/');
+
+    const scored: Array<{ entry: ProjectMentionEntry; score: number }> = [];
+    for (const entry of allEntries) {
+      const nameLower = entry.name.toLowerCase();
+
+      // For path queries ("src/comp"), require leading segments in the path.
+      if (hasPathHint) {
+        const segments = lowerQuery.split('/').filter(Boolean);
+        const tail = segments[segments.length - 1] ?? '';
+        const prefixSegments = segments.slice(0, -1);
+        const relLower = entry.relativePath.toLowerCase();
+        if (prefixSegments.some((seg) => !relLower.includes(seg))) continue;
+        if (tail && !nameLower.includes(tail)) continue;
+        scored.push({ entry, score: nameLower === tail ? 100_000 : nameLower.startsWith(tail ?? '') ? 50_000 : 10_000 });
+        continue;
+      }
+
+      // Match against filename only.
+      if (nameLower === lowerQuery) {
+        scored.push({ entry, score: 100_000 });
+      } else if (nameLower.startsWith(lowerQuery)) {
+        scored.push({ entry, score: 50_000 });
+      } else if (nameLower.includes(lowerQuery)) {
+        scored.push({ entry, score: 10_000 });
+      }
+    }
+
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, 80).map((s) => s.entry);
   }
 }
 

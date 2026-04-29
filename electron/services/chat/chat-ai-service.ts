@@ -44,6 +44,18 @@ export interface ChatSendParams {
   maxTokens?: number;
 }
 
+/**
+ * Map ThinkingLevel ('none'|'low'|'medium'|'high') to OpenAI reasoning_effort.
+ * Returns undefined when reasoning should not be requested.
+ * OpenAI supports: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'
+ */
+function mapThinkingToReasoningEffort(thinkingLevel?: string): string | undefined {
+  if (!thinkingLevel || thinkingLevel === 'none') return undefined;
+  if (thinkingLevel === 'low') return 'low';
+  if (thinkingLevel === 'medium') return 'medium';
+  return 'high'; // 'high' or any other value → 'high'
+}
+
 // ── Service ─────────────────────────────────────────────────────────────────
 
 export class ChatAiService {
@@ -233,7 +245,7 @@ export class ChatAiService {
     thinkingLevel?: string;
     extraHeaders: Record<string, string>;
   }): { url: string; headers: Record<string, string>; body: Record<string, unknown> } {
-    const { protocol, baseUrl, apiKey, model, messages, maxTokens, extraHeaders } = opts;
+    const { protocol, baseUrl, apiKey, model, messages, maxTokens, thinkingLevel, extraHeaders } = opts;
 
     const formatted = formatMessagesForProvider(messages, protocol);
 
@@ -270,6 +282,10 @@ export class ChatAiService {
           input: formatted.messages,
           stream: true,
         };
+        const responsesEffort = mapThinkingToReasoningEffort(thinkingLevel);
+        if (responsesEffort) {
+          body.reasoning = { effort: responsesEffort };
+        }
         return { url, headers, body };
       }
 
@@ -288,6 +304,10 @@ export class ChatAiService {
           stream: true,
           stream_options: { include_usage: true },
         };
+        const completionsEffort = mapThinkingToReasoningEffort(thinkingLevel);
+        if (completionsEffort) {
+          body.reasoning_effort = completionsEffort;
+        }
         return { url, headers, body };
       }
     }

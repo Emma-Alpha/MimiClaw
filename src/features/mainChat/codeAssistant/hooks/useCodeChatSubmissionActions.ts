@@ -123,6 +123,10 @@ export function useCodeChatSubmissionActions({
 			// Items are preserved so the timeline persists across rounds within a session.
 			resetCodeAgentStreaming();
 			setCodeSending(true);
+			// Eagerly mark sessionState as "running" so the Sidebar can show
+			// a loading indicator immediately, without waiting for the first
+			// WebSocket status event from the gateway.
+			useChatStore.setState({ sessionState: "running" });
 
 			await invokeIpc(
 				"pet:pushTerminalLine",
@@ -209,6 +213,12 @@ export function useCodeChatSubmissionActions({
 				return false;
 			} finally {
 				setCodeSending(false);
+				// Reset sessionState so the Sidebar loading indicator stops.
+				// On success the gateway stream will have already set it to "idle"
+				// via the result message; this is a safety net for error paths.
+				if (useChatStore.getState().sessionState === "running") {
+					useChatStore.setState({ sessionState: "idle" });
+				}
 				void fetchCodeAgentStatus()
 					.then((status) => {
 						setCodeAgentStatus(status);

@@ -1,6 +1,4 @@
 use clap::{Parser, Subcommand};
-use fuzzy_matcher::skim::SkimMatcherV2;
-use fuzzy_matcher::FuzzyMatcher;
 use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -148,6 +146,87 @@ fn index_files(root: &str, max_entries: usize) -> Vec<FileEntry> {
     entries
 }
 
+/// Check whether byte at `pos` in `text` sits at a word boundary.
+fn is_word_boundary(text: &[u8], pos: usize) -> bool {
+    if pos == 0 {
+        return true;
+    }
+    let prev = text[pos - 1];
+    matches!(prev, b'.' | b'-' | b'_' | b' ' | b'/')
+}
+
+/// Cursor/VS Code–style fuzzy scoring for filenames.
+///
+/// Characters from `query` must appear **in order** inside `text`. The score
+/// reflects how "good" the alignment is:
+///   - consecutive characters  → large bonus (grows the longer the run)
+///   - match at a word boundary (after `.` `-` `_` `/` or start of string) → bonus
+///   - match at the very first character → extra bonus
+///   - gap between matched characters → small penalty (capped)
+///
+/// Returns `None` when the query cannot be matched at all, or when the
+/// resulting score is ≤ 0 (too noisy to be useful).
+fn fuzzy_score_name(text: &[u8], query: &[u8]) -> Option<i64> {
+    if query.is_empty() {
+        return Some(0);
+    }
+    if query.len() > text.len() {
+        return None;
+    }
+
+    let mut score: i64 = 0;
+    let mut text_idx: usize = 0;
+    let mut consecutive: i64 = 0;
+    let mut prev_matched_idx: Option<usize> = None;
+
+    for (qi, &qc) in query.iter().enumerate() {
+        let mut found = false;
+        while text_idx < text.len() {
+            if text[text_idx] == qc {
+                // Base score for each matched character.
+                score += 1;
+
+                // First-character bonus.
+                if qi == 0 && text_idx == 0 {
+                    score += 10;
+                }
+
+                // Consecutive run bonus (grows quadratically).
+                if let Some(prev) = prev_matched_idx {
+                    if text_idx == prev + 1 {
+                        consecutive += 1;
+                        score += 3 + consecutive * 2;
+                    } else {
+                        let gap = (text_idx - prev - 1) as i64;
+                        score -= gap.min(5);
+                        consecutive = 0;
+                    }
+                }
+
+                // Word-boundary bonus.
+                if is_word_boundary(text, text_idx) {
+                    score += 8;
+                }
+
+                prev_matched_idx = Some(text_idx);
+                text_idx += 1;
+                found = true;
+                break;
+            }
+            text_idx += 1;
+        }
+        if !found {
+            return None;
+        }
+    }
+
+    if score > 0 {
+        Some(score)
+    } else {
+        None
+    }
+}
+
 fn search_files(root: &str, query: &str, limit: usize) -> Vec<FileEntry> {
     let entries = index_files(root, 5000);
 
@@ -155,11 +234,8 @@ fn search_files(root: &str, query: &str, limit: usize) -> Vec<FileEntry> {
         return entries.into_iter().take(limit).collect();
     }
 
-    let matcher = SkimMatcherV2::default();
     let normalized_query = query.to_lowercase().replace('\\', "/");
     // Split on '/' so users can narrow into a folder by typing "src/App".
-    // The last segment is matched against the entry name; earlier segments
-    // should be present in the relative path.
     let query_segments: Vec<&str> = normalized_query
         .split('/')
         .filter(|s| !s.is_empty())
@@ -167,56 +243,64 @@ fn search_files(root: &str, query: &str, limit: usize) -> Vec<FileEntry> {
     let tail_query = query_segments.last().copied().unwrap_or("");
     let has_path_hint = query_segments.len() > 1;
 
+    if tail_query.is_empty() {
+        return entries.into_iter().take(limit).collect();
+    }
+
+    let tail_bytes = tail_query.as_bytes();
+
     let mut results: Vec<SearchResult> = entries
         .into_iter()
         .filter_map(|entry| {
-            let relative = entry.relative_path.to_lowercase();
-            let name = entry.name.to_lowercase();
+            let name_lower = entry.name.to_lowercase();
+            let relative_lower = entry.relative_path.to_lowercase();
 
-            // When the query contains path separators (e.g. "src/App"), require
-            // that every leading segment appears in the relative path. This
-            // lets users drill into a specific folder rather than matching
-            // unrelated files that happen to fuzzy-match globally.
+            // When the query contains '/' (e.g. "src/App"), require that
+            // every leading segment appears as a substring in the path.
             if has_path_hint {
                 for segment in &query_segments[..query_segments.len() - 1] {
-                    if !relative.contains(segment) {
+                    if !relative_lower.contains(segment) {
                         return None;
                     }
                 }
             }
 
-            let score_relative = matcher.fuzzy_match(&relative, &normalized_query);
-            let score_name = matcher.fuzzy_match(&name, tail_query);
+            // ---- Score against the FILENAME only (not the full path) ----
+            let name_bytes = name_lower.as_bytes();
 
-            let mut total: i64 = 0;
-            let mut matched = false;
+            let score: i64;
 
-            // Exact and prefix matches on the entry name are the strongest
-            // signal. Give them a hard bonus so they float to the top.
-            if name == tail_query {
-                total += 10_000;
-                matched = true;
-            } else if name.starts_with(tail_query) {
-                total += 3_000;
-                matched = true;
-            }
-
-            if let Some(s) = score_name {
-                // Name matches are usually more meaningful than deep path
-                // matches, so weight them more heavily.
-                total += s * 3;
-                matched = true;
-            }
-            if let Some(s) = score_relative {
-                total += s;
-                matched = true;
-            }
-
-            if matched {
-                Some(SearchResult { entry, score: total })
+            if name_lower == tail_query {
+                // Tier 1 – exact name match
+                score = 100_000;
+            } else if name_lower.starts_with(tail_query) {
+                // Tier 2 – name prefix match (shorter names rank higher)
+                score = 50_000 + (1000_i64 - (name_lower.len().min(1000) as i64));
+            } else if let Some(pos) = name_lower.find(tail_query) {
+                // Tier 3 – contiguous substring in name
+                let boundary = is_word_boundary(name_bytes, pos);
+                let base = if boundary { 20_000 } else { 10_000 };
+                score = base + (1000_i64 - (name_lower.len().min(1000) as i64));
+            } else if tail_bytes.len() >= 2 {
+                // Tier 4 – fuzzy match on filename (characters in order
+                // with gap/boundary scoring). Capped to keep them below
+                // contiguous-substring results.
+                if let Some(fs) = fuzzy_score_name(name_bytes, tail_bytes) {
+                    score = fs.min(5_000);
+                } else {
+                    return None;
+                }
             } else {
-                None
+                return None;
             }
+
+            // Small directory tie-break bonus.
+            let dir_bonus: i64 = if entry.is_directory { 50 } else { 0 };
+
+            Some(SearchResult {
+                entry,
+                score: score + dir_bonus,
+            })
         })
         .collect();
 

@@ -169,6 +169,7 @@ export interface SettingsStoreAction {
   loginCloud: (username: string, password: string) => Promise<void>;
   logoutCloud: () => Promise<void>;
   markCloudBootstrapped: () => void;
+  bootstrapCloudDefaults: () => Promise<void>;
   hydrateCloudAuth: () => void;
   applyCloudSession: (session: CloudSession) => void;
 }
