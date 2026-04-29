@@ -25,11 +25,11 @@ export function useCodeChatCodeAgentControls({
 	codeAgentConfig,
 	setCodeAgentConfig,
 }: Params) {
-	// Top-level store fields — Zustand guaranteed to detect changes
+	// Dedicated session config store — guaranteed reactive
 	const sessionModel = useChatStore((s) => s.sessionModel);
 	const sessionEffort = useChatStore((s) => s.sessionEffort);
 
-	// Effective model/effort: per-session overrides global
+	// Effective: per-session overrides global
 	const effectiveModel = sessionModel || codeAgentConfig.model;
 	const effectiveEffort = sessionEffort ?? codeAgentConfig.effort;
 
@@ -63,14 +63,13 @@ export function useCodeChatCodeAgentControls({
 	const handleSelectModel = useCallback(
 		(nextModel: string) => {
 			const normalizedModel = normalizeCodexModel((nextModel || "").trim());
-			const chatState = useChatStore.getState();
-			const currentModel = chatState.sessionId
-				? chatState.sessionModel
-				: useSettingsStore.getState().codeAgent.model;
+			const sc = useChatStore.getState();
+			const hasSession = !!sc.sessionId;
+			const currentModel = hasSession ? sc.sessionModel : useSettingsStore.getState().codeAgent.model;
 			if ((currentModel || "").trim() === normalizedModel) return;
 
-			if (chatState.sessionId) {
-				chatState.setSessionModel(normalizedModel);
+			if (hasSession) {
+				sc.setSessionModel(normalizedModel);
 			} else {
 				updateCodeAgentConfig({ model: normalizedModel });
 			}
@@ -84,9 +83,9 @@ export function useCodeChatCodeAgentControls({
 
 	const handleCycleModel = useCallback(() => {
 		const cycle: CodexModelValue[] = ["", "sonnet", "opus"];
-		const chatState = useChatStore.getState();
-		const currentModel = chatState.sessionId
-			? chatState.sessionModel
+		const hasSession = !!useChatStore.getState().sessionId;
+		const currentModel = hasSession
+			? useChatStore.getState().sessionModel
 			: useSettingsStore.getState().codeAgent.model;
 		const current = normalizeCodexModel((currentModel || "").trim());
 		const currentIndex = cycle.indexOf(current);
@@ -95,14 +94,14 @@ export function useCodeChatCodeAgentControls({
 	}, [handleSelectModel]);
 
 	const handleToggleEffort = useCallback(() => {
-		const chatState = useChatStore.getState();
-		const currentEffort = chatState.sessionId
-			? chatState.sessionEffort
+		const hasSession = !!useChatStore.getState().sessionId;
+		const currentEffort = hasSession
+			? useChatStore.getState().sessionEffort
 			: useSettingsStore.getState().codeAgent.effort;
 		const nextEffort = currentEffort ? "" : "high";
 
-		if (chatState.sessionId) {
-			chatState.setSessionEffort(nextEffort as "" | "high");
+		if (hasSession) {
+			useChatStore.getState().setSessionEffort(nextEffort as "" | "high");
 		} else {
 			updateCodeAgentConfig({ effort: nextEffort });
 		}

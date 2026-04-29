@@ -1037,6 +1037,10 @@ async function runClaudeCliTask({
   let timedOut = false;
   let spawnError = null;
   let stdoutLineBuffer = '';
+  // Exposed so the stdout handler can settle the run Promise early when
+  // the CLI emits its final `type: "result"` message, without waiting for
+  // the child process to exit (which may be delayed by MCP cleanup, etc.).
+  let earlySettle = null;
 
   child.stdout.on('data', (chunk) => {
     const text = normalizeTraceText(chunk);
@@ -1160,9 +1164,14 @@ async function runClaudeCliTask({
       }
 
       // When we receive the final `result` message, close stdin so the CLI
-      // process can exit (we don't use -p, so the CLI waits for more input).
+      // process can exit (we don't use -p, so the CLI waits for more input),
+      // and settle the run Promise immediately so the frontend exits loading
+      // state without waiting for the child process to fully terminate.
       if (parsed && parsed.type === 'result') {
         try { child?.stdin.end(); } catch { /* ignore */ }
+        if (earlySettle) {
+          earlySettle({ code: 0, signal: null });
+        }
       }
 
       // Parse tool_result blocks from user turns so the renderer can show
@@ -1251,6 +1260,8 @@ async function runClaudeCliTask({
       abortCleanup?.();
       resolvePromise(value);
     };
+    // Allow the stdout handler to settle early when the CLI result arrives.
+    earlySettle = settle;
 
     const terminateChild = () => {
       try {

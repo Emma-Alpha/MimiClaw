@@ -131,7 +131,7 @@ export function useCodeChatClaudeSessions({
 					}
 				}
 
-				// Restore per-session config from IndexedDB
+				// Restore per-session config from IndexedDB via dedicated store
 				const dbSession = await getSession(sessionId);
 				if (dbSession && (dbSession.model || dbSession.effort || dbSession.thinkingLevel)) {
 					useChatStore.getState().restoreSessionConfig({
@@ -141,7 +141,7 @@ export function useCodeChatClaudeSessions({
 					});
 				} else {
 					// Old session without config — clear to null (use global defaults)
-					useChatStore.getState().restoreSessionConfig(null);
+					useChatStore.getState().resetSessionConfig();
 				}
 
 				return true;

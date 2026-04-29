@@ -60,7 +60,8 @@ export function ThinkingAction() {
   const { styles } = useStyles();
   const globalThinkingLevel = useChatInputStore(chatInputStoreSelectors.thinkingLevel);
   const setGlobalThinkingLevel = useChatInputStore((s) => s.setThinkingLevel);
-  // Top-level store field — Zustand guaranteed to detect changes
+
+  // Dedicated session config store — guaranteed reactive
   const sessionThinkingLevel = useChatStore((s) => s.sessionThinkingLevel);
   const thinkingLevel = sessionThinkingLevel ?? globalThinkingLevel;
 
@@ -68,9 +69,8 @@ export function ThinkingAction() {
   const isActive = thinkingLevel !== 'none';
 
   const handleSelect = useCallback((level: ThinkingLevel) => {
-    const chatState = useChatStore.getState();
-    if (chatState.sessionId) {
-      chatState.setSessionThinkingLevel(level);
+    if (useChatStore.getState().sessionId) {
+      useChatStore.getState().setSessionThinkingLevel(level);
     } else {
       setGlobalThinkingLevel(level);
     }

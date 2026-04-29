@@ -1,6 +1,7 @@
-import type { CodeAgentStore, SpinnerMode, StreamingToolUse, VendorStatusSource } from './store';
+import type { TimelineState, SpinnerMode, StreamingToolUse, VendorStatusSource } from './types';
+export type { TimelineState } from './types';
 
-export function createInitialCodeAgentStreamingState(): CodeAgentStore['streaming'] {
+export function createInitialCodeAgentStreamingState(): TimelineState['streaming'] {
   return {
     thinkingText: '',
     isThinking: false,
@@ -16,7 +17,7 @@ export function createInitialCodeAgentStreamingState(): CodeAgentStore['streamin
   };
 }
 
-export const initialCodeAgentState = {
+export const initialTimelineState: TimelineState = {
   sessionId: null,
   sessionInit: null,
   sessionState: 'idle',
@@ -29,8 +30,10 @@ export const initialCodeAgentState = {
   activeTasks: new Map(),
   rateLimitInfo: null,
   contextUsage: null,
+  perfTurnStartedAt: 0,
+  perfFirstTokenAt: 0,
   sessionAllowedTools: new Set<string>(),
-  sessionModel: null,
-  sessionEffort: null,
-  sessionThinkingLevel: null,
-} as const;
+};
+
+/** @deprecated Use `initialTimelineState` instead */
+export const initialCodeAgentState = initialTimelineState;

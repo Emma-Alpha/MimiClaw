@@ -71,13 +71,14 @@ export const ModelAction = memo(() => {
   const { styles } = useStyles();
   const codeAgent = useSettingsStore((s) => s.codeAgent);
   const setCodeAgent = useSettingsStore((s) => s.setCodeAgent);
-  // Top-level store field — Zustand guaranteed to detect changes
+
+  // Dedicated session config store — guaranteed reactive
   const sessionModel = useChatStore((s) => s.sessionModel);
+  const currentModel = sessionModel || codeAgent?.model || '';
+
   const [open, setOpen] = useState(false);
   const [models, setModels] = useState<CodeAgentModelInfo[]>([]);
   const [loading, setLoading] = useState(false);
-
-  const currentModel = sessionModel || codeAgent?.model || '';
 
   const handleFetchModels = useCallback(async () => {
     const baseUrl = codeAgent?.baseUrl?.trim();
@@ -103,9 +104,8 @@ export const ModelAction = memo(() => {
 
   const handleSelectModel = useCallback((modelId: string) => {
     if (!codeAgent) return;
-    const chatState = useChatStore.getState();
-    if (chatState.sessionId) {
-      chatState.setSessionModel(modelId);
+    if (useChatStore.getState().sessionId) {
+      useChatStore.getState().setSessionModel(modelId);
     } else {
       setCodeAgent({ ...codeAgent, model: modelId });
     }

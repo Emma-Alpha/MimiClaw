@@ -131,11 +131,11 @@ export function useCodeChatSubmissionActions({
 
 			try {
 				const latestCodeAgentConfig = useSettingsStore.getState().codeAgent;
-				const chatState = useChatStore.getState();
+				const sc = useChatStore.getState();
 				// Prefer per-session config over global settings
-				const effectiveModel = chatState.sessionModel || latestCodeAgentConfig.model;
-				const effectiveEffort = chatState.sessionEffort ?? latestCodeAgentConfig.effort;
-				const inputThinkingLevel = chatState.sessionThinkingLevel
+				const effectiveModel = sc.sessionModel || latestCodeAgentConfig.model;
+				const effectiveEffort = sc.sessionEffort ?? latestCodeAgentConfig.effort;
+				const inputThinkingLevel = sc.sessionThinkingLevel
 					?? useChatInputStore.getState().thinkingLevel;
 				const thinkingOverride = inputThinkingLevel === 'none'
 					? latestCodeAgentConfig.thinking

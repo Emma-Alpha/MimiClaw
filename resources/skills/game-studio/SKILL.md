@@ -85,8 +85,82 @@ Once the intent is clear, route to the most specific specialist skill and contin
    - Video assets and animation references: use `video-gen`.
 6. Close with a playtest loop before calling the work production-ready.
 
+## Game Art Generation Rules
+
+When using **image-gen** to generate game assets, follow these rules strictly.
+
+### Asset Manifest First
+
+Before generating any assets, output a resource manifest table:
+- Resource name, output path, type (sprite/background/UI/effect), transparent or opaque, required or optional.
+- Keep the list minimal — fewer, higher-quality assets are better than many mediocre ones.
+- If a resource can be drawn with code (simple shapes, particles), skip generation.
+
+### Resource Generation Standards
+
+1. Format: PNG.
+2. Characters, projectiles, explosions, icons, buttons, UI panels: **transparent background**.
+3. Scene backgrounds: **opaque background**.
+4. Subject centered with adequate padding on all sides for easy integration.
+5. No watermarks, no branding, no logos.
+6. **No baked-in text** — all text (HP, labels, button captions) must be rendered in code.
+7. Consistent art style across ALL generated assets.
+8. All assets must be original — do not replicate specific commercial characters.
+
+### image-gen Prompt Template
+
+Every call to image-gen MUST include ALL of the following fields:
+
+```
+- Resource name:
+- Purpose:
+- Output path:
+- Style:
+- Subject description:
+- Composition:
+- Background:
+- Color palette:
+- Restrictions:
+- Output format:
+```
+
+Defaults:
+- **Composition**: subject centered, edge padding, suitable for game engine import.
+- **Background**: transparent (except scene backgrounds).
+- **Restrictions**: original, no text, no watermark, no branding, no trademarks, no complex background clutter.
+
+### Style Consistency
+
+- Generate the **scene background first** to establish the visual tone and color palette.
+- For subsequent assets, explicitly reference the established style in the prompt: "matching the bright cartoon style of the game background."
+- When generating paired assets (e.g., blue team / red team), use identical prompts with only the color swapped.
+- If image-gen supports using a reference image for style consistency, use the previously generated background as reference.
+
+### Output Path
+
+Save generated images **directly into the game project directory** (e.g., `assets/player_blue.png`), NOT to the default `~/Downloads/image-gen/`. Override the output path in the image-gen script.
+
+### File Naming Convention
+
+Use clear, lowercase, underscore-separated names grouped by type:
+- `assets/backgrounds/battle_bg.png`
+- `assets/sprites/player_blue.png`
+- `assets/effects/explosion_ring.png`
+- `assets/ui/panel_top.png`
+- `assets/ui/button_primary.png`
+
+### Quality Checklist
+
+- Sprites: transparent background, subject centered, consistent scale across all characters
+- Backgrounds: 16:9 aspect ratio (or as specified), no text baked in
+- UI panels/buttons: transparent background, clean edges, no text baked in
+- Effects (explosions, particles): transparent background, visually distinct at small game sizes
+- All assets visually coherent when placed together in the game scene
+
 ## Output Expectations
 
+- Execute the full workflow end-to-end in one run. Do not stop after outputting a plan or asset manifest.
+- Generate art assets first, then write code that integrates them.
 - For planning requests, return a game-specific plan with stack choice, gameplay loop, UI surface, asset workflow, and test approach.
 - For implementation requests, keep the chosen stack obvious in the file structure and code boundaries.
 - For mixed requests, preserve the plugin default: 2D Phaser first unless the user asks for something else.

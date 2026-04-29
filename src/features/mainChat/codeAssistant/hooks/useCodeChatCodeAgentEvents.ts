@@ -111,6 +111,9 @@ export function useCodeChatCodeAgentEvents({
 				pendingCompletionActivitiesRef.current = [...codeActivitiesRef.current];
 				codeActivitiesRef.current = [];
 				resetCodeAgentStreaming();
+				// Ensure sessionState is "idle" even when the CLI was killed before
+				// it could emit a `result` SDK message (e.g. user_cancelled abort).
+				useChatStore.setState({ sessionState: "idle" });
 			},
 		);
 
@@ -121,6 +124,7 @@ export function useCodeChatCodeAgentEvents({
 				pendingCompletionActivitiesRef.current = [...codeActivitiesRef.current];
 				codeActivitiesRef.current = [];
 				resetCodeAgentStreaming();
+				useChatStore.setState({ sessionState: "idle" });
 			},
 		);
 
