@@ -1,5 +1,5 @@
 import { ActionIcon } from "@lobehub/ui";
-import { Globe, Loader2, RotateCcw, X } from "lucide-react";
+import { Code2, Crop, Globe, Loader2, MousePointer2, RotateCcw, X } from "lucide-react";
 import {
 	type CSSProperties,
 	useCallback,
@@ -9,8 +9,11 @@ import {
 } from "react";
 import { invokeIpc } from "@/lib/api-client";
 import { subscribeHostEvent } from "@/lib/host-events";
+import { useInspectorStore } from "@/stores/inspector";
 import type { BrowserUseCursorEvent, BrowserUseStatus } from "../../../../../shared/browser-use";
+import type { InspectorElementData, InspectorMode, AreaScreenshotResult } from "../../../../../shared/browser-inspector";
 import { useCodeChatStyles } from "../styles";
+import { InspectorSidebar } from "./InspectorSidebar";
 
 type BrowserUsePanelProps = {
 	onClose?: () => void;
@@ -41,6 +44,18 @@ export function BrowserUsePanel({ onClose }: BrowserUsePanelProps) {
 	const startWidthRef = useRef(DEFAULT_PANEL_WIDTH);
 	const attachedRef = useRef(false);
 
+	// Inspector store
+	const inspectorMode = useInspectorStore((s) => s.mode);
+	const inspectorEnabled = useInspectorStore((s) => s.enabled);
+	const sidebarVisible = useInspectorStore((s) => s.sidebarVisible);
+	const inspectorEnable = useInspectorStore((s) => s.enable);
+	const inspectorDisable = useInspectorStore((s) => s.disable);
+	const inspectorSetMode = useInspectorStore((s) => s.setMode);
+	const inspectorToggleSidebar = useInspectorStore((s) => s.toggleSidebar);
+	const inspectorSelectElement = useInspectorStore((s) => s.selectElement);
+	const inspectorHoverElement = useInspectorStore((s) => s.hoverElement);
+	const inspectorSetAreaScreenshot = useInspectorStore((s) => s.setAreaScreenshot);
+
 	// ─── Webview lifecycle ─────────────────────────────────────────────────────
 
 	useEffect(() => {
@@ -53,6 +68,8 @@ export function BrowserUsePanel({ onClose }: BrowserUsePanelProps) {
 				void invokeIpc("browser-use:attach", webContentsId).then(() => {
 					attachedRef.current = true;
 					setAttached(true);
+					// Enable inspector after browser-use attaches
+					void inspectorEnable(webContentsId);
 				}).catch((err) => {
 					console.error("[BrowserUsePanel] Failed to attach:", err);
 				});
@@ -69,9 +86,10 @@ export function BrowserUsePanel({ onClose }: BrowserUsePanelProps) {
 				attachedRef.current = false;
 				void invokeIpc("browser-use:detach").catch(() => {});
 			}
+			void inspectorDisable();
 			setAttached(false);
 		};
-	}, []);
+	}, []); // eslint-disable-line react-hooks/exhaustive-deps
 
 	// ─── Subscribe to status events ────────────────────────────────────────────
 
@@ -95,6 +113,28 @@ export function BrowserUsePanel({ onClose }: BrowserUsePanelProps) {
 			}
 		});
 	}, []);
+
+	// ─── Subscribe to inspector events ─────────────────────────────────────────
+
+	useEffect(() => {
+		const unsubs = [
+			subscribeHostEvent<InspectorElementData>("inspector:element-selected", (data) => {
+				inspectorSelectElement(data);
+			}),
+			subscribeHostEvent<InspectorElementData>("inspector:element-hovered", (data) => {
+				inspectorHoverElement(data);
+			}),
+			subscribeHostEvent<InspectorMode>("inspector:mode-changed", (mode) => {
+				useInspectorStore.setState({ mode });
+			}),
+			subscribeHostEvent<AreaScreenshotResult>("inspector:area-screenshot", (data) => {
+				inspectorSetAreaScreenshot(data);
+			}),
+		];
+		return () => {
+			for (const unsub of unsubs) unsub();
+		};
+	}, []); // eslint-disable-line react-hooks/exhaustive-deps
 
 	// ─── Horizontal resize ────────────────────────────────────────────────────
 
@@ -137,14 +177,28 @@ export function BrowserUsePanel({ onClose }: BrowserUsePanelProps) {
 			attachedRef.current = false;
 			void invokeIpc("browser-use:detach").catch(() => {});
 		}
+		void inspectorDisable();
 		onClose?.();
-	}, [onClose]);
+	}, [onClose, inspectorDisable]);
+
+	const handleTogglePicker = useCallback(() => {
+		if (!inspectorEnabled) return;
+		void inspectorSetMode(inspectorMode === "picker" ? "off" : "picker");
+	}, [inspectorEnabled, inspectorMode, inspectorSetMode]);
+
+	const handleToggleAreaScreenshot = useCallback(() => {
+		if (!inspectorEnabled) return;
+		void inspectorSetMode(inspectorMode === "area-screenshot" ? "off" : "area-screenshot");
+	}, [inspectorEnabled, inspectorMode, inspectorSetMode]);
 
 	// ─── Render ────────────────────────────────────────────────────────────────
 
 	const panelStyle: CSSProperties = {
 		width: `${panelWidth}px`,
 	};
+
+	const isPickerActive = inspectorMode === "picker";
+	const isAreaActive = inspectorMode === "area-screenshot";
 
 	return (
 		<div className={styles.browserUsePanel} style={panelStyle}>
@@ -167,6 +221,27 @@ export function BrowserUsePanel({ onClose }: BrowserUsePanelProps) {
 					</div>
 					<div className={styles.browserUseHeaderRight}>
 						<ActionIcon
+							icon={MousePointer2}
+							onClick={handleTogglePicker}
+							size="small"
+							title="Element Picker"
+							active={isPickerActive}
+						/>
+						<ActionIcon
+							icon={Code2}
+							onClick={inspectorToggleSidebar}
+							size="small"
+							title="DOM Tree"
+							active={sidebarVisible}
+						/>
+						<ActionIcon
+							icon={Crop}
+							onClick={handleToggleAreaScreenshot}
+							size="small"
+							title="Area Screenshot"
+							active={isAreaActive}
+						/>
+						<ActionIcon
 							icon={RotateCcw}
 							onClick={handleReload}
 							size="small"
@@ -182,7 +257,7 @@ export function BrowserUsePanel({ onClose }: BrowserUsePanelProps) {
 				</div>
 
 				{/* Browser body */}
-				<div className={styles.browserUseBody}>
+				<div className={cx(styles.browserUseBody, isPickerActive && styles.inspectorPickerActive)}>
 					<webview
 						ref={webviewRef}
 						className={styles.browserUseWebview}
@@ -190,8 +265,8 @@ export function BrowserUsePanel({ onClose }: BrowserUsePanelProps) {
 						src="about:blank"
 					/>
 
-					{/* AI cursor overlay */}
-					{cursorEvent && (
+					{/* AI cursor overlay — hidden during picker mode */}
+					{cursorEvent && !isPickerActive && (
 						<div
 							className={styles.browserUseCursor}
 							style={{ left: cursorEvent.x, top: cursorEvent.y }}
@@ -204,6 +279,9 @@ export function BrowserUsePanel({ onClose }: BrowserUsePanelProps) {
 							/>
 						</div>
 					)}
+
+					{/* Inspector sidebar */}
+					{sidebarVisible && <InspectorSidebar />}
 				</div>
 			</div>
 		</div>

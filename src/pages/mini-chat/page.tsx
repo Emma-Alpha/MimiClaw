@@ -2,18 +2,9 @@ import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { CodeChat } from "@/features/mainChat";
 
+import type { MiniChatPendingSession } from "@/lib/mini-chat-session";
+
 const PENDING_SESSION_KEY = "mimiclaw:mini-chat-pending-session";
-
-export interface MiniChatPendingSession {
-	workspaceRoot: string;
-	sessionId: string;
-}
-
-export function writeMiniChatPendingSession(session: MiniChatPendingSession): void {
-	try {
-		localStorage.setItem(PENDING_SESSION_KEY, JSON.stringify(session));
-	} catch { /* ignore */ }
-}
 
 function consumePendingSession(): MiniChatPendingSession | null {
 	try {
@@ -28,7 +19,7 @@ function consumePendingSession(): MiniChatPendingSession | null {
 	}
 }
 
-export function MiniChat() {
+export default function MiniChat() {
 	const location = useLocation();
 	const navigate = useNavigate();
 

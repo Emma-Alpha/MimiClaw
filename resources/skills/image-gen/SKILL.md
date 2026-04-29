@@ -53,6 +53,8 @@ The token is used as a cookie: `aisearch_jwt=JWT <token>`
 
 **Every generation must first create a new topic (chat session).** The returned `chatId` is required by the send request.
 
+**IMPORTANT: `count` must always be `1` unless the user explicitly requests multiple images (e.g. "生成3张", "generate 4 images"). Never increase count on your own.**
+
 ```bash
 TOPIC_RESPONSE=$(curl -s 'https://artflow.gz4399.com/api/nextimage/v1/topic/create' \
   -H 'accept: application/json' \
@@ -62,8 +64,8 @@ TOPIC_RESPONSE=$(curl -s 'https://artflow.gz4399.com/api/nextimage/v1/topic/crea
   --data-raw '{
     "config": {
       "clearContext": 0,
-      "count": <COUNT>,
-      "gptImage2Size": { "height": 2048, "ratio": "<RATIO>", "width": 2048 },
+      "count": 1,
+      "gptImage2Size": { "height": 2048, "ratio": "1:1", "width": 2048 },
       "model": "gpt-image-2"
     }
   }')
@@ -72,7 +74,7 @@ TOPIC_RESPONSE=$(curl -s 'https://artflow.gz4399.com/api/nextimage/v1/topic/crea
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `config.model` | string | `gpt-image-2` | Generation model |
-| `config.count` | number | `1` | Number of images |
+| `config.count` | number | `1` | Number of images. **Always 1 unless user explicitly asks for more.** |
 | `config.gptImage2Size.ratio` | string | `1:1` | Aspect ratio: `auto`, `1:1`, `16:9`, `9:16`, `4:3`, `3:4` |
 | `config.gptImage2Size.width` | number | `2048` | Image width |
 | `config.gptImage2Size.height` | number | `2048` | Image height |
@@ -96,6 +98,8 @@ Extract `data.id` as `CHAT_ID`. If `code` is not `0`, report the error and stop.
 
 Use the `CHAT_ID` from Step 1:
 
+**The `count` here MUST match the value used in Step 1. Default is `1`.**
+
 ```bash
 curl -s 'https://artflow.gz4399.com/api/nextimage/v1/chat/message/send' \
   -H 'accept: application/json' \
@@ -108,8 +112,8 @@ curl -s 'https://artflow.gz4399.com/api/nextimage/v1/chat/message/send' \
     "chatId": <CHAT_ID>,
     "params": {
       "clearContext": 0,
-      "count": <COUNT>,
-      "gptImage2Size": { "ratio": "<RATIO>" }
+      "count": 1,
+      "gptImage2Size": { "ratio": "1:1" }
     }
   }'
 ```
@@ -119,8 +123,8 @@ curl -s 'https://artflow.gz4399.com/api/nextimage/v1/chat/message/send' \
 | `prompt` | string | Yes | - | Image description |
 | `model` | string | No | `gpt-image-2` | Generation model |
 | `chatId` | number | Yes | - | Topic ID from Step 1 |
-| `params.count` | number | No | `1` | Number of images to generate |
-| `params.gptImage2Size.ratio` | string | No | `auto` | Aspect ratio: `auto`, `1:1`, `16:9`, `9:16`, `4:3`, `3:4` |
+| `params.count` | number | No | `1` | Number of images. **Must match Step 1. Always 1 unless user explicitly asks for more.** |
+| `params.gptImage2Size.ratio` | string | No | `1:1` | Aspect ratio: `auto`, `1:1`, `16:9`, `9:16`, `4:3`, `3:4` |
 
 ### Send Response
 
@@ -277,6 +281,7 @@ Expand vague user requests into detailed prompts before submission:
 - Add style, composition, lighting, and background details where appropriate.
 - Preserve the user's original intent; only add detail, never change meaning.
 - If the user provides a very specific prompt, use it as-is without modification.
+- **Never change `count` or `ratio` during prompt enhancement.** Only modify the text prompt.
 
 ## Notes
 

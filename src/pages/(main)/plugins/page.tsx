@@ -22,10 +22,10 @@ import type { InstalledPlugin, MarketplacePlugin } from '@/types/claude-plugin';
 import type { ClaudeCodeSkillEntry } from '@/lib/code-agent';
 import { HERO_PLUGIN_NAMES } from '@/stores/plugins';
 
-import CardGrid from './components/CardGrid';
-import HeroCarousel from './components/HeroCarousel';
-import PluginCard from './components/PluginCard';
-import PluginDetailPage from './components/PluginDetailPage';
+import CardGrid from './_components/CardGrid';
+import HeroCarousel from './_components/HeroCarousel';
+import PluginCard from './_components/PluginCard';
+import PluginDetailPage from './_components/PluginDetailPage';
 
 // ─── styles ──────────────────────────────────────────────────────────────────
 

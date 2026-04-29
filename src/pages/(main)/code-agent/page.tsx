@@ -33,10 +33,10 @@ import type {
   CodeAgentRunRecord,
   CodeAgentRuntimeConfig,
   CodeAgentStatus,
-} from '../../../shared/code-agent';
+} from '../../../../shared/code-agent';
 import { useCodeAgentStyles } from './styles';
 
-export function CodeAgent() {
+export default function CodeAgent() {
   const { t } = useTranslation(['settings', 'common']);
   const { styles, cx } = useCodeAgentStyles();
   const initSettings = useSettingsStore((state) => state.init);

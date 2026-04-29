@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "@/stores/settings";
-import { useStyles } from "./PetCompanion.styles";
+import { useStyles } from "./styles";
 import {
 	Code2,
 	Mic,
@@ -31,7 +31,7 @@ import {
 	type PetCompanionRarity,
 	type PetCompanionTier,
 	type StoredPetCompanion,
-} from "../../shared/pet-companion";
+} from "../../../shared/pet-companion";
 
 const COMPANION_RARITY_LABELS: Record<
 	PetCompanionRarity,
@@ -265,7 +265,7 @@ function CompanionStats({
 	);
 }
 
-export function PetCompanion() {
+export default function PetCompanion() {
 	const { styles } = useStyles();
 	const { i18n } = useTranslation("settings");
 	const initSettings = useSettingsStore((state) => state.init);

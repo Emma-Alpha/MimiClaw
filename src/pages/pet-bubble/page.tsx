@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MessageMarkdown } from "@/components/MessageMarkdown";
 import { invokeIpc } from "@/lib/api-client";
-import type { PetRuntimeState } from "../../shared/pet";
+import type { PetRuntimeState } from "../../../shared/pet";
 
 const FALLBACK_RUNTIME_STATE: PetRuntimeState = {
 	animation: "static",
@@ -426,7 +426,7 @@ function PetBubbleContent({
 	);
 }
 
-export function PetBubble() {
+export default function PetBubble() {
 	const [runtimeState, setRuntimeState] = useState<PetRuntimeState>(FALLBACK_RUNTIME_STATE);
 	const lastReportedHeightRef = useRef(0);
 

@@ -183,6 +183,15 @@ const electronAPI = {
         'browser-use:execute',
         'browser-use:status',
         'browser-use:set-nav-config',
+        // Inspector (element picker, DOM tree, CSS inspector)
+        'inspector:enable',
+        'inspector:disable',
+        'inspector:set-mode',
+        'inspector:get-dom-tree',
+        'inspector:get-element-styles',
+        'inspector:highlight-element',
+        'inspector:remove-highlight',
+        'inspector:capture-area',
       ];
 
       if (validChannels.includes(channel)) {
@@ -256,6 +265,11 @@ const electronAPI = {
         'browser-use:cursor',
         'browser-use:error',
         'browser-use:request-open',
+        // Inspector events
+        'inspector:element-hovered',
+        'inspector:element-selected',
+        'inspector:mode-changed',
+        'inspector:area-screenshot',
       ];
 
       if (validChannels.includes(channel)) {
@@ -332,6 +346,11 @@ const electronAPI = {
         'browser-use:cursor',
         'browser-use:error',
         'browser-use:request-open',
+        // Inspector events
+        'inspector:element-hovered',
+        'inspector:element-selected',
+        'inspector:mode-changed',
+        'inspector:area-screenshot',
       ];
 
       if (validChannels.includes(channel)) {

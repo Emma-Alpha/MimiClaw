@@ -1994,5 +1994,166 @@ export const useCodeChatStyles = createStyles(
 			100% { transform: scale(1); }
 		}
 	`,
+
+	// ── Inspector ─────────────────────────────────────────────────────────
+
+	inspectorPickerActive: css`
+		& webview {
+			cursor: crosshair;
+		}
+	`,
+	inspectorSidebar: css`
+		display: flex;
+		flex-direction: column;
+		border-left: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorBgContainer};
+		overflow: hidden;
+		flex-shrink: 0;
+	`,
+	inspectorSidebarResizeHandle: css`
+		width: 6px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: ew-resize;
+		user-select: none;
+		flex-shrink: 0;
+		&:hover {
+			background: ${token.colorPrimaryBg};
+		}
+	`,
+	inspectorSectionHeader: css`
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 6px 10px;
+		font-size: 11px;
+		font-weight: 600;
+		color: ${token.colorTextSecondary};
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		border-bottom: 1px solid ${token.colorBorderSecondary};
+		cursor: pointer;
+		user-select: none;
+		&:hover {
+			background: ${token.colorFillQuaternary};
+		}
+	`,
+	inspectorDomTree: css`
+		flex: 1;
+		overflow: auto;
+		font: 12px/1.6 monospace;
+		padding: 4px 0;
+		min-height: 0;
+	`,
+	inspectorDomTreeRow: css`
+		display: flex;
+		align-items: center;
+		padding: 1px 8px;
+		cursor: pointer;
+		white-space: nowrap;
+		&:hover {
+			background: ${token.colorFillQuaternary};
+		}
+	`,
+	inspectorDomTreeRowSelected: css`
+		background: ${token.colorPrimaryBg} !important;
+	`,
+	inspectorDomTreeToggle: css`
+		display: inline-flex;
+		width: 14px;
+		height: 14px;
+		flex-shrink: 0;
+		align-items: center;
+		justify-content: center;
+		color: ${token.colorTextTertiary};
+		font-size: 10px;
+	`,
+	inspectorDomTreeTag: css`
+		color: ${token.colorPrimary};
+	`,
+	inspectorDomTreeId: css`
+		color: #a855f7;
+	`,
+	inspectorDomTreeClass: css`
+		color: ${token.colorSuccess};
+	`,
+	inspectorCssPanel: css`
+		flex: 1;
+		overflow: auto;
+		min-height: 0;
+	`,
+	inspectorSelectedBadge: css`
+		padding: 6px 10px;
+		font: 12px monospace;
+		color: ${token.colorPrimary};
+		border-bottom: 1px solid ${token.colorBorderSecondary};
+		background: ${token.colorPrimaryBg};
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	`,
+	inspectorCssGroup: css`
+		border-bottom: 1px solid ${token.colorBorderSecondary};
+	`,
+	inspectorCssGroupHeader: css`
+		padding: 4px 10px;
+		font-size: 11px;
+		font-weight: 600;
+		color: ${token.colorTextSecondary};
+		cursor: pointer;
+		user-select: none;
+		&:hover {
+			background: ${token.colorFillQuaternary};
+		}
+	`,
+	inspectorCssProp: css`
+		display: flex;
+		padding: 2px 10px 2px 20px;
+		font: 11px/1.5 monospace;
+		gap: 6px;
+	`,
+	inspectorCssPropName: css`
+		color: ${token.colorTextSecondary};
+		flex-shrink: 0;
+		&::after {
+			content: ':';
+		}
+	`,
+	inspectorCssPropValue: css`
+		color: ${token.colorText};
+		word-break: break-all;
+	`,
+	inspectorBoxModel: css`
+		padding: 12px;
+		display: flex;
+		justify-content: center;
+	`,
+	inspectorBoxModelContainer: css`
+		position: relative;
+		width: 240px;
+		text-align: center;
+		font: 10px monospace;
+		color: ${token.colorTextSecondary};
+	`,
+	inspectorBoxModelLayer: css`
+		padding: 12px;
+		border: 1px solid ${token.colorBorder};
+		position: relative;
+	`,
+	inspectorBoxModelLabel: css`
+		position: absolute;
+		top: 1px;
+		left: 4px;
+		font-size: 9px;
+		color: ${token.colorTextTertiary};
+	`,
+	inspectorBoxModelContent: css`
+		background: ${token.colorPrimaryBg};
+		padding: 6px;
+		text-align: center;
+		font-size: 11px;
+		color: ${token.colorText};
+	`,
 	}),
 );

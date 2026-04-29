@@ -2,37 +2,45 @@
  * Root Application Component
  * Handles routing and global providers
  */
-import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Component, useEffect } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { Toaster } from "sonner";
 import { ModalHost } from "@lobehub/ui";
 import i18n from "./i18n";
-import { MainLayout } from "./components/layout/MainLayout";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Models } from "./pages/Models";
-import { UnifiedChatPage } from "./features/chat/pages/UnifiedChatPage";
-import { Settings } from "./pages/Settings";
-import { CodeAgent } from "./pages/CodeAgent";
-import { PetFloating } from "./pages/PetFloating";
-import { PetBubble } from "./pages/PetBubble";
-import { PetCompanion } from "./pages/PetCompanion";
-import { VoiceDialog } from "./pages/VoiceDialog";
-import { TrayRuntime } from "./pages/TrayRuntime";
-import { MiniChat } from "./pages/MiniChat";
-import { Setup } from "./pages/Setup";
-import { Login } from "./pages/Login";
-import { Plugins } from "./pages/Plugins";
-import { Cron } from "./pages/Cron";
 import { useSettingsStore } from "./stores/settings";
 import { invokeIpc } from "./lib/api-client";
 import { ThemeWrapper } from "./components/theme/ThemeWrapper";
 import { UpdateBootstrap } from "@/components/update/UpdateBootstrap";
+import { AppRoutes } from "./router/generate-routes";
 
-function LegacyCodeQuickChatRedirect() {
-	const location = useLocation();
+// ---------------------------------------------------------------------------
+// Route classification helpers
+// ---------------------------------------------------------------------------
 
-	return <Navigate to={`/chat/code${location.search}`} replace />;
+/** Standalone Electron window routes — exempt from auth gates & UpdateBootstrap */
+function isStandaloneWindowRoute(pathname: string): boolean {
+	if (pathname === "/pet" || pathname.startsWith("/pet/")) return true;
+	if (pathname.startsWith("/pet-bubble")) return true;
+	if (pathname.startsWith("/pet-companion")) return true;
+	if (pathname.startsWith("/voice-dialog")) return true;
+	if (pathname.startsWith("/tray-runtime")) return true;
+	if (pathname.startsWith("/mini-chat")) return true;
+	if (pathname.startsWith("/quick-chat")) return true;
+	return false;
+}
+
+/** Routes where the pet should NOT be sent to idle */
+function shouldSkipIdleActivity(pathname: string): boolean {
+	if (pathname === "/" || pathname.startsWith("/chat")) return true;
+	if (pathname === "/pet" || pathname.startsWith("/pet/")) return true;
+	if (pathname.startsWith("/pet-bubble")) return true;
+	if (pathname.startsWith("/pet-companion")) return true;
+	if (pathname.startsWith("/voice-dialog")) return true;
+	if (pathname.startsWith("/tray-runtime")) return true;
+	if (pathname.startsWith("/quick-chat")) return true;
+	return false;
 }
 
 /**
@@ -118,16 +126,8 @@ function App() {
 	const setupComplete = useSettingsStore((state) => state.setupComplete);
 	const cloudLoggedIn = useSettingsStore((state) => state.cloudLoggedIn);
 	const hydrateCloudAuth = useSettingsStore((state) => state.hydrateCloudAuth);
-	const isPetBubbleRoute = location.pathname.startsWith("/pet-bubble");
-	const isPetRoute =
-		location.pathname === "/pet" || location.pathname.startsWith("/pet/");
-	const isCodeChatRoute = location.pathname.startsWith("/quick-chat");
-	const isPetCompanionRoute = location.pathname.startsWith("/pet-companion");
-	const isVoiceDialogRoute = location.pathname.startsWith("/voice-dialog");
-	const isTrayRuntimeRoute = location.pathname.startsWith("/tray-runtime");
-	const isMiniChatRoute = location.pathname.startsWith("/mini-chat");
-	const isMainChatRoute =
-		location.pathname === "/" || location.pathname.startsWith("/chat");
+
+	const isStandalone = isStandaloneWindowRoute(location.pathname);
 
 	useEffect(() => {
 		// Restore cloud session from localStorage before any redirect checks.
@@ -142,66 +142,29 @@ function App() {
 		}
 	}, [language]);
 
-
 	// Gate 1: Must be logged in first in all environments.
 	useEffect(() => {
 		if (
 			!cloudLoggedIn &&
-			!location.pathname.startsWith("/login") &&
-			!isPetRoute &&
-			!isPetBubbleRoute &&
-			!isCodeChatRoute &&
-			!isPetCompanionRoute &&
-			!isVoiceDialogRoute &&
-			!isTrayRuntimeRoute &&
-			!isMiniChatRoute
+			!isStandalone &&
+			!location.pathname.startsWith("/login")
 		) {
 			navigate("/login", { replace: true });
 		}
-	}, [
-		cloudLoggedIn,
-		isCodeChatRoute,
-		isPetCompanionRoute,
-		isPetBubbleRoute,
-		isPetRoute,
-		isTrayRuntimeRoute,
-		isVoiceDialogRoute,
-		isMiniChatRoute,
-		location.pathname,
-		navigate,
-	]);
+	}, [cloudLoggedIn, isStandalone, location.pathname, navigate]);
 
 	// Gate 2: After login, redirect to setup wizard if onboarding not complete.
 	useEffect(() => {
-		const passedLoginGate = cloudLoggedIn;
 		if (
-			passedLoginGate &&
+			cloudLoggedIn &&
 			!setupComplete &&
+			!isStandalone &&
 			!location.pathname.startsWith("/setup") &&
-			!location.pathname.startsWith("/login") &&
-			!isPetRoute &&
-			!isPetBubbleRoute &&
-			!isCodeChatRoute &&
-			!isPetCompanionRoute &&
-			!isVoiceDialogRoute &&
-			!isTrayRuntimeRoute &&
-			!isMiniChatRoute
+			!location.pathname.startsWith("/login")
 		) {
 			navigate("/setup", { replace: true });
 		}
-	}, [
-		cloudLoggedIn,
-		isCodeChatRoute,
-		isPetCompanionRoute,
-		isPetBubbleRoute,
-		isPetRoute,
-		isTrayRuntimeRoute,
-		isVoiceDialogRoute,
-		isMiniChatRoute,
-		setupComplete,
-		location.pathname,
-		navigate,
-	]);
+	}, [cloudLoggedIn, setupComplete, isStandalone, location.pathname, navigate]);
 
 	// Listen for navigation events from main process
 	useEffect(() => {
@@ -252,76 +215,20 @@ function App() {
 		}
 	}, [theme]);
 
-
+	// Notify pet of idle UI activity on non-active routes
 	useEffect(() => {
-		if (
-			isPetRoute ||
-			isPetBubbleRoute ||
-			isCodeChatRoute ||
-			isPetCompanionRoute ||
-			isVoiceDialogRoute ||
-			isTrayRuntimeRoute ||
-			isMainChatRoute
-		)
-			return;
+		if (shouldSkipIdleActivity(location.pathname)) return;
 		void invokeIpc("pet:setUiActivity", { activity: "idle" }).catch(
 			() => {},
 		);
-	}, [
-		isMainChatRoute,
-		isCodeChatRoute,
-		isPetCompanionRoute,
-		isPetBubbleRoute,
-		isPetRoute,
-		isTrayRuntimeRoute,
-		isVoiceDialogRoute,
-	]);
+	}, [location.pathname]);
 
 	return (
 		<ErrorBoundary>
 			<ThemeWrapper>
 				<TooltipProvider>
-					{!isPetRoute &&
-					!isPetBubbleRoute &&
-					!isCodeChatRoute &&
-					!isPetCompanionRoute &&
-					!isVoiceDialogRoute &&
-					!isTrayRuntimeRoute &&
-					!isMiniChatRoute ? (
-						<UpdateBootstrap />
-					) : null}
-					<Routes>
-						{/* Cloud login gate */}
-						<Route path="/login" element={<Login />} />
-
-						{/* Setup / cloud onboarding wizard */}
-						<Route path="/setup/*" element={<Setup />} />
-
-						{/* Floating pet window */}
-						<Route path="/pet" element={<PetFloating />} />
-						<Route path="/pet-bubble" element={<PetBubble />} />
-
-						{/* Legacy quick chat entry now redirects to chat/code */}
-						<Route path="/quick-chat" element={<Navigate to="/chat/code" replace />} />
-						<Route path="/pet-companion" element={<PetCompanion />} />
-						<Route path="/voice-dialog" element={<VoiceDialog />} />
-						<Route path="/tray-runtime" element={<TrayRuntime />} />
-						<Route path="/mini-chat" element={<MiniChat />} />
-
-						{/* Main application routes */}
-						<Route element={<MainLayout />}>
-							<Route path="/" element={<Navigate to="/chat/code" replace />} />
-							<Route path="/chat" element={<Navigate to="/chat/code" replace />} />
-							<Route path="/chat/:kind" element={<UnifiedChatPage />} />
-							<Route path="/models" element={<Models />} />
-							<Route path="/code-agent/quick-chat" element={<LegacyCodeQuickChatRedirect />} />
-							<Route path="/code-agent" element={<CodeAgent />} />
-							<Route path="/plugins" element={<Plugins />} />
-							<Route path="/cron" element={<Cron />} />
-							<Route path="/settings/*" element={<Settings />} />
-						</Route>
-					</Routes>
-
+					{!isStandalone ? <UpdateBootstrap /> : null}
+					<AppRoutes />
 					{/* Global toast notifications */}
 					<Toaster
 						position="bottom-right"

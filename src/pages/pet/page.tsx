@@ -7,7 +7,7 @@ import {
 	type MouseEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { useStyles } from "./PetFloating.styles";
+import { useStyles } from "./styles";
 import { toast } from "sonner";
 import {
 	DEFAULT_PET_ANIMATION,
@@ -28,8 +28,8 @@ import { useSettingsStore } from "@/stores/settings";
 import type {
 	PetRecordingCommandPayload,
 	PetRuntimeState,
-} from "../../shared/pet";
-import { rollPetCompanion } from "../../shared/pet-companion";
+} from "../../../shared/pet";
+import { rollPetCompanion } from "../../../shared/pet-companion";
 
 const FALLBACK_RUNTIME_STATE: PetRuntimeState = {
 	animation: DEFAULT_PET_ANIMATION,
@@ -233,7 +233,7 @@ function PetRecordingBubble({
 	);
 }
 
-export function PetFloating() {
+export default function PetFloating() {
 	const { styles } = useStyles();
 	const { i18n } = useTranslation("settings");
 	const videoRef = useRef<HTMLVideoElement | null>(null);

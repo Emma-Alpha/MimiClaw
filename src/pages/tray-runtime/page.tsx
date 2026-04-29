@@ -399,7 +399,7 @@ function healthGradient(health: number): string {
 	return "linear-gradient(90deg, #ff5a5d, #ff8284)";
 }
 
-export function TrayRuntime() {
+export default function TrayRuntime() {
 	const { styles } = useStyles();
 	const [state, setState] = useState<TrayRuntimeState>(FALLBACK_STATE);
 	const [nowTs, setNowTs] = useState<number>(() => Date.now());

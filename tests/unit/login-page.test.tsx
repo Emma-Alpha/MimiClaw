@@ -1,7 +1,7 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Login } from '@/pages/Login';
+import Login from '@/pages/login/page';
 
 const navigateMock = vi.fn();
 const loginCloudMock = vi.fn();

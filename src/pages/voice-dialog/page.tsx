@@ -4,7 +4,7 @@ import { Mic, MicOff, Volume2, VolumeX, Phone, X, AlertTriangle } from 'lucide-r
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { invokeIpc } from '@/lib/api-client';
-import { useStyles } from './VoiceDialog.styles';
+import { useStyles } from './styles';
 import {
   appendVoiceChatMessage,
   fetchVoiceChatConfig,
@@ -12,7 +12,7 @@ import {
 } from '@/lib/voice-chat';
 import { PET_ANIMATION_SOURCES } from '@/lib/pet-floating';
 import { float32ToPcm16Bytes, mixToMono, resampleLinear } from '@/lib/volcengine-speech';
-import type { VoiceChatConfigState } from '../../shared/voice-chat';
+import type { VoiceChatConfigState } from '../../../shared/voice-chat';
 
 type VoiceStage = 'idle' | 'connecting' | 'listening' | 'thinking' | 'speaking' | 'error';
 type VoiceErrorKind = 'auth' | 'mic' | 'network' | 'server';
@@ -195,7 +195,7 @@ function VoiceBars({ analyser }: { analyser: AnalyserNode | null }) {
   return <canvas ref={canvasRef} style={{ height: 52, width: 180 }} />;
 }
 
-export function VoiceDialog() {
+export default function VoiceDialog() {
   const { styles } = useStyles();
   const [config, setConfig] = useState<VoiceChatConfigState | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(true);

@@ -9,6 +9,7 @@ import { join, resolve } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import { CodeAgentManager } from '../code-agent/manager';
 import { browserUseManager } from '../browser-use/manager';
+import { inspectorManager } from '../browser-use/inspector-manager';
 // GatewayManager removed — using stub for compatibility
 class GatewayManager {
   on(_event: string, _handler: (...args: unknown[]) => void) { return this; }
@@ -19,7 +20,7 @@ class GatewayManager {
   debouncedRestart() {}
   debouncedReload() {}
 }
-import { registerBrowserUseHandlers, registerIpcHandlers } from './ipc-handlers';
+import { registerBrowserUseHandlers, registerInspectorHandlers, registerIpcHandlers } from './ipc-handlers';
 import {
   createTray,
 } from './tray';
@@ -737,6 +738,7 @@ async function initialize(): Promise<void> {
   // Register browser-use IPC handlers early, before the window loads content,
   // to prevent "No handler registered" errors during renderer startup / HMR.
   registerBrowserUseHandlers();
+  registerInspectorHandlers();
 
   // Create the main window
   const window = createMainWindow();
@@ -1088,6 +1090,44 @@ async function initialize(): Promise<void> {
     for (const win of wins) {
       if (win && !win.isDestroyed()) {
         win.webContents.send('browser-use:request-open');
+      }
+    }
+  });
+
+  // ─── Inspector event wiring ─────────────────────────────────────────────────
+
+  inspectorManager.on('element-hovered', (data: unknown) => {
+    const wins = [mainWindow, getCodeChatWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('inspector:element-hovered', data);
+      }
+    }
+  });
+
+  inspectorManager.on('element-selected', (data: unknown) => {
+    const wins = [mainWindow, getCodeChatWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('inspector:element-selected', data);
+      }
+    }
+  });
+
+  inspectorManager.on('mode-changed', (mode: unknown) => {
+    const wins = [mainWindow, getCodeChatWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('inspector:mode-changed', mode);
+      }
+    }
+  });
+
+  inspectorManager.on('area-screenshot', (data: unknown) => {
+    const wins = [mainWindow, getCodeChatWindow()];
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('inspector:area-screenshot', data);
       }
     }
   });

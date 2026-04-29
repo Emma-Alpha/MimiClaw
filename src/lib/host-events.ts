@@ -33,6 +33,11 @@ const HOST_EVENT_TO_IPC_CHANNEL: Record<string, string> = {
   'browser-use:status': 'browser-use:status-changed',
   'browser-use:cursor': 'browser-use:cursor',
   'browser-use:error': 'browser-use:error',
+  // Inspector events
+  'inspector:element-hovered': 'inspector:element-hovered',
+  'inspector:element-selected': 'inspector:element-selected',
+  'inspector:mode-changed': 'inspector:mode-changed',
+  'inspector:area-screenshot': 'inspector:area-screenshot',
   'channel:whatsapp-qr': 'channel:whatsapp-qr',
   'channel:whatsapp-success': 'channel:whatsapp-success',
   'channel:whatsapp-error': 'channel:whatsapp-error',

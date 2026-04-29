@@ -44,7 +44,7 @@ import {
 } from "@/lib/code-agent";
 import { invokeIpc } from "@/lib/api-client";
 import { saveSession } from "@/lib/db";
-import { writeMiniChatPendingSession } from "@/pages/MiniChat";
+import { writeMiniChatPendingSession } from "@/lib/mini-chat-session";
 import { subscribeHostEvent } from "@/lib/host-events";
 import {
 	buildWorkspaceId,

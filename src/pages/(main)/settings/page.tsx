@@ -15,7 +15,7 @@ import {
   List,
 } from 'lucide-react';
 import { Form, type FormGroupItemType } from '@lobehub/ui';
-import { SettingHeader } from './components/SettingHeader';
+import { SettingHeader } from './_components/SettingHeader';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -90,11 +90,11 @@ import type {
   CodeAgentRunRecord,
   CodeAgentRuntimeConfig,
   CodeAgentStatus,
-} from '../../../shared/code-agent';
+} from '../../../../shared/code-agent';
 import {
   DEFAULT_VOICE_CHAT_ENDPOINT,
   type VoiceChatConfigState,
-} from '../../../shared/voice-chat';
+} from '../../../../shared/voice-chat';
 
 const CODE_AGENT_WORKSPACE_ROOT_STORAGE_KEY = 'mimiclaw:code-agent-workspace-root';
 

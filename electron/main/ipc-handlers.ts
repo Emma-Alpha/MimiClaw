@@ -16,6 +16,7 @@ import { homedir } from "node:os";
 import { join, extname, basename } from "node:path";
 import crypto from "node:crypto";
 import { browserUseManager } from "../browser-use/manager";
+import { inspectorManager } from "../browser-use/inspector-manager";
 // GatewayManager stub — gateway removed
 type GatewayManager = {
   rpc: (method: string, params?: unknown, timeout?: number) => Promise<unknown>;
@@ -4092,5 +4093,82 @@ export function registerBrowserUseHandlers(): void {
 	ipcMain.handle("browser-use:set-nav-config", async (_, config: import("../../shared/browser-use").BrowserUseNavigationConfig) => {
 		browserUseManager.setNavigationConfig(config);
 		return { success: true };
+	});
+}
+
+// ─── Inspector Handlers ──────────────────────────────────────────────────────
+
+export function registerInspectorHandlers(): void {
+
+	ipcMain.handle("inspector:enable", async (_, webContentsId: number) => {
+		try {
+			await inspectorManager.attach(webContentsId);
+			return { success: true };
+		} catch (err) {
+			return { success: false, error: String(err) };
+		}
+	});
+
+	ipcMain.handle("inspector:disable", async () => {
+		try {
+			inspectorManager.detach();
+			return { success: true };
+		} catch (err) {
+			return { success: false, error: String(err) };
+		}
+	});
+
+	ipcMain.handle("inspector:set-mode", async (_, mode: import("../../shared/browser-inspector").InspectorMode) => {
+		try {
+			await inspectorManager.setMode(mode);
+			return { success: true };
+		} catch (err) {
+			return { success: false, error: String(err) };
+		}
+	});
+
+	ipcMain.handle("inspector:get-dom-tree", async (_, maxDepth?: number) => {
+		try {
+			const tree = await inspectorManager.getDOMTree(maxDepth);
+			return { success: true, data: tree };
+		} catch (err) {
+			return { success: false, error: String(err) };
+		}
+	});
+
+	ipcMain.handle("inspector:get-element-styles", async (_, selector: string) => {
+		try {
+			const styles = await inspectorManager.getElementStyles(selector);
+			return { success: true, data: styles };
+		} catch (err) {
+			return { success: false, error: String(err) };
+		}
+	});
+
+	ipcMain.handle("inspector:highlight-element", async (_, selector: string) => {
+		try {
+			await inspectorManager.highlightElement(selector);
+			return { success: true };
+		} catch (err) {
+			return { success: false, error: String(err) };
+		}
+	});
+
+	ipcMain.handle("inspector:remove-highlight", async () => {
+		try {
+			await inspectorManager.removeHighlight();
+			return { success: true };
+		} catch (err) {
+			return { success: false, error: String(err) };
+		}
+	});
+
+	ipcMain.handle("inspector:capture-area", async (_, clip: { x: number; y: number; width: number; height: number }) => {
+		try {
+			const result = await inspectorManager.captureArea(clip);
+			return { success: true, data: result };
+		} catch (err) {
+			return { success: false, error: String(err) };
+		}
 	});
 }
