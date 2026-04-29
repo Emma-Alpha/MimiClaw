@@ -8,6 +8,7 @@ export interface DBSession {
   displayName?: string;
   thinkingLevel?: string;
   model?: string;
+  effort?: string;
   updatedAt: number;
   createdAt: number;
 }
@@ -116,6 +117,18 @@ export async function deleteSession(key: string): Promise<void> {
     });
   } catch (err) {
     console.warn('[db] deleteSession failed:', err);
+  }
+}
+
+/** Partially update a session's config fields without overwriting other metadata. */
+export async function updateSessionConfig(
+  key: string,
+  config: { model?: string; effort?: string; thinkingLevel?: string },
+): Promise<void> {
+  try {
+    await db.sessions.update(key, { ...config, updatedAt: Date.now() });
+  } catch (err) {
+    console.warn('[db] updateSessionConfig failed:', err);
   }
 }
 

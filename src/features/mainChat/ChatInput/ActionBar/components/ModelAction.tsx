@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Popover } from 'antd';
 import { fetchCodeAgentModels, type CodeAgentModelInfo } from '@/lib/code-agent';
 import { useSettingsStore } from '@/stores/settings';
+import { useChatStore } from '@/stores/chat';
 
 const useStyles = createStyles(({ css, token }) => ({
   item: css`
@@ -70,11 +71,13 @@ export const ModelAction = memo(() => {
   const { styles } = useStyles();
   const codeAgent = useSettingsStore((s) => s.codeAgent);
   const setCodeAgent = useSettingsStore((s) => s.setCodeAgent);
+  // Top-level store field — Zustand guaranteed to detect changes
+  const sessionModel = useChatStore((s) => s.sessionModel);
   const [open, setOpen] = useState(false);
   const [models, setModels] = useState<CodeAgentModelInfo[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const currentModel = codeAgent?.model || '';
+  const currentModel = sessionModel || codeAgent?.model || '';
 
   const handleFetchModels = useCallback(async () => {
     const baseUrl = codeAgent?.baseUrl?.trim();
@@ -100,7 +103,12 @@ export const ModelAction = memo(() => {
 
   const handleSelectModel = useCallback((modelId: string) => {
     if (!codeAgent) return;
-    setCodeAgent({ ...codeAgent, model: modelId });
+    const chatState = useChatStore.getState();
+    if (chatState.sessionId) {
+      chatState.setSessionModel(modelId);
+    } else {
+      setCodeAgent({ ...codeAgent, model: modelId });
+    }
     setOpen(false);
     toast.success(`Model: ${modelId}`);
   }, [codeAgent, setCodeAgent]);

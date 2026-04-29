@@ -4,7 +4,9 @@ import {
 	fetchCodeAgentSessions,
 } from "@/lib/code-agent";
 import { toUserMessage } from "@/lib/api-client";
-import { getCodeAgentSessionPerf } from "@/lib/db";
+import { getCodeAgentSessionPerf, getSession } from "@/lib/db";
+import { useSettingsStore } from "@/stores/settings";
+import { useChatInputStore } from "@/features/mainChat/ChatInput/store";
 import {
 	deriveContextUsageFromRawMessages,
 	useChatStore,
@@ -127,6 +129,19 @@ export function useCodeChatClaudeSessions({
 					if (changed) {
 						useChatStore.setState({ items: updatedItems });
 					}
+				}
+
+				// Restore per-session config from IndexedDB
+				const dbSession = await getSession(sessionId);
+				if (dbSession && (dbSession.model || dbSession.effort || dbSession.thinkingLevel)) {
+					useChatStore.getState().restoreSessionConfig({
+						model: dbSession.model ?? useSettingsStore.getState().codeAgent.model,
+						effort: dbSession.effort ?? useSettingsStore.getState().codeAgent.effort,
+						thinkingLevel: dbSession.thinkingLevel ?? useChatInputStore.getState().thinkingLevel,
+					});
+				} else {
+					// Old session without config — clear to null (use global defaults)
+					useChatStore.getState().restoreSessionConfig(null);
 				}
 
 				return true;

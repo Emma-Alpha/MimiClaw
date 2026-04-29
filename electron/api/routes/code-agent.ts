@@ -425,7 +425,7 @@ export async function handleCodeAgentRoutes(
       const scanSkillDir = async (
         dir: string,
         scope: 'global' | 'project',
-      ): Promise<Array<{ name: string; command: string; description: string; scope: string; source: 'claude' | 'external'; skillContent: string }>> => {
+      ): Promise<Array<{ name: string; command: string; description: string; scope: string; source: 'claude' | 'external'; skillContent: string; requiresSkills: string[] }>> => {
         try {
           const entries = await fs.readdir(dir, { withFileTypes: true });
           const results = await Promise.all(
@@ -435,9 +435,11 @@ export async function handleCodeAgentRoutes(
                 const skillMd = join(dir, e.name, 'SKILL.md');
                 let description = '';
                 let skillContent = '';
+                let requiresSkills: string[] = [];
                 try {
                   const content = await fs.readFile(skillMd, 'utf8');
-                  skillContent = content;
+                  const skillDir = join(dir, e.name);
+                  skillContent = `<!-- skill-base-dir: ${skillDir} -->\n${content}`;
                   const lines = content.split(/\r?\n/);
 
                   // Try YAML frontmatter first (--- delimited)
@@ -449,6 +451,24 @@ export async function handleCodeAgentRoutes(
                       if (descMatch?.[1]) {
                         const raw = descMatch[1].trim();
                         description = raw.length > 100 ? `${raw.slice(0, 100)}…` : raw;
+                      }
+
+                      // Parse requires_skills list (YAML list items under requires_skills:)
+                      const fmLines = fmBlock.split(/\r?\n/);
+                      let inRequires = false;
+                      for (const fmLine of fmLines) {
+                        if (/^requires_skills:\s*$/.test(fmLine)) {
+                          inRequires = true;
+                          continue;
+                        }
+                        if (inRequires) {
+                          const itemMatch = fmLine.match(/^\s+-\s+(.+)$/);
+                          if (itemMatch) {
+                            requiresSkills.push(itemMatch[1].trim().replace(/^["']|["']$/g, ''));
+                          } else {
+                            break;
+                          }
+                        }
                       }
                     }
                   }
@@ -475,6 +495,7 @@ export async function handleCodeAgentRoutes(
                   scope,
                   source,
                   skillContent,
+                  requiresSkills,
                 };
               }),
           );

@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import { extname, join, relative } from 'node:path';
 import { homedir } from 'node:os';
 import type { HostApiContext } from '../context';
-import { parseJsonBody, sendJson } from '../route-utils';
+import { parseJsonBody, sendJson, setCorsHeaders } from '../route-utils';
 
 const EXT_MIME_MAP: Record<string, string> = {
   '.png': 'image/png',
@@ -450,6 +450,40 @@ export async function handleFileRoutes(
       sendJson(res, 200, results);
     } catch (error) {
       sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
+  // Serve local files for inline rendering (e.g. image-gen skill output)
+  if (url.pathname === '/api/files/local' && req.method === 'GET') {
+    const filePath = url.searchParams.get('path')?.trim();
+    if (!filePath || !filePath.startsWith('/')) {
+      sendJson(res, 400, { success: false, error: 'Absolute file path is required' });
+      return true;
+    }
+    try {
+      const fsP = await import('node:fs/promises');
+      const stat = await fsP.stat(filePath);
+      if (!stat.isFile()) {
+        sendJson(res, 404, { success: false, error: 'Not a file' });
+        return true;
+      }
+      const ext = extname(filePath);
+      const mimeType = getMimeType(ext);
+      const buf = await fsP.readFile(filePath);
+      setCorsHeaders(res);
+      res.statusCode = 200;
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Content-Length', buf.length);
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      res.end(buf);
+    } catch (error: unknown) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT') {
+        sendJson(res, 404, { success: false, error: 'File not found' });
+      } else {
+        sendJson(res, 500, { success: false, error: String(error) });
+      }
     }
     return true;
   }

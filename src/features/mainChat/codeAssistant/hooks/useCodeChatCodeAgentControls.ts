@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { invokeIpc } from "@/lib/api-client";
 import { useSettingsStore } from "@/stores/settings";
+import { useChatStore } from "@/stores/chat";
 
 type CodeAgentConfig = ReturnType<typeof useSettingsStore.getState>["codeAgent"];
 const CODEX_MODEL_OPTIONS = [
@@ -24,21 +25,29 @@ export function useCodeChatCodeAgentControls({
 	codeAgentConfig,
 	setCodeAgentConfig,
 }: Params) {
-	const effortEnabled = codeAgentConfig.effort !== "";
+	// Top-level store fields — Zustand guaranteed to detect changes
+	const sessionModel = useChatStore((s) => s.sessionModel);
+	const sessionEffort = useChatStore((s) => s.sessionEffort);
+
+	// Effective model/effort: per-session overrides global
+	const effectiveModel = sessionModel || codeAgentConfig.model;
+	const effectiveEffort = sessionEffort ?? codeAgentConfig.effort;
+
+	const effortEnabled = effectiveEffort !== "";
 	const thinkingEnabled = codeAgentConfig.thinking !== "disabled";
 	const fastModeEnabled = codeAgentConfig.fastMode === true;
 	const selectedModel = useMemo(
-		() => normalizeCodexModel((codeAgentConfig.model || "").trim()),
-		[codeAgentConfig.model],
+		() => normalizeCodexModel((effectiveModel || "").trim()),
+		[effectiveModel],
 	);
 
 	const modelLabel = useMemo(() => {
-		const model = (codeAgentConfig.model || "").trim();
+		const model = (effectiveModel || "").trim();
 		if (!model) return "Default";
 		if (model === "sonnet") return "Sonnet";
 		if (model === "opus") return "Opus";
 		return model;
-	}, [codeAgentConfig.model]);
+	}, [effectiveModel]);
 
 	const updateCodeAgentConfig = useCallback(
 		(patch: Partial<CodeAgentConfig>) => {
@@ -54,10 +63,17 @@ export function useCodeChatCodeAgentControls({
 	const handleSelectModel = useCallback(
 		(nextModel: string) => {
 			const normalizedModel = normalizeCodexModel((nextModel || "").trim());
-			const current = (useSettingsStore.getState().codeAgent.model || "").trim();
-			if (current === normalizedModel) return;
+			const chatState = useChatStore.getState();
+			const currentModel = chatState.sessionId
+				? chatState.sessionModel
+				: useSettingsStore.getState().codeAgent.model;
+			if ((currentModel || "").trim() === normalizedModel) return;
 
-			updateCodeAgentConfig({ model: normalizedModel });
+			if (chatState.sessionId) {
+				chatState.setSessionModel(normalizedModel);
+			} else {
+				updateCodeAgentConfig({ model: normalizedModel });
+			}
 			void invokeIpc(
 				"pet:pushTerminalLine",
 				`› Model 已切换为 ${normalizedModel || "Default"}`,
@@ -68,17 +84,28 @@ export function useCodeChatCodeAgentControls({
 
 	const handleCycleModel = useCallback(() => {
 		const cycle: CodexModelValue[] = ["", "sonnet", "opus"];
-		const current = normalizeCodexModel(
-			(useSettingsStore.getState().codeAgent.model || "").trim(),
-		);
+		const chatState = useChatStore.getState();
+		const currentModel = chatState.sessionId
+			? chatState.sessionModel
+			: useSettingsStore.getState().codeAgent.model;
+		const current = normalizeCodexModel((currentModel || "").trim());
 		const currentIndex = cycle.indexOf(current);
 		const nextModel = cycle[(currentIndex + 1) % cycle.length];
 		handleSelectModel(nextModel);
 	}, [handleSelectModel]);
 
 	const handleToggleEffort = useCallback(() => {
-		const nextEffort = useSettingsStore.getState().codeAgent.effort ? "" : "high";
-		updateCodeAgentConfig({ effort: nextEffort });
+		const chatState = useChatStore.getState();
+		const currentEffort = chatState.sessionId
+			? chatState.sessionEffort
+			: useSettingsStore.getState().codeAgent.effort;
+		const nextEffort = currentEffort ? "" : "high";
+
+		if (chatState.sessionId) {
+			chatState.setSessionEffort(nextEffort as "" | "high");
+		} else {
+			updateCodeAgentConfig({ effort: nextEffort });
+		}
 		void invokeIpc(
 			"pet:pushTerminalLine",
 			`› Effort 已切换为 ${nextEffort || "默认"}`,

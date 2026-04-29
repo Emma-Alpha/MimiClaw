@@ -209,6 +209,7 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 	}, [embeddedCodeAssistant, location.search]);
 	const chatInputEditorRef = useRef<ChatInputEditorApi | null>(null);
 	const activeSkillsRef = useRef<SlashOption[]>([]);
+	const allSkillsRef = useRef<ClaudeCodeSkillEntry[]>([]);
 	const richContentRef = useRef<import("slate").Descendant[] | undefined>(undefined);
 
 	// --- @ mention (project files) ---
@@ -478,6 +479,11 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 			.catch(() => {});
 	}, [codeWorkspaceRoot]);
 
+	// Keep allSkillsRef in sync (project-scoped first for priority)
+	useEffect(() => {
+		allSkillsRef.current = [...claudeCodeSkills.project, ...claudeCodeSkills.global];
+	}, [claudeCodeSkills]);
+
 	// Map project mention entries to MentionItem[]
 	const fileMentionItems = useMemo<MentionItem[]>(
 		() => {
@@ -635,6 +641,7 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 			resetCodeAgentStreaming,
 			clearComposer,
 			activeSkillsRef,
+			allSkillsRef,
 			richContentRef,
 			pendingCompletionActivitiesRef,
 			forceFreshSessionOnNextSubmitRef,

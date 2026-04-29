@@ -8,6 +8,7 @@ import {
 import type { Descendant } from "slate";
 import type { FileAttachment } from "@/features/mainChat/lib/composer-helpers";
 import {
+	type ClaudeCodeSkillEntry,
 	fetchCodeAgentStatus,
 	runCodeAgentTask,
 } from "@/lib/code-agent";
@@ -19,6 +20,7 @@ import {
 } from "@/lib/unified-composer";
 import { useChatInputStore } from "@/features/mainChat/ChatInput/store";
 import { useSettingsStore } from "@/stores/settings";
+import { useChatStore } from "@/stores/chat";
 import { toast } from "sonner";
 import type {
 	CodeAgentImageAttachment,
@@ -57,6 +59,7 @@ type Params = {
 	resetCodeAgentStreaming: () => void;
 	clearComposer: () => void;
 	activeSkillsRef: MutableRefObject<SlashOption[]>;
+	allSkillsRef: MutableRefObject<ClaudeCodeSkillEntry[]>;
 	richContentRef: MutableRefObject<Descendant[] | undefined>;
 	pendingCompletionActivitiesRef: MutableRefObject<ToolActivityItem[]>;
 	forceFreshSessionOnNextSubmitRef: MutableRefObject<boolean>;
@@ -78,6 +81,7 @@ export function useCodeChatSubmissionActions({
 	resetCodeAgentStreaming,
 	clearComposer,
 	activeSkillsRef,
+	allSkillsRef,
 	richContentRef,
 	pendingCompletionActivitiesRef,
 	forceFreshSessionOnNextSubmitRef,
@@ -127,7 +131,12 @@ export function useCodeChatSubmissionActions({
 
 			try {
 				const latestCodeAgentConfig = useSettingsStore.getState().codeAgent;
-				const inputThinkingLevel = useChatInputStore.getState().thinkingLevel;
+				const chatState = useChatStore.getState();
+				// Prefer per-session config over global settings
+				const effectiveModel = chatState.sessionModel || latestCodeAgentConfig.model;
+				const effectiveEffort = chatState.sessionEffort ?? latestCodeAgentConfig.effort;
+				const inputThinkingLevel = chatState.sessionThinkingLevel
+					?? useChatInputStore.getState().thinkingLevel;
 				const thinkingOverride = inputThinkingLevel === 'none'
 					? latestCodeAgentConfig.thinking
 					: inputThinkingLevel === 'low'
@@ -147,9 +156,9 @@ export function useCodeChatSubmissionActions({
 					images: images?.length ? images : undefined,
 					sessionId: shouldForceFreshSession ? undefined : activeClaudeSessionId || undefined,
 					configOverride: {
-						model: latestCodeAgentConfig.model,
+						model: effectiveModel,
 						fallbackModel: latestCodeAgentConfig.fallbackModel,
-						effort: latestCodeAgentConfig.effort,
+						effort: effectiveEffort,
 						thinking: thinkingOverride,
 						fastMode: latestCodeAgentConfig.fastMode === true,
 						permissionMode: latestCodeAgentConfig.permissionMode,
@@ -285,7 +294,53 @@ export function useCodeChatSubmissionActions({
 			);
 
 			const hasNonImageAttachments = codeAttachmentPaths.length > 0;
-			const activeSkills = activeSkillsRef.current;
+
+			// Resolve skill dependencies: if any active skill declares
+			// requires_skills, auto-inject those dependency skills.
+			const resolvedSkills = (() => {
+				const manual = activeSkillsRef.current;
+				if (manual.length === 0) return manual;
+
+				const allSkills = allSkillsRef.current;
+				const activeNames = new Set(manual.map((s) => s.title.toLowerCase()));
+				const deps: SlashOption[] = [];
+
+				for (const skill of manual) {
+					// Look up the full entry to get requiresSkills
+					const entry = allSkills.find(
+						(e) => e.name.toLowerCase() === skill.title.toLowerCase(),
+					);
+					if (!entry?.requiresSkills?.length) continue;
+
+					for (const depName of entry.requiresSkills) {
+						if (activeNames.has(depName.toLowerCase())) continue;
+						const depEntry = allSkills.find(
+							(e) => e.name.toLowerCase() === depName.toLowerCase(),
+						);
+						if (!depEntry) continue;
+						activeNames.add(depName.toLowerCase());
+						deps.push({
+							id: `${depEntry.scope}:${depEntry.name}`,
+							command: depEntry.command,
+							title: depEntry.name,
+							description: depEntry.description,
+							keywords: [depEntry.name.toLowerCase()],
+							scope: depEntry.scope,
+							source: depEntry.source,
+							skillContent: depEntry.skillContent,
+						});
+					}
+				}
+
+				if (deps.length > 0) {
+					const names = deps.map((d) => d.title).join(", ");
+					toast.info(`Auto-activated: ${names}`, { duration: 3000 });
+					return [...manual, ...deps];
+				}
+				return manual;
+			})();
+
+			const activeSkills = resolvedSkills;
 			const codeText = (() => {
 				let base = hasNonImageAttachments
 					? `${cleanText}\n\n请优先读取并分析已附带的文件路径。`

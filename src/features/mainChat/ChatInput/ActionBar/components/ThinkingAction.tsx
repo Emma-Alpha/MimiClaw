@@ -3,6 +3,7 @@ import { createStyles } from 'antd-style';
 import { useCallback, useState } from 'react';
 import type { ThinkingLevel } from '../../store';
 import { chatInputStoreSelectors, useChatInputStore } from '../../store';
+import { useChatStore } from '@/stores/chat';
 import { ActionWrapper } from './ActionWrapper';
 
 const THINKING_LEVELS: { description: string; key: ThinkingLevel; label: string }[] = [
@@ -57,16 +58,24 @@ const useStyles = createStyles(({ css, token }) => ({
 
 export function ThinkingAction() {
   const { styles } = useStyles();
-  const thinkingLevel = useChatInputStore(chatInputStoreSelectors.thinkingLevel);
-  const setThinkingLevel = useChatInputStore((s) => s.setThinkingLevel);
-  const [open, setOpen] = useState(false);
+  const globalThinkingLevel = useChatInputStore(chatInputStoreSelectors.thinkingLevel);
+  const setGlobalThinkingLevel = useChatInputStore((s) => s.setThinkingLevel);
+  // Top-level store field — Zustand guaranteed to detect changes
+  const sessionThinkingLevel = useChatStore((s) => s.sessionThinkingLevel);
+  const thinkingLevel = sessionThinkingLevel ?? globalThinkingLevel;
 
+  const [open, setOpen] = useState(false);
   const isActive = thinkingLevel !== 'none';
 
   const handleSelect = useCallback((level: ThinkingLevel) => {
-    setThinkingLevel(level);
+    const chatState = useChatStore.getState();
+    if (chatState.sessionId) {
+      chatState.setSessionThinkingLevel(level);
+    } else {
+      setGlobalThinkingLevel(level);
+    }
     setOpen(false);
-  }, [setThinkingLevel]);
+  }, [setGlobalThinkingLevel]);
 
   const popoverContent = (
     <div className={styles.panel}>

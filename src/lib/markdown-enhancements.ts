@@ -68,8 +68,9 @@ export function remarkAutoCodeLanguage() {
 }
 
 /**
- * Convert local absolute file paths in image nodes to file:// URLs
- * so Electron's renderer can load them.
+ * Convert local absolute file paths in image nodes to host-API URLs
+ * so the renderer can load them in both dev (http://localhost) and
+ * production (file://) modes.
  * Handles: /absolute/path, ~/home-relative/path
  */
 function convertLocalImageUrls(node: MdastNode | null | undefined): void {
@@ -85,7 +86,8 @@ function convertLocalImageUrls(node: MdastNode | null | undefined): void {
 			url = url.replace(/^~/, home);
 		}
 		if (url.startsWith('/') && !url.startsWith('//')) {
-			(node as MdastImageNode).url = `file://${encodeURI(url)}`;
+			// Serve via host API to work across dev (http) and production (file://) modes
+			(node as MdastImageNode).url = `http://127.0.0.1:3210/api/files/local?path=${encodeURIComponent(url)}`;
 		}
 	}
 

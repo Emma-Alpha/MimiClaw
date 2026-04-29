@@ -181,6 +181,7 @@ export type ClaudeCodeSkillEntry = {
   scope: 'global' | 'project';
   source: 'claude' | 'external';
   skillContent: string;
+  requiresSkills?: string[];
 };
 
 export type ClaudeCodeSkillsResult = {

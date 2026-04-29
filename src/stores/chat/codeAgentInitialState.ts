@@ -30,4 +30,7 @@ export const initialCodeAgentState = {
   rateLimitInfo: null,
   contextUsage: null,
   sessionAllowedTools: new Set<string>(),
+  sessionModel: null,
+  sessionEffort: null,
+  sessionThinkingLevel: null,
 } as const;

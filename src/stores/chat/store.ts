@@ -7,9 +7,9 @@
 import { create } from "zustand";
 import type { Descendant } from "slate";
 import { buildUnifiedPatch } from "@/lib/diff-utils";
-import { saveCodeAgentSessionPerf, saveMessage, saveSession, updateMessagePerformance, type DBMessage } from "@/lib/db";
+import { saveCodeAgentSessionPerf, saveMessage, saveSession, updateSessionConfig, updateMessagePerformance, type DBMessage } from "@/lib/db";
 import { normalizeUsageRecord } from "@/lib/usageAdapter";
-import type { CodeAgentUsageProtocol } from "../../../shared/code-agent";
+import type { CodeAgentEffortLevel, CodeAgentUsageProtocol } from "../../../shared/code-agent";
 
 /** Lazily read the usage protocol from settings to avoid circular imports */
 function getUsageProtocol(): CodeAgentUsageProtocol {
@@ -394,6 +394,10 @@ export type CodeAgentContextWindowUsage = {
 	sourceMessageId?: string | null;
 };
 
+// ─── Per-session config ─────────────────────────────────────────────────────
+
+export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high';
+
 // ─── Store interface ──────────────────────────────────────────────────────────
 export interface CodeAgentStore {
 	// Session metadata
@@ -445,6 +449,12 @@ export interface CodeAgentStore {
 	// Session-level auto-approved tool types (cleared on reset)
 	sessionAllowedTools: Set<string>;
 
+	// Per-session config — top-level fields for reliable Zustand subscriptions
+	// null = use global default from settings store
+	sessionModel: string | null;
+	sessionEffort: CodeAgentEffortLevel | null;
+	sessionThinkingLevel: ThinkingLevel | null;
+
 	// Actions
 	pushSdkMessage: (raw: unknown) => void;
 	pushUserMessage: (text: string, meta?: CodeAgentUserMessageMeta) => void;
@@ -455,6 +465,11 @@ export interface CodeAgentStore {
 	resolvePermission: (requestId: string, _decision: "allow" | "allow-session" | "deny") => void;
 	resolveElicitation: (action: "accept" | "decline", content?: Record<string, unknown>) => void;
 	addSessionAllowedTool: (toolName: string) => void;
+	setSessionModel: (model: string | null) => void;
+	setSessionEffort: (effort: CodeAgentEffortLevel | null) => void;
+	setSessionThinkingLevel: (level: ThinkingLevel | null) => void;
+	/** Batch-restore all per-session config fields (hydration / reset) */
+	restoreSessionConfig: (config: { model?: string; effort?: string; thinkingLevel?: string } | null) => void;
 	/** Full reset — clears items + streaming + session state */
 	reset: () => void;
 	/** Light reset — clears only streaming state, keeps items for persistent timeline */
@@ -1342,6 +1357,36 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 	perfTurnStartedAt: 0,
 	perfFirstTokenAt: 0,
 	sessionAllowedTools: new Set(),
+	sessionModel: null,
+	sessionEffort: null,
+	sessionThinkingLevel: null,
+
+	setSessionModel: (model) => {
+		set({ sessionModel: model });
+		const sid = get().sessionId;
+		if (sid && model != null) void updateSessionConfig(sid, { model });
+	},
+	setSessionEffort: (effort) => {
+		set({ sessionEffort: effort });
+		const sid = get().sessionId;
+		if (sid && effort != null) void updateSessionConfig(sid, { effort });
+	},
+	setSessionThinkingLevel: (level) => {
+		set({ sessionThinkingLevel: level });
+		const sid = get().sessionId;
+		if (sid && level != null) void updateSessionConfig(sid, { thinkingLevel: level });
+	},
+	restoreSessionConfig: (config) => {
+		if (!config) {
+			set({ sessionModel: null, sessionEffort: null, sessionThinkingLevel: null });
+			return;
+		}
+		set({
+			sessionModel: config.model ?? null,
+			sessionEffort: (config.effort as CodeAgentEffortLevel) ?? null,
+			sessionThinkingLevel: (config.thinkingLevel as ThinkingLevel) ?? null,
+		});
+	},
 
 	reset: () => {
 		clearQueuedStreamingDeltas();
@@ -1359,6 +1404,9 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 				rateLimitInfo: null,
 				contextUsage: null,
 				sessionAllowedTools: new Set(),
+				sessionModel: null,
+				sessionEffort: null,
+				sessionThinkingLevel: null,
 			});
 		},
 
@@ -1573,12 +1621,30 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 					sessionInit: init,
 				});
 
+				// Initialize per-session config from global defaults if not already set
+				if (get().sessionModel == null) {
+					try {
+						// eslint-disable-next-line @typescript-eslint/no-require-imports
+						const { useSettingsStore: settingsStore } = require("@/stores/settings/store") as {
+							useSettingsStore: { getState: () => { codeAgent?: { model?: string; effort?: CodeAgentEffortLevel } } };
+						};
+						const globalCodeAgent = settingsStore.getState().codeAgent;
+						set({
+							sessionModel: init.model || globalCodeAgent?.model || '',
+							sessionEffort: (globalCodeAgent?.effort ?? '') as CodeAgentEffortLevel,
+							sessionThinkingLevel: 'none' as ThinkingLevel,
+						});
+					} catch { /* ignore */ }
+				}
+
 				// Persist session metadata to IndexedDB
 				if (sid) {
 					const now = Date.now();
 					void saveSession({
 						key: sid,
-						model: init.model || undefined,
+						model: get().sessionModel || init.model || undefined,
+						effort: get().sessionEffort || undefined,
+						thinkingLevel: get().sessionThinkingLevel || undefined,
 						updatedAt: now,
 						createdAt: now,
 					});
@@ -2302,7 +2368,9 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 					void saveSession({
 						key: sid,
 						displayName: title || undefined,
-						model: model || undefined,
+						model: get().sessionModel || model || undefined,
+						effort: get().sessionEffort || undefined,
+						thinkingLevel: get().sessionThinkingLevel || undefined,
 						updatedAt: Date.now(),
 						createdAt: Date.now(),
 					});
@@ -2368,7 +2436,7 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 				// Update session in IndexedDB with the derived title
 				const sid = get().sessionId;
 				if (sid) {
-					void saveSession({ key: sid, displayName: title, updatedAt: Date.now(), createdAt: Date.now() });
+					void saveSession({ key: sid, displayName: title, model: get().sessionModel || undefined, effort: get().sessionEffort || undefined, thinkingLevel: get().sessionThinkingLevel || undefined, updatedAt: Date.now(), createdAt: Date.now() });
 				}
 			} else if (!get().sessionTitle && Array.isArray(content)) {
 				const textBlock = (content as Array<Record<string, unknown>>).find(
@@ -2380,7 +2448,7 @@ export const useChatStore = create<CodeAgentStore>((set, get) => {
 					// Update session in IndexedDB with the derived title
 					const sid = get().sessionId;
 					if (sid) {
-						void saveSession({ key: sid, displayName: title, updatedAt: Date.now(), createdAt: Date.now() });
+						void saveSession({ key: sid, displayName: title, model: get().sessionModel || undefined, effort: get().sessionEffort || undefined, thinkingLevel: get().sessionThinkingLevel || undefined, updatedAt: Date.now(), createdAt: Date.now() });
 					}
 				}
 			}
