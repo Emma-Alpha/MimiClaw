@@ -3,9 +3,10 @@
  * Cross-platform path resolution helpers
  */
 import { app } from 'electron';
+import { createRequire } from 'module';
 import { join } from 'path';
 import { homedir } from 'os';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, realpathSync } from 'fs';
 
 export {
   quoteForCmd,
@@ -87,19 +88,42 @@ export function getClaudeCodeConfigDir(): string {
  *
  * Returns the path to cli-wrapper.cjs which resolves the correct
  * platform-specific native binary at runtime.
+ *
+ * Tries the canonical layout first, then falls back to require.resolve so
+ * pnpm's symlinked virtual store layouts still resolve correctly. Returns
+ * the canonical path even if nothing exists, so callers can surface a clear
+ * "missing bundled CLI" error instead of silently falling through to a bare
+ * `claude` lookup that also fails.
  */
 export function getBundledClaudeCliPath(): string {
-  if (app.isPackaged) {
-    return join(
-      process.resourcesPath,
-      'app.asar.unpacked',
-      'node_modules',
-      '@anthropic-ai',
-      'claude-code',
-      'cli-wrapper.cjs',
-    );
+  const canonical = app.isPackaged
+    ? join(
+        process.resourcesPath,
+        'app.asar.unpacked',
+        'node_modules',
+        '@anthropic-ai',
+        'claude-code',
+        'cli-wrapper.cjs',
+      )
+    : join(__dirname, '..', '..', 'node_modules', '@anthropic-ai', 'claude-code', 'cli-wrapper.cjs');
+
+  if (existsSync(canonical)) {
+    try {
+      return realpathSync(canonical);
+    } catch {
+      return canonical;
+    }
   }
-  return join(__dirname, '..', '..', 'node_modules', '@anthropic-ai', 'claude-code', 'cli-wrapper.cjs');
+
+  try {
+    const requireFromHere = createRequire(__filename);
+    const resolved = requireFromHere.resolve('@anthropic-ai/claude-code/cli-wrapper.cjs');
+    if (existsSync(resolved)) return resolved;
+  } catch {
+    // ignore — falls through to canonical
+  }
+
+  return canonical;
 }
 
 /**

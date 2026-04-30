@@ -403,18 +403,17 @@ export default function PetCompanion() {
 				<button
 					type="button"
 					className={isSpecialRarity ? styles.closeBtnSpecial : styles.closeBtnNormal}
-					style={{ position: 'absolute', right: 12, top: 8, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
 					onClick={() => {
 						void invokeIpc("window:close");
 					}}
 					aria-label={copy.close}
 				>
-					<X style={{ width: 14, height: 14 }} />
+					<X style={{ width: 13, height: 13, strokeWidth: 2.5 }} />
 				</button>
 			</div>
 
 			{/* Content */}
-			<div className={styles.content} style={{ overflowY: 'auto' }}>
+			<div className={styles.content}>
 				{currentCompanion ? (
 					<div style={{ display: 'flex', height: '100%', width: '100%', flexDirection: 'column' }}>
 						{progress ? (
@@ -476,11 +475,11 @@ export default function PetCompanion() {
 									<div style={{ position: 'absolute', right: -12, bottom: -12, width: 56, height: 56, opacity: 0.1, pointerEvents: 'none', zIndex: 0 }}>
 										<img src={IconTier} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
 									</div>
-									<div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', alignItems: 'center', gap: 4, zIndex: 20 }}>
-										<img src={IconCrown} className={currentCompanion.rarity !== 'common' ? 'animate-pulse' : ''} style={{ width: 14, height: 14, objectFit: 'contain', opacity: currentCompanion.rarity === 'common' ? 0.6 : 1 }} />
+									<div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', alignItems: 'center', gap: 3, zIndex: 20, maxWidth: 'calc(100% - 12px)' }}>
+										<img src={IconCrown} className={currentCompanion.rarity !== 'common' ? 'animate-pulse' : ''} style={{ width: 12, height: 12, flexShrink: 0, objectFit: 'contain', opacity: currentCompanion.rarity === 'common' ? 0.6 : 1 }} />
 										{currentCompanion.rarity !== 'common' && (
 											<span style={{
-												fontSize: '8.5px', fontWeight: 900, letterSpacing: '0.1em', textTransform: 'uppercase',
+												fontSize: '8px', fontWeight: 900, letterSpacing: '0.02em', whiteSpace: 'nowrap',
 												color: currentCompanion.rarity === 'legendary' ? '#ea580c' : currentCompanion.rarity === 'epic' ? '#c026d3' : currentCompanion.rarity === 'rare' ? '#f59e0b' : '#059669',
 											}}>
 												{rarityLabel}

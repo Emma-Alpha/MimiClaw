@@ -554,6 +554,15 @@ while kill -0 "$PID" 2>/dev/null; do
   fi
 done
 
+# Parent still alive after the wait window means app.quit() was blocked.
+# Abort without touching the staged asar so the user can retry without
+# re-downloading.
+if kill -0 "$PID" 2>/dev/null; then
+  show_error
+  rm -f "$SCRIPT_PATH"
+  exit 1
+fi
+
 if [ ! -f "$STAGED_ASAR" ]; then
   show_error
   cleanup

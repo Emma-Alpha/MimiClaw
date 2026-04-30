@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { delimiter, join, relative, resolve } from 'node:path';
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']);
 const STOP_WORDS = new Set([
@@ -315,12 +315,24 @@ export function normalizeRuntimeConfig(input) {
       : 'enabled';
   const fastMode = input?.fastMode === true;
 
-  // Resolve the CLI path: user override > bundled binary env > PATH fallback
+  // Resolve the CLI path. Priority:
+  //   1. User-supplied absolute/relative path (anything containing a path separator) wins.
+  //   2. Bundled cli-wrapper.cjs from MIMICLAW_BUNDLED_CLI_PATH if it exists on disk.
+  //   3. Bare command name from user (or the literal default 'claude') as a last
+  //      resort — spawn will rely on PATH lookup.
+  // Bare names like 'claude' do NOT bypass the bundled fallback: macOS GUI apps
+  // launched from Finder/Dock often have a stripped PATH that won't find
+  // homebrew/local installs, so the bundled wrapper is the safer default.
   const resolvedCliPath = (() => {
-    if (typeof input?.cliPath === 'string' && input.cliPath.trim()) return input.cliPath.trim();
+    const userPath = typeof input?.cliPath === 'string' ? input.cliPath.trim() : '';
     const bundled = process.env.MIMICLAW_BUNDLED_CLI_PATH?.trim();
-    if (bundled && existsSync(bundled)) return bundled;
-    return 'claude';
+    const bundledExists = bundled && existsSync(bundled);
+
+    if (userPath && (userPath.includes('/') || userPath.includes('\\'))) {
+      return userPath;
+    }
+    if (bundledExists) return bundled;
+    return userPath || 'claude';
   })();
 
   return {
@@ -349,6 +361,23 @@ export function normalizeRuntimeConfig(input) {
   };
 }
 
+/**
+ * Build a PATH that includes common macOS bin locations so bare commands like
+ * `claude` resolve when the app is launched from Finder/Dock (where the GUI
+ * environment lacks the user's shell PATH).
+ */
+function augmentedSpawnEnv() {
+  const env = { ...process.env };
+  if (process.platform === 'darwin') {
+    const dirs = (env.PATH || '').split(delimiter).filter(Boolean);
+    for (const extra of ['/opt/homebrew/bin', '/usr/local/bin']) {
+      if (!dirs.includes(extra)) dirs.push(extra);
+    }
+    env.PATH = dirs.join(delimiter);
+  }
+  return env;
+}
+
 function probeClaudeCli(cliPath) {
   try {
     const isNodeScript = /\.(c|m)?js$/.test(cliPath);
@@ -358,6 +387,7 @@ function probeClaudeCli(cliPath) {
       encoding: 'utf8',
       timeout: 10_000,
       maxBuffer: 1024 * 1024,
+      env: augmentedSpawnEnv(),
     });
 
     if (versionResult.error) {
@@ -779,7 +809,7 @@ async function runClaudeCliTask({
   }
 
   const env = {
-    ...process.env,
+    ...augmentedSpawnEnv(),
     // Older/newer Claude CLI builds gate partial stream chunks behind this env.
     // Keep it enabled explicitly as a fallback to the CLI flag above.
     CLAUDE_CODE_INCLUDE_PARTIAL_MESSAGES: '1',

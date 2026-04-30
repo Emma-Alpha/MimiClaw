@@ -4,7 +4,7 @@ export const useStyles = createStyles(({ css }) => ({
   root: css`
     position: relative;
     height: 100vh;
-    width: 100vw;
+    width: 100%;
     overflow: hidden;
     background: #f4f7fb;
     color: #1e293b;
@@ -12,7 +12,7 @@ export const useStyles = createStyles(({ css }) => ({
     flex-direction: column;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', sans-serif;
     user-select: none;
-    border: 1px solid #e2e8f0;
+    border-radius: 10px;
   `,
   auraLayer: css`
     position: absolute;
@@ -99,52 +99,90 @@ export const useStyles = createStyles(({ css }) => ({
     color: rgba(255, 255, 255, 0.9);
     background: rgba(0, 0, 0, 0.05);
   `,
-  closeBtn: css`
+  closeBtnNormal: css`
     position: absolute;
-    right: 12px;
-    top: 8px;
+    right: 8px;
+    top: 6px;
     display: inline-flex;
-    height: 24px;
-    width: 24px;
+    height: 28px;
+    width: 28px;
     align-items: center;
     justify-content: center;
     border-radius: 9999px;
     border: none;
+    background: linear-gradient(135deg, #fda4af 0%, #f87171 100%);
+    color: #fff;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
+    box-shadow:
+      0 2px 6px rgba(248, 113, 113, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4);
     -webkit-app-region: no-drag;
     &:hover {
-      background: #3b82f6;
-      color: #fff;
+      background: linear-gradient(135deg, #fb7185 0%, #ef4444 100%);
+      transform: scale(1.08) rotate(90deg);
+      box-shadow:
+        0 4px 10px rgba(239, 68, 68, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    }
+    &:active {
+      transform: scale(0.92) rotate(90deg);
     }
   `,
-  closeBtnNormal: css`
-    background: #f1f5f9;
-    color: #94a3b8;
-  `,
   closeBtnSpecial: css`
-    background: rgba(0, 0, 0, 0.05);
-    color: #64748b;
+    position: absolute;
+    right: 8px;
+    top: 6px;
+    display: inline-flex;
+    height: 28px;
+    width: 28px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1.5px solid rgba(255, 255, 255, 0.6);
+    background: linear-gradient(135deg, rgba(253, 164, 175, 0.95) 0%, rgba(248, 113, 113, 0.95) 100%);
+    backdrop-filter: blur(8px);
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow:
+      0 2px 8px rgba(248, 113, 113, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    -webkit-app-region: no-drag;
+    &:hover {
+      background: linear-gradient(135deg, rgba(251, 113, 133, 1) 0%, rgba(239, 68, 68, 1) 100%);
+      transform: scale(1.08) rotate(90deg);
+      box-shadow:
+        0 4px 12px rgba(239, 68, 68, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+    &:active {
+      transform: scale(0.92) rotate(90deg);
+    }
   `,
   content: css`
     flex: 1;
-    padding: 0 16px 8px;
+    padding: 0 12px 8px;
     padding-top: 0;
     z-index: 10;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     width: 100%;
-    max-width: 384px;
     margin: 0 auto;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   `,
   cardGrid: css`
     margin-top: 10px;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    padding: 0 4px;
+    gap: 8px;
   `,
   statsWrap: css`
     flex: 1;
@@ -152,7 +190,6 @@ export const useStyles = createStyles(({ css }) => ({
     flex-direction: column;
     justify-content: center;
     margin-top: 8px;
-    padding: 0 4px;
     min-height: 0;
   `,
   actionGrid: css`
@@ -161,7 +198,7 @@ export const useStyles = createStyles(({ css }) => ({
     flex-shrink: 0;
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
-    padding: 0 4px 4px;
+    padding-bottom: 4px;
   `,
   loadingWrap: css`
     display: flex;
@@ -184,11 +221,9 @@ export const useStyles = createStyles(({ css }) => ({
     flex-direction: column;
     gap: 8px;
     width: 100%;
-    max-width: 384px;
-    margin: 0 auto;
+    margin: 10px auto 0;
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     justify-content: center;
-    margin-top: 10px;
   `,
   statRow: css`
     position: relative;
@@ -221,12 +256,14 @@ export const useStyles = createStyles(({ css }) => ({
   statBarContainer: css`
     position: relative;
     margin-left: 18px;
+    margin-right: 2px;
     height: 32px;
     border-radius: 20px 16px 16px 20px;
     background: #f1f5f9;
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
     overflow: hidden;
     border: 1px solid #e2e8f0;
+    box-sizing: border-box;
   `,
   statBarFill: css`
     position: absolute;
@@ -282,15 +319,16 @@ export const useStyles = createStyles(({ css }) => ({
   `,
   statValue: css`
     position: absolute;
-    right: 12px;
+    right: 14px;
     top: 0;
     bottom: 0;
     display: flex;
     align-items: center;
-    color: #64748b;
+    color: #fff;
     font-weight: 800;
-    font-style: italic;
-    z-index: 0;
+    z-index: 10;
     font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
   `,
 }));
