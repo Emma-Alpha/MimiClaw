@@ -11,6 +11,7 @@ import { usePluginsStore } from '@/stores/plugins';
 import { useSettingsStore } from '@/stores/settings';
 import type { MarketplacePlugin, PluginSkillEntry } from '@/types/claude-plugin';
 
+import InstallPluginModal from './InstallPluginModal';
 import SkillDetailModal from './SkillDetailModal';
 
 // ─── styles ──────────────────────────────────────────────────────────────────
@@ -297,6 +298,9 @@ const PluginDetailPage = memo<PluginDetailPageProps>(({ plugin, onBack }) => {
   const disconnectMcp = usePluginsStore((s) => s.disconnectMcp);
   const fetchMcpStatus = usePluginsStore((s) => s.fetchMcpStatus);
   const mcpStatuses = usePluginsStore((s) => s.mcpStatuses);
+  const runPreflight = usePluginsStore((s) => s.runPreflight);
+
+  const [installModalOpen, setInstallModalOpen] = useState(false);
 
   const workspaces = useSettingsStore((s) => s.sidebarThreadWorkspaces);
   const workspaceRoot = useMemo(() => {
@@ -320,25 +324,25 @@ const PluginDetailPage = memo<PluginDetailPageProps>(({ plugin, onBack }) => {
     }
   }, [plugin.mcpServerName, workspaceRoot, fetchMcpStatus]);
 
-  const handleAdd = useCallback(async () => {
+  const performInstall = useCallback(async () => {
+    if (isMcpPlugin && plugin.mcpServerName && plugin.mcpServerConfig) {
+      if (!workspaceRoot) {
+        toast.error(t('toast.noWorkspace', '请先打开一个项目目录'));
+        throw new Error('workspace required');
+      }
+      await connectMcp(plugin.mcpServerName, plugin.mcpServerConfig, workspaceRoot);
+    }
+    if (!isAdded) {
+      await togglePlugin(pluginKey, true);
+    }
+    toast.success(t('toast.pluginEnabled', { key: plugin.name }));
+  }, [isAdded, isMcpPlugin, plugin, workspaceRoot, connectMcp, togglePlugin, pluginKey, t]);
+
+  const handleAdd = useCallback(() => {
     // Allow reconnect for MCP plugins that are added but not connected
     if (isAdded && (!isMcpPlugin || mcpConnected)) return;
-    try {
-      if (isMcpPlugin && plugin.mcpServerName && plugin.mcpServerConfig) {
-        if (!workspaceRoot) {
-          toast.error(t('toast.noWorkspace', '请先打开一个项目目录'));
-          return;
-        }
-        await connectMcp(plugin.mcpServerName, plugin.mcpServerConfig, workspaceRoot);
-      }
-      if (!isAdded) {
-        await togglePlugin(pluginKey, true);
-      }
-      toast.success(t('toast.pluginEnabled', { key: plugin.name }));
-    } catch (error) {
-      toast.error(t('toast.connectedFailed', { error: String(error) }));
-    }
-  }, [isAdded, isMcpPlugin, mcpConnected, plugin, workspaceRoot, connectMcp, togglePlugin, pluginKey, t]);
+    setInstallModalOpen(true);
+  }, [isAdded, isMcpPlugin, mcpConnected]);
 
   const handleRemove = useCallback(async () => {
     try {
@@ -450,7 +454,12 @@ const PluginDetailPage = memo<PluginDetailPageProps>(({ plugin, onBack }) => {
                 <div className={styles.heroOverlay} />
                 <div className={styles.heroPrompt}>
                   <span className={styles.heroPromptBadge}>
-                    🎮 {plugin.name}
+                    <PluginAvatar
+                      avatar={plugin.icon || 'MCP_AVATAR'}
+                      size={16}
+                      style={{ borderRadius: 3 }}
+                    />
+                    {plugin.name}
                   </span>
                   {plugin.defaultPrompt}
                 </div>
@@ -570,6 +579,15 @@ const PluginDetailPage = memo<PluginDetailPageProps>(({ plugin, onBack }) => {
         open={!!selectedSkill}
         skill={selectedSkill}
         onClose={() => setSelectedSkill(null)}
+      />
+
+      {/* Install confirmation modal (Codex-style) */}
+      <InstallPluginModal
+        onClose={() => setInstallModalOpen(false)}
+        onConfirmInstall={performInstall}
+        open={installModalOpen}
+        plugin={plugin}
+        runPreflight={runPreflight}
       />
     </div>
   );

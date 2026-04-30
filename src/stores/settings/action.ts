@@ -1,4 +1,5 @@
 import i18n from '@/i18n';
+import { invokeIpc } from '@/lib/api-client';
 import { hostApiFetch } from '@/lib/host-api';
 import { clampSidebarWidth } from '@/lib/sidebar-layout';
 import {
@@ -579,7 +580,10 @@ export function createSettingsActions(set: Setter, get: Getter): SettingsStoreAc
         console.error('Failed to persist dev mode setting:', error);
       });
     },
-    markSetupComplete: () => set({ setupComplete: true }),
+    markSetupComplete: () => {
+      set({ setupComplete: true });
+      void invokeIpc('setup:setComplete', true).catch(() => {});
+    },
     resetSettings: () => set(initialSettingsState),
     hydrateCloudAuth: () => {
       const raw = window.localStorage.getItem('mimiclaw:cloud-session');

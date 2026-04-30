@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { OpenClaw } from '@lobehub/icons';
 import { useResponsive } from 'antd-style';
 
 import ChatItem from '@/components/ChatItem';
+import MimiClawAvatar from '@/components/MimiClawAvatar';
 import ActionButtons from '@/components/ChatItem/components/ActionButtons';
 import { MessageMarkdown } from '@/components/MessageMarkdown';
 import type { EnhancedMarkdownProps } from '@/lib/markdown-enhancements';
@@ -117,7 +117,7 @@ export function NewAssistantMessage({
       <ChatItem
         id={message.id}
         avatar={{
-          avatar: <OpenClaw.Color size={assistantIconSize} />,
+          avatar: <MimiClawAvatar size={assistantIconSize} />,
           backgroundColor: 'transparent',
           title: '极智',
         }}

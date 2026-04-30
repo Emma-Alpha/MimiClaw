@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { OpenClaw } from '@lobehub/icons';
 import { ChatItem } from '@lobehub/ui/chat';
 import { useResponsive } from "antd-style";
 
+import MimiClawAvatar from '@/components/MimiClawAvatar';
 import type { EnhancedMarkdownProps } from '@/lib/markdown-enhancements';
 import type { AttachedFileMeta, RawMessage } from '@/stores/chat';
 import { useSettingsStore } from '@/stores/settings';
@@ -94,7 +94,7 @@ export function AssistantMessage({
         title="极智"
         style={{ width: assistantAvatarSize, height: assistantAvatarSize }}
       >
-        <OpenClaw.Color size={assistantIconSize} />
+        <MimiClawAvatar size={assistantIconSize} />
       </span>
       <span className={styles.messageMetaLabel}>极智</span>
       {metaTime ? (
@@ -145,7 +145,7 @@ export function AssistantMessage({
         <ChatItem
           // actions removed — AssistantActions is now in belowMessage to maintain vertical flow
           avatar={{
-            avatar: <OpenClaw.Color size={assistantIconSize} />,
+            avatar: <MimiClawAvatar size={assistantIconSize} />,
             backgroundColor: 'transparent',
             title: '极智',
           }}

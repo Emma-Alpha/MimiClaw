@@ -222,8 +222,12 @@ async function handleRequest(method, params) {
       // The abort listener in runClaudeCliTask stays registered until the
       // child process exits, so a late run.cancel can still kill it.
       // The controller is replaced on the next run.start.
-      activeRunSettled = true;
-      resolvePendingPermissions();
+      // Only update globals if WE are still the active run — a newer
+      // run.start may have already replaced activeRunAbortController.
+      if (activeRunAbortController === abortController) {
+        activeRunSettled = true;
+        resolvePendingPermissions();
+      }
     }
   }
 

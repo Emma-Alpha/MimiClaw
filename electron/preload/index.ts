@@ -72,6 +72,8 @@ const electronAPI = {
         'pet:openQuickChatWithPayload',
         'pet:consumeQuickChatInitialMessage',
         'pet:syncCompanionProgress',
+        // Setup gating (read by main to gate pet click handlers)
+        'setup:setComplete',
         'voice:openDialog',
         'voice:closeDialog',
         'voice:setDialogState',

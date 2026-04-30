@@ -112,6 +112,49 @@
 
 前往 [Releases](https://github.com/Emma-Alpha/MimiClaw/releases) 获取最新版。
 
+#### macOS 安装
+
+按你的 Mac 架构下载对应 DMG：
+
+- **Apple Silicon (M1/M2/M3/M4)**：`jizhi-X.Y.Z-mac-arm64.dmg`
+- **Intel CPU**：`jizhi-X.Y.Z-mac-x64.dmg`
+
+不知道自己是哪种架构？终端运行：
+
+```bash
+uname -m
+# arm64 → 用 arm64 包；x86_64 → 用 x64 包
+```
+
+正常安装：双击 DMG，把"极智"拖进 Applications 文件夹即可。
+
+**首次启动如果 macOS 弹"请联系开发者"或"应用已损坏"**（未签名 / 公证导致），在终端执行一次清隔离属性：
+
+```bash
+sudo xattr -cr /Applications/极智.app
+open /Applications/极智.app
+```
+
+如果启动后仍报错，请在崩溃后 30 秒内执行下面的命令收集日志反馈给我们：
+
+```bash
+log show --last 30s --predicate 'eventMessage CONTAINS[c] "极智"' --info 2>&1 \
+  | grep -iE "dyld|library|signature|reject|denied" | head -20
+```
+
+**.tar.gz 备选包**：如果 DMG 拖拽安装异常，每个版本同时提供 `jizhi-X.Y.Z-mac-<arch>.tar.gz` 备选包，可手动安装：
+
+```bash
+sudo rm -rf /Applications/极智.app
+sudo tar -xzpf ~/Downloads/jizhi-X.Y.Z-mac-<arch>.tar.gz -C /Applications/
+sudo xattr -cr /Applications/极智.app
+open /Applications/极智.app
+```
+
+#### Windows / Linux 安装
+
+按 Releases 下提供的 `.exe` / `.AppImage` / `.deb` / `.rpm` 直接安装即可。
+
 ### 从源码运行
 
 ```bash

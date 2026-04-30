@@ -140,13 +140,15 @@ const useStyles = createStyles(({ css, token }) => ({
     margin-inline: 2px;
   `,
   pillSkill: css`
-    border-color: ${token.colorSuccessBorder};
+    padding: 2px 8px;
+    border-color: transparent;
     border-radius: 6px;
     background: ${token.colorSuccessBg};
     color: ${token.colorSuccess};
+    font-weight: 500;
 
     &&:hover {
-      border-color: ${token.colorSuccess};
+      border-color: transparent;
       background: ${token.colorSuccessBg};
     }
   `,
@@ -167,6 +169,8 @@ const MentionChip = memo<MentionChipProps>(
     const { styles, cx } = useStyles();
 
     const isSkill = kind === 'skill';
+    const isPlugin = kind === 'plugin';
+    const useSuccessStyle = isSkill || isPlugin;
     const displayLabel = isSkill ? `/${label}` : label;
 
     const handleRemoveClick = (e: MouseEvent<HTMLButtonElement>) => {
@@ -177,7 +181,7 @@ const MentionChip = memo<MentionChipProps>(
 
     return (
       <span
-        className={cx(styles.pill, isSkill && styles.pillSkill, removable && styles.pillRemovable, className)}
+        className={cx(styles.pill, useSuccessStyle && styles.pillSkill, removable && styles.pillRemovable, className)}
         contentEditable={false}
         style={style}
         title={title ?? displayLabel}

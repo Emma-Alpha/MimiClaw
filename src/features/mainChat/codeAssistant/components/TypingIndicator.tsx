@@ -1,7 +1,8 @@
-import { OpenClaw, ClaudeCode } from "@lobehub/icons";
+import { ClaudeCode } from "@lobehub/icons";
 import { ChatItem, LoadingDots } from "@lobehub/ui/chat";
 import { cssVar } from "antd-style";
 
+import MimiClawAvatar from "@/components/MimiClawAvatar";
 import { useCodeChatStyles } from "../styles";
 
 type TypingIndicatorProps = {
@@ -29,7 +30,7 @@ export function TypingIndicator({
 					: {
 							avatar: (
 								<span className={styles.assistantAvatar}>
-									<OpenClaw.Color size={16} />
+									<MimiClawAvatar size={16} />
 								</span>
 							),
 							backgroundColor: "rgba(59,130,246,0.1)",

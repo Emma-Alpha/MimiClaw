@@ -110,6 +110,7 @@ export class CodeAgentManager extends EventEmitter {
   private startPromise: Promise<void> | null = null;
   private readyWaiter: ReadyWaiter | null = null;
   private lastRun: CodeAgentRunRecord | null = null;
+  private activeRunToken: symbol | null = null;
   private runtimeConfig: CodeAgentRuntimeConfig = { ...DEFAULT_CODE_AGENT_RUNTIME_CONFIG };
   private runtimeConfigResolution: RuntimeConfigResolution = {
     configSource: 'settings',
@@ -220,6 +221,24 @@ export class CodeAgentManager extends EventEmitter {
   async runTask(input: CodeAgentRunRequest): Promise<CodeAgentRunResult> {
     await this.refreshRuntimeConfig(input.configOverride);
     await this.start();
+
+    // If a previous run is still in flight, abort it before starting a new one.
+    // Common case: user changed model/baseUrl/apiKey while the prior CLI call
+    // is stuck in an internal API retry loop against the now-unreachable
+    // endpoint, so the sidecar would otherwise reject the new run.start with
+    // "A code agent run is already in progress".
+    if (this.activeRunToken) {
+      logger.info('[code-agent] Cancelling stale in-flight run before starting new one');
+      try {
+        await this.cancelActiveRun();
+      } catch (error) {
+        logger.warn('[code-agent] Failed to cancel stale run, continuing:', error);
+      }
+    }
+
+    const myRunToken = Symbol('code-agent-run');
+    this.activeRunToken = myRunToken;
+
     const cliTimeoutMs = typeof input.timeoutMs === 'number' && input.timeoutMs > 0
       ? input.timeoutMs
       : 0;
@@ -375,6 +394,10 @@ export class CodeAgentManager extends EventEmitter {
       this.emit('run:completed', this.getLastRun());
       return lastResult;
     } finally {
+      // Only clear the active-run flag if no later runTask has replaced us.
+      if (this.activeRunToken === myRunToken) {
+        this.activeRunToken = null;
+      }
       // Always shut down the reasoning gateway after the run
       if (gateway) {
         await gateway.close().catch(() => {});

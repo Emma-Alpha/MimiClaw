@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { CommandMenu, type CommandMenuGroup, type CommandMenuItem } from '@/components/CommandMenu';
 
 const LOBE_THEME_APP_ID = 'lobe-ui-theme-app';
-const IMAGE_ICON_RE = /^(https?:\/\/|data:image\/|\/)/i;
+const IMAGE_ICON_RE = /^(https?:\/\/|file:\/\/|data:image\/|\.?\/)/i;
 
 // ── Skill capsule label for dropdown ──────────────────────────────────────
 

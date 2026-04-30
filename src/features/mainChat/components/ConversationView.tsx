@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { AlertCircle, Loader2, OctagonX } from 'lucide-react';
 import { createStyles } from 'antd-style';
 import { VList, type VListHandle } from 'virtua';
-import { OpenClaw } from '@lobehub/icons';
 import { ChatItem } from '@lobehub/ui/chat';
 import { useTranslation } from 'react-i18next';
 import { invokeIpc } from '@/lib/api-client';
+import MimiClawAvatar from '@/components/MimiClawAvatar';
 import { useMinLoading } from '@/hooks/use-min-loading';
 import { useSettingsStore } from '@/stores/settings';
 import { type RawMessage } from '@/stores/chat';
@@ -346,7 +346,7 @@ function ActivityIndicator({ startedAt }: { phase: 'tool_processing'; startedAt?
   const { styles } = useMessageStyles();
   const { t } = useTranslation('chat');
   const elapsed = useElapsedLabel(startedAt);
-  return <ChatItem avatar={{ avatar: <span className={styles.messageMetaAvatar}><OpenClaw.Color size={CHAT_SESSION_HEADER_ICON_SIZE} /></span>, backgroundColor: 'transparent', title: '极智' }} className={styles.chatItem} message="" placement="left" renderMessage={() => <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--mimi-font-size-base)', color: 'var(--ant-color-text-secondary)' }}><Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /><span>{t('status.processingTools', { defaultValue: 'Processing tool results...' })}</span>{elapsed && <span className={styles.activityElapsed}>({elapsed})</span>}</div>} showAvatar={false} showTitle={false} variant="bubble" />;
+  return <ChatItem avatar={{ avatar: <span className={styles.messageMetaAvatar}><MimiClawAvatar size={CHAT_SESSION_HEADER_ICON_SIZE} /></span>, backgroundColor: 'transparent', title: '极智' }} className={styles.chatItem} message="" placement="left" renderMessage={() => <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--mimi-font-size-base)', color: 'var(--ant-color-text-secondary)' }}><Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /><span>{t('status.processingTools', { defaultValue: 'Processing tool results...' })}</span>{elapsed && <span className={styles.activityElapsed}>({elapsed})</span>}</div>} showAvatar={false} showTitle={false} variant="bubble" />;
 }
 
 function InterruptedHint() {

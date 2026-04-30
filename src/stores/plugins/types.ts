@@ -2,6 +2,8 @@ import type { ClaudeCodeSkillEntry } from '@/lib/code-agent';
 import type {
   MarketplaceCatalog,
   MarketplaceSourceDescriptor,
+  PluginRequirement,
+  PreflightResponse,
 } from '@/types/claude-plugin';
 
 // ─── state ───────────────────────────────────────────────────────────────────
@@ -52,6 +54,7 @@ export interface PluginsStoreAction {
   ) => Promise<void>;
   fetchSkills: (workspaceRoot: string) => Promise<void>;
   removeMarketplaceSource: (name: string) => Promise<void>;
+  runPreflight: (requirements: PluginRequirement[]) => Promise<PreflightResponse>;
   setActiveTab: (tab: 'plugins' | 'skills') => void;
   setManageTab: (tab: 'plugins' | 'skills' | 'mcps') => void;
   setMode: (mode: 'browse' | 'manage') => void;

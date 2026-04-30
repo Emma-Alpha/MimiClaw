@@ -62,7 +62,7 @@ import {
 import { SidebarUpdateAction } from "@/components/update/SidebarUpdateAction";
 
 import { NavItem, SideBarLayout } from "@/features/NavPanel";
-import { SearchInput } from "@/components/common/SearchInput";
+import { useCommandPaletteStore } from "@/components/CommandPalette";
 import { SettingsSidebar } from "./SettingsSidebar";
 
 // ─── types ────────────────────────────────────────────────────────────────────
@@ -161,9 +161,6 @@ const useStyles = createStyles(({ css, token }) => ({
   `,
 	warningTextNested: css`
     padding-inline-start: 48px;
-  `,
-	searchWrap: css`
-    padding: 2px 8px;
   `,
 	unavailableTag: css`
     flex-shrink: 0;
@@ -364,8 +361,11 @@ export function Sidebar() {
 	const { t, i18n } = useTranslation(["common", "settings"]);
 
 	// ── local state ───────────────────────────────────────────────────────────
-	const [searchQuery, setSearchQuery] = useState("");
-	const [searchVisible, setSearchVisible] = useState(false);
+	// Inline sidebar search has been replaced by the global command palette
+	// (Cmd/Ctrl+K). The remaining filter logic below stays a no-op while the
+	// query is empty — it will be removed once palette coverage is complete.
+	const searchQuery = "";
+	const openCommandPalette = useCommandPaletteStore((s) => s.setOpen);
 	const [workspaceSessionsExpanded, setWorkspaceSessionsExpanded] = useState<
 		Record<string, boolean>
 	>({});
@@ -1220,36 +1220,13 @@ export function Sidebar() {
 				title={t("sidebar.newThread", { defaultValue: "新对话" })}
 				onClick={handleGlobalNewThread}
 			/>
-			{/* 搜索 */}
+			{/* 搜索 — opens the global command palette (Cmd/Ctrl+K) */}
 			<NavItem
 				icon={Search}
 				iconSize={CHAT_NAV_ICON_SIZE}
 				title={t("actions.search", { defaultValue: "搜索" })}
-				active={searchVisible}
-				onClick={() => {
-					setSearchVisible((prev) => {
-						if (prev) setSearchQuery("");
-						return !prev;
-					});
-				}}
+				onClick={() => openCommandPalette(true)}
 			/>
-			{searchVisible && (
-				<div className={styles.searchWrap}>
-					<SearchInput
-						value={searchQuery}
-						onValueChange={setSearchQuery}
-						placeholder={t("actions.search", { defaultValue: "搜索" })}
-						clearable
-						autoFocus
-						onKeyDown={(e) => {
-							if (e.key === "Escape") {
-								setSearchVisible(false);
-								setSearchQuery("");
-							}
-						}}
-					/>
-				</div>
-			)}
 			{/* 插件 */}
 			<NavItem
 				icon={Puzzle}

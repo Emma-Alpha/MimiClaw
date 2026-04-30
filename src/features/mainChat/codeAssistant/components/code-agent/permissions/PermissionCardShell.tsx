@@ -1,5 +1,5 @@
 import { createStyles } from "antd-style";
-import { ShieldAlert } from "lucide-react";
+import { ArrowDown, ArrowUp, CornerDownLeft } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 export type PermissionDecision = "allow" | "allow-session" | "deny";
@@ -15,7 +15,7 @@ const useStyles = createStyles(({ css, token }) => ({
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
-		padding: 12px 12px 10px;
+		padding: 14px 16px 12px;
 		border-radius: 16px;
 		border: 1px solid ${token.colorBorderSecondary};
 		background: ${token.colorBgContainer};
@@ -23,103 +23,78 @@ const useStyles = createStyles(({ css, token }) => ({
 			0 1px 2px rgba(15, 23, 42, 0.03),
 			0 8px 24px rgba(15, 23, 42, 0.04);
 	`,
-	header: css`
-		display: flex;
-		align-items: center;
-		gap: 6px;
-	`,
-	headerIcon: css`
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 14px;
-		height: 14px;
-		flex-shrink: 0;
-		color: ${token.colorWarning};
-	`,
-	headerText: css`
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		min-width: 0;
-	`,
-	eyebrow: css`
-		display: none;
-		font-size: calc(${token.fontSizeSM}px - 1px);
-		line-height: 1.35;
-		font-weight: 600;
-		color: ${token.colorWarning};
-	`,
-	title: css`
-		font-size: ${token.fontSizeSM}px;
-		line-height: 1.35;
-		font-weight: 600;
-		color: ${token.colorWarning};
+	question: css`
+		font-size: ${token.fontSize}px;
+		line-height: 1.55;
+		color: ${token.colorText};
+		word-break: break-word;
 	`,
 	content: css`
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: 6px;
 		min-width: 0;
 	`,
 	optionList: css`
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
+		margin-top: 2px;
 	`,
 	option: css`
+		position: relative;
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: 10px;
 		min-height: 34px;
-		padding: 6px 8px;
+		padding: 6px 12px;
 		border-radius: 8px;
 		font-size: ${token.fontSizeSM}px;
+		line-height: 1.5;
 		cursor: pointer;
-		border: 1px solid transparent;
+		border: 0;
 		background: transparent;
 		color: ${token.colorText};
 		text-align: left;
 		width: 100%;
-		transition:
-			background 0.16s ease,
-			border-color 0.16s ease;
+		transition: background 0.16s ease;
 		&:hover {
-			background: ${token.colorFillTertiary};
+			background: ${token.colorFillQuaternary};
 		}
 	`,
 	optionActive: css`
 		background: ${token.colorFillTertiary};
-		color: ${token.colorText};
-		border-color: ${token.colorBorderSecondary};
-		font-weight: 600;
 		&:hover {
 			background: ${token.colorFillTertiary};
 		}
 	`,
 	optionIndex: css`
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 18px;
-		height: 18px;
 		flex-shrink: 0;
-		text-align: center;
-		font-weight: 600;
-		font-variant-numeric: tabular-nums;
+		width: 14px;
+		text-align: left;
 		color: ${token.colorTextSecondary};
-		border-radius: 5px;
+		font-variant-numeric: tabular-nums;
 	`,
 	optionLabel: css`
 		flex: 1;
+		min-width: 0;
+		color: ${token.colorText};
+		word-break: break-word;
+	`,
+	arrowHints: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		flex-shrink: 0;
+		color: ${token.colorTextTertiary};
 	`,
 	feedbackRow: css`
 		margin-top: 2px;
 	`,
 	feedbackInput: css`
 		width: 100%;
-		height: 30px;
-		padding: 0 8px;
+		height: 32px;
+		padding: 0 10px;
 		border-radius: 8px;
 		font-size: ${token.fontSizeSM}px;
 		border: 1px solid ${token.colorBorderSecondary};
@@ -137,24 +112,56 @@ const useStyles = createStyles(({ css, token }) => ({
 			color: ${token.colorTextQuaternary};
 		}
 	`,
-	hint: css`
-		font-size: calc(${token.fontSizeSM}px - 1px);
-		color: ${token.colorTextQuaternary};
-		margin-top: 0;
+	footer: css`
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		gap: 10px;
+		margin-top: 2px;
+	`,
+	skipButton: css`
+		padding: 4px 10px;
+		border: 0;
+		background: transparent;
+		color: ${token.colorTextTertiary};
+		font-size: ${token.fontSizeSM}px;
+		border-radius: 6px;
+		cursor: pointer;
+		transition: color 0.16s ease;
+		&:hover {
+			color: ${token.colorText};
+		}
+	`,
+	submitButton: css`
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 14px;
+		border-radius: 999px;
+		border: 0;
+		background: ${token.colorTextBase};
+		color: ${token.colorBgBase};
+		font-size: ${token.fontSizeSM}px;
+		font-weight: 500;
+		cursor: pointer;
+		transition: opacity 0.16s ease;
+		&:hover {
+			opacity: 0.85;
+		}
+	`,
+	submitIcon: css`
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		opacity: 0.85;
 	`,
 }));
 
 const OPTIONS: { value: PermissionDecision; label: string }[] = [
-	{ value: "allow", label: "允许" },
-	{ value: "allow-session", label: "允许，本次会话不再询问此类操作" },
-	{ value: "deny", label: "拒绝" },
+	{ value: "allow", label: "是" },
+	{ value: "allow-session", label: "是，本次会话不再询问此类操作" },
+	{ value: "deny", label: "否，请告知 Claude 如何调整" },
 ];
-
-function getPlaceholder(active: PermissionDecision): string {
-	return active === "deny"
-		? "告诉 Claude 应该怎么做..."
-		: "告诉 Claude 接下来做什么...";
-}
 
 export function PermissionCardShell({ toolDisplayName, children, onDecision }: Props) {
 	const { styles, cx } = useStyles();
@@ -163,33 +170,39 @@ export function PermissionCardShell({ toolDisplayName, children, onDecision }: P
 	const inputRef = useRef<HTMLInputElement>(null);
 
 	const activeOption = OPTIONS[activeIndex];
+	const isDenyActive = activeOption.value === "deny";
 
 	const submit = useCallback(() => {
 		const trimmed = feedback.trim();
 		onDecision(activeOption.value, trimmed || undefined);
 	}, [feedback, activeOption, onDecision]);
 
+	const skip = useCallback(() => {
+		onDecision("deny");
+	}, [onDecision]);
+
+	useEffect(() => {
+		if (isDenyActive) {
+			inputRef.current?.focus();
+		}
+	}, [isDenyActive]);
+
 	useEffect(() => {
 		const handler = (e: KeyboardEvent) => {
-			if (e.key === "ArrowUp") {
+			const isInputFocused = document.activeElement === inputRef.current;
+			if (e.key === "ArrowUp" && !isInputFocused) {
 				e.preventDefault();
 				setActiveIndex((i) => (i > 0 ? i - 1 : OPTIONS.length - 1));
-			} else if (e.key === "ArrowDown") {
+			} else if (e.key === "ArrowDown" && !isInputFocused) {
 				e.preventDefault();
 				setActiveIndex((i) => (i < OPTIONS.length - 1 ? i + 1 : 0));
 			} else if (e.key === "Enter") {
-				const isInputFocused = document.activeElement === inputRef.current;
-				if (!isInputFocused || feedback.trim() !== "") {
-					e.preventDefault();
-					submit();
-				} else if (isInputFocused && feedback.trim() === "") {
-					e.preventDefault();
-					submit();
-				}
+				e.preventDefault();
+				submit();
 			} else if (e.key === "Escape") {
 				e.preventDefault();
-				onDecision("deny");
-			} else if (e.key >= "1" && e.key <= "3") {
+				skip();
+			} else if (!isInputFocused && e.key >= "1" && e.key <= "3") {
 				const idx = Number.parseInt(e.key, 10) - 1;
 				if (idx >= 0 && idx < OPTIONS.length) {
 					setActiveIndex(idx);
@@ -198,18 +211,12 @@ export function PermissionCardShell({ toolDisplayName, children, onDecision }: P
 		};
 		window.addEventListener("keydown", handler);
 		return () => window.removeEventListener("keydown", handler);
-	}, [feedback, submit, onDecision]);
+	}, [submit, skip]);
 
 	return (
 		<div className={styles.card}>
-			<div className={styles.header}>
-				<span className={styles.headerIcon}>
-					<ShieldAlert size={13} />
-				</span>
-				<div className={styles.headerText}>
-					<span className={styles.eyebrow}>权限确认</span>
-					<span className={styles.title}>允许 {toolDisplayName} 操作？</span>
-				</div>
+			<div className={styles.question}>
+				是否允许 Claude 执行下面的 {toolDisplayName} 操作？
 			</div>
 			<div className={styles.content}>{children}</div>
 			<div className={styles.optionList}>
@@ -218,28 +225,43 @@ export function PermissionCardShell({ toolDisplayName, children, onDecision }: P
 						key={opt.value}
 						type="button"
 						className={cx(styles.option, i === activeIndex && styles.optionActive)}
-						onClick={() => {
-							setActiveIndex(i);
-							onDecision(opt.value, feedback.trim() || undefined);
-						}}
+						onClick={() => setActiveIndex(i)}
 						onMouseEnter={() => setActiveIndex(i)}
 					>
-						<span className={styles.optionIndex}>{i + 1}</span>
+						<span className={styles.optionIndex}>{i + 1}.</span>
 						<span className={styles.optionLabel}>{opt.label}</span>
+						{i === activeIndex && (
+							<span className={styles.arrowHints} aria-hidden>
+								<ArrowUp size={12} />
+								<ArrowDown size={12} />
+							</span>
+						)}
 					</button>
 				))}
 			</div>
-			<div className={styles.feedbackRow}>
-				<input
-					ref={inputRef}
-					type="text"
-					className={styles.feedbackInput}
-					placeholder={getPlaceholder(activeOption.value)}
-					value={feedback}
-					onChange={(e) => setFeedback(e.target.value)}
-				/>
+			{isDenyActive && (
+				<div className={styles.feedbackRow}>
+					<input
+						ref={inputRef}
+						type="text"
+						className={styles.feedbackInput}
+						placeholder="告诉 Claude 应该怎么做..."
+						value={feedback}
+						onChange={(e) => setFeedback(e.target.value)}
+					/>
+				</div>
+			)}
+			<div className={styles.footer}>
+				<button type="button" className={styles.skipButton} onClick={skip}>
+					跳过
+				</button>
+				<button type="button" className={styles.submitButton} onClick={submit}>
+					<span>提交</span>
+					<span className={styles.submitIcon}>
+						<CornerDownLeft size={12} />
+					</span>
+				</button>
 			</div>
-			<div className={styles.hint}>按 1/2/3 选择，Enter 提交，Esc 拒绝</div>
 		</div>
 	);
 }

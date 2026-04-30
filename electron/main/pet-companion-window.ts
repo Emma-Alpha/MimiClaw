@@ -10,8 +10,8 @@ import { loadWindowRoute } from "./window-loader";
 let petCompanionWindow: BrowserWindow | null = null;
 let isCreatingPetCompanionWindow = false;
 
-const PET_COMPANION_WINDOW_WIDTH = 376;
-const PET_COMPANION_WINDOW_HEIGHT = 560;
+const PET_COMPANION_WINDOW_WIDTH = 460;
+const PET_COMPANION_WINDOW_HEIGHT = 600;
 
 function getPetCompanionWindowUrl():
 	| { type: "url"; value: string }

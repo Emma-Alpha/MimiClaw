@@ -13,3 +13,5 @@ Skills 技能页：技能商店使用 `npx skills`（skills.sh）搜索与安装
 Plugins 页面：当前聚焦 OpenClaw 插件安装与 MCP 插件展示，独立 Channels 页面已移除；公共 MCP 已内置 Pencil 与 Figma 快速接入。
 
 补充：版本发布时新增了交互式脚本 `pnpm run version:select`，可直接选择 `patch / minor / major`。
+
+macOS 分发：DMG 由 `hdiutil` 直接从 unpacked .app 重建（绕过 electron-builder 26.x 中会丢失 `Electron Framework` 主二进制的 DMG/ZIP target），并附 `.tar.gz` 备选包。详见 [README.md 的"安装"章节](README.md#安装)。

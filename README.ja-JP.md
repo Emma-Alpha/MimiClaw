@@ -155,7 +155,46 @@ Skills ページでは OpenClaw の複数ソース（管理ディレクトリ、
 
 [Releases](https://github.com/Emma-Alpha/MimiClaw/releases)ページから、お使いのプラットフォーム向けの最新リリースをダウンロードしてください。
 
-macOS では、リリースに含まれる `app.asar` ペイロードをダウンロードして再起動することで、段階的なアプリ内更新を適用できます。バンドル済みバイナリや追加リソースも変更されるリリースでは、完全な `.dmg` / `.zip` パッケージをインストールしてください。
+macOS では、リリースに含まれる `app.asar` ペイロードをダウンロードして再起動することで、段階的なアプリ内更新を適用できます。バンドル済みバイナリや追加リソースも変更されるリリースでは、完全な `.tar.gz` パッケージをインストールしてください。
+
+##### macOS インストール手順
+
+ご使用の Mac アーキテクチャに合った DMG をダウンロードしてください：
+
+- **Apple Silicon (M1/M2/M3/M4)**: `jizhi-X.Y.Z-mac-arm64.dmg`
+- **Intel CPU**: `jizhi-X.Y.Z-mac-x64.dmg`
+
+不明な場合はターミナルで以下を実行：
+
+```bash
+uname -m
+# arm64 → arm64 パッケージを使用、x86_64 → x64 パッケージを使用
+```
+
+通常インストール: DMG をダブルクリックして「极智」を Applications フォルダにドラッグするだけです。
+
+**初回起動で「開発元を確認できないため開けません」または「アプリが壊れています」が出る場合**（未署名 / 公証なしのため）、ターミナルで隔離属性を一度クリアしてください：
+
+```bash
+sudo xattr -cr /Applications/极智.app
+open /Applications/极智.app
+```
+
+それでも起動できない場合は、クラッシュから 30 秒以内に以下のコマンドでログを収集してご連絡ください：
+
+```bash
+log show --last 30s --predicate 'eventMessage CONTAINS[c] "极智"' --info 2>&1 \
+  | grep -iE "dyld|library|signature|reject|denied" | head -20
+```
+
+**.tar.gz バックアップパッケージ**: DMG のドラッグインストールに問題がある場合は、各バージョンに同梱の `jizhi-X.Y.Z-mac-<arch>.tar.gz` を手動でインストールできます：
+
+```bash
+sudo rm -rf /Applications/极智.app
+sudo tar -xzpf ~/Downloads/jizhi-X.Y.Z-mac-<arch>.tar.gz -C /Applications/
+sudo xattr -cr /Applications/极智.app
+open /Applications/极智.app
+```
 
 #### ソースからビルド
 

@@ -14,6 +14,7 @@ import { invokeIpc } from "./lib/api-client";
 import { ThemeWrapper } from "./components/theme/ThemeWrapper";
 import { UpdateBootstrap } from "@/components/update/UpdateBootstrap";
 import { DragUploadProvider } from "@/components/DragUploadZone";
+import { CommandPaletteHost } from "@/components/CommandPalette";
 import { AppRoutes } from "./router/generate-routes";
 
 // ---------------------------------------------------------------------------
@@ -176,6 +177,13 @@ function App() {
 		}
 	}, [cloudLoggedIn, setupComplete, isStandalone, location.pathname, navigate]);
 
+	// Push setupComplete to the main process so other BrowserWindows (pet)
+	// can gate behavior via IPC without relying on cross-window localStorage.
+	useEffect(() => {
+		if (isStandalone) return;
+		void invokeIpc("setup:setComplete", setupComplete).catch(() => {});
+	}, [setupComplete, isStandalone]);
+
 	// Listen for navigation events from main process
 	useEffect(() => {
 		const handleNavigate = (...args: unknown[]) => {
@@ -239,6 +247,7 @@ function App() {
 				<TooltipProvider>
 					<DragUploadProvider>
 						{!isStandalone ? <UpdateBootstrap /> : null}
+						{!isStandalone ? <CommandPaletteHost /> : null}
 						<AppRoutes />
 						{/* Global toast notifications */}
 						<Toaster

@@ -228,6 +228,9 @@ export const useStyles = createStyles(({ css }) => ({
   statRow: css`
     position: relative;
     width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   `,
   statIconBubble: css`
     position: absolute;
@@ -256,7 +259,8 @@ export const useStyles = createStyles(({ css }) => ({
   statBarContainer: css`
     position: relative;
     margin-left: 18px;
-    margin-right: 2px;
+    flex: 1;
+    min-width: 0;
     height: 32px;
     border-radius: 20px 16px 16px 20px;
     background: #f1f5f9;
@@ -318,17 +322,13 @@ export const useStyles = createStyles(({ css }) => ({
     }
   `,
   statValue: css`
-    position: absolute;
-    right: 14px;
-    top: 0;
-    bottom: 0;
-    display: flex;
-    align-items: center;
-    color: #fff;
+    flex-shrink: 0;
+    min-width: 32px;
+    text-align: right;
+    padding-right: 4px;
+    color: #475569;
     font-weight: 800;
-    z-index: 10;
     font-size: 13px;
     font-variant-numeric: tabular-nums;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
   `,
 }));

@@ -24,6 +24,7 @@ import { HERO_PLUGIN_NAMES } from '@/stores/plugins';
 
 import CardGrid from './_components/CardGrid';
 import HeroCarousel from './_components/HeroCarousel';
+import InstallPluginModal from './_components/InstallPluginModal';
 import PluginCard from './_components/PluginCard';
 import PluginDetailPage from './_components/PluginDetailPage';
 
@@ -181,25 +182,31 @@ const BrowsePluginsContent = memo<{
   const enabledPlugins = usePluginsStore((s) => s.enabledPlugins);
   const togglePlugin = usePluginsStore((s) => s.togglePlugin);
   const connectMcp = usePluginsStore((s) => s.connectMcp);
+  const runPreflight = usePluginsStore((s) => s.runPreflight);
   const searchQuery = usePluginsStore((s) => s.searchQuery);
   const selectedMarketplace = usePluginsStore((s) => s.selectedMarketplace);
   const selectedCategory = usePluginsStore((s) => s.selectedCategory);
 
-  const handleInstall = useCallback(
-    async (plugin: MarketplacePlugin) => {
-      const key = `${plugin.name}@${plugin.marketplace}`;
-      try {
-        if (plugin.mcpServerName && plugin.mcpServerConfig && workspaceRoot) {
-          await connectMcp(plugin.mcpServerName, plugin.mcpServerConfig, workspaceRoot);
-        }
-        await togglePlugin(key, true);
-        toast.success(t('toast.pluginEnabled', { key: plugin.name }));
-      } catch (error) {
-        toast.error(t('toast.connectedFailed', { error: String(error) }));
+  const [installTarget, setInstallTarget] = useState<MarketplacePlugin | null>(null);
+
+  const handleInstall = useCallback((plugin: MarketplacePlugin) => {
+    setInstallTarget(plugin);
+  }, []);
+
+  const performInstall = useCallback(async () => {
+    if (!installTarget) return;
+    const plugin = installTarget;
+    const key = `${plugin.name}@${plugin.marketplace}`;
+    if (plugin.mcpServerName && plugin.mcpServerConfig) {
+      if (!workspaceRoot) {
+        toast.error(t('toast.noWorkspace', '请先打开一个项目目录'));
+        throw new Error('workspace required');
       }
-    },
-    [workspaceRoot, connectMcp, togglePlugin, t],
-  );
+      await connectMcp(plugin.mcpServerName, plugin.mcpServerConfig, workspaceRoot);
+    }
+    await togglePlugin(key, true);
+    toast.success(t('toast.pluginEnabled', { key: plugin.name }));
+  }, [installTarget, workspaceRoot, connectMcp, togglePlugin, t]);
 
   const allPlugins = useMemo(
     () => getAllMarketplacePlugins(catalogs),
@@ -280,6 +287,16 @@ const BrowsePluginsContent = memo<{
           </CardGrid>
         </div>
       ))}
+
+      {installTarget && (
+        <InstallPluginModal
+          onClose={() => setInstallTarget(null)}
+          onConfirmInstall={performInstall}
+          open={!!installTarget}
+          plugin={installTarget}
+          runPreflight={runPreflight}
+        />
+      )}
     </Flexbox>
   );
 });

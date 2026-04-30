@@ -6,6 +6,45 @@ export interface PluginSkillEntry {
   badge?: string;
 }
 
+/** A runtime dependency a plugin needs on the user's machine */
+export interface PluginRequirement {
+  /** Binary name to look up on PATH, e.g. 'node', 'ffmpeg', 'python3' */
+  name: string;
+  /** Optional minimum version, e.g. '22' for node ≥ 22 */
+  minVersion?: string;
+  /** Friendly label shown to the user when missing */
+  label?: string;
+  /** Override install commands per platform; falls back to a built-in table */
+  installCommand?: {
+    darwin?: string;
+    win32?: string;
+    linux?: string;
+  };
+}
+
+/** Result of a single requirement check */
+export interface PreflightCheckResult {
+  name: string;
+  ok: boolean;
+  /** Detected version when found */
+  version?: string;
+  /** Reason for failure: 'missing' | 'version-too-old' */
+  reason?: 'missing' | 'version-too-old';
+  label?: string;
+  installCommand?: {
+    darwin?: string;
+    win32?: string;
+    linux?: string;
+  };
+}
+
+/** Aggregate preflight response */
+export interface PreflightResponse {
+  ok: boolean;
+  platform: 'darwin' | 'win32' | 'linux';
+  results: PreflightCheckResult[];
+}
+
 /** Plugin entry from a remote marketplace catalog */
 export interface MarketplacePlugin {
   id: string;
@@ -33,6 +72,8 @@ export interface MarketplacePlugin {
   mcpServerName?: string;
   /** MCP server config object to write into .mcp.json mcpServers */
   mcpServerConfig?: Record<string, unknown>;
+  /** Runtime dependencies the user must have installed; checked before install */
+  requirements?: PluginRequirement[];
   /** Marketplace name this plugin belongs to (injected at fetch time) */
   marketplace: string;
 }

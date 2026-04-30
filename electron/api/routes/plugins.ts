@@ -15,6 +15,7 @@ import {
   setPluginEnabled,
 } from '../../utils/claude-plugin-settings';
 import { proxyAwareFetch } from '../../utils/proxy-fetch';
+import { runPreflight, type RequirementInput } from '../../utils/preflight';
 
 // ---------------------------------------------------------------------------
 // Public-MCP helpers (kept as-is)
@@ -481,5 +482,45 @@ export async function handlePluginRoutes(
     return true;
   }
 
+  // POST /api/plugins/preflight — check runtime dependencies for a plugin
+  if (url.pathname === '/api/plugins/preflight' && req.method === 'POST') {
+    try {
+      const body = await parseJsonBody<{ requirements?: unknown }>(req);
+      const requirements = sanitizeRequirements(body.requirements);
+      const result = await runPreflight(requirements);
+      sendJson(res, 200, { success: true, ...result });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: String(error) });
+    }
+    return true;
+  }
+
   return false;
+}
+
+function sanitizeRequirements(raw: unknown): RequirementInput[] {
+  if (!Array.isArray(raw)) return [];
+  const out: RequirementInput[] = [];
+  for (const item of raw) {
+    if (!isRecord(item)) continue;
+    const name = typeof item.name === 'string' ? item.name.trim() : '';
+    if (!name) continue;
+    const req: RequirementInput = { name };
+    if (typeof item.minVersion === 'string' && item.minVersion.trim()) {
+      req.minVersion = item.minVersion.trim();
+    }
+    if (typeof item.label === 'string' && item.label.trim()) {
+      req.label = item.label.trim();
+    }
+    if (isRecord(item.installCommand)) {
+      const ic = item.installCommand as Record<string, unknown>;
+      req.installCommand = {
+        ...(typeof ic.darwin === 'string' ? { darwin: ic.darwin } : {}),
+        ...(typeof ic.win32 === 'string' ? { win32: ic.win32 } : {}),
+        ...(typeof ic.linux === 'string' ? { linux: ic.linux } : {}),
+      };
+    }
+    out.push(req);
+  }
+  return out;
 }

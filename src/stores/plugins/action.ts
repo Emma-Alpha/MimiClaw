@@ -3,6 +3,8 @@ import { fetchClaudeCodeSkills } from '@/lib/code-agent';
 import type { StoreGetter, StorePublicActions, StoreSetter } from '@/stores/types';
 import type {
   MarketplaceCatalog,
+  PluginRequirement,
+  PreflightResponse,
 } from '@/types/claude-plugin';
 import type { PluginsStore, PluginsStoreAction } from './types';
 
@@ -209,6 +211,22 @@ export class PluginsActionImpl {
       body: JSON.stringify({ serverName, workspaceRoot }),
     });
     await this.fetchMcpStatus([serverName], workspaceRoot);
+  };
+
+  // ── preflight ────────────────────────────────────────────────────────
+
+  runPreflight = async (
+    requirements: PluginRequirement[],
+  ): Promise<PreflightResponse> => {
+    const res = await hostApiFetch<PreflightResponse & { success: boolean }>(
+      '/api/plugins/preflight',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requirements }),
+      },
+    );
+    return { ok: res.ok, platform: res.platform, results: res.results };
   };
 
   // ── UI actions ───────────────────────────────────────────────────────

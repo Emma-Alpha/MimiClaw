@@ -63,13 +63,46 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       # ── Electron binaries — keyed to electron version, not pnpm-lock ──
+      # Cache key bumped to v2 so that any prior poisoned cache (which produced
+      # broken x64 framework bundles in 0.1.74–0.1.77) is invalidated on next
+      # CI run. If the framework re-appears as missing, bump the suffix again.
       - uses: actions/cache@v4
         with:
           path: |
             ~/Library/Caches/electron
             ~/Library/Caches/electron-builder
-          key: ${{ runner.os }}-electron-${{ steps.electron-ver.outputs.version }}
-          restore-keys: ${{ runner.os }}-electron-
+          key: ${{ runner.os }}-electron-${{ steps.electron-ver.outputs.version }}-v2
+          restore-keys: ${{ runner.os }}-electron-${{ steps.electron-ver.outputs.version }}-
+
+      # ── Validate cached Electron darwin zips ─────────────────────────────
+      # The cache can contain a partially-downloaded electron-vX-darwin-{arch}.zip
+      # whose `Electron Framework` binary is truncated/absent. afterPack would
+      # later rebuild a broken .app from it. We probe each cached darwin zip and
+      # delete any that fail the framework-binary check; electron-builder will
+      # re-fetch a clean copy.
+      - name: Validate electron darwin cache
+        run: |
+          CACHE_DIR="${HOME}/Library/Caches/electron"
+          if [ ! -d "$CACHE_DIR" ]; then
+            echo "No electron cache directory yet — clean run."
+            exit 0
+          fi
+          BAD=0
+          while IFS= read -r ZIP; do
+            TMP=$(mktemp -d)
+            if ! unzip -q -o "$ZIP" -d "$TMP" 2>/dev/null; then
+              echo "❌ Corrupt zip (unzip failed): $ZIP"
+              rm -f "$ZIP" && BAD=$((BAD+1))
+              rm -rf "$TMP"; continue
+            fi
+            BIN="$TMP/Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework"
+            if [ ! -f "$BIN" ] || [ "$(stat -f%z "$BIN" 2>/dev/null)" -lt $((50*1024*1024)) ]; then
+              echo "❌ Missing or undersized framework binary in: $ZIP"
+              rm -f "$ZIP"; BAD=$((BAD+1))
+            fi
+            rm -rf "$TMP"
+          done < <(find "$CACHE_DIR" -type f -name 'electron-*-darwin-*.zip')
+          echo "Validation done; removed $BAD bad cached zip(s)."
 
       # ── Vite dist output ─────────────────────────────────────────
       - name: Cache Vite build output
@@ -122,33 +155,214 @@ jobs:
       - name: Remove builder-debug.yml
         run: find release/ -name "builder-debug.yml" -delete || true
 
+      # ── Drop electron-builder's DMG/ZIP outputs ────────────────────────
+      # KNOWN BUG: electron-builder 26.x's DMG/ZIP target creation silently
+      # drops `Versions/A/Electron Framework` (~185MB) even though the source
+      # unpacked .app at release/mac*/ is fully intact. We rebuild the DMG
+      # ourselves from the unpacked .app via `hdiutil` (see step further down),
+      # so the .dmg/.zip electron-builder produced are not used and would only
+      # confuse end users — delete them now.
+      - name: Drop electron-builder DMG/ZIP artifacts
+        run: |
+          for f in release/*.dmg release/*.dmg.blockmap release/*.zip; do
+            [ -f "$f" ] && rm -f "$f" && echo "Removed $f"
+          done
+          true
+
+      # ── Build canonical tar.gz bundles from the unpacked .app ───────────
+      # tar -czf preserves all framework symlinks and the framework binary.
+      # This is currently the ONLY reliable macOS artifact while the DMG/ZIP
+      # bug is being investigated. Users install via:
+      #   sudo rm -rf /Applications/极智.app
+      #   sudo tar -xzpf jizhi-VERSION-mac-ARCH.tar.gz -C /Applications/
+      #   sudo xattr -cr /Applications/极智.app
+      - name: Package macOS .app as tar.gz (canonical artifact)
+        run: |
+          set -e
+          VERSION=$(node -p "require('./package.json').version")
+          # Find every unpacked .app under release/ (handles release/mac/,
+          # release/mac-x64/, release/mac-arm64/, etc.)
+          while IFS= read -r APP_DIR; do
+            APP_BIN=$(find "$APP_DIR/Contents/MacOS" -maxdepth 1 -type f | head -1)
+            [ -n "$APP_BIN" ] || { echo "Skipping (no main bin): $APP_DIR"; continue; }
+            case "$(file -b "$APP_BIN")" in
+              *x86_64*) ARCH=x64 ;;
+              *arm64*)  ARCH=arm64 ;;
+              *universal*) ARCH=universal ;;
+              *) echo "Skipping unknown arch: $APP_DIR"; continue ;;
+            esac
+
+            # Verify framework binary is present in the source before tarring.
+            FW_BIN="$APP_DIR/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework"
+            if [ ! -f "$FW_BIN" ] || [ "$(stat -f%z "$FW_BIN")" -lt $((50*1024*1024)) ]; then
+              echo "::error::Source .app at $APP_DIR is missing/short Electron Framework binary; refusing to package."
+              exit 1
+            fi
+
+            APP_NAME=$(basename "$APP_DIR")
+            OUT="release/jizhi-${VERSION}-mac-${ARCH}.tar.gz"
+            # Skip if we already produced a tar.gz for this arch (avoids duplicate
+            # work when both `mac/` and `mac-${arch}/` directories happen to exist).
+            if [ -f "$OUT" ]; then
+              echo "Already packaged $OUT, skipping duplicate from $APP_DIR"
+              continue
+            fi
+
+            echo "→ Packaging $APP_DIR ($ARCH) into $OUT"
+            ( cd "$(dirname "$APP_DIR")" && tar -czf "${GITHUB_WORKSPACE}/$OUT" "$APP_NAME" )
+            shasum -a 256 "$OUT" | awk '{print $1}' > "${OUT}.sha256"
+            ls -lh "$OUT"
+          done < <(find release -maxdepth 2 -type d -name "*.app" | sort)
+
+          # Sanity check final outputs.
+          ls -lh release/*.tar.gz 2>/dev/null || {
+            echo "::error::No tar.gz outputs were produced."
+            exit 1
+          }
+
+      # ── Rebuild macOS DMGs ourselves from the unpacked .app ────────────
+      # electron-builder's own DMG/ZIP target creation step has a bug where
+      # `Versions/A/Electron Framework` (~185MB) is silently dropped from the
+      # produced .dmg / .zip even though the source unpacked .app at
+      # release/mac*/ is fully intact. Until the upstream root cause is
+      # found, we bypass that entirely and use macOS's built-in `hdiutil`
+      # against a `ditto`-staged copy of the unpacked .app — which we have
+      # verified preserves all framework symlinks and the binary.
+      #
+      # This produces user-facing DMGs that pass the integrity check below
+      # and match standard macOS install UX (drag-to-Applications).
+      - name: Rebuild macOS DMG via hdiutil (canonical user-facing artifact)
+        run: |
+          set -e
+          VERSION=$(node -p "require('./package.json').version")
+          # Discover productFilename by looking at what electron-builder actually
+          # produced (`release/mac*/<productName>.app`) instead of parsing YAML.
+          # This avoids depending on a YAML parser at CI shell layer and stays
+          # correct if productName ever changes.
+          FIRST_APP=$(find release -maxdepth 2 -type d -name "*.app" | head -1)
+          if [ -z "$FIRST_APP" ]; then
+            echo "::error::No .app found under release/ — cannot determine product name."
+            exit 1
+          fi
+          PRODUCT_FILE_NAME=$(basename "$FIRST_APP" .app)
+          echo "Detected product filename: $PRODUCT_FILE_NAME"
+
+          REBUILT=0
+          while IFS= read -r APP_DIR; do
+            APP_BIN=$(find "$APP_DIR/Contents/MacOS" -maxdepth 1 -type f | head -1)
+            [ -n "$APP_BIN" ] || continue
+            case "$(file -b "$APP_BIN")" in
+              *x86_64*) ARCH=x64 ;;
+              *arm64*)  ARCH=arm64 ;;
+              *universal*) ARCH=universal ;;
+              *) continue ;;
+            esac
+
+            # Source-side framework binary integrity gate (same as tar.gz step).
+            FW_BIN="$APP_DIR/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework"
+            if [ ! -f "$FW_BIN" ] || [ "$(stat -f%z "$FW_BIN")" -lt $((50*1024*1024)) ]; then
+              echo "::error::Source .app at $APP_DIR has missing/short framework binary; refusing to build DMG."
+              exit 1
+            fi
+
+            DMG_OUT="release/jizhi-${VERSION}-mac-${ARCH}.dmg"
+
+            # Drop any broken DMG electron-builder may have produced earlier.
+            rm -f "$DMG_OUT" "${DMG_OUT}.blockmap" 2>/dev/null || true
+
+            # Stage with `ditto` (preserves macOS symlinks, framework metadata,
+            # and extended attributes — `cp -R` and `rsync` both have edge
+            # cases on framework bundles).
+            STAGING=$(mktemp -d)
+            ditto "$APP_DIR" "$STAGING/${PRODUCT_FILE_NAME}.app"
+            ln -s /Applications "$STAGING/Applications"
+
+            VOLNAME="${PRODUCT_FILE_NAME} ${VERSION}"
+            echo "→ Building DMG for $ARCH from $APP_DIR (vol: $VOLNAME)"
+            hdiutil create \
+              -volname "$VOLNAME" \
+              -srcfolder "$STAGING" \
+              -ov \
+              -format UDZO \
+              -fs HFS+ \
+              "$DMG_OUT"
+
+            rm -rf "$STAGING"
+            ls -lh "$DMG_OUT"
+
+            # Mount and verify the new DMG actually contains the framework binary.
+            MNT=$(mktemp -d)
+            hdiutil attach -nobrowse -readonly -mountpoint "$MNT" "$DMG_OUT"
+            VERIFY_BIN="$MNT/${PRODUCT_FILE_NAME}.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework"
+            if [ ! -f "$VERIFY_BIN" ]; then
+              hdiutil detach "$MNT" -force >/dev/null 2>&1 || true
+              rmdir "$MNT" 2>/dev/null || true
+              echo "::error::Built DMG $DMG_OUT is missing framework binary even after hdiutil rebuild — investigate."
+              exit 1
+            fi
+            VERIFY_SZ=$(stat -f%z "$VERIFY_BIN")
+            if [ "$VERIFY_SZ" -lt $((50*1024*1024)) ]; then
+              hdiutil detach "$MNT" -force >/dev/null 2>&1 || true
+              rmdir "$MNT" 2>/dev/null || true
+              echo "::error::Built DMG $DMG_OUT framework binary is suspiciously small ($VERIFY_SZ bytes)."
+              exit 1
+            fi
+            echo "✅ $DMG_OUT verified (framework $((VERIFY_SZ/1024/1024))MB)"
+            hdiutil detach "$MNT" -force >/dev/null 2>&1 || true
+            rmdir "$MNT" 2>/dev/null || true
+
+            shasum -a 256 "$DMG_OUT" | awk '{print $1}' > "${DMG_OUT}.sha256"
+            REBUILT=$((REBUILT + 1))
+          done < <(find release -maxdepth 2 -type d -name "*.app" | sort)
+
+          if [ "$REBUILT" -lt 1 ]; then
+            echo "::error::No DMG was rebuilt — no valid .app sources found."
+            exit 1
+          fi
+          echo "Rebuilt $REBUILT DMG(s) via hdiutil."
+
       - name: Export macOS .asar update assets
         run: |
           VERSION=$(node -p "require('./package.json').version")
           FOUND=0
 
+          # Resolve the actual binary architecture from the .app's Mach-O
+          # header instead of inferring from the parent directory name. The
+          # bare `release/mac/` directory is whatever arch happens to be the
+          # host default (arm64 on macos-latest since 2024), so guessing from
+          # path alone misroutes builds and previously caused arm64↔x64 asar
+          # cross-labeling.
+          declare -A SEEN_ARCH=()
           while IFS= read -r ASAR_PATH; do
-            PLATFORM_DIR=$(basename "$(dirname "$(dirname "$(dirname "$(dirname "$ASAR_PATH")")")")")
-            case "$PLATFORM_DIR" in
-              mac-arm64*)
-                ARCH=arm64
-                ;;
-              mac-universal*)
-                ARCH=universal
-                ;;
-              mac|mac-x64*)
-                ARCH=x64
-                ;;
+            # ASAR_PATH = release/<plat>/<App>.app/Contents/Resources/app.asar
+            # APP_DIR  = release/<plat>/<App>.app
+            APP_DIR=$(dirname "$(dirname "$(dirname "$ASAR_PATH")")")
+            APP_BIN=$(find "$APP_DIR/Contents/MacOS" -maxdepth 1 -type f | head -1)
+            if [ -z "$APP_BIN" ]; then
+              echo "Skipping (no MacOS binary): $ASAR_PATH"
+              continue
+            fi
+            FILE_OUT=$(file -b "$APP_BIN")
+            case "$FILE_OUT" in
+              *x86_64*) ARCH=x64 ;;
+              *arm64*)  ARCH=arm64 ;;
+              *universal*) ARCH=universal ;;
               *)
-                echo "Skipping unknown mac platform directory: $PLATFORM_DIR"
+                echo "Skipping unknown arch ($FILE_OUT): $ASAR_PATH"
                 continue
                 ;;
             esac
 
+            if [ -n "${SEEN_ARCH[$ARCH]+x}" ]; then
+              echo "Skipping duplicate $ARCH source ($ASAR_PATH); already exported from ${SEEN_ARCH[$ARCH]}"
+              continue
+            fi
+            SEEN_ARCH[$ARCH]="$ASAR_PATH"
+
             ASSET_PATH="release/jizhi-${VERSION}-darwin-${ARCH}.asar"
             cp "$ASAR_PATH" "$ASSET_PATH"
             shasum -a 256 "$ASSET_PATH" | awk '{print $1}' > "${ASSET_PATH}.sha256"
-            echo "Exported $ASSET_PATH"
+            echo "Exported $ASSET_PATH (from $APP_BIN)"
             FOUND=1
           done < <(find release -type f -path "*/Contents/Resources/app.asar" | sort)
 
@@ -156,6 +370,18 @@ jobs:
             echo "No macOS app.asar payloads were found in release/" >&2
             exit 1
           fi
+
+          # Sanity: if we built both arches, both must be present.
+          for required in arm64 x64; do
+            if [ ! -f "release/jizhi-${VERSION}-darwin-${required}.asar" ]; then
+              # Pre-release builds skip x64 (see "Build macOS" step), so only
+              # fail when this is a stable release (arch=both).
+              if [[ "${{ steps.arch.outputs.prerelease }}" != "true" ]]; then
+                echo "::error::Missing asar for arch=$required in stable release."
+                exit 1
+              fi
+            fi
+          done
 
       # ── Publish to GitHub Release (archive copy) ─────────────────
       # Kept as a historical backup; the client no longer reads from GitHub.
@@ -178,7 +404,16 @@ jobs:
             gh release edit "$TAG" $RELEASE_FLAGS
           fi
 
-          find release/ -maxdepth 1 -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.blockmap" -o -name "*.yml" -o -name "*.asar" -o -name "*.asar.sha256" \) \
+          # Note: macOS canonical artifact is now .tar.gz (see "Package macOS
+          # .app as tar.gz" step). DMG/ZIP are still uploaded for non-mac
+          # platforms or when the DMG happened to build correctly, but they
+          # are no longer the recommended install format on macOS.
+          find release/ -maxdepth 1 -type f \( \
+              -name "*.dmg" -o -name "*.zip" -o -name "*.blockmap" \
+              -o -name "*.yml" -o -name "*.asar" -o -name "*.asar.sha256" \
+              -o -name "*.tar.gz" -o -name "*.tar.gz.sha256" \
+              -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" \
+            \) \
             | sort | xargs -I {} gh release upload "$TAG" {} --clobber
 
       # ── Sync to COS (primary update source for the client) ───────

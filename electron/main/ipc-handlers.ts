@@ -187,6 +187,14 @@ type AppResponse = {
 const petAsrSessions = new Map<string, VolcengineAsrSession>();
 const voiceRealtimeSessions = new Map<string, VolcengineRealtimeVoiceSession>();
 
+// Tracks whether the user has completed (or skipped) initial setup. The
+// authoritative value lives in the renderer's Zustand persist store; the
+// renderer pushes it here on rehydrate and on `markSetupComplete` so that
+// other BrowserWindows (notably the pet window) can gate behavior without
+// relying on cross-process localStorage sync, which is unreliable in
+// Electron multi-window setups.
+let setupCompleteCache = false;
+
 function resolvePetMenuLanguage(language?: string): "zh" | "en" | "ja" {
 	if (language?.startsWith("ja")) return "ja";
 	if (language?.startsWith("en")) return "en";
@@ -581,6 +589,16 @@ function registerPetHandlers(): void {
 			const win = BrowserWindow.fromWebContents(event.sender);
 			if (!win) return { success: false };
 
+			if (!setupCompleteCache) {
+				const mainWin = getMainAppWindow();
+				if (mainWin) {
+					if (mainWin.isMinimized()) mainWin.restore();
+					mainWin.show();
+					mainWin.focus();
+				}
+				return { success: true, blockedBySetup: true };
+			}
+
 			const language = resolvePetMenuLanguage(payload?.language);
 
 			const openCodeChatLabels = {
@@ -706,8 +724,22 @@ function registerPetHandlers(): void {
 	});
 
 	ipcMain.handle("pet:toggleQuickChat", async () => {
+		if (!setupCompleteCache) {
+			const mainWin = getMainAppWindow();
+			if (mainWin) {
+				if (mainWin.isMinimized()) mainWin.restore();
+				mainWin.show();
+				mainWin.focus();
+			}
+			return { success: true, blockedBySetup: true };
+		}
 		await recordPetCompanionUsage("mini_chat");
 		await toggleMiniChatWindow();
+		return { success: true };
+	});
+
+	ipcMain.handle("setup:setComplete", (_event, value: boolean) => {
+		setupCompleteCache = Boolean(value);
 		return { success: true };
 	});
 

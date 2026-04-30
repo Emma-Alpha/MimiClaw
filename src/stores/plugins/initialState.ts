@@ -331,6 +331,69 @@ export const builtinCatalog: MarketplaceCatalog = {
       ],
     },
     {
+      id: 'hyperframes',
+      name: 'HyperFrames by HeyGen',
+      icon: pluginIcons['hyperframes'],
+      description: 'Write HTML, render video',
+      longDescription:
+        'Build videos from HTML with HyperFrames. Author compositions with HTML + CSS + GSAP, use the CLI for init/preview/render/transcribe/tts, install reusable registry blocks and components, follow the GSAP animation reference, and turn any website into a video with the 7-step capture-to-video pipeline.',
+      categories: ['Design'],
+      components: ['skills'],
+      author: 'HeyGen',
+      developerName: 'HeyGen',
+      homepage: 'https://hyperframes.heygen.com',
+      capabilities: [
+        'HTML Compositions',
+        'GSAP Animation',
+        'Captions & TTS',
+        'Audio-Reactive Visuals',
+        'Scene Transitions',
+        'Website-to-Video',
+      ],
+      requirements: [
+        { name: 'node', label: 'Node.js', minVersion: '22' },
+        { name: 'ffmpeg', label: 'FFmpeg' },
+      ],
+      defaultPrompt: 'Turn this website into a 20-second product promo',
+      skills: [
+        {
+          name: 'HyperFrames',
+          description: 'Author HTML video compositions with GSAP',
+          badge: '技能',
+          overview:
+            'Create video compositions, animations, title cards, overlays, captions, voiceovers, audio-reactive visuals, and scene transitions in HyperFrames HTML. HTML is the source of truth for video. A composition is an HTML file with data-* attributes for timing, a paused GSAP timeline registered on window.__timelines, and CSS for appearance. Use when building any HTML-based video content, adding captions or subtitles synced to audio, generating TTS narration, creating audio-reactive animation, or adding scene transitions.',
+        },
+        {
+          name: 'HyperFrames CLI',
+          description: 'Init, lint, preview, render, transcribe, tts',
+          badge: '技能',
+          overview:
+            'HyperFrames CLI tool — hyperframes init, lint, inspect, preview, render, transcribe, tts, doctor, browser, info, upgrade, compositions, docs, benchmark. Use when scaffolding a project, linting, validating, inspecting visual layout, previewing in the studio, rendering to video, transcribing audio, generating TTS, or troubleshooting the HyperFrames environment. Requires Node.js ≥ 22 and FFmpeg on PATH.',
+        },
+        {
+          name: 'HyperFrames Registry',
+          description: 'Install reusable blocks and components',
+          badge: '技能',
+          overview:
+            'Install and wire registry blocks and components into HyperFrames compositions. Use when running hyperframes add, installing a block or component, wiring an installed item into index.html, or working with hyperframes.json. Covers the add command, install locations, block sub-composition wiring, component snippet merging, and registry discovery.',
+        },
+        {
+          name: 'GSAP',
+          description: 'GSAP animation reference for HyperFrames',
+          badge: '技能',
+          overview:
+            'GSAP animation reference for HyperFrames. Covers gsap.to(), from(), fromTo(), easing, stagger, defaults, timelines (gsap.timeline(), position parameter, labels, nesting, playback), and performance (transforms, will-change, quickTo). Use when writing GSAP animations in HyperFrames compositions.',
+        },
+        {
+          name: 'Website to HyperFrames',
+          description: 'Turn any URL into a finished video',
+          badge: '技能',
+          overview:
+            'Capture a website and create a HyperFrames video from it. Use when a user provides a URL and wants a video, says "capture this site", "turn this into a video", "make a promo from my site", or wants a social ad, product tour, or any video based on an existing website. Runs the 7-step capture-to-video pipeline: capture, design, script, storyboard, voiceover, build, validate.',
+        },
+      ],
+    },
+    {
       id: 'godot-mcp',
       name: 'Godot MCP',
       icon: pluginIcons['godot-mcp'],

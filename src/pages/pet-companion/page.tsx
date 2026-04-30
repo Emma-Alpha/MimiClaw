@@ -248,16 +248,15 @@ function CompanionStats({
 								<div className={styles.statBarHighlight} />
 							</div>
 
-							{/* Value text overlaid */}
+							{/* Label overlaid on the bar */}
 							<div className={styles.statLabel}>
 								<span className={styles.statName}>{meta.zh}</span>
 								<span className={styles.statDesc}>{meta.description[language]}</span>
 							</div>
-
-							<div className={styles.statValue}>
-								{value}
-							</div>
 						</div>
+
+						{/* Value rendered outside the bar so overflow:hidden cannot clip it */}
+						<div className={styles.statValue}>{value}</div>
 					</div>
 				);
 			})}
@@ -475,20 +474,22 @@ export default function PetCompanion() {
 									<div style={{ position: 'absolute', right: -12, bottom: -12, width: 56, height: 56, opacity: 0.1, pointerEvents: 'none', zIndex: 0 }}>
 										<img src={IconTier} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
 									</div>
-									<div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', alignItems: 'center', gap: 3, zIndex: 20, maxWidth: 'calc(100% - 12px)' }}>
-										<img src={IconCrown} className={currentCompanion.rarity !== 'common' ? 'animate-pulse' : ''} style={{ width: 12, height: 12, flexShrink: 0, objectFit: 'contain', opacity: currentCompanion.rarity === 'common' ? 0.6 : 1 }} />
-										{currentCompanion.rarity !== 'common' && (
-											<span style={{
-												fontSize: '8px', fontWeight: 900, letterSpacing: '0.02em', whiteSpace: 'nowrap',
-												color: currentCompanion.rarity === 'legendary' ? '#ea580c' : currentCompanion.rarity === 'epic' ? '#c026d3' : currentCompanion.rarity === 'rare' ? '#f59e0b' : '#059669',
-											}}>
-												{rarityLabel}
-											</span>
-										)}
-									</div>
-									<div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '9.5px', fontWeight: 900, letterSpacing: '0.1em', color: '#94a3b8', position: 'relative', zIndex: 10 }}>
-										<img src={IconTier} style={{ height: 14, width: 14 }} />
-										<span>{copy.tier}</span>
+									<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, position: 'relative', zIndex: 10 }}>
+										<div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '9.5px', fontWeight: 900, letterSpacing: '0.1em', color: '#94a3b8', minWidth: 0 }}>
+											<img src={IconTier} style={{ height: 14, width: 14, flexShrink: 0 }} />
+											<span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{copy.tier}</span>
+										</div>
+										<div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+											<img src={IconCrown} className={currentCompanion.rarity !== 'common' ? 'animate-pulse' : ''} style={{ width: 12, height: 12, flexShrink: 0, objectFit: 'contain', opacity: currentCompanion.rarity === 'common' ? 0.6 : 1 }} />
+											{currentCompanion.rarity !== 'common' && (
+												<span style={{
+													fontSize: '8.5px', fontWeight: 900, whiteSpace: 'nowrap',
+													color: currentCompanion.rarity === 'legendary' ? '#ea580c' : currentCompanion.rarity === 'epic' ? '#c026d3' : currentCompanion.rarity === 'rare' ? '#f59e0b' : '#059669',
+												}}>
+													{rarityLabel}
+												</span>
+											)}
+										</div>
 									</div>
 									<div style={{ marginTop: 2, fontSize: 14, fontWeight: 900, color: '#1e293b', lineHeight: 1, position: 'relative', zIndex: 10 }}>
 										{tierLabel}

@@ -1,7 +1,8 @@
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { VList, type VListHandle } from "virtua";
-import { OpenClaw, ClaudeCode } from "@lobehub/icons";
+import { ClaudeCode } from "@lobehub/icons";
 import { ChatItem } from "@lobehub/ui/chat";
+import MimiClawAvatar from "@/components/MimiClawAvatar";
 import { useCodeChatStyles } from "../styles";
 import type { TimelineItem } from "../types";
 import { extractText } from "../utils";
@@ -122,7 +123,7 @@ function CodeChatTimelineImpl({
 					avatar={{
 						avatar: (
 							<span className={styles.assistantAvatar}>
-								<OpenClaw.Color size={20} />
+								<MimiClawAvatar size={20} />
 							</span>
 						),
 						backgroundColor: "transparent",
@@ -237,7 +238,7 @@ function CodeChatTimelineImpl({
 					avatar={{
 						avatar: (
 							<span className={styles.assistantAvatar}>
-								<OpenClaw.Color size={20} />
+								<MimiClawAvatar size={20} />
 							</span>
 						),
 						backgroundColor: "transparent",
@@ -377,7 +378,7 @@ function CodeChatTimelineImpl({
 				<div className={styles.scrollAreaInner}>
 					<div className={styles.emptyState}>
 						<div className={styles.emptyIcon}>
-							<OpenClaw.Color size={22} />
+							<MimiClawAvatar size={22} />
 						</div>
 						<div className={styles.emptyTitle}>有什么可以帮你的？</div>
 						<div className={styles.emptyDesc}>
