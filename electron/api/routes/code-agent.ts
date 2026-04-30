@@ -241,14 +241,15 @@ export async function handleCodeAgentRoutes(
     return true;
   }
 
+  if (url.pathname === '/api/code-agent/default-workspace' && req.method === 'GET') {
+    sendJson(res, 200, { success: true, workspaceRoot: homedir() });
+    return true;
+  }
+
   if (url.pathname === '/api/code-agent/sessions' && req.method === 'GET') {
     try {
-      const workspaceRoot = url.searchParams.get('workspaceRoot')?.trim() || '';
+      const workspaceRoot = url.searchParams.get('workspaceRoot')?.trim() || homedir();
       const limit = Number(url.searchParams.get('limit') ?? 30);
-      if (!workspaceRoot) {
-        sendJson(res, 400, { success: false, error: 'workspaceRoot is required' });
-        return true;
-      }
 
       const sessions = await listClaudeCodeSessions(
         workspaceRoot,
@@ -263,11 +264,11 @@ export async function handleCodeAgentRoutes(
 
   if (url.pathname === '/api/code-agent/session-history' && req.method === 'GET') {
     try {
-      const workspaceRoot = url.searchParams.get('workspaceRoot')?.trim() || '';
+      const workspaceRoot = url.searchParams.get('workspaceRoot')?.trim() || homedir();
       const sessionId = url.searchParams.get('sessionId')?.trim() || '';
       const limit = Number(url.searchParams.get('limit') ?? 120);
-      if (!workspaceRoot || !sessionId) {
-        sendJson(res, 400, { success: false, error: 'workspaceRoot and sessionId are required' });
+      if (!sessionId) {
+        sendJson(res, 400, { success: false, error: 'sessionId is required' });
         return true;
       }
 

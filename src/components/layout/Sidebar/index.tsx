@@ -38,7 +38,9 @@ import {
 import { useChatStore } from "@/stores/chat";
 import {
 	fetchCodeAgentSessions,
+	fetchDefaultWorkspaceRoot,
 	fetchWorkspaceAvailability,
+	getCachedDefaultWorkspaceRoot,
 	readStoredCodeAgentWorkspaceRoot,
 	writeStoredCodeAgentWorkspaceRoot,
 } from "@/lib/code-agent";
@@ -65,7 +67,7 @@ import { SettingsSidebar } from "./SettingsSidebar";
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
-type FolderKey = "thread";
+type FolderKey = "thread" | "chats";
 
 type CliSessionItem = { sessionId: string; title: string; updatedAt: number };
 type WorkspaceAvailability = { available: boolean; reason?: string };
@@ -387,6 +389,13 @@ export function Sidebar() {
 	const didInitialWorkspaceFetchRef = useRef(false);
 	const fetchedWorkspaceIdsRef = useRef<Set<string>>(new Set());
 
+	// ── projectless (default workspace) sessions ─────────────────────────────
+	const [defaultWorkspaceRoot, setDefaultWorkspaceRoot] = useState(getCachedDefaultWorkspaceRoot);
+	const [projectlessSessions, setProjectlessSessions] = useState<CliSessionItem[]>([]);
+	const [projectlessLoading, setProjectlessLoading] = useState(false);
+	const [projectlessSessionsExpanded, setProjectlessSessionsExpanded] = useState(false);
+	const [runningProjectlessSessions, setRunningProjectlessSessions] = useState<Record<string, true>>({});
+
 	// ── inline rename state ──────────────────────────────────────────────────
 	/** "workspaceId:sessionId" of the session currently being renamed, or null */
 	const [renamingSessionKey, setRenamingSessionKey] = useState<string | null>(
@@ -638,6 +647,45 @@ export function Sidebar() {
 		upsertSidebarThreadWorkspace,
 	]);
 
+	// ── Fetch default workspace root + projectless sessions ──────────────────
+	const refreshProjectlessSessions = useCallback(async (wsRoot: string) => {
+		if (!wsRoot) return;
+		setProjectlessLoading(true);
+		try {
+			const sessions = await fetchCodeAgentSessions(wsRoot, 60);
+			const mapped = [...sessions]
+				.sort((a, b) => b.updatedAt - a.updatedAt)
+				.map((s) => {
+					const customTitleKey = `mimiclaw:session-title:__projectless__:${s.sessionId}`;
+					const customTitle = localStorage.getItem(customTitleKey);
+					return {
+						sessionId: s.sessionId,
+						title: customTitle?.trim() || s.title?.trim() || s.sessionId,
+						updatedAt: s.updatedAt,
+					};
+				});
+			setProjectlessSessions(mapped);
+		} catch {
+			setProjectlessSessions([]);
+		} finally {
+			setProjectlessLoading(false);
+		}
+	}, []);
+
+	useEffect(() => {
+		let cancelled = false;
+		const init = async () => {
+			const root = await fetchDefaultWorkspaceRoot();
+			if (cancelled) return;
+			if (root) {
+				setDefaultWorkspaceRoot(root);
+				void refreshProjectlessSessions(root);
+			}
+		};
+		void init();
+		return () => { cancelled = true; };
+	}, [refreshProjectlessSessions]);
+
 	useEffect(() => {
 		if (threadWorkspaces.length === 0) return;
 		if (!didInitialWorkspaceFetchRef.current) {
@@ -663,6 +711,12 @@ export function Sidebar() {
 			const workspaceRoot = (request as { workspaceRoot?: unknown })
 				.workspaceRoot;
 			if (typeof workspaceRoot !== "string" || !workspaceRoot.trim()) return;
+
+			// Refresh projectless sessions if the run matches the default workspace
+			if (defaultWorkspaceRoot && normalizeWorkspacePath(workspaceRoot) === normalizeWorkspacePath(defaultWorkspaceRoot)) {
+				void refreshProjectlessSessions(defaultWorkspaceRoot);
+			}
+
 			const workspaceId =
 				workspaceIdByNormalizedRoot[normalizeWorkspacePath(workspaceRoot)];
 			if (!workspaceId) return;
@@ -671,7 +725,31 @@ export function Sidebar() {
 			void refreshWorkspaceSessions(workspace);
 		};
 
+		const resolveProjectlessSession = (payload: unknown): string | null => {
+			if (!defaultWorkspaceRoot || !payload || typeof payload !== "object") return null;
+			const request = (payload as { request?: unknown }).request;
+			if (!request || typeof request !== "object") return null;
+			const wsRoot = (request as { workspaceRoot?: unknown }).workspaceRoot;
+			if (typeof wsRoot !== "string") return null;
+			if (normalizeWorkspacePath(wsRoot) !== normalizeWorkspacePath(defaultWorkspaceRoot)) return null;
+			let sessionId = typeof (request as { sessionId?: unknown }).sessionId === "string"
+				? (request as { sessionId: string }).sessionId.trim() : "";
+			if (!sessionId) {
+				const result = (payload as { result?: unknown }).result;
+				const metadata = result && typeof result === "object" ? (result as { metadata?: unknown }).metadata : null;
+				sessionId = metadata && typeof metadata === "object" && typeof (metadata as { sessionId?: unknown }).sessionId === "string"
+					? (metadata as { sessionId: string }).sessionId.trim() : "";
+			}
+			return sessionId || null;
+		};
+
 		const markThreadSessionRunning = (payload: CodeAgentRunRecord) => {
+			// Track projectless session running state
+			const plSessionId = resolveProjectlessSession(payload);
+			if (plSessionId) {
+				setRunningProjectlessSessions((prev) => ({ ...prev, [plSessionId]: true }));
+			}
+
 			const target = resolveRunSessionTarget(payload);
 			if (!target) return;
 			setRunningThreadSessionsByWorkspaceId((prev) => ({
@@ -684,6 +762,15 @@ export function Sidebar() {
 		};
 
 		const clearThreadSessionRunning = (payload: CodeAgentRunRecord) => {
+			// Clear projectless session running state
+			const plSessionId = resolveProjectlessSession(payload);
+			if (plSessionId) {
+				setRunningProjectlessSessions((prev) => {
+					const { [plSessionId]: _removed, ...rest } = prev;
+					return rest;
+				});
+			}
+
 			const target = resolveRunSessionTarget(payload);
 			if (target) {
 				// 当完成的会话不是当前激活会话，或窗口不在前台时，发送系统通知
@@ -735,6 +822,8 @@ export function Sidebar() {
 			unsubscribeRunFailed();
 		};
 	}, [
+		defaultWorkspaceRoot,
+		refreshProjectlessSessions,
 		refreshWorkspaceSessions,
 		resolveRunSessionTarget,
 		workspaceById,
@@ -833,7 +922,19 @@ export function Sidebar() {
 	);
 
 	const handleGlobalNewThread = useCallback(() => {
-		// 只处理 thread 工作区的情况
+		// Create a projectless conversation using default workspace root
+		const wsRoot = defaultWorkspaceRoot;
+		if (wsRoot) {
+			setSidebarActiveContext({ kind: "chat", workspaceId: null });
+			setFolderExpanded("chats", true);
+			writeStoredCodeAgentWorkspaceRoot(wsRoot);
+			const params = new URLSearchParams();
+			params.set("workspaceRoot", wsRoot);
+			params.set("newThread", String(Date.now()));
+			navigate(`/chat/code?${params.toString()}`);
+			return;
+		}
+		// Fallback: if active workspace exists, use it
 		const activeWorkspace =
 			(sidebarActiveContext.workspaceId
 				? workspaceById[sidebarActiveContext.workspaceId]
@@ -842,11 +943,12 @@ export function Sidebar() {
 			handleWorkspaceNewThread(activeWorkspace);
 			return;
 		}
-		// 如果没有工作区，提示添加工作区
-		void handleAddWorkspace();
 	}, [
-		handleAddWorkspace,
+		defaultWorkspaceRoot,
 		handleWorkspaceNewThread,
+		navigate,
+		setFolderExpanded,
+		setSidebarActiveContext,
 		sidebarActiveContext,
 		threadWorkspaces,
 		workspaceById,
@@ -959,6 +1061,87 @@ export function Sidebar() {
 		},
 		[],
 	);
+
+	// ── projectless session handlers ──────────────────────────────────────────
+
+	const handleProjectlessSession = useCallback(
+		(sessionId: string) => {
+			if (!defaultWorkspaceRoot) return;
+			setSidebarActiveContext({ kind: "chat", workspaceId: null });
+			setFolderExpanded("chats", true);
+			writeStoredCodeAgentWorkspaceRoot(defaultWorkspaceRoot);
+			const params = new URLSearchParams();
+			params.set("workspaceRoot", defaultWorkspaceRoot);
+			params.set("sessionId", sessionId);
+			navigate(`/chat/code?${params.toString()}`);
+		},
+		[defaultWorkspaceRoot, navigate, setFolderExpanded, setSidebarActiveContext],
+	);
+
+	const handleProjectlessSessionRename = useCallback(
+		(session: CliSessionItem) => {
+			setRenamingSessionKey(`__projectless__:${session.sessionId}`);
+			requestAnimationFrame(() => {
+				renameInputRef.current?.focus();
+				renameInputRef.current?.select();
+			});
+		},
+		[],
+	);
+
+	const commitProjectlessSessionRename = useCallback(
+		(session: CliSessionItem, newTitle: string) => {
+			setRenamingSessionKey(null);
+			const trimmed = newTitle.trim();
+			if (!trimmed || trimmed === session.title) return;
+			const lsKey = `mimiclaw:session-title:__projectless__:${session.sessionId}`;
+			localStorage.setItem(lsKey, trimmed);
+			void saveSession({
+				key: session.sessionId,
+				displayName: trimmed,
+				updatedAt: Date.now(),
+				createdAt: session.updatedAt || Date.now(),
+			});
+			if (defaultWorkspaceRoot) {
+				void refreshProjectlessSessions(defaultWorkspaceRoot);
+			}
+		},
+		[defaultWorkspaceRoot, refreshProjectlessSessions],
+	);
+
+	const handleProjectlessSessionOpenInMiniWindow = useCallback(
+		(sessionId: string) => {
+			if (!defaultWorkspaceRoot) return;
+			writeMiniChatPendingSession({
+				workspaceRoot: defaultWorkspaceRoot,
+				sessionId,
+			});
+			void invokeIpc("pet:toggleQuickChat").catch(() => {});
+		},
+		[defaultWorkspaceRoot],
+	);
+
+	const [projectlessSortOrder, setProjectlessSortOrder] = useState<"recent" | "alpha">("recent");
+
+	const handleToggleProjectlessSortOrder = useCallback(() => {
+		setProjectlessSortOrder((prev) => (prev === "recent" ? "alpha" : "recent"));
+	}, []);
+
+	const filteredProjectlessSessions = useMemo(() => {
+		const filtered = projectlessSessions.filter((s) => matchesQuery(s.title));
+		if (projectlessSortOrder === "alpha") {
+			return [...filtered].sort((a, b) => a.title.localeCompare(b.title));
+		}
+		return filtered;
+	}, [matchesQuery, projectlessSessions, projectlessSortOrder]);
+
+	const visibleProjectlessSessions = useMemo(() => {
+		const canToggle = filteredProjectlessSessions.length > COLLAPSIBLE_SESSION_LIMIT;
+		if (canToggle && !projectlessSessionsExpanded) {
+			return filteredProjectlessSessions.slice(0, COLLAPSIBLE_SESSION_LIMIT);
+		}
+		return filteredProjectlessSessions;
+	}, [filteredProjectlessSessions, projectlessSessionsExpanded]);
 
 	// ── derived counts ────────────────────────────────────────────────────────
 
@@ -1088,6 +1271,188 @@ export function Sidebar() {
 
 	const bodyNode = (
 		<Flexbox gap={4} paddingBlock={4}>
+			{/* ── Section: 对话 (Projectless Chats) ──────────────────────────── */}
+			{filteredProjectlessSessions.length > 0 && (
+				<>
+					<div className={styles.sectionHeader}>
+						<button
+							type="button"
+							className={styles.sectionLabel}
+							onClick={() => toggleFolder("chats")}
+							style={{
+								cursor: "pointer",
+								background: "none",
+								border: "none",
+								padding: 0,
+								textAlign: "left",
+							}}
+						>
+							{t("sidebar.folder.chats", { defaultValue: "对话" })}
+						</button>
+						<div className={styles.sectionActions}>
+							<ActionIcon
+								icon={ArrowDownUp}
+								size={{ blockSize: 22, size: 12 }}
+								title={
+									projectlessSortOrder === "recent"
+										? t("sidebar.sortAlpha", { defaultValue: "按名称排序" })
+										: t("sidebar.sortRecent", { defaultValue: "按最近排序" })
+								}
+								style={{ opacity: 0.75 }}
+								onClick={handleToggleProjectlessSortOrder}
+							/>
+							<ActionIcon
+								icon={Plus}
+								size={{ blockSize: 22, size: 12 }}
+								title={t("sidebar.newThread", { defaultValue: "新对话" })}
+								style={{ opacity: 0.75 }}
+								onClick={handleGlobalNewThread}
+							/>
+						</div>
+					</div>
+				{isFolderExpanded("chats") && (
+					<Flexbox gap={2}>
+						{projectlessLoading && (
+							<div className={styles.emptyHint}>
+								{t("status.loading", { defaultValue: "加载中..." })}
+							</div>
+						)}
+						{!projectlessLoading && visibleProjectlessSessions.map((session) => {
+							const isActive =
+								pathname.startsWith("/chat/code") &&
+								!activeThreadWorkspaceIdFromRoute &&
+								activeThreadSessionId === session.sessionId;
+							const isRunning =
+								runningProjectlessSessions[session.sessionId] === true ||
+								(isActive && isThreadSessionGenerating);
+							const isRenaming =
+								renamingSessionKey === `__projectless__:${session.sessionId}`;
+							const sessionMenu: MenuProps = {
+								items: [
+									{
+										key: "rename",
+										label: t("sidebar.session.rename", { defaultValue: "重命名对话" }),
+									},
+									{
+										key: "openInMiniWindow",
+										label: t("sidebar.session.openInMiniWindow", { defaultValue: "在迷你窗口中打开" }),
+									},
+								],
+								onClick: ({ key }) => {
+									if (key === "rename") {
+										handleProjectlessSessionRename(session);
+									} else if (key === "openInMiniWindow") {
+										handleProjectlessSessionOpenInMiniWindow(session.sessionId);
+									}
+								},
+							};
+							if (isRenaming) {
+								return (
+									<div
+										key={`pl:${session.sessionId}`}
+										className={styles.flatSessionItem}
+										style={{
+											padding: "0 8px",
+											height: 30,
+											display: "flex",
+											alignItems: "center",
+										}}
+									>
+										<input
+											ref={renameInputRef}
+											defaultValue={session.title}
+											style={{
+												width: "100%",
+												background: "transparent",
+												border: "1px solid var(--ant-color-primary)",
+												borderRadius: 4,
+												padding: "2px 6px",
+												fontSize: "inherit",
+												color: "inherit",
+												outline: "none",
+											}}
+											onBlur={(e) =>
+												commitProjectlessSessionRename(
+													session,
+													e.currentTarget.value,
+												)
+											}
+											onKeyDown={(
+												e: KeyboardEvent<HTMLInputElement>,
+											) => {
+												if (e.key === "Enter") {
+													e.currentTarget.blur();
+												} else if (e.key === "Escape") {
+													setRenamingSessionKey(null);
+												}
+											}}
+										/>
+									</div>
+								);
+							}
+							return (
+								<Dropdown
+									key={`pl:${session.sessionId}`}
+									menu={sessionMenu}
+									trigger={["contextMenu"]}
+								>
+									<div>
+										<NavItem
+											className={styles.flatSessionItem}
+											title={session.title}
+											active={isActive}
+											extra={
+												<TimeLabel
+													text={formatRelativeTime(
+														session.updatedAt,
+														i18n.language,
+													)}
+												/>
+											}
+											slots={
+												isRunning
+													? {
+															titlePrefix: (
+																<span
+																	className={cx(
+																		styles.sessionMarker,
+																		styles.sessionMarkerSpinning,
+																	)}
+																>
+																	<Loader2
+																		size={CHAT_SESSION_META_ICON_SIZE}
+																	/>
+																</span>
+															),
+														}
+													: undefined
+											}
+											onClick={() =>
+												handleProjectlessSession(session.sessionId)
+											}
+										/>
+									</div>
+								</Dropdown>
+							);
+						})}
+						{filteredProjectlessSessions.length > COLLAPSIBLE_SESSION_LIMIT && (
+							<button
+								type="button"
+								className={styles.sessionListToggle}
+								onClick={() =>
+									setProjectlessSessionsExpanded((prev) => !prev)
+								}
+							>
+								{projectlessSessionsExpanded
+									? t("sidebar.collapseList", { defaultValue: "折叠显示" })
+									: t("sidebar.expandList", { defaultValue: "展开显示" })}
+							</button>
+						)}
+					</Flexbox>
+				)}
+				</>
+			)}
+
 			{/* ── Section Header: 项目 ─────────────────────────────────────── */}
 			<div className={styles.sectionHeader}>
 				<button

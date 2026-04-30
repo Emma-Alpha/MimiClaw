@@ -130,10 +130,13 @@ async function createMiniChatWindow(): Promise<BrowserWindow> {
 	return win;
 }
 
-export async function openMiniChatWindow(): Promise<void> {
+export async function openMiniChatWindow(options?: { newThread?: boolean }): Promise<void> {
 	if (miniChatWindow && !miniChatWindow.isDestroyed()) {
 		miniChatWindow.show();
 		miniChatWindow.focus();
+		if (options?.newThread) {
+			miniChatWindow.webContents.send("mini-chat:new-thread");
+		}
 		return;
 	}
 
@@ -141,24 +144,36 @@ export async function openMiniChatWindow(): Promise<void> {
 
 	isCreatingMiniChatWindow = true;
 	try {
-		await createMiniChatWindow();
+		const win = await createMiniChatWindow();
+		if (options?.newThread && win && !win.isDestroyed()) {
+			win.webContents.once("did-finish-load", () => {
+				win.webContents.send("mini-chat:new-thread");
+			});
+		}
 	} finally {
 		isCreatingMiniChatWindow = false;
 	}
 }
 
-export async function toggleMiniChatWindow(): Promise<void> {
+export async function toggleMiniChatWindow(options?: { newThread?: boolean }): Promise<void> {
 	if (miniChatWindow && !miniChatWindow.isDestroyed()) {
-		if (miniChatWindow.isVisible()) {
+		if (miniChatWindow.isVisible() && !options?.newThread) {
 			miniChatWindow.hide();
 			return;
 		}
 		miniChatWindow.show();
 		miniChatWindow.focus();
+		if (options?.newThread) {
+			miniChatWindow.webContents.send("mini-chat:new-thread");
+		}
 		return;
 	}
 
-	await openMiniChatWindow();
+	await openMiniChatWindow(options);
+}
+
+export async function openMiniChatNewThread(): Promise<void> {
+	await toggleMiniChatWindow({ newThread: true });
 }
 
 export function closeMiniChatWindow(): void {

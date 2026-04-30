@@ -32,6 +32,7 @@ import {
 	cancelCodeAgentRun,
 	fetchClaudeCodeSkills,
 	fetchCodeAgentStatus,
+	fetchDefaultWorkspaceRoot,
 	restartCodeAgent,
 	fetchLatestCodeAgentRun,
 	fetchProjectMentionEntries,
@@ -353,6 +354,12 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 				);
 				if (inferredWorkspaceRoot) {
 					setCodeWorkspaceRoot(inferredWorkspaceRoot);
+				} else {
+					// Fallback to default workspace (home directory) for projectless chats
+					const defaultRoot = await fetchDefaultWorkspaceRoot();
+					if (defaultRoot) {
+						setCodeWorkspaceRoot(defaultRoot);
+					}
 				}
 			}
 		};
@@ -1041,6 +1048,13 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 	}, [codeAgentItems, codeActiveTasks]);
 
 	const disableComposer = isCodeTurnInProgress;
+	const isEmptyChat = codeAgentMessages.length === 0 && !codeStreaming.isStreaming && !codeSending;
+	const emptyChatWorkspaceName = useMemo(() => {
+		const root = codeWorkspaceRoot.trim();
+		if (!root) return "";
+		const segments = root.replace(/[\\/]+$/, "").split(/[\\/]/);
+		return segments[segments.length - 1] || "";
+	}, [codeWorkspaceRoot]);
 	const headerSessions = claudeSessions;
 	const headerSessionKey = activeClaudeSessionId;
 	const isHeaderGenerating =
@@ -1271,36 +1285,43 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 
 			<div className={showSidePanel ? styles.browserUseMainContent : undefined} style={showSidePanel ? undefined : { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
 			<div className={showSidePanel ? styles.browserUseChatColumn : undefined} style={showSidePanel ? undefined : { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-			<ConversationView
-				messages={codeAgentMessages}
-				currentSessionKey={activeClaudeSessionId}
-				loading={false}
-				sending={codeSending}
-				error={null}
-				showThinking={true}
-				streamingMessage={
-					(codeStreaming.assistantText || codeStreaming.thinkingText)
-						? {
-							role: "assistant" as const,
-							content: [
-								...(codeStreaming.thinkingText
-									? [{ type: "thinking" as const, thinking: codeStreaming.thinkingText }]
-									: []),
-								...(codeStreaming.assistantText
-									? [{ type: "text" as const, text: codeStreaming.assistantText }]
-									: []),
-							],
-						}
-						: null
-				}
-				streamingTools={[]}
-				pendingFinal={false}
-				lastRunWasAborted={false}
-				clearError={() => {}}
-				skipPetActivity
-			/>
+			{!isEmptyChat && (
+				<ConversationView
+					messages={codeAgentMessages}
+					currentSessionKey={activeClaudeSessionId}
+					loading={false}
+					sending={codeSending}
+					error={null}
+					showThinking={true}
+					streamingMessage={
+						(codeStreaming.assistantText || codeStreaming.thinkingText)
+							? {
+								role: "assistant" as const,
+								content: [
+									...(codeStreaming.thinkingText
+										? [{ type: "thinking" as const, thinking: codeStreaming.thinkingText }]
+										: []),
+									...(codeStreaming.assistantText
+										? [{ type: "text" as const, text: codeStreaming.assistantText }]
+										: []),
+								],
+							}
+							: null
+					}
+					streamingTools={[]}
+					pendingFinal={false}
+					lastRunWasAborted={false}
+					clearError={() => {}}
+					skipPetActivity
+				/>
+			)}
 
-			<div className={styles.bottomDock}>
+			<div className={isEmptyChat ? styles.emptyChatContainer : styles.bottomDock}>
+				{isEmptyChat && emptyChatWorkspaceName && (
+					<div className={styles.emptyChatGreeting}>
+						要在 {emptyChatWorkspaceName} 中构建什么？
+					</div>
+				)}
 				<div className={cx(styles.inputDock, embeddedCodeAssistant && styles.inputDockEmbedded, isMiniWindow && styles.inputDockMiniWindow)}>
 					{/* New SDK-driven permission dispatcher (tool-specific UI) */}
 					{codeAgentPendingPermission && (

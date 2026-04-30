@@ -1553,6 +1553,29 @@ export const useCodeChatStyles = createStyles(
 		background: ${token.colorFillTertiary};
 		color: ${token.colorText};
 	`,
+	emptyChatContainer: css`
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		flex: 1;
+		min-height: 0;
+		width: 100%;
+		padding-bottom: 48px;
+
+		/* 居中态下输入区域撑满宽度 */
+		& > div {
+			width: min(720px, calc(100% - 48px));
+		}
+	`,
+	emptyChatGreeting: css`
+		font-size: 18px;
+		font-weight: 500;
+		color: ${token.colorTextSecondary};
+		margin-bottom: 16px;
+		text-align: center;
+		user-select: none;
+	`,
 	bottomDock: css`
 		width: 100%;
 		flex-shrink: 0;

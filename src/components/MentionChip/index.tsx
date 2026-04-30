@@ -36,7 +36,7 @@ export interface MentionChipProps {
 
 // ─── icon resolution ────────────────────────────────────────────────────────
 
-const IMAGE_ICON_RE = /^(https?:\/\/|data:image\/|\/)/i;
+const IMAGE_ICON_RE = /^(https?:\/\/|file:\/\/|data:image\/|\.?\/)/i;
 const ICON_SIZE = 12;
 
 export function resolveMentionIcon(

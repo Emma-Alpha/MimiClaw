@@ -40,6 +40,22 @@ export function inferCodeAgentWorkspaceRoot(candidate: string | null | undefined
   return withoutVendor || trimmed;
 }
 
+let _cachedDefaultWorkspaceRoot: string | null = null;
+
+export async function fetchDefaultWorkspaceRoot(): Promise<string> {
+  if (_cachedDefaultWorkspaceRoot) return _cachedDefaultWorkspaceRoot;
+  const response = await hostApiFetch<{ success: boolean; workspaceRoot: string }>(
+    '/api/code-agent/default-workspace',
+  );
+  const root = response.workspaceRoot?.trim() || '';
+  if (root) _cachedDefaultWorkspaceRoot = root;
+  return root;
+}
+
+export function getCachedDefaultWorkspaceRoot(): string {
+  return _cachedDefaultWorkspaceRoot || '';
+}
+
 export async function fetchCodeAgentStatus(): Promise<CodeAgentStatus> {
   return await hostApiFetch<CodeAgentStatus>('/api/code-agent/status');
 }
@@ -93,6 +109,9 @@ export async function runCodeAgentTask(input: CodeAgentRunRequest): Promise<Code
   });
   if (!response.success || !response.result) {
     throw new Error(response.error || 'Code agent task failed without result');
+  }
+  if (response.result.status === 'failed') {
+    throw new Error(response.result.output || response.result.summary || 'Code agent task failed');
   }
   return response.result;
 }

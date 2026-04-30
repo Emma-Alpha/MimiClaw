@@ -2,6 +2,7 @@ import { type MutableRefObject, useCallback, useState } from "react";
 import {
 	fetchCodeAgentSessionHistory,
 	fetchCodeAgentSessions,
+	getCachedDefaultWorkspaceRoot,
 } from "@/lib/code-agent";
 import { toUserMessage } from "@/lib/api-client";
 import { getCodeAgentSessionPerf, getSession } from "@/lib/db";
@@ -42,12 +43,7 @@ export function useCodeChatClaudeSessions({
 	const [activeClaudeSessionId, setActiveClaudeSessionId] = useState("");
 
 	const loadClaudeSessions = useCallback(async () => {
-		const workspaceRoot = codeWorkspaceRoot.trim();
-		if (!workspaceRoot) {
-			setClaudeSessions([]);
-			setActiveClaudeSessionId("");
-			return;
-		}
+		const workspaceRoot = codeWorkspaceRoot.trim() || getCachedDefaultWorkspaceRoot();
 
 		try {
 			const sessionsInWorkspace = await fetchCodeAgentSessions(workspaceRoot, 60);
@@ -80,8 +76,8 @@ export function useCodeChatClaudeSessions({
 
 	const hydrateClaudeSessionHistory = useCallback(
 		async (sessionId: string) => {
-			const workspaceRoot = codeWorkspaceRoot.trim();
-			if (!workspaceRoot || !sessionId) return false;
+			const workspaceRoot = codeWorkspaceRoot.trim() || getCachedDefaultWorkspaceRoot();
+			if (!sessionId) return false;
 
 			setActiveClaudeSessionId(sessionId);
 			resetCodeTimelineState();

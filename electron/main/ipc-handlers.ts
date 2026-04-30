@@ -614,7 +614,7 @@ function registerPetHandlers(): void {
 					label: openCodeChatLabels[language],
 					click: () => {
 						runPetMenuAction("open-code-chat", async () => {
-							await toggleMiniChatWindow();
+							await toggleMiniChatWindow({ newThread: true });
 						});
 					},
 				},

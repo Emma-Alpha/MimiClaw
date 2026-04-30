@@ -10,6 +10,8 @@ import type { FileAttachment } from "@/features/mainChat/lib/composer-helpers";
 import {
 	type ClaudeCodeSkillEntry,
 	fetchCodeAgentStatus,
+	fetchDefaultWorkspaceRoot,
+	getCachedDefaultWorkspaceRoot,
 	runCodeAgentTask,
 } from "@/lib/code-agent";
 import { invokeIpc, toUserMessage } from "@/lib/api-client";
@@ -99,10 +101,9 @@ export function useCodeChatSubmissionActions({
 				mcpServerHints?: string[];
 			},
 		) => {
-			const workspaceRoot = codeWorkspaceRoot.trim();
+			let workspaceRoot = codeWorkspaceRoot.trim() || getCachedDefaultWorkspaceRoot();
 			if (!workspaceRoot) {
-				toast.error("请先选择工作目录");
-				return false;
+				workspaceRoot = await fetchDefaultWorkspaceRoot();
 			}
 			if (codeSending) return false;
 			const shouldForceFreshSession = forceFreshSessionOnNextSubmitRef.current;
@@ -396,8 +397,6 @@ export function useCodeChatSubmissionActions({
 			if (!prompt && effectiveAttachments.length === 0 && imageAttachments.length === 0) {
 				return false;
 			}
-
-			if (!codeWorkspaceRoot.trim()) return false;
 
 			const raw = richContentRef.current;
 			const snapshotRichContent = raw
