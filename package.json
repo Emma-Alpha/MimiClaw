@@ -1,6 +1,6 @@
 {
   "name": "jizhi",
-  "version": "0.1.74",
+  "version": "0.1.75",
   "pnpm": {
     "onlyBuiltDependencies": [
       "@anthropic-ai/claude-code",
