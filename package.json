@@ -1,6 +1,6 @@
 {
   "name": "jizhi",
-  "version": "0.1.76",
+  "version": "0.1.77",
   "pnpm": {
     "onlyBuiltDependencies": [
       "@anthropic-ai/claude-code",
@@ -15,8 +15,15 @@
       "sharp"
     ],
     "supportedArchitectures": {
-      "os": ["darwin", "linux", "win32"],
-      "cpu": ["x64", "arm64"]
+      "os": [
+        "darwin",
+        "linux",
+        "win32"
+      ],
+      "cpu": [
+        "x64",
+        "arm64"
+      ]
     },
     "overrides": {
       "isbinaryfile": "^5.0.0",
