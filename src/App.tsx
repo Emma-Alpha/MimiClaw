@@ -13,6 +13,7 @@ import { useSettingsStore } from "./stores/settings";
 import { invokeIpc } from "./lib/api-client";
 import { ThemeWrapper } from "./components/theme/ThemeWrapper";
 import { UpdateBootstrap } from "@/components/update/UpdateBootstrap";
+import { DragUploadProvider } from "@/components/DragUploadZone";
 import { AppRoutes } from "./router/generate-routes";
 
 // ---------------------------------------------------------------------------
@@ -236,16 +237,18 @@ function App() {
 		<ErrorBoundary>
 			<ThemeWrapper>
 				<TooltipProvider>
-					{!isStandalone ? <UpdateBootstrap /> : null}
-					<AppRoutes />
-					{/* Global toast notifications */}
-					<Toaster
-						position="bottom-right"
-						richColors
-						closeButton
-						style={{ zIndex: 99999 }}
-					/>
-					<ModalHost />
+					<DragUploadProvider>
+						{!isStandalone ? <UpdateBootstrap /> : null}
+						<AppRoutes />
+						{/* Global toast notifications */}
+						<Toaster
+							position="bottom-right"
+							richColors
+							closeButton
+							style={{ zIndex: 99999 }}
+						/>
+						<ModalHost />
+					</DragUploadProvider>
 				</TooltipProvider>
 			</ThemeWrapper>
 		</ErrorBoundary>

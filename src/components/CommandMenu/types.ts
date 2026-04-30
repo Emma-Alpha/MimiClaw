@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 export interface CommandMenuItem {
 	id: string;
 	icon?: ReactNode;
-	label: string;
+	label: ReactNode;
 	description?: string;
 	/** Right-side tag, e.g. "个人" / "系统" */
 	tag?: string;

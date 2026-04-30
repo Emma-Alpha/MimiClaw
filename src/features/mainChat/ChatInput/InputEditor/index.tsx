@@ -130,11 +130,7 @@ export function InputEditor() {
   }, [mentionItems]);
 
   const commandSlashOptions = useMemo<ISlashOption[]>(() => {
-    const extraWithGroup = extraSlashItems.map((item) => {
-      if ('type' in item && item.type === 'divider') return item;
-      return { ...item, metadata: { ...item.metadata, group: 'commands' } };
-    });
-    return [...extraWithGroup];
+    return [...extraSlashItems];
   }, [ extraSlashItems]);
 
   const slashOptions = useMemo<ISlashOption[]>(

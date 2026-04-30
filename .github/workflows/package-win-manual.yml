@@ -62,6 +62,7 @@ jobs:
       - name: Build Windows package (no publish)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_OPTIONS: '--max-old-space-size=8192'
         run: pnpm run package:win
 
       - name: Upload Windows Installer (x64)

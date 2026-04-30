@@ -75,6 +75,7 @@ import { useCodeChatCodeAgentEvents } from "./hooks/useCodeChatCodeAgentEvents";
 import { useCodeChatSeedAndAutoSend } from "./hooks/useCodeChatSeedAndAutoSend";
 import { useCodeChatSessionActions } from "./hooks/useCodeChatSessionActions";
 import { useCodeChatSubmissionActions } from "./hooks/useCodeChatSubmissionActions";
+import { DragUploadZone, useUploadFiles } from "@/components/DragUploadZone";
 import { useCodeChatStyles } from "./styles";
 import type {
 	SlashOption,
@@ -131,6 +132,7 @@ type CodeChatProps = {
 
 export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }: CodeChatProps) {
 	const { styles, cx } = useCodeChatStyles();
+	const { handleUploadFiles } = useUploadFiles();
 	const location = useLocation();
 	const platform = window.electron?.platform;
 	const initSettings = useSettingsStore((state) => state.init);
@@ -596,7 +598,7 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 			desc: entry.description,
 			key: `${entry.scope}:${entry.name}`,
 			label: entry.command,
-			metadata: { scope: entry.scope, source: entry.source },
+			metadata: { scope: entry.scope, source: entry.source, icon: entry.icon, group: 'skills' },
 			onSelect: (activeEditor: IEditor) => {
 				// Insert a skill pill/tag into the editor (strip leading "/" since markdownWriter adds it)
 				activeEditor.dispatchCommand(INSERT_MENTION_COMMAND, {
@@ -604,6 +606,7 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 					metadata: {
 						id: `${entry.scope}:${entry.name}`,
 						kind: 'skill',
+						icon: entry.icon,
 						description: entry.description,
 					},
 				});
@@ -1163,6 +1166,7 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 	}, [floatingTodoTool]);
 
 	return (
+		<DragUploadZone onUploadFiles={handleUploadFiles} style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
 		<div className={cx(styles.root, embeddedCodeAssistant && styles.rootEmbedded)}>
 				<CodeChatHeader
 					embedded={embeddedCodeAssistant}
@@ -1498,5 +1502,6 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 			{/* end mainContent */}
 			</div>
 		</div>
+		</DragUploadZone>
 	);
 }

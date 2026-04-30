@@ -108,6 +108,12 @@
         "characterSecret": "While you type a hidden password, they politely look away.",
         "characterVisible": "Reveal the password and the purple one gets curious."
     },
+    "DragUpload": {
+        "dragTitle": "Upload Images",
+        "dragDesc": "Drag and drop files here to upload multiple images.",
+        "dragFileTitle": "Upload Files",
+        "dragFileDesc": "Drag and drop images and files here to upload multiple images and files."
+    },
     "browserUse": {
         "panelTitle": "Browser",
         "togglePanel": "Toggle browser panel",

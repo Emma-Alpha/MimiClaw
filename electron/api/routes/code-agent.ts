@@ -425,7 +425,7 @@ export async function handleCodeAgentRoutes(
       const scanSkillDir = async (
         dir: string,
         scope: 'global' | 'project',
-      ): Promise<Array<{ name: string; command: string; description: string; scope: string; source: 'claude' | 'external'; skillContent: string; requiresSkills: string[] }>> => {
+      ): Promise<Array<{ name: string; command: string; description: string; icon?: string; scope: string; source: 'claude' | 'external'; skillContent: string; requiresSkills: string[] }>> => {
         try {
           const entries = await fs.readdir(dir, { withFileTypes: true });
           const results = await Promise.all(
@@ -434,6 +434,7 @@ export async function handleCodeAgentRoutes(
               .map(async (e) => {
                 const skillMd = join(dir, e.name, 'SKILL.md');
                 let description = '';
+                let icon: string | undefined;
                 let skillContent = '';
                 let requiresSkills: string[] = [];
                 try {
@@ -451,6 +452,11 @@ export async function handleCodeAgentRoutes(
                       if (descMatch?.[1]) {
                         const raw = descMatch[1].trim();
                         description = raw.length > 100 ? `${raw.slice(0, 100)}…` : raw;
+                      }
+
+                      const iconMatch = fmBlock.match(/^icon:\s*["']?(.*?)["']?\s*$/m);
+                      if (iconMatch?.[1]) {
+                        icon = iconMatch[1].trim();
                       }
 
                       // Parse requires_skills list (YAML list items under requires_skills:)
@@ -492,6 +498,7 @@ export async function handleCodeAgentRoutes(
                   name: e.name,
                   command: `/${e.name}`,
                   description,
+                  ...(icon ? { icon } : {}),
                   scope,
                   source,
                   skillContent,

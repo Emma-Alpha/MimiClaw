@@ -1,7 +1,7 @@
 import type { CSSProperties, MouseEvent, ReactNode } from 'react';
 
 import { createStyles } from 'antd-style';
-import { FileText, Folder, Monitor, Puzzle, X } from 'lucide-react';
+import { FileText, Folder, Monitor, X } from 'lucide-react';
 import { memo } from 'react';
 
 // ─── types ──────────────────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ export function resolveMentionIcon(
     case 'folder':
       return <Folder size={ICON_SIZE} strokeWidth={1.75} />;
     case 'skill':
-      return <Puzzle size={ICON_SIZE} strokeWidth={1.75} />;
+      return <span style={{ fontSize: 11, lineHeight: 1 }}>🛠</span>;
     case 'plugin':
     case 'agent':
       return <Monitor size={ICON_SIZE} strokeWidth={1.75} />;
@@ -108,6 +108,9 @@ const useStyles = createStyles(({ css, token }) => ({
     height: 16px;
     color: ${token.colorTextTertiary};
   `,
+  iconSlotSkill: css`
+    color: ${token.colorSuccess};
+  `,
   label: css`
     overflow: hidden;
     min-width: 0;
@@ -136,6 +139,17 @@ const useStyles = createStyles(({ css, token }) => ({
     vertical-align: middle;
     margin-inline: 2px;
   `,
+  pillSkill: css`
+    border-color: ${token.colorSuccessBorder};
+    border-radius: 6px;
+    background: ${token.colorSuccessBg};
+    color: ${token.colorSuccess};
+
+    &&:hover {
+      border-color: ${token.colorSuccess};
+      background: ${token.colorSuccessBg};
+    }
+  `,
   pillRemovable: css`
     &:hover {
       --mc-delete-display: flex;
@@ -152,7 +166,8 @@ const MentionChip = memo<MentionChipProps>(
   ({ kind, label, icon, removable, onRemove, title, className, style }) => {
     const { styles, cx } = useStyles();
 
-    const displayLabel = kind === 'skill' ? `/${label}` : label;
+    const isSkill = kind === 'skill';
+    const displayLabel = isSkill ? `/${label}` : label;
 
     const handleRemoveClick = (e: MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
@@ -162,12 +177,12 @@ const MentionChip = memo<MentionChipProps>(
 
     return (
       <span
-        className={cx(styles.pill, removable && styles.pillRemovable, className)}
+        className={cx(styles.pill, isSkill && styles.pillSkill, removable && styles.pillRemovable, className)}
         contentEditable={false}
         style={style}
         title={title ?? displayLabel}
       >
-        <span aria-hidden className={styles.iconSlot}>
+        <span aria-hidden className={cx(styles.iconSlot, isSkill && styles.iconSlotSkill)}>
           {resolveMentionIcon(kind, icon)}
         </span>
         {removable && (

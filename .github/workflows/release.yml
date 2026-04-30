@@ -104,6 +104,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CI_PARALLELISM: 4
+          NODE_OPTIONS: '--max-old-space-size=8192'
           SKIP_VITE_BUILD: ${{ steps.cache-vite.outputs.cache-hit == 'true' && 'true' || 'false' }}
           # beta/alpha/rc → development env (.env.development); stable → production (.env.production)
           VITE_MODE: ${{ steps.arch.outputs.prerelease == 'true' && 'development' || 'production' }}

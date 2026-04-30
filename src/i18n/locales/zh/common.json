@@ -131,6 +131,12 @@
         "characterSecret": "输入密码时，它们会认真把视线挪开。",
         "characterVisible": "密码可见时，紫色的小家伙会偷偷瞄一眼。"
     },
+    "DragUpload": {
+        "dragTitle": "上传图片",
+        "dragDesc": "拖拽文件到这里，支持上传多个图片。",
+        "dragFileTitle": "上传文件",
+        "dragFileDesc": "拖拽图片和文件到这里，支持上传多个图片和文件。"
+    },
     "browserUse": {
         "panelTitle": "浏览器",
         "togglePanel": "切换浏览器面板",

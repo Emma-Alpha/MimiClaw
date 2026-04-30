@@ -23,10 +23,15 @@ const maxParallel = Math.max(1, Number(process.env.CI_PARALLELISM || '2'));
 
 async function runStep(cmd) {
   await new Promise((resolve, reject) => {
+    const env = { ...process.env };
+    // Increase Node.js heap limit for memory-intensive Vite builds (14k+ modules).
+    if (!env.NODE_OPTIONS?.includes('--max-old-space-size')) {
+      env.NODE_OPTIONS = `${env.NODE_OPTIONS || ''} --max-old-space-size=8192`.trim();
+    }
     const child = spawn(cmd, {
       shell: true,
       stdio: 'inherit',
-      env: process.env,
+      env,
     });
     child.on('error', reject);
     child.on('exit', (code) => {

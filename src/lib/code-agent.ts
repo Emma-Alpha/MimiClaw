@@ -178,6 +178,7 @@ export type ClaudeCodeSkillEntry = {
   name: string;
   command: string;
   description: string;
+  icon?: string;
   scope: 'global' | 'project';
   source: 'claude' | 'external';
   skillContent: string;

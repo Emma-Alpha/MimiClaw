@@ -60,6 +60,8 @@ jobs:
         run: pnpm run uv:download:win
 
       - name: Build Windows
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
         run: pnpm run package:win
 
       - name: Validate unsigned Windows artifacts before SignPath

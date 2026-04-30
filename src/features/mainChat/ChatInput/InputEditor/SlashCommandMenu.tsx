@@ -1,6 +1,7 @@
 import { flip, offset, shift, size, useFloating } from '@floating-ui/react';
 import type { ISlashMenuOption, ISlashOption } from '@lobehub/editor';
 import { Icon, type IconProps } from '@lobehub/ui';
+import { createStyles } from 'antd-style';
 import { Circle } from 'lucide-react';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -9,6 +10,55 @@ import { CommandMenu, type CommandMenuGroup, type CommandMenuItem } from '@/comp
 
 const LOBE_THEME_APP_ID = 'lobe-ui-theme-app';
 const IMAGE_ICON_RE = /^(https?:\/\/|data:image\/|\/)/i;
+
+// ── Skill capsule label for dropdown ──────────────────────────────────────
+
+const useSkillCapsuleStyles = createStyles(({ css, token }) => ({
+  capsule: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 8px;
+    border-radius: 6px;
+    border: 1px solid ${token.colorSuccessBorder};
+    background: ${token.colorSuccessBg};
+    color: ${token.colorSuccess};
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.5;
+  `,
+  icon: css`
+    font-size: 11px;
+    line-height: 1;
+
+    img {
+      width: 14px;
+      height: 14px;
+      object-fit: contain;
+      border-radius: 2px;
+    }
+  `,
+}));
+
+const SkillCapsuleLabel = memo<{ iconStr?: string; label: string }>(({ iconStr, label }) => {
+  const { styles } = useSkillCapsuleStyles();
+
+  const effectiveIcon = iconStr || '🛠';
+  let iconNode: ReactNode;
+  if (IMAGE_ICON_RE.test(effectiveIcon)) {
+    iconNode = <span className={styles.icon}><img alt="" src={effectiveIcon} /></span>;
+  } else {
+    iconNode = <span className={styles.icon}>{effectiveIcon}</span>;
+  }
+
+  return (
+    <span className={styles.capsule}>
+      {iconNode}
+      {label}
+    </span>
+  );
+});
+SkillCapsuleLabel.displayName = 'SkillCapsuleLabel';
 
 export interface SlashCommandMenuProps {
   activeKey: string | null;
@@ -81,10 +131,11 @@ function useSlashGroups(options: ISlashOption[], t: (key: string, opts?: Record<
         title: t('input.slash.groupSkills', { defaultValue: 'Skills' }),
         items: skills.map((item) => {
           flatItems.push(item);
+          const meta = item.metadata as Record<string, unknown> | undefined;
+          const iconStr = meta?.icon as string | undefined;
           return {
             id: String(item.key),
-            icon: renderItemIcon(item),
-            label: formatLabel(item.label),
+            label: <SkillCapsuleLabel iconStr={iconStr} label={formatLabel(item.label)} />,
             description: item.desc ? String(item.desc) : undefined,
             tag: getItemTag(item),
           } satisfies CommandMenuItem;

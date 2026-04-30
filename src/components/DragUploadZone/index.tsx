@@ -106,7 +106,7 @@ const DragUploadZone = memo<DragUploadZoneProps>(
     onUploadFiles,
     style,
   }) => {
-    const { t } = useTranslation('components');
+    const { t } = useTranslation('common');
 
     // Global drag state - shows overlay when dragging anywhere on page
     const { isDraggingGlobally } = useDragUploadContext();
