@@ -1,0 +1,4 @@
+interface:
+  display_name: "Godot Foundations"
+  short_description: "Establish Godot 4 project architecture"
+  default_prompt: "Help me design the scene architecture, system boundaries, and project structure for my Godot 4 game."

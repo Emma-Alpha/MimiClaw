@@ -1,0 +1,4 @@
+interface:
+  display_name: "Godot Networking"
+  short_description: "Build multiplayer games with Godot 4"
+  default_prompt: "Help me implement multiplayer networking for my Godot 4 game with server authority, client prediction, and secure RPC patterns."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Godot Asset Pipeline"
+  short_description: "Manage and optimize game assets in Godot 4"
+  default_prompt: "Help me set up the asset pipeline for my Godot 4 game — import settings, resource organization, optimization, and build size management."

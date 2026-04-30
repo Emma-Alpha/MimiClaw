@@ -1,0 +1,4 @@
+interface:
+  display_name: "Godot Playtest"
+  short_description: "Test and QA Godot 4 games"
+  default_prompt: "Help me test my Godot 4 game — smoke tests, performance profiling, bug triage, and release readiness checks."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Godot 3D Game"
+  short_description: "Build 3D games with Godot 4"
+  default_prompt: "Implement this 3D game with Godot 4, including character controller, environment, lighting, and camera system."

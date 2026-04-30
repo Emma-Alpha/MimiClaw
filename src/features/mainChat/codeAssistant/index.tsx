@@ -162,6 +162,7 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 	const resetCodeAgent = useChatStore((s) => s.reset);
 	const resetCodeAgentStreaming = useChatStore((s) => s.resetStreaming);
 	const codeAgentItems = useChatStore((s) => s.items);
+	const codeActiveTasks = useChatStore((s) => s.activeTasks);
 	const codeStreaming = useChatStore((s) => s.streaming);
 	const codeAgentPendingPermission = useChatStore(
 		(s) => s.pendingPermission,
@@ -592,13 +593,31 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 		[pluginMentionItems, fileMentionItems],
 	);
 
+	// Build a skill-name → plugin-icon lookup from marketplace catalogs so that
+	// skills rendered in the slash menu / input tag can show their parent plugin's icon.
+	const skillIconMap = useMemo(() => {
+		const toKebab = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
+		const map = new Map<string, string>();
+		const allPlugins = getAllMarketplacePlugins(catalogs);
+		for (const p of allPlugins) {
+			if (!p.icon || !p.skills) continue;
+			for (const s of p.skills) {
+				map.set(toKebab(s.name), p.icon);
+			}
+			map.set(toKebab(p.name), p.icon);
+		}
+		return map;
+	}, [catalogs]);
+
 	// Map claudeCodeSkills to ISlashOption[] for the editor slash menu
 	const extraSlashItems = useMemo<ISlashOption[]>(() => {
-		const toSlashItem = (entry: ClaudeCodeSkillEntry): ISlashOption => ({
+		const toSlashItem = (entry: ClaudeCodeSkillEntry): ISlashOption => {
+			const icon = entry.icon || skillIconMap.get(entry.name);
+			return {
 			desc: entry.description,
 			key: `${entry.scope}:${entry.name}`,
 			label: entry.command,
-			metadata: { scope: entry.scope, source: entry.source, icon: entry.icon, group: 'skills' },
+			metadata: { scope: entry.scope, source: entry.source, icon, group: 'skills' },
 			onSelect: (activeEditor: IEditor) => {
 				// Insert a skill pill/tag into the editor (strip leading "/" since markdownWriter adds it)
 				activeEditor.dispatchCommand(INSERT_MENTION_COMMAND, {
@@ -606,7 +625,7 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 					metadata: {
 						id: `${entry.scope}:${entry.name}`,
 						kind: 'skill',
-						icon: entry.icon,
+						icon,
 						description: entry.description,
 					},
 				});
@@ -624,12 +643,13 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 				activeSkillsRef.current = [...activeSkillsRef.current, skill];
 				setActiveSkillTags((prev) => [...prev, skill]);
 			},
-		});
+		};
+		};
 		return [
 			...claudeCodeSkills.project.map(toSlashItem),
 			...claudeCodeSkills.global.map(toSlashItem),
 		];
-	}, [claudeCodeSkills]);
+	}, [claudeCodeSkills, skillIconMap]);
 
 	useCodeChatCodeAgentControls({
 		codeAgentConfig,
@@ -945,6 +965,54 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 					],
 					timestamp: Date.now() / 1000,
 				});
+			} else if (item.kind === "task-start") {
+				const activeTask = codeActiveTasks.get(item.taskId);
+				converted.push({
+					id: item.id,
+					role: "system",
+					content: "",
+					timestamp: Date.now() / 1000,
+					_subagentTask: {
+						taskId: item.taskId,
+						description: item.description,
+						status: activeTask?.status ?? "running",
+						parentTaskId: item.parentTaskId,
+					},
+				});
+			} else if (item.kind === "task-end") {
+				// Find and update the corresponding task-start message
+				let found = false;
+				for (let i = converted.length - 1; i >= 0; i--) {
+					if (converted[i]._subagentTask?.taskId === item.taskId) {
+						converted[i] = {
+							...converted[i],
+							_subagentTask: {
+								...converted[i]._subagentTask!,
+								status: item.status,
+								summary: item.summary,
+								durationMs: item.durationMs,
+							},
+						};
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					// No matching start found; emit standalone end card
+					converted.push({
+						id: item.id,
+						role: "system",
+						content: "",
+						timestamp: Date.now() / 1000,
+						_subagentTask: {
+							taskId: item.taskId,
+							description: "",
+							status: item.status,
+							summary: item.summary,
+							durationMs: item.durationMs,
+						},
+					});
+				}
 			} else if (item.kind === "assistant-usage") {
 				// Attach usage metadata to the most recent assistant message
 				// so ConversationView → NewAssistantMessage → Usage can display it
@@ -970,7 +1038,7 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 		}
 
 		return converted;
-	}, [codeAgentItems]);
+	}, [codeAgentItems, codeActiveTasks]);
 
 	const disableComposer = isCodeTurnInProgress;
 	const headerSessions = claudeSessions;
@@ -1166,8 +1234,7 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 	}, [floatingTodoTool]);
 
 	return (
-		<DragUploadZone onUploadFiles={handleUploadFiles} style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
-		<div className={cx(styles.root, embeddedCodeAssistant && styles.rootEmbedded)}>
+		<DragUploadZone onUploadFiles={handleUploadFiles} className={cx(styles.root, embeddedCodeAssistant && styles.rootEmbedded)}>
 				<CodeChatHeader
 					embedded={embeddedCodeAssistant}
 					draftTarget={draftTarget}
@@ -1501,7 +1568,6 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 			) : null}
 			{/* end mainContent */}
 			</div>
-		</div>
 		</DragUploadZone>
 	);
 }

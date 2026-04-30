@@ -18,8 +18,6 @@ const styles = createStaticStyles(({ css }) => ({
     position: relative;
   `,
   content: css`
-    width: 100%;
-    height: 100%;
     padding: 12px;
     border: 1.5px dashed #fff;
     border-radius: ${cssVar.borderRadiusLG};
@@ -35,7 +33,8 @@ const styles = createStaticStyles(({ css }) => ({
     background: color-mix(in srgb, ${cssVar.geekblue} 38%, white);
   `,
   iconGroup: css`
-    margin-block-start: -32px;
+    position: relative;
+    height: 52px;
   `,
   overlay: css`
     pointer-events: none;
@@ -53,7 +52,9 @@ const styles = createStaticStyles(({ css }) => ({
     transition: all 0.2s ease-in-out;
   `,
   overlayContent: css`
-    padding: ${cssVar.borderRadiusLG};
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
     border-radius: 12px;
     background: ${cssVar.geekblue};
   `,
@@ -127,24 +128,26 @@ const DragUploadZone = memo<DragUploadZoneProps>(
           <div className={styles.overlay}>
             <div className={styles.overlayContent} style={{ minHeight: overlayMinHeight }}>
               <Center className={styles.content} gap={8}>
-                <Flexbox horizontal className={styles.iconGroup}>
+                <Flexbox align={'center'} className={styles.iconGroup} justify={'center'}>
                   <Center
                     className={styles.icon}
-                    height={BLOCK_SIZE * 1.2}
+                    height={BLOCK_SIZE}
                     width={BLOCK_SIZE}
                     style={{
                       background: `color-mix(in srgb, ${cssVar.geekblue} 68%, white)`,
-                      transform: 'rotateZ(-20deg) translateX(8px)',
+                      position: 'absolute',
+                      transform: 'rotateZ(-20deg) translateX(-28px)',
                     }}
                   >
                     <Icon icon={FileImage} size={ICON_SIZE} />
                   </Center>
                   <Center
                     className={styles.icon}
-                    height={BLOCK_SIZE * 1.2}
+                    height={BLOCK_SIZE}
                     width={BLOCK_SIZE}
                     style={{
-                      transform: 'translateY(-10px)',
+                      position: 'absolute',
+                      transform: 'translateY(-6px)',
                       zIndex: 1,
                     }}
                   >
@@ -152,11 +155,12 @@ const DragUploadZone = memo<DragUploadZoneProps>(
                   </Center>
                   <Center
                     className={styles.icon}
-                    height={BLOCK_SIZE * 1.2}
+                    height={BLOCK_SIZE}
                     width={BLOCK_SIZE}
                     style={{
                       background: `color-mix(in srgb, ${cssVar.geekblue} 68%, white)`,
-                      transform: 'rotateZ(20deg) translateX(-8px)',
+                      position: 'absolute',
+                      transform: 'rotateZ(20deg) translateX(28px)',
                     }}
                   >
                     <Icon icon={FileText} size={ICON_SIZE} />

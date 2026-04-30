@@ -520,19 +520,29 @@ export class TimelineActionImpl {
 			if (subtype === "api_retry") {
 					// Retry starts a fresh upstream attempt; drop partial text/tool state
 					// from the failed attempt so the next stream doesn't concatenate it.
-					this.#clearQueuedStreamingDeltas();
-					this.#set((state) => ({
-						streaming: {
-							...initialStreaming(),
-							spinnerMode: "requesting",
-							vendorStatusText:
-								state.streaming.vendorStatusSource === "vendor"
-									? state.streaming.vendorStatusText
-									: formatVendorStatusLabel(buildFallbackVendorStatus("requesting")),
-							vendorStatusSource:
-								state.streaming.vendorStatusSource === "vendor" ? "vendor" : "fallback",
-						},
-					}));
+					// However, if another request in the same session is already streaming
+					// meaningful content, don't destroy it — the retry is for a different
+					// parallel API call (e.g. a model that 502s while another streams).
+					const currentStreaming = this.#get().streaming;
+					const hasActiveContent =
+						currentStreaming.assistantText.length > 0
+						|| currentStreaming.thinkingText.length > 0
+						|| currentStreaming.toolUses.size > 0;
+					if (!hasActiveContent) {
+						this.#clearQueuedStreamingDeltas();
+						this.#set((state) => ({
+							streaming: {
+								...initialStreaming(),
+								spinnerMode: "requesting",
+								vendorStatusText:
+									state.streaming.vendorStatusSource === "vendor"
+										? state.streaming.vendorStatusText
+										: formatVendorStatusLabel(buildFallbackVendorStatus("requesting")),
+								vendorStatusSource:
+									state.streaming.vendorStatusSource === "vendor" ? "vendor" : "fallback",
+							},
+						}));
+					}
 					this.#addItem({
 						kind: "api-retry",
 						id: uid(),
@@ -586,18 +596,47 @@ export class TimelineActionImpl {
 				const taskId = String(msg.task_id || uid());
 				const description = String(msg.description || "");
 				const toolUseId = typeof msg.tool_use_id === "string" ? msg.tool_use_id : undefined;
-				const task: ActiveTask = { taskId, description, toolUseId };
+				const parentTaskId = typeof msg.parent_task_id === "string" ? msg.parent_task_id : undefined;
+				const task: ActiveTask = {
+					taskId,
+					description,
+					toolUseId,
+					parentTaskId,
+					status: "running",
+					progressEntries: [],
+					toolNames: [],
+					startedAt: Date.now(),
+				};
 				this.#set((state) => {
 					const next = new Map(state.activeTasks);
 					next.set(taskId, task);
 					return { activeTasks: next };
 				});
-				this.#addItem({ kind: "task-start", id: uid(), taskId, description });
+				this.#addItem({ kind: "task-start", id: uid(), taskId, description, parentTaskId });
 				return;
 			}
 
 			if (subtype === "task_progress") {
-				// Update tool summary text inside the timeline for the active task
+				const taskId = String(msg.task_id || "");
+				const progressText = String(msg.content || msg.text || "");
+				const toolName = typeof msg.tool_name === "string" ? msg.tool_name : undefined;
+				this.#set((state) => {
+					const existing = state.activeTasks.get(taskId);
+					if (!existing) return state;
+					const next = new Map(state.activeTasks);
+					const updated = { ...existing };
+					if (progressText) {
+						updated.progressEntries = [
+							...updated.progressEntries,
+							{ text: progressText, timestamp: Date.now() },
+						];
+					}
+					if (toolName && !updated.toolNames.includes(toolName)) {
+						updated.toolNames = [...updated.toolNames, toolName];
+					}
+					next.set(taskId, updated);
+					return { activeTasks: next };
+				});
 				return;
 			}
 
@@ -605,12 +644,19 @@ export class TimelineActionImpl {
 				const taskId = String(msg.task_id || "");
 				const status = (msg.status as "completed" | "failed" | "stopped") || "completed";
 				const summary = String(msg.summary || "");
+				const existing = this.#get().activeTasks.get(taskId);
+				const durationMs = existing ? (Date.now() - existing.startedAt) : undefined;
 				this.#set((state) => {
 					const next = new Map(state.activeTasks);
-					next.delete(taskId);
+					const task = next.get(taskId);
+					if (task) {
+						next.set(taskId, { ...task, status, completedAt: Date.now(), summary });
+					} else {
+						next.delete(taskId);
+					}
 					return { activeTasks: next };
 				});
-				this.#addItem({ kind: "task-end", id: uid(), taskId, status, summary });
+				this.#addItem({ kind: "task-end", id: uid(), taskId, status, summary, durationMs });
 				return;
 			}
 

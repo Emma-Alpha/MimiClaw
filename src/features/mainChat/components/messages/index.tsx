@@ -16,6 +16,7 @@ import { NewUserMessage } from './NewUserMessage';
 import { ToolResultMessage } from './ToolResultMessage';
 import type { StreamingToolStatus } from './types';
 import { UserMessage } from './UserMessage';
+import { SubagentTimelineCard } from '@/features/mainChat/codeAssistant/components/code-agent/SubagentCard';
 
 export interface ChatMessageProps {
   isStreaming?: boolean;
@@ -47,6 +48,21 @@ export const ChatMessage = memo(function ChatMessage({
   const tools = extractToolUse(message);
   const attachedFiles = message._attachedFiles || [];
   const hasStreamingToolStatus = isStreaming && streamingTools.length > 0;
+
+  // Render subagent task card inline
+  if (message._subagentTask) {
+    const task = message._subagentTask;
+    return (
+      <SubagentTimelineCard
+        taskId={task.taskId}
+        description={task.description}
+        parentTaskId={task.parentTaskId}
+        endStatus={task.status !== 'running' ? task.status : undefined}
+        endSummary={task.summary}
+        endDurationMs={task.durationMs}
+      />
+    );
+  }
 
   if (isToolResult) {
     return <ToolResultMessage message={message} />;

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Godot Game Studio</title>
+  <desc id="desc">A Godot-themed game studio icon combining Godot's robot mascot silhouette with game development tools.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#478CBF"/>
+      <stop offset="100%" stop-color="#345FA0"/>
+    </linearGradient>
+    <linearGradient id="face" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E0F0FF"/>
+      <stop offset="100%" stop-color="#C2DCF2"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="256" height="256" rx="52" fill="url(#bg)"/>
+  <!-- Godot-style robot head outline -->
+  <ellipse cx="128" cy="108" rx="68" ry="58" fill="url(#face)" stroke="#2B4570" stroke-width="5"/>
+  <!-- Antenna -->
+  <line x1="128" y1="50" x2="128" y2="32" stroke="#E0F0FF" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="128" cy="28" r="8" fill="#5DADE2"/>
+  <!-- Eyes -->
+  <ellipse cx="102" cy="102" rx="14" ry="16" fill="#2B4570"/>
+  <ellipse cx="154" cy="102" rx="14" ry="16" fill="#2B4570"/>
+  <ellipse cx="105" cy="98" rx="5" ry="6" fill="#E0F0FF"/>
+  <ellipse cx="157" cy="98" rx="5" ry="6" fill="#E0F0FF"/>
+  <!-- Mouth / smile -->
+  <path d="M108 126 Q128 140 148 126" fill="none" stroke="#2B4570" stroke-width="4" stroke-linecap="round"/>
+  <!-- Game controller below (mini) -->
+  <rect x="78" y="178" width="100" height="48" rx="20" fill="#1B3A5C" stroke="#5DADE2" stroke-width="4"/>
+  <!-- D-pad -->
+  <rect x="97" y="192" width="8" height="20" rx="3" fill="#C2DCF2"/>
+  <rect x="91" y="198" width="20" height="8" rx="3" fill="#C2DCF2"/>
+  <!-- Action buttons -->
+  <circle cx="148" cy="196" r="5" fill="#58D68D"/>
+  <circle cx="160" cy="196" r="5" fill="#EC7063"/>
+  <circle cx="154" cy="186" r="5" fill="#5DADE2"/>
+  <circle cx="154" cy="206" r="5" fill="#F4D03F"/>
+</svg>

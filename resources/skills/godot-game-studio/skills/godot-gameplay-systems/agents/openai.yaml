@@ -1,0 +1,4 @@
+interface:
+  display_name: "Godot Gameplay Systems"
+  short_description: "Design core game mechanics in Godot 4"
+  default_prompt: "Help me design and implement this gameplay system in Godot 4 using data-driven design, state machines, and component composition."

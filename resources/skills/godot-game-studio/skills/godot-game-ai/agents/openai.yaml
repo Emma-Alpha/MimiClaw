@@ -1,0 +1,4 @@
+interface:
+  display_name: "Godot Game AI"
+  short_description: "Build AI systems for Godot 4 games"
+  default_prompt: "Help me design and implement an AI system for my Godot 4 game — behavior trees, perception, pathfinding, and decision-making."

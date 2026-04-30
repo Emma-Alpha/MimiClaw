@@ -1,0 +1,4 @@
+interface:
+  display_name: "Godot Game Studio"
+  short_description: "Route Godot game work to the right specialist"
+  default_prompt: "Help me plan my Godot 4 game project — choose the right architecture, systems, and workflow before implementation starts."

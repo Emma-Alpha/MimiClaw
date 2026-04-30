@@ -1,0 +1,4 @@
+interface:
+  display_name: "Godot Shaders"
+  short_description: "Write shaders for Godot 4 games"
+  default_prompt: "Help me write a shader for my Godot 4 game — visual effects, custom materials, or post-processing using Godot's shading language."

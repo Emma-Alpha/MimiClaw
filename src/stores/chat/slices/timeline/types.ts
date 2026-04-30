@@ -110,8 +110,8 @@ export type CodeAgentTimelineItem =
 	| { kind: "rate-limit"; id: string; resetsAt: number | null; utilization: number | null; status: string }
 	| { kind: "api-retry"; id: string; attempt: number; maxRetries: number; delayMs: number; error: string }
 	| { kind: "hook"; id: string; hookName: string; hookEvent: string; outcome: "started" | "progress" | "success" | "error"; stdout?: string; exitCode?: number | null }
-	| { kind: "task-start"; id: string; taskId: string; description: string }
-	| { kind: "task-end"; id: string; taskId: string; status: "completed" | "failed" | "stopped"; summary: string }
+	| { kind: "task-start"; id: string; taskId: string; description: string; parentTaskId?: string }
+	| { kind: "task-end"; id: string; taskId: string; status: "completed" | "failed" | "stopped"; summary: string; durationMs?: number }
 	| { kind: "result"; id: string; isError: boolean; numTurns: number; totalCostUsd: number; durationMs: number }
 	| { kind: "permission-request"; id: string; requestId: string; toolName: string; rawInput: Record<string, unknown>; title?: string; description?: string }
 	| { kind: "elicitation"; id: string; elicitationId: string; mcpServerName: string; message: string; requestedSchema: Record<string, unknown> | null };
@@ -146,10 +146,24 @@ export type PendingPermission = {
 };
 
 // ─── Active subagent task ─────────────────────────────────────────────────────
+export type SubagentStatus = "running" | "completed" | "failed" | "stopped";
+
+export type SubagentProgressEntry = {
+	text: string;
+	timestamp: number;
+};
+
 export type ActiveTask = {
 	taskId: string;
 	description: string;
 	toolUseId?: string;
+	parentTaskId?: string;
+	status: SubagentStatus;
+	progressEntries: SubagentProgressEntry[];
+	toolNames: string[];
+	startedAt: number;
+	completedAt?: number;
+	summary?: string;
 };
 
 // ─── Rate-limit state ─────────────────────────────────────────────────────────

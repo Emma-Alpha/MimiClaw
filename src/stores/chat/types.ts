@@ -7,6 +7,16 @@ export interface AttachedFileMeta {
   filePath?: string;
 }
 
+/** Subagent task metadata attached to a RawMessage for inline rendering */
+export interface SubagentTaskMeta {
+  taskId: string;
+  description: string;
+  status: 'running' | 'completed' | 'failed' | 'stopped';
+  summary?: string;
+  durationMs?: number;
+  parentTaskId?: string;
+}
+
 /** Raw message from chat.history */
 export interface RawMessage {
   role: 'user' | 'assistant' | 'system' | 'toolresult';
@@ -21,6 +31,8 @@ export interface RawMessage {
   _attachedFiles?: AttachedFileMeta[];
   /** Local-only: mention tags extracted from editor for styled inline rendering */
   _mentionTags?: { kind: string; label: string; icon?: string }[];
+  /** Local-only: subagent task metadata for inline SubagentCard rendering */
+  _subagentTask?: SubagentTaskMeta;
 }
 
 /** Content block inside a message */

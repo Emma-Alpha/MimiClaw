@@ -5,7 +5,7 @@ import { Clock, Coins, Zap, Timer } from "lucide-react";
 import { ModelIcon } from "@lobehub/icons";
 import MentionChip, { renderTextWithMentions, renderTextWithSlashCommand } from "@/components/MentionChip";
 import type { MentionTag } from "@/components/MentionChip";
-import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/chat";
+import type { CodeAgentTimelineItem, SpinnerMode, ActiveTask } from "@/stores/chat";
 import { StreamingText } from "./StreamingText";
 import { ThinkingBlock } from "./ThinkingBlock";
 import { ToolUseLine } from "./ToolUseLine";
@@ -15,7 +15,7 @@ import { CompactBoundary } from "./CompactBoundary";
 import { RateLimitNotice } from "./RateLimitNotice";
 import { HookNotice } from "./HookNotice";
 import { ApiRetryNotice } from "./ApiRetryNotice";
-import { TaskStart, TaskEnd } from "./TaskBoundary";
+import { SubagentTimelineCard } from "./SubagentCard";
 import { ResultSummary } from "./ResultSummary";
 import { StatusIndicator } from "./StatusIndicator";
 import { ReadOnlySlateMessage } from "@/components/common/ReadOnlySlateMessage";
@@ -31,6 +31,7 @@ interface Props {
 	vendorStatusText?: string;
 	workspaceRoot?: string;
 	spinnerMode?: SpinnerMode;
+	activeTasks?: Map<string, ActiveTask>;
 }
 
 const useStyles = createStyles(({ css, token }) => ({
@@ -256,9 +257,11 @@ function AssistantUsageLine({
 export function CodeAgentItem({
 	item,
 	workspaceRoot,
+	activeTasks,
 }: {
 	item: CodeAgentTimelineItem;
 	workspaceRoot?: string;
+	activeTasks?: Map<string, ActiveTask>;
 }) {
 	const { styles } = useStyles();
 	const { styles: codeChatStyles } = useCodeChatStyles();
@@ -362,11 +365,37 @@ export function CodeAgentItem({
 				/>
 			);
 
-		case "task-start":
-			return <TaskStart taskId={item.taskId} description={item.description} />;
+		case "task-start": {
+			const activeTask = activeTasks?.get(item.taskId);
+			const nested = activeTasks
+				? Array.from(activeTasks.values()).filter((t) => t.parentTaskId === item.taskId)
+				: undefined;
+			return (
+				<SubagentTimelineCard
+					taskId={item.taskId}
+					description={item.description}
+					parentTaskId={item.parentTaskId}
+					activeTask={activeTask}
+					nestedTasks={nested && nested.length > 0 ? nested : undefined}
+				/>
+			);
+		}
 
-		case "task-end":
-			return <TaskEnd taskId={item.taskId} status={item.status} summary={item.summary} />;
+		case "task-end": {
+			const nested = activeTasks
+				? Array.from(activeTasks.values()).filter((t) => t.parentTaskId === item.taskId)
+				: undefined;
+			return (
+				<SubagentTimelineCard
+					taskId={item.taskId}
+					description={""}
+					endStatus={item.status}
+					endSummary={item.summary}
+					endDurationMs={item.durationMs}
+					nestedTasks={nested && nested.length > 0 ? nested : undefined}
+				/>
+			);
+		}
 
 		case "result":
 			return (
@@ -392,6 +421,7 @@ export function CodeTimeline({
 	vendorStatusText = "",
 	workspaceRoot,
 	spinnerMode,
+	activeTasks,
 }: Props) {
 	const { styles } = useStyles();
 	const hasVendorStatusText = vendorStatusText.trim().length > 0;
@@ -410,7 +440,7 @@ export function CodeTimeline({
 	return (
 		<div className={styles.root}>
 			{items.map((item) => (
-				<CodeAgentItem key={item.id} item={item} workspaceRoot={workspaceRoot} />
+				<CodeAgentItem key={item.id} item={item} workspaceRoot={workspaceRoot} activeTasks={activeTasks} />
 			))}
 
 			{(isThinking || streamingThinkingText) && (

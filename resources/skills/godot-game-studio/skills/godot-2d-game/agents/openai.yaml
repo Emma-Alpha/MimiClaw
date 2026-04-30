@@ -1,0 +1,4 @@
+interface:
+  display_name: "Godot 2D Game"
+  short_description: "Build 2D games with Godot 4"
+  default_prompt: "Implement this 2D game with Godot 4, GDScript, and a clear gameplay architecture using composition and signals."

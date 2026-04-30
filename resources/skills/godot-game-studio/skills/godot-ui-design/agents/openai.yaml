@@ -1,0 +1,4 @@
+interface:
+  display_name: "Godot UI Design"
+  short_description: "Design game UI/UX for Godot 4"
+  default_prompt: "Help me design and implement the UI for my Godot 4 game — HUD, menus, dialog system, and responsive layouts with accessibility."

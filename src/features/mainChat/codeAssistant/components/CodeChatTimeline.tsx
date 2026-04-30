@@ -15,7 +15,7 @@ import { BackBottomButton } from "@/components/common/BackBottomButton";
 import type { MentionTag } from "@/components/MentionChip";
 import { MessageMarkdown } from "@/components/MessageMarkdown";
 import { UserMessage } from "@/features/mainChat/components/messages/UserMessage";
-import type { CodeAgentTimelineItem, SpinnerMode } from "@/stores/chat";
+import type { CodeAgentTimelineItem, SpinnerMode, ActiveTask } from "@/stores/chat";
 import { useSettingsStore } from "@/stores/settings";
 
 type CodeChatTimelineProps = {
@@ -36,6 +36,7 @@ type CodeChatTimelineProps = {
 	codeWorkspaceRoot?: string;
 	spinnerMode?: SpinnerMode;
 	bottomReservedHeight?: number;
+	activeTasks?: Map<string, ActiveTask>;
 };
 
 type TimelineRenderRow = {
@@ -75,6 +76,7 @@ function CodeChatTimelineImpl({
 	codeWorkspaceRoot,
 	spinnerMode,
 	bottomReservedHeight = 0,
+	activeTasks,
 }: CodeChatTimelineProps) {
 	const { styles, cx } = useCodeChatStyles();
 	const markdownProps = useFileReferenceMarkdownProps(codeWorkspaceRoot);
@@ -277,7 +279,7 @@ function CodeChatTimelineImpl({
 		if (item.kind === "tool-use" && item.tool.toolName.toLowerCase() === "todowrite") continue;
 		timelineRows.push({
 			key: `code:${item.id}`,
-			node: <CodeAgentItem item={item} workspaceRoot={codeWorkspaceRoot} />,
+			node: <CodeAgentItem item={item} workspaceRoot={codeWorkspaceRoot} activeTasks={activeTasks} />,
 		});
 	}
 
