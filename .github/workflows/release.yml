@@ -332,7 +332,12 @@ jobs:
           # host default (arm64 on macos-latest since 2024), so guessing from
           # path alone misroutes builds and previously caused arm64↔x64 asar
           # cross-labeling.
-          declare -A SEEN_ARCH=()
+          #
+          # NOTE: macOS ships /bin/bash 3.2 which lacks `declare -A` (associative
+          # arrays). Track each arch in a plain variable instead.
+          SEEN_ARCH_x64=""
+          SEEN_ARCH_arm64=""
+          SEEN_ARCH_universal=""
           while IFS= read -r ASAR_PATH; do
             # ASAR_PATH = release/<plat>/<App>.app/Contents/Resources/app.asar
             # APP_DIR  = release/<plat>/<App>.app
@@ -353,11 +358,20 @@ jobs:
                 ;;
             esac
 
-            if [ -n "${SEEN_ARCH[$ARCH]+x}" ]; then
-              echo "Skipping duplicate $ARCH source ($ASAR_PATH); already exported from ${SEEN_ARCH[$ARCH]}"
+            case "$ARCH" in
+              x64) PREV_PATH="$SEEN_ARCH_x64" ;;
+              arm64) PREV_PATH="$SEEN_ARCH_arm64" ;;
+              universal) PREV_PATH="$SEEN_ARCH_universal" ;;
+            esac
+            if [ -n "$PREV_PATH" ]; then
+              echo "Skipping duplicate $ARCH source ($ASAR_PATH); already exported from $PREV_PATH"
               continue
             fi
-            SEEN_ARCH[$ARCH]="$ASAR_PATH"
+            case "$ARCH" in
+              x64) SEEN_ARCH_x64="$ASAR_PATH" ;;
+              arm64) SEEN_ARCH_arm64="$ASAR_PATH" ;;
+              universal) SEEN_ARCH_universal="$ASAR_PATH" ;;
+            esac
 
             ASSET_PATH="release/jizhi-${VERSION}-darwin-${ARCH}.asar"
             cp "$ASAR_PATH" "$ASSET_PATH"
