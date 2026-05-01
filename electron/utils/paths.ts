@@ -3,10 +3,14 @@
  * Cross-platform path resolution helpers
  */
 import { app } from 'electron';
-import { createRequire } from 'module';
 import { join } from 'path';
 import { homedir } from 'os';
 import { existsSync, mkdirSync, realpathSync } from 'fs';
+
+import {
+  CLAUDE_CODE_RUNTIME_VERSION,
+  getBinaryFilename,
+} from '../../shared/claude-code-runtime';
 
 export {
   quoteForCmd,
@@ -82,30 +86,24 @@ export function getClaudeCodeConfigDir(): string {
 }
 
 /**
- * Get the bundled Claude Code CLI binary path.
- * - Packaged: from app.asar.unpacked/node_modules/@anthropic-ai/claude-code/
- * - Development: from node_modules/@anthropic-ai/claude-code/
+ * Get the path to the runtime-installed Claude CLI native binary.
  *
- * Returns the path to cli-wrapper.cjs which resolves the correct
- * platform-specific native binary at runtime.
+ * The CLI is no longer bundled with the app. It's downloaded on first run
+ * into {userData}/runtime/claude-code/{version}/{claude|claude.exe} by the
+ * runtime install service (electron/services/claude-code-runtime.ts).
  *
- * Tries the canonical layout first, then falls back to require.resolve so
- * pnpm's symlinked virtual store layouts still resolve correctly. Returns
- * the canonical path even if nothing exists, so callers can surface a clear
- * "missing bundled CLI" error instead of silently falling through to a bare
- * `claude` lookup that also fails.
+ * Returns the canonical path even if the file doesn't exist yet, so callers
+ * can surface a clear "CLI not installed" error rather than spawning a bare
+ * `claude` from PATH (which would conflict with the user's own install).
  */
 export function getBundledClaudeCliPath(): string {
-  const canonical = app.isPackaged
-    ? join(
-        process.resourcesPath,
-        'app.asar.unpacked',
-        'node_modules',
-        '@anthropic-ai',
-        'claude-code',
-        'cli-wrapper.cjs',
-      )
-    : join(__dirname, '..', '..', 'node_modules', '@anthropic-ai', 'claude-code', 'cli-wrapper.cjs');
+  const canonical = join(
+    app.getPath('userData'),
+    'runtime',
+    'claude-code',
+    CLAUDE_CODE_RUNTIME_VERSION,
+    getBinaryFilename(process.platform),
+  );
 
   if (existsSync(canonical)) {
     try {
@@ -113,14 +111,6 @@ export function getBundledClaudeCliPath(): string {
     } catch {
       return canonical;
     }
-  }
-
-  try {
-    const requireFromHere = createRequire(__filename);
-    const resolved = requireFromHere.resolve('@anthropic-ai/claude-code/cli-wrapper.cjs');
-    if (existsSync(resolved)) return resolved;
-  } catch {
-    // ignore — falls through to canonical
   }
 
   return canonical;

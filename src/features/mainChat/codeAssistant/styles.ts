@@ -1568,6 +1568,13 @@ export const useCodeChatStyles = createStyles(
 			width: min(720px, calc(100% - 48px));
 		}
 	`,
+	emptyChatContainerMiniWindow: css`
+		padding-bottom: 16px;
+
+		& > div {
+			width: calc(100% - 8px);
+		}
+	`,
 	emptyChatGreeting: css`
 		font-size: 18px;
 		font-weight: 500;

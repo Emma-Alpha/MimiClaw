@@ -27,6 +27,7 @@ import {
 } from '@/lib/fallback-config';
 import { useSetupStyles } from './styles';
 import mimiclawIcon from '@/assets/logo.png';
+import type { ClaudeCodeInstallProgress } from '../../../shared/claude-code-runtime';
 
 interface SetupStep {
   id: string;
@@ -53,27 +54,31 @@ const getSteps = (t: TFunction): SetupStep[] => [
   },
 ];
 
-// Default skills to auto-install
-interface DefaultSkill {
-  id: string;
-  name: string;
-  description: string;
-}
-
-const getDefaultSkills = (t: TFunction): DefaultSkill[] => [
-  { id: 'opencode', name: t('defaultSkills.opencode.name'), description: t('defaultSkills.opencode.description') },
-  { id: 'python-env', name: t('defaultSkills.python-env.name'), description: t('defaultSkills.python-env.description') },
-  { id: 'code-assist', name: t('defaultSkills.code-assist.name'), description: t('defaultSkills.code-assist.description') },
-  { id: 'file-tools', name: t('defaultSkills.file-tools.name'), description: t('defaultSkills.file-tools.description') },
-  { id: 'terminal', name: t('defaultSkills.terminal.name'), description: t('defaultSkills.terminal.description') },
-];
-
 export function Setup() {
   const { t } = useTranslation(['setup', 'channels']);
   const { styles } = useSetupStyles();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<number>(STEP.WELCOME);
   const isCloudOnlyBuild = resolveCloudOnlyMode();
+  const [preinstalledSkillsCount, setPreinstalledSkillsCount] = useState<number | null>(null);
+
+  // Fetch the real preinstalled skills count from the bundled manifest so the
+  // "complete" summary shows an accurate number instead of a hardcoded list.
+  useEffect(() => {
+    if (isCloudOnlyBuild) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const skills = (await invokeIpc('setup:getPreinstalledSkills')) as Array<{ slug: string }>;
+        if (!cancelled) {
+          setPreinstalledSkillsCount(Array.isArray(skills) ? skills.length : 0);
+        }
+      } catch {
+        if (!cancelled) setPreinstalledSkillsCount(0);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isCloudOnlyBuild]);
 
   const [hasAttemptedFallbackAutoApply, setHasAttemptedFallbackAutoApply] = useState(false);
   const [showFallbackAutoApplyPanel, setShowFallbackAutoApplyPanel] = useState(false);
@@ -199,7 +204,7 @@ export function Setup() {
                 )}
                 {safeStepIndex === STEP.INSTALLING && (
                   <InstallingContent
-                    skills={getDefaultSkills(t)}
+                    skillsCount={preinstalledSkillsCount}
                     onFinish={handleFinish}
                     isCloudOnlyBuild={isCloudOnlyBuild}
                   />
@@ -218,10 +223,13 @@ export function Setup() {
                     )}
                   </div>
                   <div className={styles.navRight}>
-                    {/* Skip is secondary — subtle text link to reduce misclick risk */}
-                    <button onClick={handleSkip} className={styles.skipButton}>
-                      {t('nav.skipSetup')}
-                    </button>
+                    {/* Cloud-only builds may skip — they don't need the local CLI.
+                        Local builds require the CLI install to complete. */}
+                    {isCloudOnlyBuild && (
+                      <button onClick={handleSkip} className={styles.skipButton}>
+                        {t('nav.skipSetup')}
+                      </button>
+                    )}
                     <Button
                       type="primary"
                       onClick={handleNext}
@@ -294,26 +302,66 @@ function WelcomeContent(_props: WelcomeContentProps) {
 }
 
 interface InstallingContentProps {
-  skills: DefaultSkill[];
+  skillsCount: number | null;
   onFinish: () => void;
   isCloudOnlyBuild?: boolean;
 }
 
 type InstallPhase = 'installing' | 'complete' | 'error';
 
-function InstallingContent({ skills, onFinish, isCloudOnlyBuild }: InstallingContentProps) {
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 MB';
+  const mb = bytes / (1024 * 1024);
+  return `${mb.toFixed(mb >= 100 ? 0 : 1)} MB`;
+}
+
+function InstallingContent({ skillsCount, onFinish, isCloudOnlyBuild }: InstallingContentProps) {
   const { t } = useTranslation('setup');
   const { styles } = useSetupStyles();
   const [phase, setPhase] = useState<InstallPhase>('installing');
   const [overallProgress, setOverallProgress] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
+  const [cliProgress, setCliProgress] = useState<ClaudeCodeInstallProgress | null>(null);
   const installStarted = useRef(false);
+
+  // Subscribe to Claude CLI install progress for the entire installing phase.
+  useEffect(() => {
+    if (isCloudOnlyBuild) return;
+    const unsubscribe = window.electron.ipcRenderer.on(
+      'claude-code:install-progress',
+      (payload) => {
+        const progress = payload as ClaudeCodeInstallProgress;
+        setCliProgress(progress);
+        // Map CLI stages to overall progress: uv/python uses 0-30%, CLI 30-95%, finalize 95-100%.
+        if (progress.stage === 'fetching-manifest') {
+          setOverallProgress(35);
+        } else if (progress.stage === 'downloading') {
+          const cliPercent = progress.totalBytes > 0
+            ? Math.min(progress.percent, 100)
+            : 0;
+          setOverallProgress(35 + Math.round(cliPercent * 0.6));
+        } else if (progress.stage === 'verifying') {
+          setOverallProgress(96);
+        } else if (progress.stage === 'finalizing') {
+          setOverallProgress(98);
+        } else if (progress.stage === 'complete') {
+          setOverallProgress(100);
+        } else if (progress.stage === 'error') {
+          // Keep existing progress; the IPC promise will surface the error.
+        }
+      },
+    );
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, [isCloudOnlyBuild]);
 
   const runInstall = useCallback(async () => {
     installStarted.current = true;
     setPhase('installing');
     setOverallProgress(0);
     setErrorMsg('');
+    setCliProgress(null);
 
     if (isCloudOnlyBuild) {
       await new Promise(r => setTimeout(r, 700));
@@ -373,7 +421,9 @@ function InstallingContent({ skills, onFinish, isCloudOnlyBuild }: InstallingCon
           </div>
           <div className={styles.completeSummaryRow}>
             <span className={styles.completeSummaryLabel}>{t('complete.skills', { defaultValue: '技能包' })}</span>
-            <span className={styles.completeSummaryValue}>{isCloudOnlyBuild ? '—' : skills.length}</span>
+            <span className={styles.completeSummaryValue}>
+              {isCloudOnlyBuild ? '—' : skillsCount ?? '—'}
+            </span>
           </div>
         </div>
 
@@ -384,7 +434,8 @@ function InstallingContent({ skills, onFinish, isCloudOnlyBuild }: InstallingCon
     );
   }
 
-  // Error state
+  // Error state — Claude CLI install is required, so we don't allow skipping
+  // for non-cloud builds. Cloud-only builds keep the skip path.
   if (phase === 'error') {
     return (
       <div className={styles.errorRoot}>
@@ -402,9 +453,11 @@ function InstallingContent({ skills, onFinish, isCloudOnlyBuild }: InstallingCon
             <RotateCcw style={{ width: 16, height: 16, marginRight: 8 }} />
             {t('installing.retry', { defaultValue: '重试' })}
           </Button>
-          <Button type="text" onClick={onFinish} className={styles.btnFlexRoundedMuted}>
-            {t('nav.skipSetup')}
-          </Button>
+          {isCloudOnlyBuild && (
+            <Button type="text" onClick={onFinish} className={styles.btnFlexRoundedMuted}>
+              {t('nav.skipSetup')}
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -432,7 +485,21 @@ function InstallingContent({ skills, onFinish, isCloudOnlyBuild }: InstallingCon
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <h2 className={styles.installingTitle}>{t('installing.title')}</h2>
-          <p className={styles.installingSubtitle}>{t('installing.subtitle')}</p>
+          <p className={styles.installingSubtitle}>
+            {cliProgress?.stage === 'downloading' && cliProgress.totalBytes > 0
+              ? t('installing.downloadingClaude', {
+                  defaultValue: '正在下载 Claude CLI {{downloaded}} / {{total}}',
+                  downloaded: formatBytes(cliProgress.downloadedBytes),
+                  total: formatBytes(cliProgress.totalBytes),
+                })
+              : cliProgress?.stage === 'fetching-manifest'
+              ? t('installing.fetchingManifest', { defaultValue: '正在获取 Claude CLI 版本信息…' })
+              : cliProgress?.stage === 'verifying'
+              ? t('installing.verifyingClaude', { defaultValue: '正在校验 Claude CLI 完整性…' })
+              : cliProgress?.stage === 'finalizing'
+              ? t('installing.finalizingClaude', { defaultValue: '正在完成安装…' })
+              : t('installing.subtitle')}
+          </p>
         </div>
       </div>
     </div>

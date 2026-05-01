@@ -5,13 +5,6 @@ import { join, resolve } from 'path';
 import { pathToFileURL } from 'url';
 
 import { readOpenClawConfig } from './channel-config';
-import {
-  ensureDingTalkPluginInstalled,
-  ensureFeishuPluginInstalled,
-  ensureQQBotPluginInstalled,
-  ensureWeChatPluginInstalled,
-  ensureWeComPluginInstalled,
-} from './plugin-install';
 
 const OPENCLAW_EXTENSIONS_DIR = join(homedir(), '.openclaw', 'extensions');
 
@@ -112,82 +105,9 @@ const DEFAULT_PLUGIN_ICON_FILES = [
 const DIRECT_ICON_RE = /^(https?:\/\/|data:image\/|blob:|file:\/\/)/i;
 const WINDOWS_ABS_PATH_RE = /^[a-zA-Z]:[\\/]/;
 
-const KNOWN_PLUGIN_DEFINITIONS = [
-  {
-    key: 'dingtalk',
-    pluginId: 'dingtalk',
-    dirName: 'dingtalk',
-    name: 'DingTalk',
-    packageName: '@soimy/dingtalk',
-    description: 'DingTalk channel plugin for OpenClaw.',
-    supportsMcp: false,
-    aliases: ['dingtalk', '@soimy/dingtalk'],
-  },
-  {
-    key: 'wecom',
-    pluginId: 'wecom',
-    dirName: 'wecom',
-    name: 'WeCom',
-    packageName: '@wecom/wecom',
-    description: 'Official WeCom plugin with enterprise workflow integrations.',
-    supportsMcp: true,
-    aliases: ['wecom', 'wecom-openclaw-plugin', '@wecom/wecom', '@wecom/wecom-openclaw-plugin'],
-  },
-  {
-    key: 'openclaw-lark',
-    pluginId: 'openclaw-lark',
-    dirName: 'feishu-openclaw-plugin',
-    name: 'Feishu / Lark',
-    packageName: '@larksuite/openclaw-lark',
-    description: 'Feishu / Lark channel plugin with document MCP tools.',
-    supportsMcp: true,
-    aliases: [
-      'feishu',
-      'lark',
-      'openclaw-lark',
-      'feishu-openclaw-plugin',
-      '@larksuite/openclaw-lark',
-      '@openclaw/feishu',
-    ],
-  },
-  {
-    key: 'qqbot',
-    pluginId: 'qqbot',
-    dirName: 'qqbot',
-    name: 'QQ Bot',
-    packageName: '@sliverp/qqbot',
-    description: 'QQ Bot channel plugin for OpenClaw.',
-    supportsMcp: false,
-    aliases: ['qqbot', '@sliverp/qqbot'],
-  },
-  {
-    key: 'openclaw-weixin',
-    pluginId: 'openclaw-weixin',
-    dirName: 'openclaw-weixin',
-    name: 'WeChat',
-    packageName: '@tencent-weixin/openclaw-weixin',
-    description: 'WeChat channel plugin bundled with MimiClaw.',
-    supportsMcp: false,
-    aliases: ['wechat', 'weixin', 'openclaw-weixin', '@tencent-weixin/openclaw-weixin'],
-  },
-] as const satisfies KnownPluginDefinition[];
+const KNOWN_PLUGIN_DEFINITIONS = [] as const satisfies KnownPluginDefinition[];
 
-const KNOWN_PLUGIN_BY_ALIAS = new Map(
-  KNOWN_PLUGIN_DEFINITIONS.flatMap((definition) =>
-    definition.aliases.map((alias) => [normalizePluginKey(alias), definition] as const),
-  ),
-);
-
-const INSTALLERS: Record<string, () => { installed: boolean; warning?: string }> = {
-  dingtalk: ensureDingTalkPluginInstalled,
-  wecom: ensureWeComPluginInstalled,
-  'openclaw-lark': ensureFeishuPluginInstalled,
-  'feishu-openclaw-plugin': ensureFeishuPluginInstalled,
-  feishu: ensureFeishuPluginInstalled,
-  qqbot: ensureQQBotPluginInstalled,
-  'openclaw-weixin': ensureWeChatPluginInstalled,
-  wechat: ensureWeChatPluginInstalled,
-};
+const KNOWN_PLUGIN_BY_ALIAS = new Map<string, KnownPluginDefinition>();
 
 function normalizePluginKey(value: string): string {
   return value.trim().toLowerCase();
@@ -547,16 +467,3 @@ export async function listPluginsSnapshot(): Promise<PluginsSnapshot> {
   };
 }
 
-export async function installPlugin(pluginKey: string): Promise<PluginsSnapshot> {
-  const installer = INSTALLERS[normalizePluginKey(pluginKey)];
-  if (!installer) {
-    throw new Error(`Unsupported plugin: ${pluginKey}`);
-  }
-
-  const result = installer();
-  if (!result.installed) {
-    throw new Error(result.warning || `Failed to install plugin: ${pluginKey}`);
-  }
-
-  return listPluginsSnapshot();
-}

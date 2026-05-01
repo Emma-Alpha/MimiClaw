@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Form, type FormGroupItemType } from '@lobehub/ui';
 import { SettingHeader } from './_components/SettingHeader';
+import ClaudeCodeRuntimePanel from './_components/ClaudeCodeRuntimePanel';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -1613,6 +1614,10 @@ export function Settings() {
                           </div>
 
                           <div className={styles.formField}>
+                            <ClaudeCodeRuntimePanel />
+                          </div>
+
+                          <div className={styles.formField}>
                             <Label htmlFor="code-agent-cli-path" className={styles.fieldLabelSmall}>
                               {t('developer.codeAgentCliPath')}
                             </Label>
@@ -1620,7 +1625,7 @@ export function Settings() {
                               id="code-agent-cli-path"
                               value={codeAgentConfigDraft.cliPath}
                               onChange={(event) => setCodeAgentConfigDraft((prev) => ({ ...prev, cliPath: event.target.value }))}
-                              placeholder="claude"
+                              placeholder="（留空使用应用内置）"
                               className={styles.fieldInputMono}
                             />
                           </div>

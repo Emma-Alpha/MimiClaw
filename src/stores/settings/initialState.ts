@@ -136,6 +136,7 @@ export const MAIN_PROCESS_SETTINGS_KEYS = [
   'sidebarThreadWorkspaces',
   'sidebarThreadWorkspaceExpanded',
   'devModeUnlocked',
+  'setupComplete',
 ] as const;
 
 export function pickMainProcessSettings(raw: Record<string, unknown>): MainProcessSettingsPatch {

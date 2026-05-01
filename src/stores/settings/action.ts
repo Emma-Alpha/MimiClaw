@@ -101,28 +101,47 @@ export function createSettingsActions(set: Setter, get: Getter): SettingsStoreAc
         const resolvedLanguage = settings.language
           ? resolveSupportedLanguage(settings.language)
           : undefined;
-        set((state) => ({
-          ...state,
-          ...nextSettings,
-          ...(codeAgent ? { codeAgent } : {}),
-          ...(petCompanion ? { petCompanion } : {}),
-          ...(resolvedLanguage ? { language: resolvedLanguage } : {}),
-          preference: {
-            ...state.preference,
-            ...(typeof rawSettings.preference === 'object' && rawSettings.preference
-              ? rawSettings.preference as Partial<PreferenceSettings>
-              : {}),
-            isDevMode: typeof rawSettings.devModeUnlocked === 'boolean'
-              ? rawSettings.devModeUnlocked
-              : state.preference.isDevMode,
-          },
-          labPreferences: {
-            ...state.labPreferences,
-            ...(typeof rawSettings.labPreferences === 'object' && rawSettings.labPreferences
-              ? rawSettings.labPreferences as Partial<LabPreferenceSettings>
-              : {}),
-          },
-        }));
+        set((state) => {
+          // Migration guard: if Zustand (localStorage) already says setupComplete=true
+          // but main process electron-store says false (e.g. older install where main
+          // never persisted this flag), keep the local true and write it back to main
+          // below. Never let main's default-false silently downgrade a completed setup.
+          const localSetupComplete = state.setupComplete;
+          const remoteSetupComplete = nextSettings.setupComplete;
+          const resolvedSetupComplete = localSetupComplete || remoteSetupComplete === true;
+          return {
+            ...state,
+            ...nextSettings,
+            setupComplete: resolvedSetupComplete,
+            ...(codeAgent ? { codeAgent } : {}),
+            ...(petCompanion ? { petCompanion } : {}),
+            ...(resolvedLanguage ? { language: resolvedLanguage } : {}),
+            preference: {
+              ...state.preference,
+              ...(typeof rawSettings.preference === 'object' && rawSettings.preference
+                ? rawSettings.preference as Partial<PreferenceSettings>
+                : {}),
+              isDevMode: typeof rawSettings.devModeUnlocked === 'boolean'
+                ? rawSettings.devModeUnlocked
+                : state.preference.isDevMode,
+            },
+            labPreferences: {
+              ...state.labPreferences,
+              ...(typeof rawSettings.labPreferences === 'object' && rawSettings.labPreferences
+                ? rawSettings.labPreferences as Partial<LabPreferenceSettings>
+                : {}),
+            },
+          };
+        });
+
+        // Sync renderer-only setupComplete back to main if main is out of date,
+        // so subsequent launches (and other windows) see the persisted value.
+        const localSetupComplete = currentState.setupComplete;
+        const remoteSetupComplete = nextSettings.setupComplete;
+        if (localSetupComplete && remoteSetupComplete !== true) {
+          void invokeIpc('setup:setComplete', true).catch(() => {});
+        }
+
         if (shouldBackfillThreadWorkspaces || shouldBackfillThreadExpanded) {
           void hostApiFetch('/api/settings', {
             method: 'PUT',

@@ -56,12 +56,6 @@ import {
 	setupManagedPython,
 } from "../utils/uv-setup";
 import {
-	ensureDingTalkPluginInstalled,
-	ensureFeishuPluginInstalled,
-	ensureQQBotPluginInstalled,
-	ensureWeComPluginInstalled,
-} from "../utils/plugin-install";
-import {
 	updateSkillConfig,
 	getSkillConfig,
 	getAllSkillConfigs,
@@ -188,12 +182,25 @@ const petAsrSessions = new Map<string, VolcengineAsrSession>();
 const voiceRealtimeSessions = new Map<string, VolcengineRealtimeVoiceSession>();
 
 // Tracks whether the user has completed (or skipped) initial setup. The
-// authoritative value lives in the renderer's Zustand persist store; the
-// renderer pushes it here on rehydrate and on `markSetupComplete` so that
-// other BrowserWindows (notably the pet window) can gate behavior without
-// relying on cross-process localStorage sync, which is unreliable in
-// Electron multi-window setups.
+// Authoritative source is now electron-store ('settings.setupComplete'). The
+// in-memory cache is hydrated on first read and kept in sync via setting
+// changes. This survives renderer localStorage clears, Vite hot-reloads, and
+// dev↔packaged userData differences.
 let setupCompleteCache = false;
+let setupCompleteHydrated = false;
+
+async function hydrateSetupCompleteCache(): Promise<void> {
+	if (setupCompleteHydrated) return;
+	try {
+		const settingsModule = await import("../utils/store");
+		const value = await settingsModule.getSetting("setupComplete");
+		setupCompleteCache = Boolean(value);
+	} catch {
+		// Keep default (false). Hydration retries on next read.
+		return;
+	}
+	setupCompleteHydrated = true;
+}
 
 function resolvePetMenuLanguage(language?: string): "zh" | "en" | "ja" {
 	if (language?.startsWith("ja")) return "ja";
@@ -738,8 +745,16 @@ function registerPetHandlers(): void {
 		return { success: true };
 	});
 
-	ipcMain.handle("setup:setComplete", (_event, value: boolean) => {
-		setupCompleteCache = Boolean(value);
+	ipcMain.handle("setup:setComplete", async (_event, value: boolean) => {
+		const next = Boolean(value);
+		setupCompleteCache = next;
+		setupCompleteHydrated = true;
+		try {
+			const settingsModule = await import("../utils/store");
+			await settingsModule.setSetting("setupComplete", next);
+		} catch (error) {
+			console.error("Failed to persist setupComplete:", error);
+		}
 		return { success: true };
 	});
 
@@ -994,6 +1009,10 @@ export function registerIpcHandlers(
 	gatewayManager: GatewayManager,
 	mainWindow: BrowserWindow,
 ): void {
+	// Hydrate setupComplete from electron-store so pet/handlers reading the
+	// cache see the persisted value rather than the false default.
+	void hydrateSetupCompleteCache();
+
 	// Unified request protocol (non-breaking: legacy channels remain available)
 	registerUnifiedRequestHandlers(gatewayManager);
 
@@ -1035,6 +1054,12 @@ export function registerIpcHandlers(
 
 	// UV handlers
 	registerUvHandlers();
+
+	// Setup-flow handlers (preinstalled skills manifest, etc.)
+	registerSetupHandlers();
+
+	// Claude Code runtime handlers (download/status)
+	registerClaudeCodeHandlers();
 
 	// Log handlers (for UI to read gateway/app logs)
 	registerLogHandlers();
@@ -2156,7 +2181,7 @@ function registerUvHandlers(): void {
 	});
 
 	// Install uv and setup managed Python
-	ipcMain.handle("uv:install-all", async () => {
+	ipcMain.handle("uv:install-all", async (event) => {
 		try {
 			const isInstalled = await checkUvInstalled();
 			if (!isInstalled) {
@@ -2164,10 +2189,70 @@ function registerUvHandlers(): void {
 			}
 			// Always run python setup to ensure it exists in uv's cache
 			await setupManagedPython();
-			await setupClaudeCodeCli();
+
+			// Stream Claude CLI install progress back to the originating window.
+			const senderWin = BrowserWindow.fromWebContents(event.sender);
+			await setupClaudeCodeCli((progress) => {
+				if (senderWin && !senderWin.isDestroyed()) {
+					senderWin.webContents.send("claude-code:install-progress", progress);
+				}
+			});
 			return { success: true };
 		} catch (error) {
 			console.error("Failed to setup uv/python/claude:", error);
+			return { success: false, error: String(error) };
+		}
+	});
+}
+
+/**
+ * Setup-flow IPC handlers (data the setup wizard needs from main).
+ */
+function registerSetupHandlers(): void {
+	ipcMain.handle("setup:getPreinstalledSkills", async () => {
+		try {
+			const { readPreinstalledManifest } = await import("../utils/skill-config");
+			return await readPreinstalledManifest();
+		} catch (error) {
+			console.error("Failed to read preinstalled skills manifest:", error);
+			return [];
+		}
+	});
+}
+
+/**
+ * Claude Code runtime IPC handlers (install/status/custom-path).
+ */
+function registerClaudeCodeHandlers(): void {
+	ipcMain.handle("claude-code:get-status", async () => {
+		const runtime = await import("../services/claude-code-runtime");
+		const settingsModule = await import("../utils/store");
+		const settings = await settingsModule.getAllSettings();
+		const customCliPath = settings.codeAgent?.cliPath ?? null;
+		return await runtime.getRuntimeStatus(customCliPath);
+	});
+
+	ipcMain.handle("claude-code:install", async (event) => {
+		try {
+			const runtime = await import("../services/claude-code-runtime");
+			const { CLAUDE_CODE_RUNTIME_VERSION } = await import(
+				"../../shared/claude-code-runtime"
+			);
+			const senderWin = BrowserWindow.fromWebContents(event.sender);
+			const result = await runtime.install(
+				CLAUDE_CODE_RUNTIME_VERSION,
+				(progress) => {
+					if (senderWin && !senderWin.isDestroyed()) {
+						senderWin.webContents.send(
+							"claude-code:install-progress",
+							progress,
+						);
+					}
+				},
+			);
+			await runtime.cleanupOldVersions(1);
+			return { success: true, ...result };
+		} catch (error) {
 			return { success: false, error: String(error) };
 		}
 	});
@@ -2592,82 +2677,6 @@ function registerOpenClawHandlers(gatewayManager: GatewayManager): void {
 					channelType,
 					keys: Object.keys(config || {}),
 				});
-				if (channelType === "dingtalk") {
-					const installResult = await ensureDingTalkPluginInstalled();
-					if (!installResult.installed) {
-						return {
-							success: false,
-							error: installResult.warning || "DingTalk plugin install failed",
-						};
-					}
-					await saveChannelConfig(channelType, config);
-					scheduleGatewayChannelSaveRefresh(
-						channelType,
-						`channel:saveConfig (${channelType})`,
-					);
-					return {
-						success: true,
-						pluginInstalled: installResult.installed,
-						warning: installResult.warning,
-					};
-				}
-				if (channelType === "wecom") {
-					const installResult = await ensureWeComPluginInstalled();
-					if (!installResult.installed) {
-						return {
-							success: false,
-							error: installResult.warning || "WeCom plugin install failed",
-						};
-					}
-					await saveChannelConfig(channelType, config);
-					scheduleGatewayChannelSaveRefresh(
-						channelType,
-						`channel:saveConfig (${channelType})`,
-					);
-					return {
-						success: true,
-						pluginInstalled: installResult.installed,
-						warning: installResult.warning,
-					};
-				}
-				if (channelType === "qqbot") {
-					const installResult = await ensureQQBotPluginInstalled();
-					if (!installResult.installed) {
-						return {
-							success: false,
-							error: installResult.warning || "QQ Bot plugin install failed",
-						};
-					}
-					await saveChannelConfig(channelType, config);
-					scheduleGatewayChannelSaveRefresh(
-						channelType,
-						`channel:saveConfig (${channelType})`,
-					);
-					return {
-						success: true,
-						pluginInstalled: installResult.installed,
-						warning: installResult.warning,
-					};
-				}
-				if (channelType === "feishu") {
-					const installResult = await ensureFeishuPluginInstalled();
-					if (!installResult.installed) {
-						return {
-							success: false,
-							error: installResult.warning || "Feishu plugin install failed",
-						};
-					}
-					await saveChannelConfig(channelType, config);
-					scheduleGatewayChannelSaveRefresh(
-						channelType,
-						`channel:saveConfig (${channelType})`,
-					);
-					return {
-						success: true,
-						pluginInstalled: installResult.installed,
-						warning: installResult.warning,
-					};
-				}
 				await saveChannelConfig(channelType, config);
 				scheduleGatewayChannelSaveRefresh(
 					channelType,

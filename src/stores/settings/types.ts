@@ -185,5 +185,5 @@ export type MainProcessSettingsPatch = Partial<
     | 'proxyBypassRules' | 'codeAgent' | 'aihubApiUrl' | 'aihubApiKey'
     | 'updateChannel' | 'autoCheckUpdate' | 'autoDownloadUpdate'
     | 'sidebarCollapsed' | 'sidebarThreadWorkspaces' | 'sidebarThreadWorkspaceExpanded'
-    | 'devModeUnlocked'>
+    | 'devModeUnlocked' | 'setupComplete'>
 >;

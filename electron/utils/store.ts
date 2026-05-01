@@ -104,6 +104,11 @@ export interface AppSettings {
   selectedBundles: string[];
   enabledSkills: string[];
   disabledSkills: string[];
+
+  // Setup wizard completion flag — persisted here (not just renderer localStorage)
+  // so the gate survives Vite hot-reload, dev↔packaged switches, and any
+  // localStorage clears.
+  setupComplete: boolean;
 }
 
 /**
@@ -181,6 +186,8 @@ function createDefaultSettings(): AppSettings {
     selectedBundles: ['productivity', 'developer'],
     enabledSkills: [],
     disabledSkills: [],
+
+    setupComplete: false,
   };
 }
 

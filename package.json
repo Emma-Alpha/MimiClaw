@@ -3,7 +3,6 @@
   "version": "0.1.78",
   "pnpm": {
     "onlyBuiltDependencies": [
-      "@anthropic-ai/claude-code",
       "@discordjs/opus",
       "@whiskeysockets/baileys",
       "electron",
@@ -16,9 +15,7 @@
     ],
     "supportedArchitectures": {
       "os": [
-        "darwin",
-        "linux",
-        "win32"
+        "current"
       ],
       "cpu": [
         "x64",
@@ -65,6 +62,8 @@
     "node:download:win": "zx scripts/download-bundled-node.mjs --platform=win",
     "prep:win-binaries": "pnpm run uv:download:win && pnpm run node:download:win",
     "icons": "zx scripts/generate-icons.mjs",
+    "pets:generate": "node scripts/generate-pet-videos.mjs",
+    "pets:seedance": "node scripts/generate-pet-videos-seedance.mjs",
     "package": "vite build",
     "package:test": "vite build --mode test",
     "package:prod": "vite build --mode production",
@@ -107,7 +106,6 @@
   },
   "dependencies": {
     "@4399ywkf/theme-system": "^1.0.13",
-    "@anthropic-ai/claude-code": "^2.1.119",
     "@lobehub/editor": "^4.5.0",
     "@lobehub/fluent-emoji": "^4.1.0",
     "@lobehub/icons": "^5.2.0",

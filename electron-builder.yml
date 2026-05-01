@@ -35,8 +35,6 @@ extraResources:
 asar: true
 asarUnpack:
   - '**/*.node'
-  - 'node_modules/@anthropic-ai/claude-code/**'
-  - 'node_modules/@anthropic-ai/claude-code-*/**'
 
 npmRebuild: false
 

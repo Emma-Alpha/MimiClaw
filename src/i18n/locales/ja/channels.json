@@ -159,48 +159,6 @@
                 "システムが自動的に電話番号を識別します"
             ]
         },
-        "wechat": {
-            "description": "Tencent 公式の OpenClaw プラグインを使い、QRコードをスキャンして個人 WeChat に接続します",
-            "docsUrl": "https://icnnp7d0dymg.feishu.cn/wiki/GHYZwuPCriF0gWkXwkFcJ9zon3b",
-            "instructions": [
-                "QRコードを生成すると、极智 が OpenClaw に公式 WeChat プラグインをインストールして有効化します",
-                "以下の QR コードを WeChat でスキャンし、スマートフォン側で接続を確認します",
-                "接続が完了すると、WeChat に新しい「WeChat ClawBot」チャットが自動で表示されます",
-                "後から同じ QR フローを使って、別の WeChat アカウントを追加したり既存アカウントを再接続したりできます"
-            ]
-        },
-        "dingtalk": {
-            "description": "OpenClaw のチャンネルプラグイン経由で DingTalk に接続します（Stream モード）",
-            "docsUrl": "https://icnnp7d0dymg.feishu.cn/wiki/Y5eNwiSiZidkLskrwtJc1rUln0b#doxcnDgA78n43DbkiQjI1OqUA7b",
-            "fields": {
-                "clientId": {
-                    "label": "Client ID (AppKey)",
-                    "placeholder": "dingxxxxxx"
-                },
-                "clientSecret": {
-                    "label": "Client Secret (AppSecret)",
-                    "placeholder": "アプリのシークレット"
-                },
-                "robotCode": {
-                    "label": "Robot Code（任意）",
-                    "placeholder": "通常は Client ID と同じ"
-                },
-                "corpId": {
-                    "label": "Corp ID（任意）",
-                    "placeholder": "dingxxxxxx"
-                },
-                "agentId": {
-                    "label": "Agent ID（任意）",
-                    "placeholder": "123456789"
-                }
-            },
-            "instructions": [
-                "まず OpenClaw に dingtalk プラグインをインストールして有効化します",
-                "DingTalk 開発者コンソールで社内アプリを作成し Stream モードを有効にします",
-                "Client ID と Client Secret を入力します（必須）",
-                "必要に応じて Robot Code / Corp ID / Agent ID を入力します"
-            ]
-        },
         "signal": {
             "description": "signal-cli を使用して Signal に接続します",
             "fields": {
@@ -215,45 +173,6 @@
                 "以下に電話番号を入力します"
             ],
             "docsUrl": "https://docs.openclaw.ai/channels/signal"
-        },
-        "feishu": {
-            "description": "WebSocket 経由で Feishu/Lark ボットに接続します",
-            "docsUrl": "https://icnnp7d0dymg.feishu.cn/wiki/GKn8wOvHnibpPNkNkPzcAvGlnzK#GdHUdp9t9oqyegxwV8ScLvVGn1c",
-            "fields": {
-                "appId": {
-                    "label": "App ID",
-                    "placeholder": "cli_xxxxxx"
-                },
-                "appSecret": {
-                    "label": "App Secret",
-                    "placeholder": "アプリのシークレット"
-                }
-            },
-            "instructions": [
-                "ドキュメントを読み、Feishu Open Platform に移動します",
-                "新しいアプリケーションを作成します",
-                "App ID と App Secret を取得します",
-                "イベント購読を設定します"
-            ]
-        },
-        "wecom": {
-            "description": "プラグイン経由で WeCom Bot (企業微信) に接続します",
-            "docsUrl": "https://icnnp7d0dymg.feishu.cn/wiki/JTGnwoV0RixKPtkr4w7c7gpAnDc",
-            "fields": {
-                "botId": {
-                    "label": "ボット ID",
-                    "placeholder": "ww_xxxxxx"
-                },
-                "secret": {
-                    "label": "アプリシークレット",
-                    "placeholder": "WeCom Bot のシークレット"
-                }
-            },
-            "instructions": [
-                "WeCom 管理コンソールでアプリケーションを作成し、設定情報を取得します",
-                "メッセージ受信サーバー設定が有効になっていることを確認します",
-                "ボット ID (または 企業 ID) とシークレットを入力して接続を確立します"
-            ]
         },
         "imessage": {
             "description": "BlueBubbles (macOS) 経由で iMessage に接続します",
@@ -366,25 +285,6 @@
                 "アクセストークンをコピーします"
             ],
             "docsUrl": "https://docs.openclaw.ai/channels/mattermost"
-        },
-        "qqbot": {
-            "description": "@sliverp/qqbot プラグイン経由で QQ ボットに接続します",
-            "fields": {
-                "appId": {
-                    "label": "App ID",
-                    "placeholder": "QQ ボットの App ID"
-                },
-                "clientSecret": {
-                    "label": "Client Secret",
-                    "placeholder": "QQ ボットの Client Secret"
-                }
-            },
-            "instructions": [
-                "QQ ボットオープンプラットフォームでアプリを登録します",
-                "App ID と Client Secret を取得します",
-                "認証情報を入力します"
-            ],
-            "docsUrl": "https://icnnp7d0dymg.feishu.cn/wiki/KPIJwlyiGiupMrkiS9ice39Zn2c"
         }
     },
     "viewDocs": "ドキュメントを表示"

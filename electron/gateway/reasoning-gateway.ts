@@ -50,11 +50,17 @@ export async function startReasoningGateway(
   const { targetBaseUrl, reasoningEffort } = opts;
 
   const server: Server = createServer((req: IncomingMessage, res: ServerResponse) => {
+    res.on('error', (e) => logger.error(`[reasoning-gateway] res error on ${req.method} ${req.url}: ${e.message}`));
+    req.on('error', (e) => logger.error(`[reasoning-gateway] req error on ${req.method} ${req.url}: ${e.message}`));
     const chunks: Buffer[] = [];
     req.on('data', (c: Buffer) => chunks.push(c));
     req.on('end', () => {
       void handleRequest(req, res, Buffer.concat(chunks), targetBaseUrl, reasoningEffort);
     });
+  });
+  server.on('clientError', (err, socket) => {
+    logger.error(`[reasoning-gateway] clientError: ${err.message}`);
+    try { socket.destroy(); } catch { /* ignore */ }
   });
 
   return new Promise<ReasoningGateway>((resolve, reject) => {
@@ -351,6 +357,8 @@ async function handleRequest(
   const method = (req.method || 'GET').toUpperCase();
   const hasBody = method !== 'GET' && method !== 'HEAD';
   const reqPath = req.url || '/';
+  const remote = `${req.socket.remoteAddress}:${req.socket.remotePort}`;
+  logger.info(`[reasoning-gateway] incoming ${method} ${reqPath} from ${remote} (bodyBytes=${rawBody.length})`);
 
   // Check if this is an Anthropic messages request with an OpenAI model
   const isMessagesEndpoint = /^\/v1\/messages/.test(reqPath);
@@ -439,17 +447,19 @@ async function handleRequest(
     res.writeHead(upstream.status, resHeaders);
 
     if (upstream.body) {
+      logger.info(`[reasoning-gateway] passthrough body=stream status=${upstream.status}`);
       const reader = (upstream.body as ReadableStream<Uint8Array>).getReader();
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         res.write(value);
       }
+      res.end();
     } else {
       const text = await upstream.text();
+      logger.info(`[reasoning-gateway] passthrough body=null status=${upstream.status} bytes=${text.length}`);
       res.end(text);
     }
-    res.end();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`[reasoning-gateway] forward error: ${message}`);

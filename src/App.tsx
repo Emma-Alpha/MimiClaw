@@ -3,7 +3,7 @@
  * Handles routing and global providers
  */
 import { useNavigate, useLocation } from "react-router-dom";
-import { Component, useEffect } from "react";
+import { Component, useEffect, useMemo, useState } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { Toaster } from "sonner";
 import { ModalHost } from "@lobehub/ui";
@@ -11,11 +11,13 @@ import i18n from "./i18n";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useSettingsStore } from "./stores/settings";
 import { invokeIpc } from "./lib/api-client";
+import { resolveCloudOnlyMode } from "@/lib/app-env";
 import { ThemeWrapper } from "./components/theme/ThemeWrapper";
 import { UpdateBootstrap } from "@/components/update/UpdateBootstrap";
 import { DragUploadProvider } from "@/components/DragUploadZone";
 import { CommandPaletteHost } from "@/components/CommandPalette";
 import { AppRoutes } from "./router/generate-routes";
+import type { ClaudeCodeRuntimeStatus } from "../shared/claude-code-runtime";
 
 // ---------------------------------------------------------------------------
 // Route classification helpers
@@ -132,6 +134,8 @@ function App() {
 	const bootstrapCloudDefaults = useSettingsStore((state) => state.bootstrapCloudDefaults);
 
 	const isStandalone = isStandaloneWindowRoute(location.pathname);
+	const isCloudOnlyBuild = useMemo(() => resolveCloudOnlyMode(), []);
+	const [cliStatusVerified, setCliStatusVerified] = useState(false);
 
 	useEffect(() => {
 		// Restore cloud session from localStorage before any redirect checks.
@@ -176,6 +180,46 @@ function App() {
 			navigate("/setup", { replace: true });
 		}
 	}, [cloudLoggedIn, setupComplete, isStandalone, location.pathname, navigate]);
+
+	// Gate 3: One-shot CLI readiness check after login. Handles users upgrading
+	// from a version that bundled the Claude CLI — their setupComplete=true but
+	// the runtime CLI is missing on disk because we no longer ship it. Force
+	// them back through /setup to download it. Cloud-only builds don't need
+	// the local CLI and skip this gate.
+	useEffect(() => {
+		if (isCloudOnlyBuild || !cloudLoggedIn || isStandalone) return;
+		if (cliStatusVerified) return;
+
+		let cancelled = false;
+		void (async () => {
+			try {
+				const status = (await invokeIpc("claude-code:get-status")) as ClaudeCodeRuntimeStatus;
+				if (cancelled) return;
+				const ready = status.installed || status.customCliPathValid;
+				if (
+					!ready &&
+					!location.pathname.startsWith("/setup") &&
+					!location.pathname.startsWith("/login")
+				) {
+					navigate("/setup", { replace: true });
+				}
+			} catch {
+				// Don't block on transient IPC failures.
+			} finally {
+				if (!cancelled) setCliStatusVerified(true);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [
+		cloudLoggedIn,
+		isStandalone,
+		isCloudOnlyBuild,
+		cliStatusVerified,
+		location.pathname,
+		navigate,
+	]);
 
 	// Push setupComplete to the main process so other BrowserWindows (pet)
 	// can gate behavior via IPC without relying on cross-window localStorage.

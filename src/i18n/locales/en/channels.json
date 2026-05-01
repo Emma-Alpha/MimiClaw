@@ -159,48 +159,6 @@
                 "The system will automatically identify your phone number"
             ]
         },
-        "wechat": {
-            "description": "Connect personal WeChat with Tencent's official OpenClaw plugin by scanning a QR code",
-            "docsUrl": "https://icnnp7d0dymg.feishu.cn/wiki/GHYZwuPCriF0gWkXwkFcJ9zon3b",
-            "instructions": [
-                "Click Generate QR Code to install and enable the official WeChat plugin inside OpenClaw",
-                "Scan the QR code below with WeChat and confirm the connection on your phone",
-                "After linking succeeds, a new WeChat ClawBot chat will appear in WeChat automatically",
-                "You can repeat the QR flow later to add another WeChat account or reconnect an existing one"
-            ]
-        },
-        "dingtalk": {
-            "description": "Connect DingTalk via OpenClaw channel plugin (Stream mode)",
-            "docsUrl": "https://icnnp7d0dymg.feishu.cn/wiki/Y5eNwiSiZidkLskrwtJc1rUln0b#doxcnDgA78n43DbkiQjI1OqUA7b",
-            "fields": {
-                "clientId": {
-                    "label": "Client ID (AppKey)",
-                    "placeholder": "dingxxxxxx"
-                },
-                "clientSecret": {
-                    "label": "Client Secret (AppSecret)",
-                    "placeholder": "Your app secret"
-                },
-                "robotCode": {
-                    "label": "Robot Code (optional)",
-                    "placeholder": "Usually same as Client ID"
-                },
-                "corpId": {
-                    "label": "Corp ID (optional)",
-                    "placeholder": "dingxxxxxx"
-                },
-                "agentId": {
-                    "label": "Agent ID (optional)",
-                    "placeholder": "123456789"
-                }
-            },
-            "instructions": [
-                "Install and enable the dingtalk plugin in OpenClaw",
-                "Create a DingTalk internal app and enable Stream mode",
-                "Fill in Client ID and Client Secret (required)",
-                "Fill in Robot Code / Corp ID / Agent ID if your setup requires them"
-            ]
-        },
         "signal": {
             "description": "Connect Signal using signal-cli",
             "docsUrl": "https://docs.openclaw.ai/channels/signal",
@@ -214,45 +172,6 @@
                 "Install signal-cli on your system",
                 "Register or link your phone number",
                 "Enter your phone number below"
-            ]
-        },
-        "feishu": {
-            "description": "Connect Feishu/Lark bot via WebSocket",
-            "docsUrl": "https://icnnp7d0dymg.feishu.cn/wiki/GKn8wOvHnibpPNkNkPzcAvGlnzK#GdHUdp9t9oqyegxwV8ScLvVGn1c",
-            "fields": {
-                "appId": {
-                    "label": "App ID",
-                    "placeholder": "cli_xxxxxx"
-                },
-                "appSecret": {
-                    "label": "App Secret",
-                    "placeholder": "Your app secret"
-                }
-            },
-            "instructions": [
-                "Read the documentation, then go to Feishu Open Platform",
-                "Create a new application",
-                "Get App ID and App Secret",
-                "Configure event subscription"
-            ]
-        },
-        "wecom": {
-            "description": "Connect WeCom Bot via plugin",
-            "docsUrl": "https://icnnp7d0dymg.feishu.cn/wiki/JTGnwoV0RixKPtkr4w7c7gpAnDc",
-            "fields": {
-                "botId": {
-                    "label": "Bot ID",
-                    "placeholder": "ww_xxxxxx"
-                },
-                "secret": {
-                    "label": "App Secret",
-                    "placeholder": "Your WeCom Bot secret"
-                }
-            },
-            "instructions": [
-                "Create an application in WeCom Admin Console to get configuration info",
-                "Ensure receive message server config is enabled",
-                "Enter your Bot ID (or Corp ID) and Secret to establish connection"
             ]
         },
         "imessage": {
@@ -365,25 +284,6 @@
                 "Go to Mattermost Integrations",
                 "Create a new Bot Account",
                 "Copy the access token"
-            ]
-        },
-        "qqbot": {
-            "description": "Connect QQ Bot via @sliverp/qqbot plugin",
-            "docsUrl": "https://icnnp7d0dymg.feishu.cn/wiki/KPIJwlyiGiupMrkiS9ice39Zn2c",
-            "fields": {
-                "appId": {
-                    "label": "App ID",
-                    "placeholder": "Your QQ Bot App ID"
-                },
-                "clientSecret": {
-                    "label": "Client Secret",
-                    "placeholder": "Your QQ Bot Client Secret"
-                }
-            },
-            "instructions": [
-                "Register an app at QQ Bot Open Platform",
-                "Get App ID and Client Secret",
-                "Fill in your credentials below"
             ]
         }
     },

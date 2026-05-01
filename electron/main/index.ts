@@ -66,10 +66,9 @@ import { createSignalQuitHandler } from './signal-quit';
 import { acquireProcessInstanceFileLock } from './process-instance-lock';
 import { getSetting } from '../utils/store';
 import { setSetting } from '../utils/store';
-// Skills/plugins stubs
+// Skills stubs
 const ensureBuiltinSkillsInstalled = async () => {};
 const ensurePreinstalledSkillsInstalled = async () => {};
-const ensureAllBundledPluginsInstalled = async () => {};
 import { startHostApiServer } from '../api/server';
 import { HostEventBus } from '../api/event-bus';
 import { deviceOAuthManager } from '../utils/device-oauth';
@@ -846,12 +845,6 @@ async function initialize(): Promise<void> {
   // non-destructive way and never blocks startup.
   void ensurePreinstalledSkillsInstalled().catch((error) => {
     logger.warn('Failed to install preinstalled skills:', error);
-  });
-
-  // Pre-deploy/upgrade bundled OpenClaw plugins (dingtalk, wecom, qqbot, feishu, wechat)
-  // to ~/.openclaw/extensions/ so they are always up-to-date after an app update.
-  void ensureAllBundledPluginsInstalled().catch((error) => {
-    logger.warn('Failed to install/upgrade bundled plugins:', error);
   });
 
   // Bridge gateway and host-side events before any auto-start logic runs, so

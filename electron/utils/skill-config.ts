@@ -243,7 +243,7 @@ async function ensureBundledResourceSkillsDeployed(): Promise<void> {
 const PREINSTALLED_MANIFEST_NAME = 'preinstalled-manifest.json';
 const PREINSTALLED_MARKER_NAME = '.mimiclaw-preinstalled.json';
 
-async function readPreinstalledManifest(): Promise<PreinstalledSkillSpec[]> {
+export async function readPreinstalledManifest(): Promise<PreinstalledSkillSpec[]> {
     const candidates = [
         join(getResourcesDir(), 'skills', PREINSTALLED_MANIFEST_NAME),
         join(process.cwd(), 'resources', 'skills', PREINSTALLED_MANIFEST_NAME),

@@ -1316,7 +1316,7 @@ export function CodeChat({ embeddedCodeAssistant = false, isMiniWindow = false }
 				/>
 			)}
 
-			<div className={isEmptyChat ? styles.emptyChatContainer : styles.bottomDock}>
+			<div className={isEmptyChat ? cx(styles.emptyChatContainer, isMiniWindow && styles.emptyChatContainerMiniWindow) : styles.bottomDock}>
 				{isEmptyChat && emptyChatWorkspaceName && (
 					<div className={styles.emptyChatGreeting}>
 						要在 {emptyChatWorkspaceName} 中构建什么？

@@ -5,7 +5,6 @@ import { deleteAgentChannelAccounts, listConfiguredChannels, readOpenClawConfig,
 import { withConfigLock } from './config-mutex';
 import { expandPath, getOpenClawConfigDir } from './paths';
 import * as logger from './logger';
-import { toUiChannelType } from './channel-alias';
 
 const MAIN_AGENT_ID = 'main';
 const MAIN_AGENT_NAME = 'Main Agent';
@@ -494,16 +493,14 @@ async function buildSnapshotFromConfig(config: AgentConfigDocument): Promise<Age
       workspace: entry.workspace || (entry.id === MAIN_AGENT_ID ? getDefaultWorkspacePath(config) : `~/.openclaw/workspace-${entry.id}`),
       agentDir: entry.agentDir || getDefaultAgentDirPath(entry.id),
       mainSessionKey: buildAgentMainSessionKey(config, entry.id),
-      channelTypes: configuredChannels
-        .filter((ct) => ownedChannels.has(ct))
-        .map((channelType) => toUiChannelType(channelType)),
+      channelTypes: configuredChannels.filter((ct) => ownedChannels.has(ct)),
     };
   });
 
   return {
     agents,
     defaultAgentId,
-    configuredChannelTypes: configuredChannels.map((channelType) => toUiChannelType(channelType)),
+    configuredChannelTypes: configuredChannels,
     channelOwners,
     channelAccountOwners,
   };

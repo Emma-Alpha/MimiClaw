@@ -228,11 +228,26 @@ export async function setupManagedPython(): Promise<void> {
   }
 }
 
-export async function setupClaudeCodeCli(): Promise<void> {
+export async function setupClaudeCodeCli(
+  onProgress?: (progress: import('../../shared/claude-code-runtime').ClaudeCodeInstallProgress) => void,
+): Promise<void> {
   // Use the isolated config directory instead of ~/.claude/ to prevent
   // cross-contamination with the user's locally installed Claude Code CLI.
   const { getClaudeCodeConfigDir } = await import('./paths');
   const claudeDir = getClaudeCodeConfigDir();
   await mkdir(claudeDir, { recursive: true });
   logger.info(`Ensured Claude Code config directory exists at: ${claudeDir}`);
+
+  // Install the runtime CLI into the app's userData if not already present.
+  const runtime = await import('../services/claude-code-runtime');
+  const { CLAUDE_CODE_RUNTIME_VERSION } = await import('../../shared/claude-code-runtime');
+
+  if (await runtime.isInstalled(CLAUDE_CODE_RUNTIME_VERSION)) {
+    logger.info(`Claude CLI v${CLAUDE_CODE_RUNTIME_VERSION} already installed.`);
+    return;
+  }
+
+  logger.info(`Installing Claude CLI v${CLAUDE_CODE_RUNTIME_VERSION}…`);
+  await runtime.install(CLAUDE_CODE_RUNTIME_VERSION, onProgress);
+  await runtime.cleanupOldVersions(1);
 }

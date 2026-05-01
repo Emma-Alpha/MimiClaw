@@ -284,12 +284,17 @@ export class CodeAgentManager extends EventEmitter {
           targetBaseUrl: this.runtimeConfig.baseUrl,
           reasoningEffort,
         });
+        const upstreamBaseUrl = this.runtimeConfig.baseUrl;
         // Override baseUrl so the sidecar points CLI at the gateway
         this.runtimeConfig = { ...this.runtimeConfig, baseUrl: gateway.baseUrl };
         logger.info('[code-agent] Reasoning gateway active', {
           model: this.runtimeConfig.model,
           reasoningEffort,
           gatewayUrl: gateway.baseUrl,
+          upstreamBaseUrl,
+          cliWillUse: gateway.baseUrl,
+          nodeVersion: process.versions.node,
+          electronVersion: process.versions.electron,
         });
       } catch (err) {
         logger.warn('[code-agent] Failed to start reasoning gateway, proceeding without:', err);

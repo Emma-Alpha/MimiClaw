@@ -1,10 +1,11 @@
-import { Atom } from 'lucide-react';
+import { ActionIcon } from '@lobehub/ui';
+import { Popover } from 'antd';
 import { createStyles } from 'antd-style';
-import { useCallback, useState } from 'react';
+import { Atom } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 import type { ThinkingLevel } from '../../store';
 import { chatInputStoreSelectors, useChatInputStore } from '../../store';
 import { useChatStore } from '@/stores/chat';
-import { ActionWrapper } from './ActionWrapper';
 
 const THINKING_LEVELS: { description: string; key: ThinkingLevel; label: string }[] = [
   { description: 'No extended thinking', key: 'none', label: 'Off' },
@@ -54,6 +55,12 @@ const useStyles = createStyles(({ css, token }) => ({
     text-transform: uppercase;
     color: ${token.colorTextQuaternary};
   `,
+  trigger: css`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+  `,
 }));
 
 export function ThinkingAction() {
@@ -61,7 +68,6 @@ export function ThinkingAction() {
   const globalThinkingLevel = useChatInputStore(chatInputStoreSelectors.thinkingLevel);
   const setGlobalThinkingLevel = useChatInputStore((s) => s.setThinkingLevel);
 
-  // Dedicated session config store — guaranteed reactive
   const sessionThinkingLevel = useChatStore((s) => s.sessionThinkingLevel);
   const thinkingLevel = sessionThinkingLevel ?? globalThinkingLevel;
 
@@ -77,7 +83,7 @@ export function ThinkingAction() {
     setOpen(false);
   }, [setGlobalThinkingLevel]);
 
-  const popoverContent = (
+  const popoverContent = useMemo(() => (
     <div className={styles.panel}>
       <div className={styles.title}>Thinking Level</div>
       {THINKING_LEVELS.map((level) => (
@@ -92,16 +98,26 @@ export function ThinkingAction() {
         </div>
       ))}
     </div>
-  );
+  ), [styles, thinkingLevel, handleSelect]);
 
   return (
-    <ActionWrapper
-      active={isActive}
-      icon={Atom}
-      onPopoverOpenChange={setOpen}
-      popoverContent={popoverContent}
-      popoverOpen={open}
-      title={`Thinking: ${thinkingLevel}`}
-    />
+    <Popover
+      content={popoverContent}
+      onOpenChange={setOpen}
+      open={open}
+      placement="top"
+      trigger={['click']}
+    >
+      <span
+        className={styles.trigger}
+        title={`Thinking: ${thinkingLevel}`}
+      >
+        <ActionIcon
+          active={isActive}
+          icon={Atom}
+          size={{ blockSize: 36, size: 20 }}
+        />
+      </span>
+    </Popover>
   );
 }

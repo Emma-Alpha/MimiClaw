@@ -74,6 +74,7 @@ const electronAPI = {
         'pet:syncCompanionProgress',
         // Setup gating (read by main to gate pet click handlers)
         'setup:setComplete',
+        'setup:getPreinstalledSkills',
         'voice:openDialog',
         'voice:closeDialog',
         'voice:setDialogState',
@@ -141,6 +142,9 @@ const electronAPI = {
         // UV
         'uv:check',
         'uv:install-all',
+        // Claude Code runtime
+        'claude-code:get-status',
+        'claude-code:install',
         // Skill config (direct file access)
         'skill:updateConfig',
         'skill:getConfig',
@@ -211,9 +215,6 @@ const electronAPI = {
         'channel:whatsapp-qr',
         'channel:whatsapp-success',
         'channel:whatsapp-error',
-        'channel:wechat-qr',
-        'channel:wechat-success',
-        'channel:wechat-error',
         'gateway:exit',
         'gateway:error',
         'navigate',
@@ -250,9 +251,11 @@ const electronAPI = {
         'pet:clipboard-changed',
         'voice:realtime-event',
         'quick-chat:initial-message',
+        'mini-chat:new-thread',
         'tray-runtime:state',
         'screenshot:capture',
         'skills:runtime-progress',
+        'claude-code:install-progress',
         'thread-terminal:data',
         'thread-terminal:exit',
         // Browser-use events
@@ -297,9 +300,6 @@ const electronAPI = {
         'channel:whatsapp-qr',
         'channel:whatsapp-success',
         'channel:whatsapp-error',
-        'channel:wechat-qr',
-        'channel:wechat-success',
-        'channel:wechat-error',
         'gateway:exit',
         'gateway:error',
         'navigate',
@@ -334,6 +334,7 @@ const electronAPI = {
         'tray-runtime:state',
         'screenshot:capture',
         'skills:runtime-progress',
+        'claude-code:install-progress',
         'thread-terminal:data',
         'thread-terminal:exit',
         // Browser-use events

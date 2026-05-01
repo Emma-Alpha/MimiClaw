@@ -23,7 +23,6 @@ if (platform && !['mac', 'win', 'linux'].includes(platform)) {
 
 const env = {
   ...process.env,
-  MIMICLAW_CLOUD_ONLY: '1',
   VITE_MIMICLAW_CLOUD_ONLY: '1',
 };
 
